@@ -8,82 +8,41 @@ interface NewsItem {
   link: string
   description?: string | null
   source: string
-  pubDate: Date | string
+  pubDate: string
   category?: string | null
 }
 
-interface NewsFeedProps {
-  items?: NewsItem[]
-  title?: string
-}
-
-// RSS feeds to fetch directly (Argentine financial news)
-const RSS_FEEDS = [
-  { url: "https://www.ambito.com/rss/economia.xml", source: "Ámbito" },
-  { url: "https://www.cronista.com/files/rss/apertura.xml", source: "Cronista" },
-  { url: "https://www.infobae.com/feeds/rss/", source: "Infobae" },
-  { url: "https://www.iprofesional.com/rss/finanzas", source: "iProfesional" },
-  { url: "https://www.bloomberglinea.com/arc/outboundfeeds/rss/?outputType=xml", source: "Bloomberg Línea" },
-]
-
-async function fetchRSSViaProxy(feedUrl: string, source: string): Promise<NewsItem[]> {
-  try {
-    // Use a CORS proxy or our own API route
-    const res = await fetch(`/api/rss-proxy?url=${encodeURIComponent(feedUrl)}`, {
-      signal: AbortSignal.timeout(8000),
-    })
-    if (!res.ok) return []
-    const items: NewsItem[] = await res.json()
-    return items.map(item => ({ ...item, source }))
-  } catch {
-    return []
-  }
-}
-
-export function NewsFeed({ items: propItems, title = "NOTICIAS" }: NewsFeedProps) {
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [rssItems, setRssItems] = useState<NewsItem[]>([])
+export function NewsFeed({ title = "NOTICIAS" }: { title?: string }) {
+  const [items, setItems] = useState<NewsItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [sourceFilter, setSourceFilter] = useState<string | null>(null)
 
-  const fetchAllFeeds = useCallback(async () => {
+  const fetchNews = useCallback(async () => {
     setLoading(true)
     try {
-      const results = await Promise.allSettled(
-        RSS_FEEDS.map(feed => fetchRSSViaProxy(feed.url, feed.source))
-      )
-      const allItems: NewsItem[] = []
-      for (const result of results) {
-        if (result.status === "fulfilled") {
-          allItems.push(...result.value)
-        }
+      const res = await fetch("/api/rss-news")
+      if (res.ok) {
+        const data: NewsItem[] = await res.json()
+        setItems(data)
       }
-      // Sort by date descending
-      allItems.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime())
-      setRssItems(allItems)
-    } catch (error) {
-      console.error("Error fetching RSS:", error)
+    } catch (e) {
+      console.error("Error fetching news:", e)
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    fetchAllFeeds()
-    const interval = setInterval(fetchAllFeeds, 5 * 60 * 1000) // Refresh every 5 min
+    fetchNews()
+    const interval = setInterval(fetchNews, 5 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [fetchAllFeeds])
+  }, [fetchNews])
 
-  // Combine prop items (from DB) with RSS items
-  const allItems = [...(propItems || []), ...rssItems]
-  const filteredItems = sourceFilter
-    ? allItems.filter(item => item.source === sourceFilter)
-    : allItems
+  const filtered = sourceFilter ? items.filter(i => i.source === sourceFilter) : items
+  const sources = [...new Set(items.map(i => i.source))]
 
-  // Get unique sources for filter
-  const sources = [...new Set(allItems.map(item => item.source))]
-
-  const fmtTime = (date: Date | string) => {
+  const fmtTime = (date: string) => {
     try {
       return new Date(date).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })
     } catch {
@@ -114,7 +73,7 @@ export function NewsFeed({ items: propItems, title = "NOTICIAS" }: NewsFeedProps
             ))}
           </select>
           <button
-            onClick={fetchAllFeeds}
+            onClick={fetchNews}
             style={{
               background: "#0a0a0a",
               border: "1px solid #333",
@@ -128,11 +87,11 @@ export function NewsFeed({ items: propItems, title = "NOTICIAS" }: NewsFeedProps
             ↻
           </button>
           <span style={{ color: "#555555", fontWeight: 400, fontSize: "10px" }}>
-            {filteredItems.length} noticias
+            {filtered.length} noticias
           </span>
         </div>
       </div>
-      
+
       <div className="overflow-auto" style={{ maxHeight: "calc(100vh - 120px)" }}>
         <table>
           <thead>
@@ -143,9 +102,9 @@ export function NewsFeed({ items: propItems, title = "NOTICIAS" }: NewsFeedProps
             </tr>
           </thead>
           <tbody>
-            {filteredItems.map((item, i) => (
+            {filtered.map((item, i) => (
               <tr
-                key={item.id || `rss-${i}`}
+                key={item.id}
                 style={{
                   background: expandedId === item.id ? "#0a0a0a" : i % 2 === 0 ? "#000000" : "#060606",
                   cursor: item.description ? "pointer" : "default",
@@ -176,15 +135,14 @@ export function NewsFeed({ items: propItems, title = "NOTICIAS" }: NewsFeedProps
                   )}
                   {expandedId === item.id && item.description && (
                     <div style={{ color: "#888888", fontSize: "10px", marginTop: "4px", lineHeight: "1.4" }}>
-                      {item.description.replace(/<[^>]*>/g, '').slice(0, 400)}
-                      {(item.description?.length || 0) > 400 && "..."}
+                      {item.description.replace(/<[^>]*>/g, "").slice(0, 400)}
                     </div>
                   )}
                 </td>
               </tr>
             ))}
-            
-            {filteredItems.length === 0 && (
+
+            {filtered.length === 0 && (
               <tr>
                 <td colSpan={3} style={{ color: "#555555", textAlign: "center", padding: "20px" }}>
                   {loading ? "CARGANDO FEEDS RSS..." : "NO HAY NOTICIAS DISPONIBLES"}

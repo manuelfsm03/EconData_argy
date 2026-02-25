@@ -466,7 +466,7 @@ export function Dashboard() {
 
         {/* ═══════════ NOTICIAS ═══════════ */}
         <TabsContent value="news">
-          <NewsFeed items={news} />
+          <NewsFeed />
         </TabsContent>
 
         {/* ═══════════ STATUS ═══════════ */}
