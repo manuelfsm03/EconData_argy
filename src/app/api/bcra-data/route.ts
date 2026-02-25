@@ -15,12 +15,22 @@ export async function POST(req: Request) {
 
     const { start, end } = getPeriodDates(period)
     const seriesData = await fetchMultipleSeries(series_ids, start, end)
+    
+    // Check if we got any data back
+    const hasData = Object.values(seriesData).some(arr => arr.length > 0)
+    if (!hasData) {
+      return NextResponse.json({ 
+        error: "No data available from BCRA API",
+        data: []
+      }, { status: 503 })
+    }
+    
     const merged = mergeSeriesByDate(seriesData)
 
     return NextResponse.json({
       data: merged,
       metadata: {
-        source: "BCRA_LIVE",
+        source: "BCRA_API_v4.0",
         period,
         series: series_ids,
         last_updated: new Date().toISOString(),
