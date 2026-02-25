@@ -1,0 +1,200 @@
+// Panel de Control - Financial Data Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Exchange Rates - Tipos de Cambio
+model ExchangeRate {
+  id            String   @id @default(cuid())
+  date          DateTime
+  blue          Float?
+  cclLibre      Float?   @map("ccl_libre")
+  cclControlado Float?   @map("ccl_controlado")
+  mepLibre      Float?   @map("mep_libre")
+  mepControlado Float?   @map("mep_controlado")
+  oficial       Float?   // BNA
+  mayorista     Float?
+  a3500         Float?
+  solidario     Float?
+  cripto        Float?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([date])
+  @@map("exchange_rates")
+}
+
+// Brecha - Gap between exchange rates
+model ExchangeGap {
+  id              String   @id @default(cuid())
+  date            DateTime
+  brechaMepBlue   Float?   @map("brecha_mep_blue")
+  brechaCclBlue   Float?   @map("brecha_ccl_blue")
+  brechaMepOficial Float?  @map("brecha_mep_oficial")
+  brechaCclOficial Float?  @map("brecha_ccl_oficial")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@unique([date])
+  @@map("exchange_gaps")
+}
+
+// Inflacion Argentina
+model Inflation {
+  id             String   @id @default(cuid())
+  date           DateTime
+  monthly        Float?   // Variacion mensual
+  yearToDate     Float?   @map("year_to_date") // YTD
+  interannual    Float?   // Interanual
+  accumulated    Float?   // Acumulado total
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@unique([date])
+  @@map("inflation")
+}
+
+// Rofex Futures - Futuros de Dolar
+model RofexFuture {
+  id                String   @id @default(cuid())
+  date              DateTime
+  position          String   // e.g., DLR052023
+  maturity          DateTime
+  maturityLabel     String?  @map("maturity_label") // e.g., May-2023
+  price             Float?
+  devaluation       Float?   // Devaluacion implícita
+  monthlyDevaluation Float?  @map("monthly_devaluation")
+  tna               Float?   // Tasa Nominal Anual
+  cft               Float?   // Costo Financiero Total
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@unique([date, position])
+  @@map("rofex_futures")
+}
+
+// US Treasury and Fed Rates
+model USTreasury {
+  id                String   @id @default(cuid())
+  date              DateTime
+  yield10Y          Float?   @map("yield_10y")
+  tips10Y           Float?   @map("tips_10y")
+  expectedInflation Float?   @map("expected_inflation")
+  fedFundsRate      Float?   @map("fed_funds_rate")
+  usInflation       Float?   @map("us_inflation")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@unique([date])
+  @@map("us_treasury")
+}
+
+// Tasa Badlar
+model BadlarRate {
+  id        String   @id @default(cuid())
+  date      DateTime
+  rate      Float?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([date])
+  @@map("badlar_rates")
+}
+
+// Merval Index
+model MervalIndex {
+  id        String   @id @default(cuid())
+  date      DateTime
+  value     Float?
+  volume    Float?
+  change    Float?   // Daily change %
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([date])
+  @@map("merval_index")
+}
+
+// Crypto Exchange Rates
+model CryptoRate {
+  id        String   @id @default(cuid())
+  date      DateTime
+  exchange  String   // e.g., binance, buenbit, ripio
+  usdtArs   Float?   @map("usdt_ars")
+  btcArs    Float?   @map("btc_ars")
+  usdcArs   Float?   @map("usdc_ars")
+  daiArs    Float?   @map("dai_ars")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([date, exchange])
+  @@map("crypto_rates")
+}
+
+// News Feed Items
+model NewsItem {
+  id          String   @id @default(cuid())
+  title       String
+  link        String
+  description String?
+  source      String   // RSS source name
+  pubDate     DateTime @map("pub_date")
+  category    String?
+  isRead      Boolean  @default(false) @map("is_read")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([link])
+  @@map("news_items")
+}
+
+// Scrape Logs - For monitoring
+model ScrapeLog {
+  id          String   @id @default(cuid())
+  source      String   // e.g., rava, finanzasargy, criptoya
+  status      String   // success, error, partial
+  message     String?
+  recordsAdded Int?    @map("records_added")
+  duration    Int?     // in milliseconds
+  startedAt   DateTime @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("scrape_logs")
+}
+
+// Data Sources Configuration
+model DataSource {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  url         String
+  type        String   // scrape, api, rss
+  enabled     Boolean  @default(true)
+  lastRun     DateTime? @map("last_run")
+  lastStatus  String?  @map("last_status")
+  cronSchedule String? @map("cron_schedule")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("data_sources")
+}
+
+// BCRA Monetary Variables - Reservas, Base Monetaria, etc.
+model BCRAMonetaryData {
+  id                String   @id @default(cuid())
+  date              DateTime
+  reservas          Float?   @map("reservas") // Reservas Internacionales (USD MM)
+  baseMonetaria     Float?   @map("base_monetaria") // Base Monetaria (ARS MM)
+  circulacion       Float?   @map("circulacion") // Circulacion Monetaria (ARS MM)
+  prestamosPrivado  Float?   @map("prestamos_privado") // Prestamos Sector Privado (ARS MM)
+  tcMinorista       Float?   @map("tc_minorista") // Tipo de Cambio Minorista
+  tcMayorista       Float?   @map("tc_mayorista") // Tipo de Cambio Mayorista
+  badlar            Float?   @map("badlar") // BADLAR %
+  tm20              Float?   @map("tm20") // TM20 %
+  depositos30d      Float?   @map("depositos_30d") // Tasas Depositos 30 dias %
+  cer               Float?   @map("cer") // CER index
+  uva               Float?   @map("uva") // UVA index
+  uvi               Float?   @map("uvi") // UVI index
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@unique([date])
+  @@map("bcra_monetary_data")
+}
