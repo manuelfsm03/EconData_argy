@@ -5,45 +5,25 @@ import { BBGAreaChart } from "@/components/charts/bbg-area-chart"
 import { BBGDataTable } from "@/components/charts/bbg-data-table"
 import { BBGChartPanel } from "@/components/charts/bbg-chart-panel"
 
-function ErrorMessage({ message }: { message: string }) {
-  return (
-    <div style={{ 
-      padding: "20px", 
-      textAlign: "center", 
-      color: "#FF433D",
-      fontSize: "11px",
-    }}>
-      <div style={{ marginBottom: "8px" }}>⚠️</div>
-      <div>{message}</div>
-      <div style={{ color: "#666", marginTop: "8px", fontSize: "10px" }}>
-        Mostrando datos de demostración
-      </div>
-    </div>
-  )
-}
-
 export function TabReservas() {
   const reservas = useBCRAData(["reservas"], "1y")
   const baseMon = useBCRAData(["base_monetaria"], "1y")
   const circulacion = useBCRAData(["circulacion"], "1y")
   const prestamos = useBCRAData(["prestamos_privado"], "1y")
 
-  // Show error but still display data (which will be sample data on error)
   const hasError = reservas.error || baseMon.error || circulacion.error || prestamos.error
 
   return (
     <div className="grid grid-cols-3 gap-px" style={{ background: "#222222" }}>
-      {/* Error banner */}
       {hasError && (
         <div className="col-span-3" style={{ 
           background: "#1a0a0a", 
           borderBottom: "1px solid #333",
           padding: "8px 12px",
           fontSize: "11px",
-          color: "#FFA028",
+          color: "#FF433D",
         }}>
-          <span style={{ color: "#FF433D" }}>⚠️</span> Algunos datos no pudieron cargarse desde BCRA. 
-          Mostrando datos de demostración para el preview.
+          ⚠️ Error cargando datos del BCRA — verificá la conexión a la API
         </div>
       )}
       

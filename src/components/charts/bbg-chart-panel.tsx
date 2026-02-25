@@ -26,20 +26,16 @@ export function BBGChartPanel({ title, loading, error, source, children }: BBGCh
   }
 
   if (error) {
-    // Still render children - they contain fallback/sample data
     return (
-      <div>
-        {source && (
-          <div style={{ position: "relative" }}>
-            <span style={{
-              position: "absolute", top: "4px", right: "8px", zIndex: 10,
-              fontSize: "8px", color: "#FF433D", textTransform: "uppercase",
-            }}>
-              DEMO DATA
-            </span>
-          </div>
-        )}
-        {children}
+      <div className="bbg-panel">
+        <div className="bbg-panel-header flex items-center justify-between">
+          <span>{title}</span>
+          <span className="text-[9px]" style={{ color: "#FF433D" }}>ERROR</span>
+        </div>
+        <div style={{ height: "180px", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "4px" }}>
+          <span style={{ color: "#FF433D", fontSize: "10px" }}>⚠ API UNAVAILABLE</span>
+          <span style={{ color: "#555555", fontSize: "9px" }}>BCRA data temporarily unavailable</span>
+        </div>
       </div>
     )
   }

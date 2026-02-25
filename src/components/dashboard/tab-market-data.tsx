@@ -29,10 +29,9 @@ export function TabMarketData() {
           borderBottom: "1px solid #333",
           padding: "8px 12px",
           fontSize: "11px",
-          color: "#FFA028",
+          color: "#FF433D",
         }}>
-          <span style={{ color: "#FF433D" }}>⚠️</span> Algunos datos no pudieron cargarse desde BCRA. 
-          Mostrando datos de demostración para el preview.
+          ⚠️ Error cargando datos del BCRA — verificá la conexión a la API
         </div>
       )}
       
