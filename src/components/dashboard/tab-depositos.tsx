@@ -6,14 +6,14 @@ import { BBGLineChart } from "@/components/charts/bbg-line-chart"
 import { BBGChartPanel } from "@/components/charts/bbg-chart-panel"
 
 export function TabDepositos() {
-  const depositosCC = useBCRAData(["depositos_cc"], "1y")
-  const cajasAhorro = useBCRAData(["cajas_ahorro"], "1y")
-  const plazosFijos = useBCRAData(["plazos_fijos"], "1y")
-  const components = useBCRAData(["depositos_cc", "cajas_ahorro", "plazos_fijos"], "1y")
-  const baseMon = useBCRAData(["base_monetaria"], "1y")
-  const circulante = useBCRAData(["circulacion"], "1y")
-  const prestamos = useBCRAData(["prestamos_privado"], "1y")
-  const m2 = useBCRAData(["m2_privado_yoy"], "1y")
+  const depositosCC = useBCRAData(["depositos_cc"], "max")
+  const cajasAhorro = useBCRAData(["cajas_ahorro"], "max")
+  const plazosFijos = useBCRAData(["plazos_fijos"], "max")
+  const components = useBCRAData(["depositos_cc", "cajas_ahorro", "plazos_fijos"], "max")
+  const baseMon = useBCRAData(["base_monetaria"], "max")
+  const circulante = useBCRAData(["circulacion"], "max")
+  const prestamos = useBCRAData(["prestamos_privado"], "max")
+  const m2 = useBCRAData(["m2_privado_yoy"], "max")
 
   return (
     <div className="grid grid-cols-3 gap-px" style={{ background: "#222222" }}>

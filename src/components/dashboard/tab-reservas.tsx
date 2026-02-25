@@ -6,10 +6,10 @@ import { BBGDataTable } from "@/components/charts/bbg-data-table"
 import { BBGChartPanel } from "@/components/charts/bbg-chart-panel"
 
 export function TabReservas() {
-  const reservas = useBCRAData(["reservas"], "1y")
-  const baseMon = useBCRAData(["base_monetaria"], "1y")
-  const circulacion = useBCRAData(["circulacion"], "1y")
-  const prestamos = useBCRAData(["prestamos_privado"], "1y")
+  const reservas = useBCRAData(["reservas"], "max")
+  const baseMon = useBCRAData(["base_monetaria"], "max")
+  const circulacion = useBCRAData(["circulacion"], "max")
+  const prestamos = useBCRAData(["prestamos_privado"], "max")
 
   const hasError = reservas.error || baseMon.error || circulacion.error || prestamos.error
 

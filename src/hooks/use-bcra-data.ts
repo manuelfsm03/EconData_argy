@@ -33,6 +33,9 @@ function getPeriodDates(period: string): { start: string; end: string } {
     case "3m": start.setMonth(end.getMonth() - 3); break
     case "6m": start.setMonth(end.getMonth() - 6); break
     case "1y": start.setFullYear(end.getFullYear() - 1); break
+    case "2y": start.setFullYear(end.getFullYear() - 2); break
+    case "3y": start.setFullYear(end.getFullYear() - 3); break
+    case "max": start.setFullYear(end.getFullYear() - 5); break
     case "ytd": start.setMonth(0); start.setDate(1); break
     default: start.setMonth(end.getMonth() - 1)
   }

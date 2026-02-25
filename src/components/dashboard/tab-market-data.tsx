@@ -10,9 +10,9 @@ function fmtVal(v: unknown): string {
 }
 
 export function TabMarketData() {
-  const rates = useBCRAData(["tc_minorista", "tc_mayorista", "badlar", "tm20", "depositos_30d"], "3m")
-  const reserves = useBCRAData(["reservas"], "3m")
-  const indices = useBCRAData(["cer", "uva"], "3m")
+  const rates = useBCRAData(["tc_minorista", "tc_mayorista", "badlar", "tm20", "depositos_30d"], "max")
+  const reserves = useBCRAData(["reservas"], "max")
+  const indices = useBCRAData(["cer", "uva"], "max")
 
   const latest = rates.data.length > 0 ? rates.data[rates.data.length - 1] : null
   const latestRes = reserves.data.length > 0 ? reserves.data[reserves.data.length - 1] : null

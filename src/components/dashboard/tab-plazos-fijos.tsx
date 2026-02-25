@@ -8,10 +8,10 @@ import { BBGChartPanel } from "@/components/charts/bbg-chart-panel"
 
 export function TabPlazosFijos() {
   // Fetch all series needed for this tab
-  const plazosFijos = useBCRAData(["plazos_fijos"], "1y")
-  const rates = useBCRAData(["badlar", "depositos_30d", "tm20"], "1y")
-  const deposits = useBCRAData(["depositos_cc", "cajas_ahorro", "plazos_fijos"], "1y")
-  const ipc = useBCRAData(["ipc_interanual"], "1y")
+  const plazosFijos = useBCRAData(["plazos_fijos"], "max")
+  const rates = useBCRAData(["badlar", "depositos_30d", "tm20"], "max")
+  const deposits = useBCRAData(["depositos_cc", "cajas_ahorro", "plazos_fijos"], "max")
+  const ipc = useBCRAData(["ipc_interanual"], "max")
 
   // Compute BADLAR/Dep30d ratio
   const ratioData = useMemo(() => {
