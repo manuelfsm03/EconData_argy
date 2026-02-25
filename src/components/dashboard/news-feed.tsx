@@ -12,39 +12,57 @@ interface NewsItem {
   category?: string | null
 }
 
-export function NewsFeed({ title = "NOTICIAS" }: { title?: string }) {
-  const [items, setItems] = useState<NewsItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [sourceFilter, setSourceFilter] = useState<string | null>(null)
+interface NewsFeedProps {
+  items?: NewsItem[]
+  title?: string
+}
 
-  const fetchNews = useCallback(async () => {
+export function NewsFeed({ items: propItems, title = "NOTICIAS — FEED RSS" }: NewsFeedProps) {
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [rssItems, setRssItems] = useState<NewsItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filterSource, setFilterSource] = useState<string | null>(null)
+
+  const fetchRSS = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch("/api/rss-news")
       if (res.ok) {
-        const data: NewsItem[] = await res.json()
-        setItems(data)
+        const data = await res.json()
+        setRssItems(data)
       }
-    } catch (e) {
-      console.error("Error fetching news:", e)
+    } catch (error) {
+      console.error("Error fetching RSS:", error)
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    fetchNews()
-    const interval = setInterval(fetchNews, 5 * 60 * 1000)
+    fetchRSS()
+    const interval = setInterval(fetchRSS, 5 * 60 * 1000) // 5 min
     return () => clearInterval(interval)
-  }, [fetchNews])
+  }, [fetchRSS])
 
-  const filtered = sourceFilter ? items.filter(i => i.source === sourceFilter) : items
+  // Use RSS items, fallback to prop items if RSS is empty
+  const items = rssItems.length > 0 ? rssItems : (propItems || [])
+
+  // Get unique sources for filter
   const sources = [...new Set(items.map(i => i.source))]
+
+  const filteredItems = filterSource
+    ? items.filter(i => i.source === filterSource)
+    : items
 
   const fmtTime = (date: string) => {
     try {
-      return new Date(date).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })
+      const d = new Date(date)
+      const now = new Date()
+      const diffH = (now.getTime() - d.getTime()) / 3600000
+      if (diffH < 24) {
+        return d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })
+      }
+      return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })
     } catch {
       return "--:--"
     }
@@ -56,8 +74,8 @@ export function NewsFeed({ title = "NOTICIAS" }: { title?: string }) {
         <span>{title}</span>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <select
-            value={sourceFilter || ""}
-            onChange={(e) => setSourceFilter(e.target.value || null)}
+            value={filterSource || ""}
+            onChange={(e) => setFilterSource(e.target.value || null)}
             style={{
               background: "#0a0a0a",
               border: "1px solid #333",
@@ -72,22 +90,8 @@ export function NewsFeed({ title = "NOTICIAS" }: { title?: string }) {
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
-          <button
-            onClick={fetchNews}
-            style={{
-              background: "#0a0a0a",
-              border: "1px solid #333",
-              color: "#0068FF",
-              fontSize: "10px",
-              padding: "2px 8px",
-              borderRadius: "2px",
-              cursor: "pointer",
-            }}
-          >
-            ↻
-          </button>
           <span style={{ color: "#555555", fontWeight: 400, fontSize: "10px" }}>
-            {filtered.length} noticias
+            {filteredItems.length} noticias
           </span>
         </div>
       </div>
@@ -96,26 +100,26 @@ export function NewsFeed({ title = "NOTICIAS" }: { title?: string }) {
         <table>
           <thead>
             <tr>
-              <th style={{ width: "40px" }}>Time</th>
-              <th style={{ width: "100px" }}>Source</th>
-              <th>Headline</th>
+              <th style={{ width: "45px" }}>Hora</th>
+              <th style={{ width: "120px" }}>Fuente</th>
+              <th>Titular</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((item, i) => (
+            {filteredItems.map((item, i) => (
               <tr
                 key={item.id}
                 style={{
                   background: expandedId === item.id ? "#0a0a0a" : i % 2 === 0 ? "#000000" : "#060606",
                   cursor: item.description ? "pointer" : "default",
                 }}
-                onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                onClick={() => item.description && setExpandedId(expandedId === item.id ? null : item.id)}
               >
                 <td style={{ color: "#FFA028", fontSize: "10px", verticalAlign: "top" }}>
                   {fmtTime(item.pubDate)}
                 </td>
                 <td style={{ color: "#0068FF", fontSize: "10px", verticalAlign: "top" }}>
-                  {item.source.toUpperCase().slice(0, 16)}
+                  {item.source.toUpperCase().slice(0, 18)}
                 </td>
                 <td style={{ whiteSpace: "normal" }}>
                   <a
@@ -135,17 +139,17 @@ export function NewsFeed({ title = "NOTICIAS" }: { title?: string }) {
                   )}
                   {expandedId === item.id && item.description && (
                     <div style={{ color: "#888888", fontSize: "10px", marginTop: "4px", lineHeight: "1.4" }}>
-                      {item.description.replace(/<[^>]*>/g, "").slice(0, 400)}
+                      {item.description}
                     </div>
                   )}
                 </td>
               </tr>
             ))}
 
-            {filtered.length === 0 && (
+            {filteredItems.length === 0 && (
               <tr>
                 <td colSpan={3} style={{ color: "#555555", textAlign: "center", padding: "20px" }}>
-                  {loading ? "CARGANDO FEEDS RSS..." : "NO HAY NOTICIAS DISPONIBLES"}
+                  {loading ? "CARGANDO NOTICIAS RSS..." : "NO HAY NOTICIAS DISPONIBLES"}
                 </td>
               </tr>
             )}

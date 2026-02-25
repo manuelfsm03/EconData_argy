@@ -11,105 +11,86 @@ interface RSSItem {
 }
 
 const RSS_FEEDS = [
-  { url: "https://www.ambito.com/rss/economia.xml", source: "Ámbito" },
-  { url: "https://www.ambito.com/rss/finanzas.xml", source: "Ámbito Fin." },
+  { url: "https://www.ambito.com/rss/economia.xml", source: "Ámbito Economía" },
+  { url: "https://www.ambito.com/rss/finanzas.xml", source: "Ámbito Finanzas" },
   { url: "https://www.infobae.com/feeds/rss/economia/", source: "Infobae" },
-  { url: "https://www.cronista.com/rss/", source: "Cronista" },
-  { url: "https://www.iprofesional.com/rss/finanzas", source: "iProfesional" },
-  { url: "https://www.baenegocios.com/rss", source: "BAE" },
+  { url: "https://www.cronista.com/files/rss/apertura.xml", source: "El Cronista" },
+  { url: "https://www.baenegocios.com/rss", source: "BAE Negocios" },
 ]
+
+// Simple XML tag extractor (no dependency needed)
+function extractTag(xml: string, tag: string): string {
+  const match = xml.match(new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>|<${tag}[^>]*>([\\s\\S]*?)</${tag}>`))
+  if (!match) return ""
+  return (match[1] || match[2] || "").trim()
+}
 
 function parseRSS(xml: string, source: string): RSSItem[] {
   const items: RSSItem[] = []
-  const itemRegex = /<item[^>]*>([\s\S]*?)<\/item>|<entry[^>]*>([\s\S]*?)<\/entry>/gi
+  const itemRegex = /<item>([\s\S]*?)<\/item>/g
   let match
 
   while ((match = itemRegex.exec(xml)) !== null) {
-    const block = match[1] || match[2]
-    if (!block) continue
-
-    const getTag = (tag: string): string => {
-      const cdataRegex = new RegExp(`<${tag}[^>]*>\\s*<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>\\s*</${tag}>`, "i")
-      const cdataMatch = block.match(cdataRegex)
-      if (cdataMatch) return cdataMatch[1].trim()
-
-      const simpleRegex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i")
-      const simpleMatch = block.match(simpleRegex)
-      if (simpleMatch) return simpleMatch[1].trim()
-
-      if (tag === "link") {
-        const hrefRegex = /<link[^>]*href="([^"]*)"[^>]*\/?>/i
-        const hrefMatch = block.match(hrefRegex)
-        if (hrefMatch) return hrefMatch[1]
-      }
-
-      return ""
-    }
-
-    const title = getTag("title")
-    const link = getTag("link")
-    const description = getTag("description") || getTag("summary") || getTag("content")
-    const pubDate = getTag("pubDate") || getTag("published") || getTag("updated") || getTag("dc:date")
-    const category = getTag("category")
+    const itemXml = match[1]
+    const title = extractTag(itemXml, "title")
+    const link = extractTag(itemXml, "link")
+    const description = extractTag(itemXml, "description")
+    const pubDate = extractTag(itemXml, "pubDate")
+    const category = extractTag(itemXml, "category")
 
     if (title && link) {
       items.push({
-        id: `rss-${Buffer.from(link).toString("base64url").slice(0, 24)}`,
-        title: title.replace(/<[^>]*>/g, "").trim(),
+        id: Buffer.from(link).toString("base64").slice(0, 32),
+        title: title.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/<[^>]+>/g, ""),
         link,
-        description: description ? description.replace(/<[^>]*>/g, "").slice(0, 500) : null,
+        description: description ? description.replace(/<[^>]+>/g, "").slice(0, 300) : null,
         source,
-        pubDate: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
-        category: category ? category.replace(/<[^>]*>/g, "") : null,
+        pubDate: pubDate || new Date().toISOString(),
+        category: category || null,
       })
     }
   }
 
-  return items.slice(0, 20)
+  return items
 }
 
 // In-memory cache
-let cache: { items: RSSItem[]; ts: number } | null = null
+let cache: { items: RSSItem[]; timestamp: number } | null = null
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
-async function fetchAllFeeds(): Promise<RSSItem[]> {
-  if (cache && Date.now() - cache.ts < CACHE_TTL) {
-    return cache.items
+export async function GET() {
+  // Return cache if fresh
+  if (cache && Date.now() - cache.timestamp < CACHE_TTL) {
+    return NextResponse.json(cache.items)
   }
 
-  const results = await Promise.allSettled(
+  const allItems: RSSItem[] = []
+
+  await Promise.allSettled(
     RSS_FEEDS.map(async (feed) => {
-      const res = await fetch(feed.url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; PanelDeControl/1.0)",
-          Accept: "application/rss+xml, application/xml, text/xml, application/atom+xml",
-        },
-        signal: AbortSignal.timeout(8000),
-      })
-      if (!res.ok) return []
-      const xml = await res.text()
-      return parseRSS(xml, feed.source)
+      try {
+        const res = await fetch(feed.url, {
+          headers: { "User-Agent": "Mozilla/5.0 PanelDeControl/1.0" },
+          signal: AbortSignal.timeout(8000),
+        })
+        if (!res.ok) return
+        const xml = await res.text()
+        const items = parseRSS(xml, feed.source)
+        allItems.push(...items)
+      } catch {
+        // Skip failed feeds
+      }
     })
   )
 
-  const allItems: RSSItem[] = []
-  for (const r of results) {
-    if (r.status === "fulfilled") allItems.push(...r.value)
-  }
+  // Sort by date descending
   allItems.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime())
 
-  cache = { items: allItems, ts: Date.now() }
-  return allItems
-}
+  // Limit to 100 items
+  const result = allItems.slice(0, 100)
 
-export async function GET() {
-  try {
-    const items = await fetchAllFeeds()
-    return NextResponse.json(items, {
-      headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
-    })
-  } catch (error) {
-    console.error("RSS news error:", error)
-    return NextResponse.json([], { status: 500 })
-  }
+  // Update cache
+  cache = { items: result, timestamp: Date.now() }
+
+  return NextResponse.json(result)
 }
