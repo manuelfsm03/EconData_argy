@@ -2,24 +2,22 @@
 
 import { useState, useEffect, useCallback } from "react"
 
-interface NewsItem {
+interface RSSItem {
   id: string
   title: string
   link: string
-  description?: string | null
+  description: string | null
   source: string
   pubDate: string
-  category?: string | null
 }
 
 interface NewsFeedProps {
-  items?: NewsItem[]
-  title?: string
+  items?: RSSItem[]
 }
 
-export function NewsFeed({ items: propItems, title = "NOTICIAS — FEED RSS" }: NewsFeedProps) {
+export function NewsFeed({ items: propItems }: NewsFeedProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [rssItems, setRssItems] = useState<NewsItem[]>([])
+  const [rssItems, setRssItems] = useState<RSSItem[]>([])
   const [loading, setLoading] = useState(true)
   const [filterSource, setFilterSource] = useState<string | null>(null)
 
@@ -40,29 +38,18 @@ export function NewsFeed({ items: propItems, title = "NOTICIAS — FEED RSS" }: 
 
   useEffect(() => {
     fetchRSS()
-    const interval = setInterval(fetchRSS, 5 * 60 * 1000) // 5 min
+    const interval = setInterval(fetchRSS, 5 * 60 * 1000)
     return () => clearInterval(interval)
   }, [fetchRSS])
 
-  // Use RSS items, fallback to prop items if RSS is empty
   const items = rssItems.length > 0 ? rssItems : (propItems || [])
-
-  // Get unique sources for filter
+  
   const sources = [...new Set(items.map(i => i.source))]
-
-  const filteredItems = filterSource
-    ? items.filter(i => i.source === filterSource)
-    : items
+  const filtered = filterSource ? items.filter(i => i.source === filterSource) : items
 
   const fmtTime = (date: string) => {
     try {
-      const d = new Date(date)
-      const now = new Date()
-      const diffH = (now.getTime() - d.getTime()) / 3600000
-      if (diffH < 24) {
-        return d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })
-      }
-      return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })
+      return new Date(date).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })
     } catch {
       return "--:--"
     }
@@ -71,10 +58,10 @@ export function NewsFeed({ items: propItems, title = "NOTICIAS — FEED RSS" }: 
   return (
     <div className="bbg-panel">
       <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span>{title}</span>
+        <span>NOTICIAS — RSS FEEDS</span>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <select
-            value={filterSource || ""}
+          <select 
+            value={filterSource || ""} 
             onChange={(e) => setFilterSource(e.target.value || null)}
             style={{
               background: "#0a0a0a",
@@ -91,24 +78,24 @@ export function NewsFeed({ items: propItems, title = "NOTICIAS — FEED RSS" }: 
             ))}
           </select>
           <span style={{ color: "#555555", fontWeight: 400, fontSize: "10px" }}>
-            {filteredItems.length} noticias
+            {filtered.length} noticias
           </span>
         </div>
       </div>
-
+      
       <div className="overflow-auto" style={{ maxHeight: "calc(100vh - 120px)" }}>
         <table>
           <thead>
             <tr>
               <th style={{ width: "45px" }}>Hora</th>
-              <th style={{ width: "120px" }}>Fuente</th>
+              <th style={{ width: "110px" }}>Fuente</th>
               <th>Titular</th>
             </tr>
           </thead>
           <tbody>
-            {filteredItems.map((item, i) => (
+            {filtered.map((item, i) => (
               <tr
-                key={item.id}
+                key={item.id + i}
                 style={{
                   background: expandedId === item.id ? "#0a0a0a" : i % 2 === 0 ? "#000000" : "#060606",
                   cursor: item.description ? "pointer" : "default",
@@ -118,8 +105,8 @@ export function NewsFeed({ items: propItems, title = "NOTICIAS — FEED RSS" }: 
                 <td style={{ color: "#FFA028", fontSize: "10px", verticalAlign: "top" }}>
                   {fmtTime(item.pubDate)}
                 </td>
-                <td style={{ color: "#0068FF", fontSize: "10px", verticalAlign: "top" }}>
-                  {item.source.toUpperCase().slice(0, 18)}
+                <td style={{ color: "#0068FF", fontSize: "10px", verticalAlign: "top", fontWeight: 500 }}>
+                  {item.source.toUpperCase().slice(0, 16)}
                 </td>
                 <td style={{ whiteSpace: "normal" }}>
                   <a
@@ -132,11 +119,6 @@ export function NewsFeed({ items: propItems, title = "NOTICIAS — FEED RSS" }: 
                   >
                     {item.title}
                   </a>
-                  {item.category && (
-                    <span style={{ color: "#555555", fontSize: "9px", marginLeft: "8px" }}>
-                      [{item.category.toUpperCase()}]
-                    </span>
-                  )}
                   {expandedId === item.id && item.description && (
                     <div style={{ color: "#888888", fontSize: "10px", marginTop: "4px", lineHeight: "1.4" }}>
                       {item.description}
@@ -145,11 +127,11 @@ export function NewsFeed({ items: propItems, title = "NOTICIAS — FEED RSS" }: 
                 </td>
               </tr>
             ))}
-
-            {filteredItems.length === 0 && (
+            
+            {filtered.length === 0 && (
               <tr>
                 <td colSpan={3} style={{ color: "#555555", textAlign: "center", padding: "20px" }}>
-                  {loading ? "CARGANDO NOTICIAS RSS..." : "NO HAY NOTICIAS DISPONIBLES"}
+                  {loading ? "CARGANDO NOTICIAS..." : "NO HAY NOTICIAS DISPONIBLES"}
                 </td>
               </tr>
             )}
