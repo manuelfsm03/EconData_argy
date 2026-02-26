@@ -20,6 +20,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="dark">
+      <head>
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+      </head>
       <body className={`${ibmPlexMono.variable}`}>
         {children}
       </body>
