@@ -27,11 +27,11 @@ ya tenemos (funcionando):
 ---
 
 ## FASE 1 — renta fija argentina (máximo alpha)
-**equipo: gonza + luca**
+**equipo: TODOS (es la fase que más diferencia hace)**
 
-esto es lo que más diferencia hace. nadie tiene un panel gratuito con renta fija AR bien hecha.
+nadie tiene un panel gratuito con renta fija AR bien hecha. acá es donde ganamos.
 
-### M1.1 — bonos soberanos hard dollar (AL/GD)
+### M1.1 — bonos soberanos hard dollar (AL/GD) → **gonza + luca**
 - [ ] modelo `SovereignBond` en prisma (ticker, moneda, ley, cupón, amortización, flujo de pagos, maturity)
 - [ ] seed de flujos de pagos para AL29, AL30, AL35, AL41, GD29, GD30, GD35, GD41, AE38
 - [ ] scraper de precios: ByMA data API o rava (cierre diario)
@@ -39,34 +39,49 @@ esto es lo que más diferencia hace. nadie tiene un panel gratuito con renta fij
 - [ ] vista: tabla screener estilo 1816 (ticker, precio, TIR, paridad, duration)
 - [ ] vista: detalle por bono (flujo de pagos, gráfico precio histórico)
 
-### M1.2 — curva de rendimientos soberanos
+### M1.2 — curva de rendimientos soberanos → **luca + manu**
 - [ ] gráfico de curva (TIR vs maturity) para HD ley local vs ley NY
 - [ ] identificar bonos "baratos" (por debajo de la curva) vs "caros"
 - [ ] comparativa histórica de curvas (overlay fecha anterior)
 
-### M1.3 — lecaps y bonos tasa fija
+### M1.3 — lecaps y bonos tasa fija → **juan + manu**
 - [ ] modelo para instrumentos pesos (lecap, boncap, etc.)
 - [ ] scraper de precios desde ByMA/Rava
 - [ ] cálculo: TIR, TEA, precio técnico
 - [ ] tabla: todas las lecaps ordenadas por vencimiento con TIR
 
-### M1.4 — bonos CER / dollar linked / duales
+### M1.4 — bonos CER / dollar linked / duales → **juan + luca**
 - [ ] extensión del modelo para bonos ajustables
 - [ ] cálculo: TIR real (CER), breakeven de inflación, breakeven de devaluación
 - [ ] vista comparativa: CER vs DL vs tasa fija (¿dónde conviene estar?)
 
-### M1.5 — vencimientos del tesoro
+### M1.5 — vencimientos del tesoro → **manu + gonza**
 - [ ] calendario de vencimientos (mensual y diario, estilo 1816)
 - [ ] monto por tipo de instrumento (CER, DL, tasa fija, HD)
 - [ ] gráfico de barras de vencimientos futuros
 - [ ] alerta pre-licitación
 
-### M1.6 — ONs corporativas (stretch goal)
+### M1.6 — ONs corporativas (stretch goal) → **luca + pipe**
 - [ ] modelo para ONs (emisor, rating, cupón, maturity)
 - [ ] screener básico con TIR y spread vs soberano
 - [ ] datos de MAE (scraping o manual seed)
 
+### M1.7 — riesgo país → **manu + juan**
+- [ ] cálculo a partir de spread bonos AR vs treasuries
+- [ ] histórico y gráfico
+- [ ] comparativo regional (brasil, chile, colombia)
+
 **fuente de ecuaciones:** excel de lauro (luca lo consigue) + lógica estándar de cálculo financiero
+
+**en paralelo todos pueden avanzar:**
+```
+gonza + luca → M1.1 (soberanos HD) — es el core
+juan + manu  → M1.3 (lecaps) + M1.7 (riesgo país)
+luca + manu  → M1.2 (curva) apenas M1.1 tenga datos
+juan + luca  → M1.4 (CER/DL) en paralelo con lecaps
+manu + gonza → M1.5 (vencimientos) 
+luca + pipe  → M1.6 (ONs) como stretch
+```
 
 ---
 
