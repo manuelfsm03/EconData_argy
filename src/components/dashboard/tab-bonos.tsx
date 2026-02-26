@@ -411,6 +411,155 @@ function LecapsScreener() {
   )
 }
 
+// ── Riesgo País ────────────────────────────────────────────────────────────────
+
+interface RiesgoPaisData {
+  actual: {
+    riesgoPaisBps: number | null
+    spreadAr: number | null
+    us10y: number | null
+    arTir: number | null
+    gd30Precio: number | null
+    metodologia: string
+  }
+  regionales: Record<string, { bps: number | null; moneda: string; nota?: string; ticker?: string }>
+  historico: [string, number][]
+  alertas: { nivel: string; mensaje: string }[]
+}
+
+function RiesgoPaisView() {
+  const [data, setData] = useState<RiesgoPaisData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/riesgo-pais")
+      .then((r) => r.json())
+      .then((j) => { setData(j.data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Calculando riesgo país...</div>
+
+  const bps = data?.actual?.riesgoPaisBps
+  const bpsColor = bps == null ? "#888" : bps > 2000 ? "#FF433D" : bps > 1000 ? "#FFA028" : bps > 500 ? "#FFD700" : "#4AF6C3"
+
+  return (
+    <div>
+      {/* KPI principal */}
+      <div style={{ display: "flex", gap: 1, padding: 1, background: "#111", flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 180px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px" }}>
+          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Riesgo País</div>
+          <div style={{ fontSize: 32, fontWeight: 700, color: bpsColor, fontFamily: "monospace" }}>
+            {bps != null ? bps.toLocaleString("es-AR") : "—"}
+          </div>
+          <div style={{ fontSize: 10, color: "#444" }}>basis points (bps)</div>
+        </div>
+        <div style={{ flex: "1 1 130px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px" }}>
+          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>TIR GD30 (est.)</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#FFA028", fontFamily: "monospace" }}>
+            {data?.actual?.arTir != null ? data.actual.arTir.toFixed(2) + "%" : "—"}
+          </div>
+          <div style={{ fontSize: 9, color: "#444" }}>anual</div>
+        </div>
+        <div style={{ flex: "1 1 130px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px" }}>
+          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>US 10Y</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#888", fontFamily: "monospace" }}>
+            {data?.actual?.us10y != null ? data.actual.us10y.toFixed(2) + "%" : "—"}
+          </div>
+          <div style={{ fontSize: 9, color: "#444" }}>Yield treasury</div>
+        </div>
+        <div style={{ flex: "1 1 130px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px" }}>
+          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>GD30 Precio</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#ccc", fontFamily: "monospace" }}>
+            {data?.actual?.gd30Precio != null ? data.actual.gd30Precio.toFixed(1) : "—"}
+          </div>
+          <div style={{ fontSize: 9, color: "#444" }}>USD (mercado)</div>
+        </div>
+      </div>
+
+      {/* Alertas */}
+      {data?.alertas && data.alertas.length > 0 && (
+        <div style={{ margin: "1px 0" }}>
+          {data.alertas.map((a, i) => {
+            const color = a.nivel === "crítico" ? "#FF433D" : a.nivel === "alto" ? "#FFA028" : a.nivel === "moderado" ? "#FFD700" : "#4AF6C3"
+            return (
+              <div key={i} style={{ background: "#060606", borderLeft: `3px solid ${color}`, padding: "6px 12px", fontSize: 11, color: "#ccc" }}>
+                <span style={{ color, fontWeight: 700, textTransform: "uppercase", fontSize: 9 }}>{a.nivel} </span>
+                {a.mensaje}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Comparativo regional */}
+      <div className="bbg-panel-header" style={{ marginTop: 1 }}>COMPARATIVO REGIONAL (EMBI+)</div>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr>
+            {["País", "Moneda", "EMBI+ (bps)", "Nota"].map((h, i) => (
+              <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "#555", textAlign: i > 1 ? "right" : "left", borderBottom: "1px solid #1a1a1a" }}>
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(data?.regionales ?? {}).map(([pais, r], i) => {
+            const color = r.bps == null ? "#555" : r.bps > 1000 ? "#FF433D" : r.bps > 500 ? "#FFA028" : r.bps > 200 ? "#FFD700" : "#4AF6C3"
+            return (
+              <tr key={pais} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
+                <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: "#FFA028", textTransform: "capitalize" }}>{pais}</td>
+                <td style={{ padding: "5px 8px", fontSize: 10, color: "#666" }}>{r.moneda}</td>
+                <td style={{ padding: "5px 8px", fontSize: 14, fontFamily: "monospace", fontWeight: 700, color, textAlign: "right" }}>
+                  {r.bps?.toLocaleString("es-AR") ?? "—"}
+                </td>
+                <td style={{ padding: "5px 8px", fontSize: 9, color: "#444", textAlign: "right" }}>
+                  {r.nota ?? (r.ticker ? `desde ${r.ticker}` : "")}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+
+      {/* Histórico */}
+      {data?.historico && data.historico.length > 0 && (
+        <>
+          <div className="bbg-panel-header" style={{ marginTop: 1 }}>SPREAD HISTÓRICO (2 AÑOS, SEMANAL)</div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th style={{ padding: "3px 8px", fontSize: 9, color: "#555", textAlign: "left", borderBottom: "1px solid #111" }}>Fecha</th>
+                  <th style={{ padding: "3px 8px", fontSize: 9, color: "#555", textAlign: "right", borderBottom: "1px solid #111" }}>Spread (bps)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.historico.slice().reverse().slice(0, 40).map(([d, v], i) => {
+                  const color = v > 2000 ? "#FF433D" : v > 1000 ? "#FFA028" : v > 500 ? "#FFD700" : "#4AF6C3"
+                  return (
+                    <tr key={d} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
+                      <td style={{ padding: "3px 8px", fontSize: 10, color: "#888" }}>{d}</td>
+                      <td style={{ padding: "3px 8px", fontSize: 11, color, textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>
+                        {v.toLocaleString("es-AR")}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      <div style={{ padding: "4px 8px", fontSize: 9, color: "#333", borderTop: "1px solid #111" }}>
+        Metodología: {data?.actual?.metodologia} · Comparativos regionales: estimaciones históricas EMBI+ (sin API de pago)
+      </div>
+    </div>
+  )
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export function TabBonos() {
@@ -423,12 +572,14 @@ export function TabBonos() {
         tabs={[
           { key: "soberanos", label: "Soberanos HD (AL/GD)" },
           { key: "lecaps", label: "LECAPs / BONCAPs" },
+          { key: "riesgo", label: "Riesgo País" },
         ]}
         active={activeTab}
         onChange={setActiveTab}
       />
       {activeTab === "soberanos" && <SoberanosScreener />}
       {activeTab === "lecaps" && <LecapsScreener />}
+      {activeTab === "riesgo" && <RiesgoPaisView />}
     </div>
   )
 }
