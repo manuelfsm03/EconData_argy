@@ -259,6 +259,7 @@ function EmaeView() {
             areas={[{ key: "emae", name: "EMAE", color: "#FFA028" }]}
             height={280}
             formatValue={(v) => fmtNum(v)}
+            defaultRange="all"
           />
         </div>
       )}
