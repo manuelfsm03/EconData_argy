@@ -13,6 +13,11 @@ import { TabReservas } from "./tab-reservas"
 import { TabMarketData } from "./tab-market-data"
 import { TabArbScanner } from "./tab-arb-scanner"
 import { MercuryFeed } from "./mercury-feed"
+import { TabEconomia } from "./tab-economia"
+import { TabMacro } from "./tab-macro"
+import { TabDeuda } from "./tab-deuda"
+import { TabMundo } from "./tab-mundo"
+import { TabGeopolitica } from "./tab-geopolitica"
 import { formatPercent, formatDate } from "@/lib/utils"
 
 // Types
@@ -229,6 +234,11 @@ export function Dashboard() {
           <TabsTrigger value="arbitraje">Arbitraje</TabsTrigger>
           <TabsTrigger value="mercury">Mercury</TabsTrigger>
           <TabsTrigger value="news">Noticias</TabsTrigger>
+          <TabsTrigger value="economia">Economía AR</TabsTrigger>
+          <TabsTrigger value="macro">Macro</TabsTrigger>
+          <TabsTrigger value="deuda">Deuda</TabsTrigger>
+          <TabsTrigger value="mundo">Mundo</TabsTrigger>
+          <TabsTrigger value="geopolitica">Geopolítica</TabsTrigger>
           <TabsTrigger value="status">Status</TabsTrigger>
         </TabsList>
 
@@ -467,6 +477,31 @@ export function Dashboard() {
         {/* ═══════════ NOTICIAS ═══════════ */}
         <TabsContent value="news">
           <NewsFeed />
+        </TabsContent>
+
+        {/* ═══════════ ECONOMÍA AR ═══════════ */}
+        <TabsContent value="economia">
+          <TabEconomia />
+        </TabsContent>
+
+        {/* ═══════════ MACRO ═══════════ */}
+        <TabsContent value="macro">
+          <TabMacro />
+        </TabsContent>
+
+        {/* ═══════════ DEUDA ═══════════ */}
+        <TabsContent value="deuda">
+          <TabDeuda />
+        </TabsContent>
+
+        {/* ═══════════ MUNDO ═══════════ */}
+        <TabsContent value="mundo">
+          <TabMundo />
+        </TabsContent>
+
+        {/* ═══════════ GEOPOLÍTICA ═══════════ */}
+        <TabsContent value="geopolitica">
+          <TabGeopolitica />
         </TabsContent>
 
         {/* ═══════════ STATUS ═══════════ */}
