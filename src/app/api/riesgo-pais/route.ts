@@ -1,16 +1,11 @@
 /**
- * /api/riesgo-pais — Riesgo País & comparativo regional
+ * /api/riesgo-pais — Riesgo País EMBI+ Argentina
  *
- * Fuentes de datos:
- *   - EMBI+ spread calculado desde spread GD30 vs US 10Y (Yahoo Finance)
- *   - CDS spreads regionales via Yahoo Finance (BRL10Y, CLP10Y proxies)
- *   - BCRA series API (datos.gob.ar) si disponible
- *
- * Metodología:
- *   Riesgo País AR ≈ TIR(GD30) - TIR(US 10Y)
- *   (Aproximación por spread de bonos soberanos vs treasury de igual duration)
- *
- * Fase 1 — M1.7 del ROADMAP
+ * Fuentes:
+ *   - argentinadatos.com /v1/finanzas/indices/riesgo-pais  (histórico oficial EMBI+)
+ *   - Yahoo Finance ^TNX (US 10Y treasury yield)
+ *   - TIR GD30 desde DB local (calculada por /api/bonos)
+ *   - Comparativos regionales: estimaciones EMBI+ fijas (sin API de pago)
  */
 
 import { NextRequest, NextResponse } from "next/server"
@@ -26,143 +21,139 @@ const YF_HEADERS = {
 async function getYFPrice(ticker: string): Promise<number | null> {
   try {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=5d`
-    const res = await fetch(url, { headers: YF_HEADERS, next: { revalidate: 900 } })
+    const res = await fetch(url, { headers: YF_HEADERS, signal: AbortSignal.timeout(8000), next: { revalidate: 900 } })
     if (!res.ok) return null
     const j = await res.json()
     return j?.chart?.result?.[0]?.meta?.regularMarketPrice ?? null
-  } catch {
-    return null
-  }
+  } catch { return null }
 }
 
-async function getYFHistorico(ticker: string, range = "2y"): Promise<[string, number][]> {
+// Riesgo país desde argentinadatos.com (datos EMBI+ oficiales desde 1999)
+async function fetchArgDatosHistorico(): Promise<Array<{ fecha: string; valor: number }>> {
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1wk&range=${range}`
-    const res = await fetch(url, { headers: YF_HEADERS, next: { revalidate: 3600 } })
+    const res = await fetch("https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais", {
+      headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
+      signal: AbortSignal.timeout(12000),
+      next: { revalidate: 3600 },
+    })
     if (!res.ok) return []
-    const j = await res.json()
-    const result = j?.chart?.result?.[0]
-    const timestamps: number[] = result?.timestamp ?? []
-    const closes: (number | null)[] = result?.indicators?.quote?.[0]?.close ?? []
-    return timestamps
-      .map((ts, i) => {
-        const c = closes[i]
-        if (c == null) return null
-        return [new Date(ts * 1000).toISOString().split("T")[0], parseFloat(c.toFixed(4))] as [string, number]
-      })
-      .filter((x): x is [string, number] => x !== null)
-  } catch {
-    return []
-  }
+    return (await res.json()) as Array<{ fecha: string; valor: number }>
+  } catch { return [] }
 }
 
-// In-memory cache
+// ── In-memory cache ────────────────────────────────────────────────────────────
 const _cache: Record<string, { data: unknown; expiry: number }> = {}
-function getCache<T>(key: string): T | null {
-  const e = _cache[key]
-  if (e && e.expiry > Date.now()) return e.data as T
-  return null
+function getCached<T>(k: string): T | null {
+  const e = _cache[k]
+  return e && e.expiry > Date.now() ? (e.data as T) : null
 }
-function setCache(key: string, data: unknown, ttlSec: number) {
-  _cache[key] = { data, expiry: Date.now() + ttlSec * 1000 }
+function setCached(k: string, d: unknown, ttlSec: number) {
+  _cache[k] = { data: d, expiry: Date.now() + ttlSec * 1000 }
 }
 
 export async function GET(_request: NextRequest) {
-  const cacheKey = "riesgo_pais"
-  const cached = getCache<unknown>(cacheKey)
-  if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), cached: true })
+  const cacheKey = "riesgo_pais_v2"
+  const cached = getCached<unknown>(cacheKey)
+  if (cached) return NextResponse.json({ data: cached, cached: true, updated_at: new Date().toISOString() })
 
-  // 1. Precios actuales
-  const [gd30, gd35, us10y, br10y, mx10y] = await Promise.all([
-    getYFPrice("GD30.BA"),    // GD30 en pesos (necesitamos en USD)
-    getYFPrice("GD35.BA"),
-    getYFPrice("^TNX"),       // US Treasury 10Y yield %
-    getYFPrice("BRLUSD=X"),   // Proxy BR (no hay 10Y directo en YF gratis)
-    getYFPrice("MXNUSD=X"),   // Proxy MX
+  // Fetch en paralelo
+  const [argDatosHist, us10y, gd30Bond] = await Promise.all([
+    fetchArgDatosHistorico(),
+    getYFPrice("^TNX"),
+    prisma.sovereignBond.findUnique({ where: { ticker: "GD30" } }).catch(() => null),
   ])
 
-  // 2. TIR de bonos desde la DB (calculada por /api/bonos)
-  let arTir: number | null = null
-  try {
-    const gd30Bond = await prisma.sovereignBond.findUnique({ where: { ticker: "GD30" } })
-    arTir = gd30Bond?.tir ?? null
-  } catch {
-    // DB not available
-  }
+  // Valor actual = último de la serie
+  const histSorted = [...argDatosHist].sort((a, b) => (a.fecha > b.fecha ? 1 : -1))
+  const latestEntry = histSorted[histSorted.length - 1]
+  const riesgoPaisBps = latestEntry?.valor ?? null
 
-  // 3. Spread Argentina = TIR(GD30) - TIR(US 10Y)
-  //    Si no tenemos TIR calculada, usamos precio de mercado de GD30
-  const us10yPct = us10y ?? 4.5 // fallback 4.5%
-  let spreadAr: number | null = null
+  // Últimas 2 semanas para variaciones
+  const now = new Date()
+  const d1w = new Date(now); d1w.setDate(now.getDate() - 7)
+  const d1m = new Date(now); d1m.setMonth(now.getMonth() - 1)
 
-  if (arTir) {
-    spreadAr = arTir - us10yPct
-  } else if (gd30) {
-    // Estimación aproximada por precio: precio ~ 70 implica ~10-12% TIR
-    // (referencia histórica — aproximación)
-    const approxTir = gd30 < 50 ? 18 : gd30 < 70 ? 12 : gd30 < 85 ? 9 : 7
-    spreadAr = approxTir - us10yPct
-  }
+  const last1w = histSorted.filter((e) => new Date(e.fecha) >= d1w).at(0)?.valor ?? null
+  const last1m = histSorted.filter((e) => new Date(e.fecha) >= d1m).at(0)?.valor ?? null
 
-  // 4. Riesgo país en bps
-  const riesgoPaisBps = spreadAr != null ? Math.round(spreadAr * 100) : null
+  const var1w = riesgoPaisBps != null && last1w != null ? riesgoPaisBps - last1w : null
+  const var1m = riesgoPaisBps != null && last1m != null ? riesgoPaisBps - last1m : null
 
-  // 5. Comparativos regionales (EMBI+ proxies — datos limitados sin auth)
-  // Brasil: EMBI+ BR históricamente ~200-300 bps sobre US
-  // Chile: EMBI+ CL históricamente ~50-100 bps
-  // Colombia: EMBI+ CO históricamente ~200-300 bps
+  // TIR GD30 desde DB
+  const arTir = gd30Bond?.tir ?? null
+  const us10yPct = us10y ?? 4.5
+
+  // Spread calculado
+  const spreadAr = arTir != null ? arTir - us10yPct : null
+
+  // Comparativos regionales fijos (EMBI+ oficiales históricos aproximados)
   const regionales = {
-    argentina: { bps: riesgoPaisBps, moneda: "ARS", ticker: "GD30" },
-    brasil: { bps: 230, moneda: "BRL", nota: "estimado EMBI+ histórico" },
-    chile: { bps: 80, moneda: "CLP", nota: "estimado EMBI+ histórico" },
-    colombia: { bps: 270, moneda: "COP", nota: "estimado EMBI+ histórico" },
-    peru: { bps: 150, moneda: "PEN", nota: "estimado EMBI+ histórico" },
+    argentina: { bps: riesgoPaisBps, moneda: "ARS", ticker: "GD30", fuente: "EMBI+ argentinadatos.com" },
+    brasil: { bps: 225, moneda: "BRL", nota: "estimado EMBI+" },
+    chile: { bps: 70, moneda: "CLP", nota: "estimado EMBI+" },
+    colombia: { bps: 280, moneda: "COP", nota: "estimado EMBI+" },
+    peru: { bps: 155, moneda: "PEN", nota: "estimado EMBI+" },
+    mexico: { bps: 190, moneda: "MXN", nota: "estimado EMBI+" },
   }
 
-  // 6. Histórico del spread semanal (últimos 2 años)
-  const [gd30Hist, us10yHist] = await Promise.all([
-    getYFHistorico("GD30.BA", "2y"),
-    getYFHistorico("^TNX", "2y"),
-  ])
+  // Histórico: últimos 2 años para gráfico
+  const cutoff2y = new Date(); cutoff2y.setFullYear(now.getFullYear() - 2)
+  const historico2y = histSorted
+    .filter((e) => new Date(e.fecha) >= cutoff2y)
+    .map((e) => ({ date: e.fecha, valor: e.valor }))
 
-  // Calcular spread histórico por fecha (solo si tenemos ambas series)
-  // Nota: GD30.BA es precio en pesos — necesitaría tipo de cambio para calcular TIR exacta
-  // Usamos precio USD de GD30 desde la serie histórica como proxy de spread
-  const us10yMap = Object.fromEntries(us10yHist)
-  const spreadHist: [string, number][] = gd30Hist
-    .map(([d, precio]) => {
-      const tnx = us10yMap[d]
-      if (!tnx) return null
-      // Aproximación: precio GD30 → TIR implícita → spread
-      const approxTir = precio < 50 ? 18 : precio < 70 ? 12 : precio < 85 ? 9 : 7
-      const spread = (approxTir - tnx) * 100 // en bps
-      return [d, Math.round(spread)] as [string, number]
-    })
-    .filter((x): x is [string, number] => x !== null)
+  // SMA 30D y 90D sobre el histórico
+  const historicoConSMA = calcularSMA(historico2y)
+
+  // Ponderación por bono (estimación — contribución al EMBI AR es proporcional a outstanding)
+  const ponderacionBonos = [
+    { ticker: "GD35", outstanding: 14.79, pct: 21 },
+    { ticker: "GD30", outstanding: 12.65, pct: 18 },
+    { ticker: "GD41", outstanding: 11.15, pct: 16 },
+    { ticker: "AL30", outstanding: 12.15, pct: 17 },
+    { ticker: "AL35", outstanding: 10.27, pct: 14 },
+    { ticker: "GD46", outstanding: 8.04, pct: 11 },
+    { ticker: "AE38", outstanding: 4.57, pct: 6 },
+  ]
+
+  const alertas = []
+  if (riesgoPaisBps != null) {
+    if (riesgoPaisBps > 2000) alertas.push({ nivel: "crítico", mensaje: "Riesgo País > 2000 bps — acceso a crédito internacional prácticamente cerrado" })
+    else if (riesgoPaisBps > 1000) alertas.push({ nivel: "alto", mensaje: "Riesgo País > 1000 bps — costo de financiamiento elevado" })
+    else if (riesgoPaisBps > 500) alertas.push({ nivel: "moderado", mensaje: "Riesgo País entre 500-1000 bps — mercados con cautela" })
+    else alertas.push({ nivel: "bajo", mensaje: "Riesgo País < 500 bps — condiciones de acceso a crédito normalizándose" })
+  }
 
   const result = {
     actual: {
       riesgoPaisBps,
+      var1w,
+      var1m,
       spreadAr,
       us10y: us10yPct,
       arTir,
-      gd30Precio: gd30,
-      metodologia: arTir
-        ? "TIR(GD30 DB) - TIR(US 10Y YF)"
-        : "Aproximación por precio GD30 - US 10Y",
+      gd30Precio: gd30Bond?.precio ?? null,
+      metodologia: "EMBI+ oficial (argentinadatos.com) + spread GD30 vs US 10Y",
     },
     regionales,
-    historico: spreadHist.slice(-104), // últimas 104 semanas = 2 años
-    alertas: riesgoPaisBps
-      ? [
-          riesgoPaisBps > 2000 && { nivel: "crítico", mensaje: "Riesgo País > 2000 bps — acceso a crédito internacional prácticamente cerrado" },
-          riesgoPaisBps > 1000 && riesgoPaisBps <= 2000 && { nivel: "alto", mensaje: "Riesgo País > 1000 bps — costo de financiamiento elevado" },
-          riesgoPaisBps > 500 && riesgoPaisBps <= 1000 && { nivel: "moderado", mensaje: "Riesgo País entre 500-1000 bps — mercados con cautela" },
-          riesgoPaisBps <= 500 && { nivel: "bajo", mensaje: "Riesgo País < 500 bps — condiciones de acceso a crédito normalizándose" },
-        ].filter(Boolean)
-      : [],
+    historico: historico2y,
+    historicoConSMA,
+    ponderacionBonos,
+    alertas,
   }
 
-  setCache(cacheKey, result, 900)
-  return NextResponse.json({ data: result, updated_at: new Date().toISOString(), source: "yahoo_finance + db_local" })
+  setCached(cacheKey, result, 3600) // 1h
+  return NextResponse.json({ data: result, updated_at: new Date().toISOString(), source: "argentinadatos.com + yahoo_finance" })
+}
+
+function calcularSMA(data: Array<{ date: string; valor: number }>, windows = [30, 90]) {
+  return data.map((punto, i) => {
+    const result: Record<string, unknown> = { date: punto.date, valor: punto.valor }
+    for (const window of windows) {
+      const slice = data.slice(Math.max(0, i - window + 1), i + 1)
+      const avg = slice.reduce((sum, p) => sum + p.valor, 0) / slice.length
+      result[`sma${window}`] = Math.round(avg)
+    }
+    return result
+  })
 }

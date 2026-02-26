@@ -19,6 +19,9 @@ import { TabDeuda } from "./tab-deuda"
 import { TabMundo } from "./tab-mundo"
 import { TabGeopolitica } from "./tab-geopolitica"
 import { TabBonos } from "./tab-bonos"
+import { TabTiposCambio } from "./tab-tipos-cambio"
+import { TabAcciones } from "./tab-acciones"
+import { TickerTape } from "./ticker-tape"
 import { formatPercent, formatDate } from "@/lib/utils"
 
 // Types
@@ -221,6 +224,9 @@ export function Dashboard() {
         </div>
       </header>
 
+      {/* Ticker tape */}
+      <TickerTape />
+
       {/* Main content */}
       <Tabs defaultValue="resumen">
         <TabsList>
@@ -236,6 +242,7 @@ export function Dashboard() {
           <TabsTrigger value="mercury">Mercury</TabsTrigger>
           <TabsTrigger value="news">Noticias</TabsTrigger>
           <TabsTrigger value="bonos">Bonos</TabsTrigger>
+          <TabsTrigger value="acciones">Acciones AR</TabsTrigger>
           <TabsTrigger value="economia">Economía AR</TabsTrigger>
           <TabsTrigger value="macro">Macro</TabsTrigger>
           <TabsTrigger value="deuda">Deuda</TabsTrigger>
@@ -372,21 +379,7 @@ export function Dashboard() {
 
         {/* ═══════════ TIPOS DE CAMBIO ═══════════ */}
         <TabsContent value="tipos-cambio">
-          <DataTable
-            title="HISTORICO DE COTIZACIONES"
-            data={historicalRates}
-            columns={[
-              { key: "date", header: "Fecha", render: (v) => formatDate(v as string) },
-              { key: "blue", header: "Blue", numeric: true, render: (v) => <span className="bbg-positive">{v != null ? fmtNum(v as number) : "-"}</span> },
-              { key: "cclLibre", header: "CCL", numeric: true, render: (v) => <span style={{ color: "#FFA028" }}>{v != null ? fmtNum(v as number) : "-"}</span> },
-              { key: "mepLibre", header: "MEP", numeric: true, render: (v) => <span style={{ color: "#FFD700" }}>{v != null ? fmtNum(v as number) : "-"}</span> },
-              { key: "oficial", header: "Oficial", numeric: true, render: (v) => <span style={{ color: "#FFFFFF" }}>{v != null ? fmtNum(v as number) : "-"}</span> },
-              { key: "mayorista", header: "Mayorista", numeric: true, render: (v) => <span className="bbg-muted">{v != null ? fmtNum(v as number) : "-"}</span> },
-              { key: "a3500", header: "A3500", numeric: true, render: (v) => <span className="bbg-muted">{v != null ? fmtNum(v as number) : "-"}</span> },
-              { key: "solidario", header: "Solidario", numeric: true, render: (v) => <span className="bbg-muted">{v != null ? fmtNum(v as number) : "-"}</span> },
-              { key: "cripto", header: "Cripto", numeric: true, render: (v) => <span className="bbg-blue">{v != null ? fmtNum(v as number) : "-"}</span> },
-            ]}
-          />
+          <TabTiposCambio />
         </TabsContent>
 
         {/* ═══════════ ROFEX ═══════════ */}
@@ -484,6 +477,11 @@ export function Dashboard() {
         {/* ═══════════ BONOS ═══════════ */}
         <TabsContent value="bonos">
           <TabBonos />
+        </TabsContent>
+
+        {/* ═══════════ ACCIONES AR ═══════════ */}
+        <TabsContent value="acciones">
+          <TabAcciones />
         </TabsContent>
 
         {/* ═══════════ ECONOMÍA AR ═══════════ */}

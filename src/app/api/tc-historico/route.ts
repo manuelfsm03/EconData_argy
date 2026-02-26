@@ -1,0 +1,124 @@
+/**
+ * /api/tc-historico — Histórico de tipos de cambio ARS/USD
+ *
+ * Fuente: api.argentinadatos.com
+ * Endpoints usados:
+ *   /v1/cotizaciones/dolares/blue
+ *   /v1/cotizaciones/dolares/bolsa           (MEP)
+ *   /v1/cotizaciones/dolares/contadoconliqui (CCL)
+ *   /v1/cotizaciones/dolares/oficial
+ *   /v1/cotizaciones/dolares/mayorista
+ *
+ * Query params:
+ *   ?period=1m|3m|6m|1y|max  (default: 1y)
+ */
+
+import { NextRequest, NextResponse } from "next/server"
+
+const BASE = "https://api.argentinadatos.com/v1/cotizaciones/dolares"
+
+interface RawEntry {
+  casa: string
+  compra: number
+  venta: number
+  fecha: string
+}
+
+interface MergedEntry {
+  date: string
+  blue?: number
+  mep?: number
+  ccl?: number
+  oficial?: number
+  mayorista?: number
+}
+
+// ── In-memory cache ────────────────────────────────────────────────────────────
+const _cache: Record<string, { data: unknown; expiry: number }> = {}
+function getCached<T>(k: string): T | null {
+  const e = _cache[k]
+  return e && e.expiry > Date.now() ? (e.data as T) : null
+}
+function setCached(k: string, d: unknown, ttlSec: number) {
+  _cache[k] = { data: d, expiry: Date.now() + ttlSec * 1000 }
+}
+
+async function fetchTipo(tipo: string): Promise<RawEntry[]> {
+  try {
+    const res = await fetch(`${BASE}/${tipo}`, {
+      headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
+      signal: AbortSignal.timeout(10000),
+      // No usar next.revalidate porque filtramos por period en memoria
+    })
+    if (!res.ok) return []
+    return (await res.json()) as RawEntry[]
+  } catch {
+    return []
+  }
+}
+
+function cutoffFromPeriod(period: string): Date {
+  const now = new Date()
+  const d = new Date(now)
+  switch (period) {
+    case "1m": d.setMonth(now.getMonth() - 1); break
+    case "3m": d.setMonth(now.getMonth() - 3); break
+    case "6m": d.setMonth(now.getMonth() - 6); break
+    case "1y": d.setFullYear(now.getFullYear() - 1); break
+    case "max": d.setFullYear(2010); break
+    default: d.setFullYear(now.getFullYear() - 1); break
+  }
+  return d
+}
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const period = searchParams.get("period") ?? "1y"
+
+  const cacheKey = `tc_historico_${period}`
+  const cached = getCached<MergedEntry[]>(cacheKey)
+  if (cached) {
+    return NextResponse.json({ data: cached, period, cached: true, updated_at: new Date().toISOString() })
+  }
+
+  // Fetch all in parallel
+  const [blueRaw, mepRaw, cclRaw, oficialRaw, mayoristaRaw] = await Promise.all([
+    fetchTipo("blue"),
+    fetchTipo("bolsa"),
+    fetchTipo("contadoconliqui"),
+    fetchTipo("oficial"),
+    fetchTipo("mayorista"),
+  ])
+
+  const cutoff = cutoffFromPeriod(period)
+
+  // Merge by date
+  const mapa: Record<string, MergedEntry> = {}
+
+  const addRows = (rows: RawEntry[], key: keyof Omit<MergedEntry, "date">) => {
+    for (const r of rows) {
+      if (!r.fecha || new Date(r.fecha) < cutoff) continue
+      if (!mapa[r.fecha]) mapa[r.fecha] = { date: r.fecha }
+      if (r.venta && r.venta > 0) mapa[r.fecha][key] = r.venta
+    }
+  }
+
+  addRows(blueRaw, "blue")
+  addRows(mepRaw, "mep")
+  addRows(cclRaw, "ccl")
+  addRows(oficialRaw, "oficial")
+  addRows(mayoristaRaw, "mayorista")
+
+  const merged = Object.values(mapa).sort((a, b) => (a.date > b.date ? 1 : -1))
+
+  // TTL: 2h para datos históricos (cambian 1x/día)
+  setCached(cacheKey, merged, 7200)
+
+  return NextResponse.json({
+    data: merged,
+    count: merged.length,
+    period,
+    updated_at: new Date().toISOString(),
+    source: "argentinadatos.com",
+  })
+}

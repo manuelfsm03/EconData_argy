@@ -1,17 +1,21 @@
-/**
- * TabBonos — Screener de bonos soberanos HD + LECAPs
- *
- * API:
- *   /api/bonos               — screener soberanos (AL/GD)
- *   /api/bonos?tipo=lecap    — screener LECAPs/BONCAPs
- *   /api/bonos?ticker=AL30   — detalle de un bono
- *
- * Fase 1 — M1.1 + M1.3 del ROADMAP
- */
-
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+/**
+ * TabBonos v2 — Renta Fija Argentina (inspirado en bondterminal.com)
+ *
+ * Sub-tabs:
+ *   - Snapshot: tabla NY Law + AR Law, YTM, variaciones, curva integrada
+ *   - Curva: scatter YTM vs Duration por ley
+ *   - Heatmap: mapa de calor por bono (outstanding × variación)
+ *   - LECAPs: tabla LECAPs/BONCAPs
+ *   - Riesgo País: KPI + histórico EMBI+ con SMA
+ */
+
+import { useState, useEffect, useCallback, useMemo } from "react"
+import {
+  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, LineChart, Line, ReferenceLine, Legend,
+} from "recharts"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -28,12 +32,8 @@ interface SovereignBond {
   durationMod: number | null
   vnResidual: number
   fuente: string
-  flujosFF?: {
-    fecha: string
-    cupon: number
-    amortizacion: number
-    total: number
-  }[]
+  change1D?: number | null
+  outstanding?: number   // en billones USD
 }
 
 interface CapInstrument {
@@ -47,18 +47,46 @@ interface CapInstrument {
   tem: number | null
 }
 
+interface RiesgoPaisData {
+  actual: {
+    riesgoPaisBps: number | null
+    var1w: number | null
+    var1m: number | null
+    spreadAr: number | null
+    us10y: number | null
+    arTir: number | null
+    metodologia: string
+  }
+  regionales: Record<string, { bps: number | null; moneda: string; nota?: string; ticker?: string }>
+  historicoConSMA: Array<{ date: string; valor: number; sma30: number; sma90: number }>
+  ponderacionBonos: Array<{ ticker: string; outstanding: number; pct: number }>
+  alertas: { nivel: string; mensaje: string }[]
+}
+
+// Outstanding estimado en billones USD
+const OUTSTANDING: Record<string, number> = {
+  GD35: 14.79, GD30: 12.65, AL30: 12.15, GD41: 11.15,
+  AL35: 10.27, GD46: 8.04, AL29: 7.61, AE38: 4.57, GD38: 6.0,
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtPct(v: number | null | undefined, dec = 2): string {
   if (v == null) return "—"
   return v.toFixed(dec) + "%"
 }
-
 function fmtNum(v: number | null | undefined, dec = 2): string {
   if (v == null) return "—"
   return v.toFixed(dec)
 }
-
+function fmtPctChange(v: number | null | undefined): string {
+  if (v == null) return "—"
+  return (v >= 0 ? "+" : "") + v.toFixed(2) + "%"
+}
+function changeColor(v: number | null | undefined): string {
+  if (v == null) return "#555"
+  return v > 0 ? "#4AF6C3" : v < 0 ? "#FF433D" : "#888"
+}
 function tirColor(tir: number | null | undefined): string {
   if (tir == null) return "#555"
   if (tir > 15) return "#4AF6C3"
@@ -66,283 +94,358 @@ function tirColor(tir: number | null | undefined): string {
   return "#FF433D"
 }
 
+// ── SubTabs ───────────────────────────────────────────────────────────────────
+
 function SubTabs({ tabs, active, onChange }: { tabs: { key: string; label: string }[]; active: string; onChange: (k: string) => void }) {
   return (
     <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #222" }}>
       {tabs.map((t) => (
-        <button
-          key={t.key}
-          onClick={() => onChange(t.key)}
-          style={{
-            background: active === t.key ? "#0d0d0d" : "transparent",
-            color: active === t.key ? "#FFA028" : "#555",
-            border: "none",
-            borderBottom: active === t.key ? "2px solid #FFA028" : "2px solid transparent",
-            padding: "6px 16px",
-            fontSize: 10,
-            textTransform: "uppercase",
-            letterSpacing: 1,
-            cursor: "pointer",
-          }}
-        >
-          {t.label}
-        </button>
+        <button key={t.key} onClick={() => onChange(t.key)} style={{
+          background: active === t.key ? "#0d0d0d" : "transparent",
+          color: active === t.key ? "#FFA028" : "#555",
+          border: "none",
+          borderBottom: active === t.key ? "2px solid #FFA028" : "2px solid transparent",
+          padding: "6px 16px", fontSize: 10,
+          textTransform: "uppercase", letterSpacing: 1, cursor: "pointer",
+        }}>{t.label}</button>
       ))}
     </div>
   )
 }
 
-// ── Soberanos Screener ────────────────────────────────────────────────────────
+// ── Snapshot: tabla de bonos soberanos agrupada por ley ───────────────────────
 
-type SortKey = keyof Pick<SovereignBond, "ticker" | "tir" | "paridad" | "durationMod" | "currentYield" | "precio">
+function weightedAvgTIR(bonds: SovereignBond[]): number | null {
+  const valid = bonds.filter((b) => b.tir != null && b.precio != null)
+  if (valid.length === 0) return null
+  const totalOut = valid.reduce((s, b) => s + (OUTSTANDING[b.ticker] ?? 0), 0)
+  if (totalOut === 0) return null
+  const wavg = valid.reduce((s, b) => s + (b.tir! * (OUTSTANDING[b.ticker] ?? 0)), 0) / totalOut
+  return wavg
+}
 
-function SoberanosScreener() {
-  const [bonds, setBonds] = useState<SovereignBond[]>([])
-  const [selected, setSelected] = useState<SovereignBond | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [sortKey, setSortKey] = useState<SortKey>("tir")
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
+function BondRow({ bond, onClick, selected }: { bond: SovereignBond; onClick: () => void; selected: boolean }) {
+  return (
+    <tr
+      onClick={onClick}
+      style={{
+        background: selected ? "#0d0d0d" : "transparent",
+        cursor: "pointer",
+        borderLeft: selected ? "2px solid #FFA028" : "2px solid transparent",
+      }}
+    >
+      <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: "#FFA028" }}>{bond.ticker}</td>
+      <td style={{ padding: "5px 8px", fontSize: 11, color: "#fff", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>
+        {fmtNum(bond.precio)}
+      </td>
+      <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: tirColor(bond.tir), textAlign: "right", fontFamily: "monospace" }}>
+        {fmtPct(bond.tir)}
+      </td>
+      <td style={{ padding: "5px 8px", fontSize: 11, color: "#888", textAlign: "right", fontFamily: "monospace" }}>
+        {fmtNum(bond.durationMod, 1)}
+      </td>
+      <td style={{ padding: "5px 8px", fontSize: 11, color: changeColor(bond.change1D), textAlign: "right", fontFamily: "monospace" }}>
+        {fmtPctChange(bond.change1D)}
+      </td>
+      <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", textAlign: "right" }}>
+        {bond.vencimiento.slice(0, 7)}
+      </td>
+    </tr>
+  )
+}
 
-  useEffect(() => {
-    fetch("/api/bonos")
-      .then((r) => r.json())
-      .then((j) => {
-        setBonds(j.data ?? [])
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [])
+function BondGroup({ title, bonds, color, selectedTicker, onSelect }: {
+  title: string; bonds: SovereignBond[]; color: string;
+  selectedTicker: string | null; onSelect: (t: string) => void
+}) {
+  const wavgTir = weightedAvgTIR(bonds)
+  const totalOut = bonds.reduce((s, b) => s + (OUTSTANDING[b.ticker] ?? 0), 0)
 
-  const loadDetail = useCallback(async (ticker: string) => {
-    try {
-      const r = await fetch(`/api/bonos?ticker=${ticker}`)
-      const j = await r.json()
-      setSelected(j.data)
-    } catch {}
-  }, [])
-
-  if (loading) {
-    return (
-      <div style={{ padding: 24, color: "#555", fontSize: 11, textAlign: "center" }}>
-        Cargando screener de bonos soberanos...
-        <br />
-        <span style={{ fontSize: 9, color: "#333" }}>Si es la primera vez, ejecutar: npx ts-node prisma/seed-bonds.ts</span>
+  return (
+    <div style={{ flex: "1 1 340px", minWidth: 320 }}>
+      <div style={{ padding: "4px 8px", background: "#0d0d0d", borderBottom: `2px solid ${color}`, borderTop: "1px solid #1a1a1a" }}>
+        <span style={{ fontSize: 10, color, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>{title}</span>
+        {totalOut > 0 && (
+          <span style={{ fontSize: 9, color: "#444", marginLeft: 8 }}>
+            ${totalOut.toFixed(1)}B outstanding
+          </span>
+        )}
       </div>
-    )
-  }
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr>
+            {["Ticker", "Precio", "YTM", "Dur", "1D%", "Vto"].map((h, i) => (
+              <th key={h} style={{
+                padding: "3px 8px", fontSize: 9, color: "#555",
+                textAlign: i === 0 ? "left" : "right",
+                borderBottom: "1px solid #1a1a1a",
+              }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {bonds.map((bond) => (
+            <BondRow
+              key={bond.ticker}
+              bond={bond}
+              onClick={() => onSelect(bond.ticker)}
+              selected={selectedTicker === bond.ticker}
+            />
+          ))}
+          {/* Weighted average row */}
+          <tr style={{ background: "#0a0a0a", borderTop: "1px solid #222" }}>
+            <td style={{ padding: "4px 8px", fontSize: 9, color: "#555", fontStyle: "italic" }}>W.Avg</td>
+            <td colSpan={2} style={{ padding: "4px 8px", fontSize: 11, color: color, textAlign: "right", fontFamily: "monospace", fontWeight: 700 }}>
+              {wavgTir != null ? wavgTir.toFixed(2) + "%" : "—"}
+            </td>
+            <td colSpan={3} />
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  )
+}
 
-  if (bonds.length === 0) {
-    return (
-      <div style={{ padding: 16 }}>
-        <div style={{ color: "#FF433D", fontSize: 12, marginBottom: 8 }}>
-          No hay bonos en la base de datos.
+// ── Detail Panel ──────────────────────────────────────────────────────────────
+function DetailPanel({ bond, onClose }: { bond: SovereignBond; onClose: () => void }) {
+  return (
+    <div style={{ background: "#060606", border: "1px solid #1a1a1a", padding: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+        <div>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "#FFA028" }}>{bond.ticker}</span>
+          <span style={{ fontSize: 10, color: "#666", marginLeft: 8 }}>{bond.nombre}</span>
+          <span style={{ fontSize: 9, color: bond.ley === "NY" ? "#4488ff" : "#888", marginLeft: 8,
+            background: "#111", padding: "1px 6px", borderRadius: 2 }}>{bond.ley} LAW</span>
         </div>
-        <div style={{ color: "#555", fontSize: 11 }}>
-          Ejecutar seed: <code style={{ color: "#FFA028" }}>npx ts-node prisma/seed-bonds.ts</code>
-        </div>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 14 }}>✕</button>
       </div>
-    )
-  }
+      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", background: "#111", padding: 1 }}>
+        {[
+          { label: "Precio", value: fmtNum(bond.precio), unit: "USD", color: "#fff" },
+          { label: "YTM", value: fmtPct(bond.tir), unit: "anual", color: tirColor(bond.tir) },
+          { label: "Paridad", value: fmtPct(bond.paridad), unit: "% VN res." },
+          { label: "Curr. Yield", value: fmtPct(bond.currentYield), unit: "anual" },
+          { label: "Dur. Mod.", value: fmtNum(bond.durationMod), unit: "años" },
+          { label: "Var. 1D", value: fmtPctChange(bond.change1D), unit: "", color: changeColor(bond.change1D) },
+          { label: "Cupón", value: fmtPct(bond.cupon), unit: "s.a." },
+          { label: "VN Residual", value: fmtPct(bond.vnResidual), unit: "% orig" },
+        ].map((kpi) => (
+          <div key={kpi.label} style={{ flex: "1 1 120px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "8px 10px" }}>
+            <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>{kpi.label}</div>
+            <div style={{ fontSize: 18, fontFamily: "monospace", fontWeight: 700, color: kpi.color ?? "#FFA028" }}>{kpi.value}</div>
+            {kpi.unit && <div style={{ fontSize: 9, color: "#444" }}>{kpi.unit}</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDir(sortDir === "asc" ? "desc" : "asc")
-    } else {
-      setSortKey(key)
-      setSortDir("desc")
-    }
-  }
+// ── Snapshot View ─────────────────────────────────────────────────────────────
+function SnapshotView({ bonds }: { bonds: SovereignBond[] }) {
+  const [selected, setSelected] = useState<string | null>(null)
+  const selectedBond = bonds.find((b) => b.ticker === selected) ?? null
 
-  const sorted = [...bonds].sort((a, b) => {
-    const va = a[sortKey] ?? (sortDir === "asc" ? Infinity : -Infinity)
-    const vb = b[sortKey] ?? (sortDir === "asc" ? Infinity : -Infinity)
-    return sortDir === "asc" ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1)
-  })
+  const nyBonds = useMemo(() => bonds.filter((b) => b.ley === "NY"), [bonds])
+  const arBonds = useMemo(() => bonds.filter((b) => b.ley === "local"), [bonds])
 
-  function SortTh({ k, label }: { k: SortKey; label: string }) {
-    const active = sortKey === k
-    return (
-      <th
-        onClick={() => handleSort(k)}
-        style={{
-          padding: "4px 8px",
-          fontSize: 9,
-          color: active ? "#FFA028" : "#555",
-          textAlign: "right",
-          cursor: "pointer",
-          borderBottom: "1px solid #1a1a1a",
-          whiteSpace: "nowrap",
-          userSelect: "none",
-        }}
-      >
-        {label} {active ? (sortDir === "asc" ? "↑" : "↓") : ""}
-      </th>
-    )
-  }
+  const handleSelect = (t: string) => setSelected((prev) => (prev === t ? null : t))
 
   return (
     <div>
-      {/* Screener table */}
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th style={{ padding: "4px 8px", fontSize: 9, color: "#555", textAlign: "left", borderBottom: "1px solid #1a1a1a" }}>
-                TICKER
-              </th>
-              <th style={{ padding: "4px 8px", fontSize: 9, color: "#555", textAlign: "left", borderBottom: "1px solid #1a1a1a" }}>
-                LEY
-              </th>
-              <th style={{ padding: "4px 8px", fontSize: 9, color: "#555", textAlign: "right", borderBottom: "1px solid #1a1a1a" }}>
-                VTO
-              </th>
-              <th style={{ padding: "4px 8px", fontSize: 9, color: "#555", textAlign: "right", borderBottom: "1px solid #1a1a1a" }}>
-                CUPÓN
-              </th>
-              <SortTh k="precio" label="PRECIO" />
-              <SortTh k="paridad" label="PARIDAD" />
-              <SortTh k="tir" label="TIR" />
-              <SortTh k="currentYield" label="CY" />
-              <SortTh k="durationMod" label="DUR MOD" />
-              <th style={{ padding: "4px 8px", fontSize: 9, color: "#555", borderBottom: "1px solid #1a1a1a" }}>
-                FUENTE
-              </th>
-              <th style={{ padding: "4px 8px", fontSize: 9, color: "#555", borderBottom: "1px solid #1a1a1a" }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((bond, i) => (
-              <tr
-                key={bond.ticker}
-                style={{
-                  background: selected?.ticker === bond.ticker ? "#0d0d0d" : i % 2 === 0 ? "#060606" : "#080808",
-                  cursor: "pointer",
-                  borderLeft: selected?.ticker === bond.ticker ? "2px solid #FFA028" : "2px solid transparent",
-                }}
-                onClick={() => loadDetail(bond.ticker)}
-              >
-                <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: "#FFA028" }}>
-                  {bond.ticker}
-                </td>
-                <td style={{ padding: "5px 8px", fontSize: 10, color: bond.ley === "NY" ? "#4488ff" : "#888" }}>
-                  {bond.ley}
-                </td>
-                <td style={{ padding: "5px 8px", fontSize: 10, color: "#777", textAlign: "right" }}>
-                  {bond.vencimiento.slice(0, 7)}
-                </td>
-                <td style={{ padding: "5px 8px", fontSize: 11, color: "#ccc", textAlign: "right", fontFamily: "monospace" }}>
-                  {fmtPct(bond.cupon)}
-                </td>
-                <td style={{ padding: "5px 8px", fontSize: 11, color: "#fff", textAlign: "right", fontFamily: "monospace" }}>
-                  {fmtNum(bond.precio)}
-                </td>
-                <td style={{ padding: "5px 8px", fontSize: 11, color: "#ccc", textAlign: "right", fontFamily: "monospace" }}>
-                  {fmtPct(bond.paridad)}
-                </td>
-                <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: tirColor(bond.tir), textAlign: "right", fontFamily: "monospace" }}>
-                  {fmtPct(bond.tir)}
-                </td>
-                <td style={{ padding: "5px 8px", fontSize: 11, color: "#888", textAlign: "right", fontFamily: "monospace" }}>
-                  {fmtPct(bond.currentYield)}
-                </td>
-                <td style={{ padding: "5px 8px", fontSize: 11, color: "#888", textAlign: "right", fontFamily: "monospace" }}>
-                  {fmtNum(bond.durationMod)}
-                </td>
-                <td style={{ padding: "5px 8px", fontSize: 9, color: "#444" }}>
-                  {bond.fuente}
-                </td>
-                <td style={{ padding: "5px 8px" }}>
-                  <span style={{ fontSize: 9, color: "#333" }}>▶</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", background: "#0a0a0a" }}>
+        <BondGroup title="NY Law" bonds={nyBonds} color="#4488ff" selectedTicker={selected} onSelect={handleSelect} />
+        <BondGroup title="AR Law" bonds={arBonds} color="#4AF6C3" selectedTicker={selected} onSelect={handleSelect} />
       </div>
 
-      {/* Detail panel */}
-      {selected && (
-        <div style={{ background: "#060606", border: "1px solid #1a1a1a", margin: 1, padding: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-            <div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#FFA028" }}>{selected.ticker}</span>
-              <span style={{ fontSize: 11, color: "#666", marginLeft: 8 }}>{selected.nombre}</span>
-            </div>
-            <button
-              onClick={() => setSelected(null)}
-              style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 12 }}
-            >
-              ✕
-            </button>
-          </div>
-
-          {/* KPIs */}
-          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", background: "#111", padding: 1, marginBottom: 1 }}>
-            {[
-              { label: "Precio", value: fmtNum(selected.precio), unit: "USD" },
-              { label: "TIR", value: fmtPct(selected.tir), unit: "anual", color: tirColor(selected.tir) },
-              { label: "Paridad", value: fmtPct(selected.paridad), unit: "% VN residual" },
-              { label: "Current Yield", value: fmtPct(selected.currentYield), unit: "anual" },
-              { label: "Duration Mod.", value: fmtNum(selected.durationMod, 2), unit: "años" },
-              { label: "VN Residual", value: fmtPct(selected.vnResidual), unit: "% original" },
-            ].map((kpi) => (
-              <div key={kpi.label} style={{ flex: "1 1 130px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "8px 12px" }}>
-                <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{kpi.label}</div>
-                <div style={{ fontSize: 16, fontFamily: "monospace", fontWeight: 700, color: kpi.color ?? "#FFA028" }}>{kpi.value}</div>
-                <div style={{ fontSize: 9, color: "#444" }}>{kpi.unit}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Flujos de pago */}
-          {selected.flujosFF && selected.flujosFF.length > 0 && (
-            <>
-              <div style={{ padding: "3px 8px", background: "#0d0d0d", fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid #111", marginTop: 8 }}>
-                Flujos de pago futuros — VN = 100
-              </div>
-              <div style={{ overflowX: "auto", maxHeight: 250 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr>
-                      {["Fecha", "Cupón", "Amortización", "Total"].map((h) => (
-                        <th key={h} style={{ padding: "3px 8px", fontSize: 9, color: "#555", textAlign: h === "Fecha" ? "left" : "right", borderBottom: "1px solid #111" }}>
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selected.flujosFF.map((cf, i) => (
-                      <tr key={cf.fecha} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
-                        <td style={{ padding: "3px 8px", fontSize: 10, color: "#888" }}>{cf.fecha}</td>
-                        <td style={{ padding: "3px 8px", fontSize: 10, color: "#4AF6C3", textAlign: "right", fontFamily: "monospace" }}>
-                          {cf.cupon > 0 ? cf.cupon.toFixed(4) : "—"}
-                        </td>
-                        <td style={{ padding: "3px 8px", fontSize: 10, color: "#FFA028", textAlign: "right", fontFamily: "monospace" }}>
-                          {cf.amortizacion > 0 ? cf.amortizacion.toFixed(4) : "—"}
-                        </td>
-                        <td style={{ padding: "3px 8px", fontSize: 10, color: "#fff", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>
-                          {cf.total.toFixed(4)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
+      {selectedBond && (
+        <div style={{ marginTop: 1 }}>
+          <DetailPanel bond={selectedBond} onClose={() => setSelected(null)} />
         </div>
       )}
 
       <div style={{ padding: "4px 8px", fontSize: 9, color: "#333", borderTop: "1px solid #111" }}>
-        TIR calculada por Newton-Raphson · Precios: Rava Bursátil · Flujos: prospectos MECON · Hacer click en un bono para ver detalle
+        TIR: Newton-Raphson · Precios: api-merval (real-time) · Flujos: prospectos MECON
+      </div>
+    </div>
+  )
+}
+
+// ── Sovereign Yield Curve ─────────────────────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function CurveTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null
+  const d = payload[0]?.payload
+  if (!d) return null
+  return (
+    <div style={{ background: "#0d0d0d", border: "1px solid #333", padding: "8px 12px", fontSize: 11 }}>
+      <div style={{ color: "#FFA028", fontWeight: 700, marginBottom: 4 }}>{d.ticker}</div>
+      <div style={{ color: "#ccc" }}>YTM: <span style={{ color: "#4AF6C3" }}>{d.ytm?.toFixed(2)}%</span></div>
+      <div style={{ color: "#ccc" }}>Duration: <span style={{ color: "#FFA028" }}>{d.dur?.toFixed(2)} años</span></div>
+      {d.precio != null && <div style={{ color: "#888" }}>Precio: ${d.precio?.toFixed(2)}</div>}
+    </div>
+  )
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function CurveLabel(props: any) {
+  const { x, y, value } = props
+  return (
+    <text x={x + 8} y={y + 4} fill="#999" fontSize={9} textAnchor="start">
+      {value}
+    </text>
+  )
+}
+
+function SovereignCurve({ bonds }: { bonds: SovereignBond[] }) {
+  const nyData = useMemo(() =>
+    bonds.filter((b) => b.ley === "NY" && b.tir != null && b.durationMod != null)
+      .map((b) => ({ ticker: b.ticker, ytm: b.tir!, dur: b.durationMod!, precio: b.precio, label: b.ticker }))
+      .sort((a, b) => a.dur - b.dur),
+    [bonds]
+  )
+
+  const arData = useMemo(() =>
+    bonds.filter((b) => b.ley === "local" && b.tir != null && b.durationMod != null)
+      .map((b) => ({ ticker: b.ticker, ytm: b.tir!, dur: b.durationMod!, precio: b.precio, label: b.ticker }))
+      .sort((a, b) => a.dur - b.dur),
+    [bonds]
+  )
+
+  const allData = [...nyData, ...arData]
+  if (allData.length === 0) {
+    return (
+      <div style={{ padding: 32, textAlign: "center", color: "#555", fontSize: 11 }}>
+        No hay datos de YTM + Duration disponibles. Ejecutar seed de bonos y esperar que se calculen las TIRs.
+      </div>
+    )
+  }
+
+  const minDur = Math.floor(Math.min(...allData.map((d) => d.dur)) - 0.5)
+  const maxDur = Math.ceil(Math.max(...allData.map((d) => d.dur)) + 0.5)
+  const minYtm = Math.floor(Math.min(...allData.map((d) => d.ytm)) - 1)
+  const maxYtm = Math.ceil(Math.max(...allData.map((d) => d.ytm)) + 1)
+
+  return (
+    <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 4px 8px 0" }}>
+      <div style={{ padding: "0 12px 8px", fontSize: 9, color: "#555" }}>
+        Curva soberana — YTM (%) vs Duration Modificada (años) · Puntos por encima de la curva = mayor rendimiento para igual duration
+      </div>
+      <ResponsiveContainer width="100%" height={340}>
+        <ScatterChart margin={{ top: 8, right: 48, left: 0, bottom: 16 }}>
+          <CartesianGrid stroke="#1a1a1a" strokeDasharray="3 3" />
+          <XAxis
+            type="number" dataKey="dur" name="Duration (años)"
+            domain={[minDur, maxDur]}
+            tick={{ fill: "#555", fontSize: 9 }}
+            axisLine={{ stroke: "#333" }} tickLine={false}
+            label={{ value: "Modified Duration (años)", position: "insideBottom", offset: -8, fill: "#555", fontSize: 9 }}
+          />
+          <YAxis
+            type="number" dataKey="ytm" name="YTM (%)"
+            domain={[minYtm, maxYtm]}
+            tick={{ fill: "#555", fontSize: 9 }}
+            axisLine={{ stroke: "#333" }} tickLine={false}
+            tickFormatter={(v) => v.toFixed(0) + "%"}
+            width={36}
+            label={{ value: "YTM %", angle: -90, position: "insideLeft", fill: "#555", fontSize: 9 }}
+          />
+          <Tooltip content={<CurveTooltip />} cursor={{ strokeDasharray: "3 3", stroke: "#333" }} />
+          <Legend
+            wrapperStyle={{ fontSize: 9, color: "#888", paddingTop: 4 }}
+            iconType="circle" iconSize={8}
+          />
+          {nyData.length > 0 && (
+            <Scatter
+              name="NY Law" data={nyData} fill="#4488ff"
+              label={<CurveLabel />}
+            />
+          )}
+          {arData.length > 0 && (
+            <Scatter
+              name="AR Law" data={arData} fill="#4AF6C3"
+              label={<CurveLabel />}
+            />
+          )}
+        </ScatterChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
+// ── Bond Heatmap ──────────────────────────────────────────────────────────────
+function BondHeatmap({ bonds }: { bonds: SovereignBond[] }) {
+  const totalOut = bonds.reduce((s, b) => s + (OUTSTANDING[b.ticker] ?? 0), 0)
+
+  const blocks = bonds
+    .filter((b) => (OUTSTANDING[b.ticker] ?? 0) > 0)
+    .sort((a, b) => (OUTSTANDING[b.ticker] ?? 0) - (OUTSTANDING[a.ticker] ?? 0))
+
+  function blockColor(change: number | null | undefined): string {
+    if (change == null) return "#1a1a1a"
+    if (change > 2) return "#0a3a1a"
+    if (change > 0.5) return "#0a2a14"
+    if (change > 0) return "#0a1e0e"
+    if (change > -0.5) return "#2a0a0a"
+    if (change > -2) return "#3a0a0a"
+    return "#4a0a0a"
+  }
+
+  function textColor(change: number | null | undefined): string {
+    if (change == null) return "#555"
+    if (change >= 0) return "#4AF6C3"
+    return "#FF433D"
+  }
+
+  return (
+    <div>
+      <div style={{ padding: "6px 12px", fontSize: 9, color: "#555" }}>
+        Tamaño proporcional al outstanding · Verde = suba · Rojo = baja
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "0 1px 1px" }}>
+        {blocks.map((bond) => {
+          const out = OUTSTANDING[bond.ticker] ?? 0
+          const pct = totalOut > 0 ? (out / totalOut) : 0
+          const minWidth = Math.max(80, Math.floor(pct * 600))
+
+          return (
+            <div key={bond.ticker} style={{
+              background: blockColor(bond.change1D),
+              border: "1px solid #333",
+              borderLeft: `3px solid ${textColor(bond.change1D)}`,
+              width: minWidth, minHeight: 80,
+              padding: "8px 10px",
+              display: "flex", flexDirection: "column", justifyContent: "space-between",
+              flexGrow: pct * 10,
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#FFA028" }}>{bond.ticker}</div>
+              <div>
+                <div style={{ fontSize: 16, fontFamily: "monospace", color: "#fff", fontWeight: 600 }}>
+                  {bond.precio != null ? `$${bond.precio.toFixed(2)}` : "—"}
+                </div>
+                <div style={{ fontSize: 11, color: textColor(bond.change1D), fontFamily: "monospace" }}>
+                  {fmtPctChange(bond.change1D)}
+                </div>
+                <div style={{ fontSize: 9, color: tirColor(bond.tir), marginTop: 2 }}>
+                  YTM: {fmtPct(bond.tir)}
+                </div>
+                <div style={{ fontSize: 9, color: "#444", marginTop: 1 }}>
+                  {out > 0 ? `$${out.toFixed(1)}B` : ""}
+                  {bond.ley === "NY" ? " · NY" : " · AR"}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <div style={{ padding: "4px 8px", fontSize: 9, color: "#333", borderTop: "1px solid #111" }}>
+        Outstanding: fuentes MECON · Variaciones: cierre anterior vs último precio
       </div>
     </div>
   )
 }
 
 // ── LECAPs Screener ────────────────────────────────────────────────────────────
-
 function LecapsScreener() {
   const [instrumentos, setInstrumentos] = useState<CapInstrument[]>([])
   const [loading, setLoading] = useState(true)
@@ -356,80 +459,96 @@ function LecapsScreener() {
 
   if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando LECAPs...</div>
 
+  const lecaps = instrumentos.filter((i) => i.tipo === "LECAP")
+  const boncaps = instrumentos.filter((i) => i.tipo === "BONCAP")
+
+  const Section = ({ title, items }: { title: string; items: CapInstrument[] }) => (
+    <div style={{ marginBottom: 1 }}>
+      <div style={{ padding: "3px 8px", background: "#0d0d0d", fontSize: 9, color: "#FFA028", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid #111" }}>
+        {title}
+      </div>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr>
+            {["Ticker", "Vencimiento", "Días", "Precio", "TEM", "TEA", "TIR anual"].map((h, i) => (
+              <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "#555", textAlign: i === 0 ? "left" : "right", borderBottom: "1px solid #1a1a1a" }}>
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((inst, i) => (
+            <tr key={inst.ticker} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
+              <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: "#FFA028" }}>{inst.ticker}</td>
+              <td style={{ padding: "5px 8px", fontSize: 10, color: "#777", textAlign: "right" }}>{inst.vencimiento}</td>
+              <td style={{ padding: "5px 8px", fontSize: 11, color: inst.diasVencimiento < 30 ? "#FF433D" : inst.diasVencimiento < 90 ? "#FFA028" : "#ccc", textAlign: "right", fontFamily: "monospace" }}>
+                {inst.diasVencimiento}
+              </td>
+              <td style={{ padding: "5px 8px", fontSize: 11, color: "#fff", textAlign: "right", fontFamily: "monospace" }}>
+                {inst.precio != null ? inst.precio.toFixed(2) : "—"}
+              </td>
+              <td style={{ padding: "5px 8px", fontSize: 11, color: "#4AF6C3", textAlign: "right", fontFamily: "monospace" }}>
+                {inst.tem != null ? inst.tem.toFixed(2) + "%" : "—"}
+              </td>
+              <td style={{ padding: "5px 8px", fontSize: 11, color: "#FFD700", textAlign: "right", fontFamily: "monospace" }}>
+                {inst.tea != null ? inst.tea.toFixed(2) + "%" : "—"}
+              </td>
+              <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: tirColor(inst.tir), textAlign: "right", fontFamily: "monospace" }}>
+                {inst.tir != null ? inst.tir.toFixed(2) + "%" : "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+
   return (
     <div>
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              {["TICKER", "TIPO", "VENCIMIENTO", "DÍAS", "PRECIO", "TEM", "TEA", "TIR"].map((h, i) => (
-                <th
-                  key={h}
-                  style={{
-                    padding: "4px 8px",
-                    fontSize: 9,
-                    color: "#555",
-                    textAlign: i === 0 ? "left" : "right",
-                    borderBottom: "1px solid #1a1a1a",
-                  }}
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {instrumentos.map((inst, i) => (
-              <tr key={inst.ticker} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
-                <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: "#FFA028" }}>{inst.ticker}</td>
-                <td style={{ padding: "5px 8px", fontSize: 9, color: "#888", textAlign: "right" }}>{inst.tipo}</td>
-                <td style={{ padding: "5px 8px", fontSize: 10, color: "#777", textAlign: "right" }}>{inst.vencimiento}</td>
-                <td style={{ padding: "5px 8px", fontSize: 11, color: inst.diasVencimiento < 30 ? "#FF433D" : "#ccc", textAlign: "right", fontFamily: "monospace" }}>
-                  {inst.diasVencimiento}
-                </td>
-                <td style={{ padding: "5px 8px", fontSize: 11, color: "#fff", textAlign: "right", fontFamily: "monospace" }}>
-                  {inst.precio != null ? inst.precio.toFixed(2) : "—"}
-                </td>
-                <td style={{ padding: "5px 8px", fontSize: 11, color: "#4AF6C3", textAlign: "right", fontFamily: "monospace" }}>
-                  {inst.tem != null ? inst.tem.toFixed(2) + "%" : "—"}
-                </td>
-                <td style={{ padding: "5px 8px", fontSize: 11, color: "#FFD700", textAlign: "right", fontFamily: "monospace" }}>
-                  {inst.tea != null ? inst.tea.toFixed(2) + "%" : "—"}
-                </td>
-                <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: tirColor(inst.tir), textAlign: "right", fontFamily: "monospace" }}>
-                  {inst.tir != null ? inst.tir.toFixed(2) + "%" : "—"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Section title="LECAPs — Letras del Tesoro Capitalizables" items={lecaps} />
+      <Section title="BONCAPs — Bonos del Tesoro Capitalizables" items={boncaps} />
       <div style={{ padding: "4px 8px", fontSize: 9, color: "#333", borderTop: "1px solid #111" }}>
-        Precios actualizados via cron diario · Fuente: ByMA · Vencimientos: datos.gob.ar
+        Precios: actualización diaria via ByMA · Ordenados por vencimiento · TIR: compuesto continuo vs VN
       </div>
     </div>
   )
 }
 
-// ── Riesgo País ────────────────────────────────────────────────────────────────
+// ── Riesgo País (enhanced) ────────────────────────────────────────────────────
+function fmtBps(v: number | null | undefined): string {
+  if (v == null) return "—"
+  return v.toLocaleString("es-AR") + " bps"
+}
 
-interface RiesgoPaisData {
-  actual: {
-    riesgoPaisBps: number | null
-    spreadAr: number | null
-    us10y: number | null
-    arTir: number | null
-    gd30Precio: number | null
-    metodologia: string
-  }
-  regionales: Record<string, { bps: number | null; moneda: string; nota?: string; ticker?: string }>
-  historico: [string, number][]
-  alertas: { nivel: string; mensaje: string }[]
+function bpsColor(bps: number | null): string {
+  if (bps == null) return "#888"
+  if (bps > 2000) return "#FF433D"
+  if (bps > 1000) return "#FFA028"
+  if (bps > 500) return "#FFD700"
+  return "#4AF6C3"
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function RpTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null
+  return (
+    <div style={{ background: "#0d0d0d", border: "1px solid #333", padding: "8px 12px", fontSize: 11 }}>
+      <div style={{ color: "#666", fontSize: 9, marginBottom: 4 }}>{label}</div>
+      {payload.map((p: { name: string; value: number; color: string }) => (
+        <div key={p.name} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+          <span style={{ color: p.color }}>{p.name}</span>
+          <span style={{ fontFamily: "monospace", color: "#fff" }}>{p.value?.toFixed(0)}</span>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function RiesgoPaisView() {
   const [data, setData] = useState<RiesgoPaisData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [period, setPeriod] = useState<"6m" | "1y" | "2y" | "5y" | "max">("2y")
 
   useEffect(() => {
     fetch("/api/riesgo-pais")
@@ -441,120 +560,162 @@ function RiesgoPaisView() {
   if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Calculando riesgo país...</div>
 
   const bps = data?.actual?.riesgoPaisBps
-  const bpsColor = bps == null ? "#888" : bps > 2000 ? "#FF433D" : bps > 1000 ? "#FFA028" : bps > 500 ? "#FFD700" : "#4AF6C3"
+  const color = bpsColor(bps ?? null)
+
+  // Filter historico by period
+  const now = new Date()
+  const cutoff = new Date(now)
+  switch (period) {
+    case "6m": cutoff.setMonth(now.getMonth() - 6); break
+    case "1y": cutoff.setFullYear(now.getFullYear() - 1); break
+    case "2y": cutoff.setFullYear(now.getFullYear() - 2); break
+    case "5y": cutoff.setFullYear(now.getFullYear() - 5); break
+    case "max": cutoff.setFullYear(1999); break
+  }
+  const histFiltered = (data?.historicoConSMA ?? []).filter((e) => new Date(e.date) >= cutoff)
 
   return (
     <div>
-      {/* KPI principal */}
-      <div style={{ display: "flex", gap: 1, padding: 1, background: "#111", flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 180px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px" }}>
-          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Riesgo País</div>
-          <div style={{ fontSize: 32, fontWeight: 700, color: bpsColor, fontFamily: "monospace" }}>
+      {/* KPI strip */}
+      <div style={{ display: "flex", gap: 1, background: "#111", padding: 1, flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 180px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "14px 16px" }}>
+          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Riesgo País EMBI+</div>
+          <div style={{ fontSize: 36, fontWeight: 700, color, fontFamily: "monospace" }}>
             {bps != null ? bps.toLocaleString("es-AR") : "—"}
           </div>
-          <div style={{ fontSize: 10, color: "#444" }}>basis points (bps)</div>
+          <div style={{ fontSize: 10, color: "#444" }}>basis points</div>
         </div>
-        <div style={{ flex: "1 1 130px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px" }}>
-          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>TIR GD30 (est.)</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#FFA028", fontFamily: "monospace" }}>
-            {data?.actual?.arTir != null ? data.actual.arTir.toFixed(2) + "%" : "—"}
+        <div style={{ flex: "1 1 120px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "14px 16px" }}>
+          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Var. 1 semana</div>
+          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "monospace", color: changeColor(data?.actual?.var1w ? -data.actual.var1w : null) }}>
+            {data?.actual?.var1w != null ? (data.actual.var1w >= 0 ? "+" : "") + data.actual.var1w.toFixed(0) + " bps" : "—"}
           </div>
-          <div style={{ fontSize: 9, color: "#444" }}>anual</div>
         </div>
-        <div style={{ flex: "1 1 130px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px" }}>
+        <div style={{ flex: "1 1 120px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "14px 16px" }}>
+          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Var. 1 mes</div>
+          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "monospace", color: changeColor(data?.actual?.var1m ? -data.actual.var1m : null) }}>
+            {data?.actual?.var1m != null ? (data.actual.var1m >= 0 ? "+" : "") + data.actual.var1m.toFixed(0) + " bps" : "—"}
+          </div>
+        </div>
+        <div style={{ flex: "1 1 120px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "14px 16px" }}>
           <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>US 10Y</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#888", fontFamily: "monospace" }}>
+          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "monospace", color: "#888" }}>
             {data?.actual?.us10y != null ? data.actual.us10y.toFixed(2) + "%" : "—"}
           </div>
-          <div style={{ fontSize: 9, color: "#444" }}>Yield treasury</div>
         </div>
-        <div style={{ flex: "1 1 130px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px" }}>
-          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>GD30 Precio</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#ccc", fontFamily: "monospace" }}>
-            {data?.actual?.gd30Precio != null ? data.actual.gd30Precio.toFixed(1) : "—"}
+        <div style={{ flex: "1 1 120px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "14px 16px" }}>
+          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>TIR GD30</div>
+          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "monospace", color: "#FFA028" }}>
+            {data?.actual?.arTir != null ? data.actual.arTir.toFixed(2) + "%" : "—"}
           </div>
-          <div style={{ fontSize: 9, color: "#444" }}>USD (mercado)</div>
         </div>
       </div>
 
       {/* Alertas */}
-      {data?.alertas && data.alertas.length > 0 && (
-        <div style={{ margin: "1px 0" }}>
-          {data.alertas.map((a, i) => {
-            const color = a.nivel === "crítico" ? "#FF433D" : a.nivel === "alto" ? "#FFA028" : a.nivel === "moderado" ? "#FFD700" : "#4AF6C3"
-            return (
-              <div key={i} style={{ background: "#060606", borderLeft: `3px solid ${color}`, padding: "6px 12px", fontSize: 11, color: "#ccc" }}>
-                <span style={{ color, fontWeight: 700, textTransform: "uppercase", fontSize: 9 }}>{a.nivel} </span>
-                {a.mensaje}
-              </div>
-            )
-          })}
+      {data?.alertas?.map((a, i) => {
+        const c = a.nivel === "crítico" ? "#FF433D" : a.nivel === "alto" ? "#FFA028" : a.nivel === "moderado" ? "#FFD700" : "#4AF6C3"
+        return (
+          <div key={i} style={{ background: "#060606", borderLeft: `3px solid ${c}`, padding: "5px 12px", fontSize: 11, color: "#ccc" }}>
+            <span style={{ color: c, fontWeight: 700, textTransform: "uppercase", fontSize: 9 }}>{a.nivel} </span>
+            {a.mensaje}
+          </div>
+        )
+      })}
+
+      {/* Histórico chart */}
+      <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", marginTop: 1 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 8px", borderBottom: "1px solid #1a1a1a" }}>
+          <span style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>EMBI+ Histórico</span>
+          <div style={{ display: "flex", gap: 2 }}>
+            {(["6m", "1y", "2y", "5y", "max"] as const).map((p) => (
+              <button key={p} onClick={() => setPeriod(p)} style={{
+                fontSize: 9, padding: "1px 6px",
+                background: period === p ? "#FFA028" : "transparent",
+                color: period === p ? "#000" : "#666",
+                border: "none", cursor: "pointer", borderRadius: 2,
+              }}>{p.toUpperCase()}</button>
+            ))}
+          </div>
         </div>
-      )}
+        <div style={{ padding: "4px 4px 4px 0" }}>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={histFiltered} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="#1a1a1a" strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={{ fill: "#555", fontSize: 8 }} axisLine={{ stroke: "#333" }} tickLine={false}
+                interval="preserveStartEnd"
+                tickFormatter={(d) => {
+                  try { return new Date(d + "T00:00:00").toLocaleDateString("es-AR", { month: "short", year: "2-digit" }) } catch { return d }
+                }}
+              />
+              <YAxis tick={{ fill: "#555", fontSize: 8 }} axisLine={{ stroke: "#333" }} tickLine={false} width={36}
+                tickFormatter={(v) => v.toFixed(0)}
+              />
+              <Tooltip content={<RpTooltip />} />
+              <Legend wrapperStyle={{ fontSize: 9, color: "#888" }} iconType="line" iconSize={10} />
+              <ReferenceLine y={1000} stroke="#333" strokeDasharray="4 2" label={{ value: "1000", fill: "#444", fontSize: 8 }} />
+              <ReferenceLine y={500} stroke="#333" strokeDasharray="4 2" label={{ value: "500", fill: "#444", fontSize: 8 }} />
+              <Line type="monotone" dataKey="valor" name="EMBI+" stroke={color} dot={false} strokeWidth={1.5} connectNulls />
+              <Line type="monotone" dataKey="sma30" name="SMA 30D" stroke="#555" dot={false} strokeWidth={1} strokeDasharray="4 2" connectNulls />
+              <Line type="monotone" dataKey="sma90" name="SMA 90D" stroke="#777" dot={false} strokeWidth={1} strokeDasharray="8 3" connectNulls />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Ponderación por bono */}
+      <div style={{ marginTop: 1 }}>
+        <div className="bbg-panel-header">DETALLE POR BONO (PONDERACIÓN ESTIMADA)</div>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              {["Bono", "Outstanding", "Ponderación"].map((h, i) => (
+                <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "#555", textAlign: i === 0 ? "left" : "right", borderBottom: "1px solid #1a1a1a" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {(data?.ponderacionBonos ?? []).map((b, i) => (
+              <tr key={b.ticker} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
+                <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: "#FFA028" }}>{b.ticker}</td>
+                <td style={{ padding: "5px 8px", fontSize: 11, color: "#ccc", textAlign: "right", fontFamily: "monospace" }}>
+                  ${b.outstanding.toFixed(2)}B
+                </td>
+                <td style={{ padding: "5px 8px", fontSize: 11, color: "#4AF6C3", textAlign: "right", fontFamily: "monospace" }}>
+                  {b.pct}%
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {/* Comparativo regional */}
-      <div className="bbg-panel-header" style={{ marginTop: 1 }}>COMPARATIVO REGIONAL (EMBI+)</div>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr>
-            {["País", "Moneda", "EMBI+ (bps)", "Nota"].map((h, i) => (
-              <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "#555", textAlign: i > 1 ? "right" : "left", borderBottom: "1px solid #1a1a1a" }}>
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {Object.entries(data?.regionales ?? {}).map(([pais, r], i) => {
-            const color = r.bps == null ? "#555" : r.bps > 1000 ? "#FF433D" : r.bps > 500 ? "#FFA028" : r.bps > 200 ? "#FFD700" : "#4AF6C3"
-            return (
+      <div style={{ marginTop: 1 }}>
+        <div className="bbg-panel-header">COMPARATIVO REGIONAL (EMBI+)</div>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              {["País", "Moneda", "EMBI+ (bps)"].map((h, i) => (
+                <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "#555", textAlign: i > 1 ? "right" : "left", borderBottom: "1px solid #1a1a1a" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(data?.regionales ?? {}).map(([pais, r], i) => (
               <tr key={pais} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
                 <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: "#FFA028", textTransform: "capitalize" }}>{pais}</td>
                 <td style={{ padding: "5px 8px", fontSize: 10, color: "#666" }}>{r.moneda}</td>
-                <td style={{ padding: "5px 8px", fontSize: 14, fontFamily: "monospace", fontWeight: 700, color, textAlign: "right" }}>
+                <td style={{ padding: "5px 8px", fontSize: 14, fontFamily: "monospace", fontWeight: 700, color: bpsColor(r.bps ?? null), textAlign: "right" }}>
                   {r.bps?.toLocaleString("es-AR") ?? "—"}
                 </td>
-                <td style={{ padding: "5px 8px", fontSize: 9, color: "#444", textAlign: "right" }}>
-                  {r.nota ?? (r.ticker ? `desde ${r.ticker}` : "")}
-                </td>
               </tr>
-            )
-          })}
-        </tbody>
-      </table>
-
-      {/* Histórico */}
-      {data?.historico && data.historico.length > 0 && (
-        <>
-          <div className="bbg-panel-header" style={{ marginTop: 1 }}>SPREAD HISTÓRICO (2 AÑOS, SEMANAL)</div>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  <th style={{ padding: "3px 8px", fontSize: 9, color: "#555", textAlign: "left", borderBottom: "1px solid #111" }}>Fecha</th>
-                  <th style={{ padding: "3px 8px", fontSize: 9, color: "#555", textAlign: "right", borderBottom: "1px solid #111" }}>Spread (bps)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.historico.slice().reverse().slice(0, 40).map(([d, v], i) => {
-                  const color = v > 2000 ? "#FF433D" : v > 1000 ? "#FFA028" : v > 500 ? "#FFD700" : "#4AF6C3"
-                  return (
-                    <tr key={d} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
-                      <td style={{ padding: "3px 8px", fontSize: 10, color: "#888" }}>{d}</td>
-                      <td style={{ padding: "3px 8px", fontSize: 11, color, textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>
-                        {v.toLocaleString("es-AR")}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <div style={{ padding: "4px 8px", fontSize: 9, color: "#333", borderTop: "1px solid #111" }}>
-        Metodología: {data?.actual?.metodologia} · Comparativos regionales: estimaciones históricas EMBI+ (sin API de pago)
+        Fuente EMBI+: argentinadatos.com · US 10Y: Yahoo Finance · Comparativos: estimaciones históricas
       </div>
     </div>
   )
@@ -563,21 +724,92 @@ function RiesgoPaisView() {
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export function TabBonos() {
-  const [activeTab, setActiveTab] = useState("soberanos")
+  const [activeTab, setActiveTab] = useState("snapshot")
+  const [bonds, setBonds] = useState<SovereignBond[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchBondsMerval = useCallback(async () => {
+    setLoading(true)
+    try {
+      const mervalSymbols = ["GD30D", "GD35D", "GD41D", "AL29D", "AL30D", "AL35D", "AE38D"]
+      const params = mervalSymbols.map((s) => `symbols=${s}:24hs`).join("&")
+      const mervalUrl = `https://api-merval-production.up.railway.app/v1/quotes/batch?${params}&depth=1`
+
+      const [bonosJson, mervalJson] = await Promise.all([
+        fetch("/api/bonos").then((r) => r.json()),
+        fetch(mervalUrl).then((r) => r.json()).catch(() => null),
+      ])
+
+      const rawBonds: SovereignBond[] = bonosJson.data ?? []
+
+      const changeMap = new Map<string, number | null>()
+      if (mervalJson?.quotes) {
+        for (const q of mervalJson.quotes) {
+          const sym = (q.symbol as string).replace(/D$/, "")
+          const md = q.marketData
+          const last = md?.LA?.price ? parseFloat(md.LA.price) : null
+          const close = md?.CL?.price ? parseFloat(md.CL.price) : null
+          const chg = last != null && close != null && close > 0 ? ((last - close) / close) * 100 : null
+          changeMap.set(sym, chg)
+        }
+      }
+
+      setBonds(rawBonds.map((b) => ({
+        ...b,
+        change1D: changeMap.get(b.ticker) ?? null,
+        outstanding: OUTSTANDING[b.ticker],
+      })))
+    } catch {
+      const j = await fetch("/api/bonos").then((r) => r.json()).catch(() => ({ data: [] }))
+      setBonds((j.data ?? []).map((b: SovereignBond) => ({ ...b, outstanding: OUTSTANDING[b.ticker] })))
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchBondsMerval()
+  }, [fetchBondsMerval])
+
+  if (loading) {
+    return (
+      <div style={{ padding: 32, textAlign: "center", color: "#555", fontSize: 11 }}>
+        Cargando datos de bonos soberanos...
+        <div style={{ fontSize: 9, color: "#333", marginTop: 8 }}>
+          Si es la primera vez: <code style={{ color: "#FFA028" }}>npx ts-node prisma/seed-bonds.ts</code>
+        </div>
+      </div>
+    )
+  }
+
+  if (bonds.length === 0) {
+    return (
+      <div style={{ padding: 16 }}>
+        <div style={{ color: "#FF433D", fontSize: 12, marginBottom: 8 }}>No hay bonos en la base de datos.</div>
+        <div style={{ color: "#555", fontSize: 11 }}>
+          Ejecutar: <code style={{ color: "#FFA028" }}>npx ts-node prisma/seed-bonds.ts</code>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
-      <div className="bbg-panel-header">RENTA FIJA ARGENTINA — FASE 1</div>
+      <div className="bbg-panel-header">RENTA FIJA ARGENTINA</div>
       <SubTabs
         tabs={[
-          { key: "soberanos", label: "Soberanos HD (AL/GD)" },
+          { key: "snapshot", label: "Snapshot" },
+          { key: "curva", label: "Curva Soberana" },
+          { key: "heatmap", label: "Heatmap" },
           { key: "lecaps", label: "LECAPs / BONCAPs" },
           { key: "riesgo", label: "Riesgo País" },
         ]}
         active={activeTab}
         onChange={setActiveTab}
       />
-      {activeTab === "soberanos" && <SoberanosScreener />}
+      {activeTab === "snapshot" && <SnapshotView bonds={bonds} />}
+      {activeTab === "curva" && <SovereignCurve bonds={bonds} />}
+      {activeTab === "heatmap" && <BondHeatmap bonds={bonds} />}
       {activeTab === "lecaps" && <LecapsScreener />}
       {activeTab === "riesgo" && <RiesgoPaisView />}
     </div>
