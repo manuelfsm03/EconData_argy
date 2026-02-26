@@ -18,6 +18,7 @@ import { TabMacro } from "./tab-macro"
 import { TabDeuda } from "./tab-deuda"
 import { TabMundo } from "./tab-mundo"
 import { TabGeopolitica } from "./tab-geopolitica"
+import { TabBonos } from "./tab-bonos"
 import { formatPercent, formatDate } from "@/lib/utils"
 
 // Types
@@ -234,6 +235,7 @@ export function Dashboard() {
           <TabsTrigger value="arbitraje">Arbitraje</TabsTrigger>
           <TabsTrigger value="mercury">Mercury</TabsTrigger>
           <TabsTrigger value="news">Noticias</TabsTrigger>
+          <TabsTrigger value="bonos">Bonos</TabsTrigger>
           <TabsTrigger value="economia">Economía AR</TabsTrigger>
           <TabsTrigger value="macro">Macro</TabsTrigger>
           <TabsTrigger value="deuda">Deuda</TabsTrigger>
@@ -477,6 +479,11 @@ export function Dashboard() {
         {/* ═══════════ NOTICIAS ═══════════ */}
         <TabsContent value="news">
           <NewsFeed />
+        </TabsContent>
+
+        {/* ═══════════ BONOS ═══════════ */}
+        <TabsContent value="bonos">
+          <TabBonos />
         </TabsContent>
 
         {/* ═══════════ ECONOMÍA AR ═══════════ */}

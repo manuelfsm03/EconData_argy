@@ -176,6 +176,107 @@ model DataSource {
   @@map("data_sources")
 }
 
+// ─── FASE 1: RENTA FIJA ───────────────────────────────────────────────────────
+
+// Bonos soberanos hard dollar (AL/GD series)
+model SovereignBond {
+  id              String        @id @default(cuid())
+  ticker          String        @unique  // e.g., AL29, GD30
+  nombre          String                 // Nombre completo
+  moneda          String                 // USD, ARS
+  ley             String                 // local, NY
+  cupon           Float                  // % anual
+  amortizacion    String                 // e.g., bullet, amortizing
+  emision         DateTime?
+  vencimiento     DateTime
+  // Métricas calculadas (actualizadas diariamente)
+  precio          Float?                 // Precio mercado (USD para HD)
+  tir             Float?                 // TIR implícita %
+  paridad         Float?                 // Precio / VN residual %
+  currentYield    Float?        @map("current_yield")
+  durationMod     Float?        @map("duration_mod")  // Duration modificada
+  // Metadata
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  // Relations
+  precios         BondPrice[]
+  cashflows       BondCashflow[]
+
+  @@map("sovereign_bonds")
+}
+
+// Precios históricos de bonos
+model BondPrice {
+  id        String        @id @default(cuid())
+  bondId    String        @map("bond_id")
+  date      DateTime
+  priceUsd  Float?        @map("price_usd")   // Precio en USD (bonos HD)
+  priceArs  Float?        @map("price_ars")   // Precio en ARS
+  volume    Float?
+  source    String        @default("rava")   // rava, byma, manual
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  bond      SovereignBond @relation(fields: [bondId], references: [id])
+
+  @@unique([bondId, date])
+  @@map("bond_prices")
+}
+
+// Flujos de pagos (cupones + amortizaciones)
+model BondCashflow {
+  id          String        @id @default(cuid())
+  bondId      String        @map("bond_id")
+  fechaPago   DateTime      @map("fecha_pago")
+  cupon       Float         @default(0)         // Cupón en USD por lámina
+  amortizacion Float        @default(0) @map("amortizacion") // Amortización en USD
+  flujoTotal  Float         @map("flujo_total")               // cupon + amortizacion
+
+  bond        SovereignBond @relation(fields: [bondId], references: [id])
+
+  @@map("bond_cashflows")
+}
+
+// Instrumentos de tasa fija en pesos (LECAPs, BONCAPs, etc.)
+model CapInstrument {
+  id            String    @id @default(cuid())
+  ticker        String    @unique
+  tipo          String               // LECAP, BONCAP, LECER, BONCER
+  vencimiento   DateTime
+  // Métricas calculadas
+  precio        Float?               // Precio de mercado (% del VN)
+  tir           Float?               // TIR %
+  tea           Float?               // TEA %
+  tem           Float?               // TEM %
+  preciTecnico  Float?    @map("precio_tecnico")
+  // Metadata
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  precios       CapPrice[]
+
+  @@map("cap_instruments")
+}
+
+// Precios históricos de LECAPs/BONCAPs
+model CapPrice {
+  id           String        @id @default(cuid())
+  instrumentId String        @map("instrument_id")
+  date         DateTime
+  precio       Float?
+  tem          Float?
+  volume       Float?
+  source       String        @default("byma")
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  instrument   CapInstrument @relation(fields: [instrumentId], references: [id])
+
+  @@unique([instrumentId, date])
+  @@map("cap_prices")
+}
+
+// ─── BCRA Monetary Variables ──────────────────────────────────────────────────
+
 // BCRA Monetary Variables - Reservas, Base Monetaria, etc.
 model BCRAMonetaryData {
   id                String   @id @default(cuid())
