@@ -13,6 +13,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { BBGAreaChart } from "../charts/bbg-area-chart"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -249,6 +250,18 @@ function EmaeView() {
           valueColor="#888"
         />
       </div>
+
+      {recentEmae.length > 0 && (
+        <div style={{ padding: "8px 0" }}>
+          <BBGAreaChart
+            title="EMAE — EVOLUCIÓN 12 MESES"
+            data={recentEmae.map(([d, v]) => ({ date: d, emae: v }))}
+            areas={[{ key: "emae", name: "EMAE", color: "#FFA028" }]}
+            height={280}
+            formatValue={(v) => fmtNum(v)}
+          />
+        </div>
+      )}
 
       <MiniTable
         title="EMAE — Últimos 12 períodos"
