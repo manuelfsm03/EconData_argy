@@ -112,11 +112,16 @@ async function fetchWorldBank(indicatorId: string, limit = 20): Promise<[string,
   if (cached) return cached
 
   try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 7000)
+
     const url = `${WB_BASE}/${indicatorId}?format=json&per_page=${limit}&mrv=${limit}`
     const res = await fetch(url, {
       headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
       next: { revalidate: 86400 },
+      signal: controller.signal,
     })
+    clearTimeout(timer)
     if (!res.ok) throw new Error(`World Bank API ${res.status}`)
 
     const json = await res.json()
