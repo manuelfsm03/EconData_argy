@@ -123,7 +123,7 @@ async function fetchWorldBank(indicatorId: string, limit = 20): Promise<[string,
     const entries: { date: string; value: number | null }[] = json[1] ?? []
     const result: [string, number][] = entries
       .filter((e) => e.value != null)
-      .map((e) => [e.date, e.value as number])
+      .map((e) => [e.date, e.value as number] as [string, number])
       .sort((a, b) => Number(b[0]) - Number(a[0]))
 
     setCache(cacheKey, result, 86400)
