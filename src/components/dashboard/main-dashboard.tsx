@@ -190,7 +190,7 @@ export function Dashboard() {
     }))
 
   return (
-    <div className="min-h-screen" style={{ background: "#000000" }}>
+    <div className="min-h-screen" style={{ background: "#000000", overflowX: "hidden", maxWidth: "100vw" }}>
       {/* Bloomberg-style header bar */}
       <header className="flex items-center justify-between px-2 py-1" style={{ background: "#1a1a1a", borderBottom: "1px solid #333333" }}>
         <div className="flex items-center gap-4">
@@ -228,7 +228,7 @@ export function Dashboard() {
 
       {/* Main content */}
       <Tabs defaultValue="resumen">
-        <TabsList>
+        <TabsList style={{ overflowX: "auto", overflowY: "hidden", whiteSpace: "nowrap", display: "flex", flexWrap: "nowrap", maxWidth: "100vw", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="tipos-cambio">Tipos de Cambio</TabsTrigger>
           <TabsTrigger value="rofex">Rofex</TabsTrigger>
