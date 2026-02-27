@@ -251,9 +251,9 @@ export function Dashboard() {
 
         {/* ═══════════ RESUMEN ═══════════ */}
         <TabsContent value="resumen">
-          <div className="flex gap-px" style={{ background: "#222222" }}>
+          <div className="flex flex-col md:flex-row gap-px" style={{ background: "#222222" }}>
             {/* Left: Cotizaciones */}
-            <div className="flex-1" style={{ background: "#000000" }}>
+            <div className="flex-1 min-w-0" style={{ background: "#000000" }}>
               <div className="bbg-panel-header">Cotizaciones del Dia</div>
               <table>
                 <thead>
@@ -300,7 +300,7 @@ export function Dashboard() {
             </div>
 
             {/* Center: Brecha Cambiaria */}
-            <div className="w-[240px]" style={{ background: "#000000" }}>
+            <div className="w-full md:w-[240px]" style={{ background: "#000000" }}>
               <div className="bbg-panel-header">Brecha Cambiaria</div>
               <table>
                 <thead>
@@ -333,7 +333,7 @@ export function Dashboard() {
             </div>
 
             {/* Right: Key Metrics */}
-            <div className="w-[220px]" style={{ background: "#000000" }}>
+            <div className="w-full md:w-[220px]" style={{ background: "#000000" }}>
               <div className="bbg-panel-header">Indicadores</div>
               <table>
                 <thead>
