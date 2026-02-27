@@ -207,17 +207,102 @@ function PonderacionesTable() {
   )
 }
 
+// ── Tipos estructurales ───────────────────────────────────────────────────────
+
+type EstructuralData = {
+  pbi_usd: [string, number][]
+  pbi_percapita: [string, number][]
+  pnb_usd: [string, number][]
+  pbi_verde: [string, number][]
+  gini: [string, number][]
+  natalidad: [string, number][]
+  mortalidad_infantil: [string, number][]
+  poblacion: [string, number][]
+  esperanza_vida: [string, number][]
+}
+
+type LaboralData = {
+  tasa_desempleo: [string, number][]
+  tasa_actividad: [string, number][]
+  tasa_empleo: [string, number][]
+  tasa_subocupacion: [string, number][]
+}
+
+// ── SectionHeader ─────────────────────────────────────────────────────────────
+
+function SectionHeader({ title, source }: { title: string; source?: string }) {
+  return (
+    <div style={{
+      display: "flex", justifyContent: "space-between", alignItems: "center",
+      padding: "6px 10px", background: "#0d0d0d",
+      borderTop: "2px solid #1a1a1a", borderBottom: "1px solid #1a1a1a", marginTop: 8,
+    }}>
+      <span style={{ fontSize: 9, color: "#FFA028", textTransform: "uppercase", letterSpacing: 2, fontWeight: 700 }}>
+        {title}
+      </span>
+      {source && (
+        <span style={{ fontSize: 8, color: "#444", textTransform: "uppercase", letterSpacing: 1 }}>{source}</span>
+      )}
+    </div>
+  )
+}
+
+// ── EstructuralKPI ────────────────────────────────────────────────────────────
+
+function EstructuralKPI({
+  label, value, unit, year, nota, valueColor = "#4FC3F7",
+}: {
+  label: string; value: string | null; unit: string
+  year?: string | null; nota?: string; valueColor?: string
+}) {
+  return (
+    <div style={{
+      background: "#0a0a0a", border: "1px solid #1a1a1a",
+      padding: "10px 14px", flex: "1 1 160px", position: "relative",
+    }}>
+      {year && (
+        <div style={{
+          position: "absolute", top: 6, right: 8, fontSize: 8, color: "#333",
+          fontFamily: "monospace", background: "#111", padding: "1px 4px", border: "1px solid #1a1a1a",
+        }}>{year}</div>
+      )}
+      <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, paddingRight: 32 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: valueColor, fontFamily: "monospace" }}>
+        {value ?? "—"}
+      </div>
+      <div style={{ fontSize: 9, color: "#444", marginTop: 2 }}>{unit}</div>
+      {nota && <div style={{ fontSize: 8, color: "#333", marginTop: 4, lineHeight: 1.4 }}>{nota}</div>}
+    </div>
+  )
+}
+
 // ── EMAE Tab ──────────────────────────────────────────────────────────────────
 
 function EmaeView() {
   const [data, setData] = useState<MacroData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [laboralData, setLaboralData] = useState<LaboralData | null>(null)
+  const [laboralLoading, setLaboralLoading] = useState(true)
+  const [estructuralData, setEstructuralData] = useState<EstructuralData | null>(null)
+  const [estructuralLoading, setEstructuralLoading] = useState(true)
 
   useEffect(() => {
     fetch("/api/macro?endpoint=emae")
       .then((r) => r.json())
       .then((j) => { setData(j.data); setLoading(false) })
       .catch(() => setLoading(false))
+
+    fetch("/api/macro?endpoint=laboral")
+      .then((r) => r.json())
+      .then((j) => { setLaboralData(j.data); setLaboralLoading(false) })
+      .catch(() => setLaboralLoading(false))
+
+    fetch("/api/macro?endpoint=estructural")
+      .then((r) => r.json())
+      .then((j) => { setEstructuralData(j.data); setEstructuralLoading(false) })
+      .catch(() => setEstructuralLoading(false))
   }, [])
 
   if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando EMAE...</div>
@@ -225,11 +310,34 @@ function EmaeView() {
   const ultimoEmae = data?.emae?.[0]
   const varMensual = data?.emae_var_mensual?.[0]?.[1]
   const varInteranual = data?.emae_var_interanual?.[0]?.[1]
-
   const recentEmae = (data?.emae ?? []).slice(0, 12).reverse()
+
+  const desempleo    = laboralData?.tasa_desempleo?.[0]
+  const actividad    = laboralData?.tasa_actividad?.[0]
+  const empleo       = laboralData?.tasa_empleo?.[0]
+  const subocupacion = laboralData?.tasa_subocupacion?.[0]
+  const periodoLaboral = desempleo?.[0] ?? null
+
+  const pbiRec        = estructuralData?.pbi_usd?.[0]
+  const pbiPcRec      = estructuralData?.pbi_percapita?.[0]
+  const pnbRec        = estructuralData?.pnb_usd?.[0]
+  const pbiVerdeRec   = estructuralData?.pbi_verde?.[0]
+  const giniRec       = estructuralData?.gini?.[0]
+  const natalidadRec  = estructuralData?.natalidad?.[0]
+  const mortalidadRec = estructuralData?.mortalidad_infantil?.[0]
+  const esperanzaRec  = estructuralData?.esperanza_vida?.[0]
+  const poblacionRec  = estructuralData?.poblacion?.[0]
+
+  const fmtBillones = (v: number | undefined) => {
+    if (!v) return null
+    if (v >= 1e12) return `USD ${(v / 1e12).toFixed(2)}T`
+    if (v >= 1e9)  return `USD ${(v / 1e9).toFixed(0)}B`
+    return `USD ${v.toLocaleString("es-AR")}`
+  }
 
   return (
     <div>
+      {/* KPIs EMAE */}
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
         <KPI
           label="EMAE"
@@ -238,19 +346,11 @@ function EmaeView() {
           var1={varMensual} var1Label="mensual"
           var2={varInteranual} var2Label="interanual"
         />
-        <KPI
-          label="IPI Manufacturero"
-          value={data?.ipi ? null : null}
-          unit="Ver tab IPI"
-        />
-        <KPI
-          label="Período"
-          value={ultimoEmae?.[0] ?? null}
-          unit="Último dato disponible"
-          valueColor="#888"
-        />
+        <KPI label="IPI Manufacturero" value={null} unit="Ver tab IPI" />
+        <KPI label="Período" value={ultimoEmae?.[0] ?? null} unit="Último dato disponible" valueColor="#888" />
       </div>
 
+      {/* Gráfico EMAE */}
       {recentEmae.length > 0 && (
         <div style={{ padding: "8px 0" }}>
           <BBGAreaChart
@@ -264,14 +364,130 @@ function EmaeView() {
         </div>
       )}
 
+      {/* Tabla EMAE */}
       <MiniTable
         title="EMAE — Últimos 12 períodos"
-        rows={recentEmae.map(([d, v]) => ({
-          label: d,
-          value: fmtNum(v),
-          color: "#FFA028",
-        }))}
+        rows={recentEmae.map(([d, v]) => ({ label: d, value: fmtNum(v), color: "#FFA028" }))}
       />
+
+      {/* ── MERCADO LABORAL ────────────────────────────────────────────── */}
+      <SectionHeader
+        title="Mercado Laboral — EPH"
+        source={`INDEC · EPH Continua${periodoLaboral ? ` · ${periodoLaboral}` : ""}`}
+      />
+      {laboralLoading ? (
+        <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando datos EPH...</div>
+      ) : (
+        <>
+          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+            <KPI
+              label="Tasa de Desocupación"
+              value={desempleo ? fmtNum(desempleo[1]) : null}
+              unit="% de la PEA · 31 aglomerados"
+              valueColor={desempleo ? (desempleo[1] > 10 ? "#FF433D" : desempleo[1] > 7 ? "#FFA028" : "#4AF6C3") : "#555"}
+            />
+            <KPI
+              label="Tasa de Actividad (PEA)"
+              value={actividad ? fmtNum(actividad[1]) : null}
+              unit="% de la pob. total · 14 años y más"
+              valueColor="#4FC3F7"
+            />
+            <KPI
+              label="Tasa de Empleo"
+              value={empleo ? fmtNum(empleo[1]) : null}
+              unit="% de la pob. total · ocupados"
+              valueColor="#4AF6C3"
+            />
+            <KPI
+              label="Tasa de Subocupación"
+              value={subocupacion ? fmtNum(subocupacion[1]) : null}
+              unit="% de la PEA · menos de 35hs/sem"
+              valueColor="#FFD54F"
+            />
+          </div>
+          {(laboralData?.tasa_desempleo?.length ?? 0) > 0 && (
+            <MiniTable
+              title="Desempleo — Últimos 12 trimestres"
+              rows={(laboralData?.tasa_desempleo ?? []).slice(0, 12).map(([d, v]) => ({
+                label: d,
+                value: `${fmtNum(v)}%`,
+                color: v > 10 ? "#FF433D" : v > 7 ? "#FFA028" : "#4AF6C3",
+              }))}
+            />
+          )}
+        </>
+      )}
+
+      {/* ── INDICADORES ESTRUCTURALES ──────────────────────────────────── */}
+      <SectionHeader title="Indicadores Estructurales" source="World Bank Open Data · actualización anual" />
+      {estructuralLoading ? (
+        <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando indicadores estructurales...</div>
+      ) : (
+        <>
+          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+            <EstructuralKPI
+              label="PBI" value={fmtBillones(pbiRec?.[1])}
+              unit="Producto Bruto Interno · precios constantes 2015" year={pbiRec?.[0]} valueColor="#FFA028"
+            />
+            <EstructuralKPI
+              label="PBI per Cápita"
+              value={pbiPcRec ? `USD ${pbiPcRec[1].toLocaleString("es-AR", { maximumFractionDigits: 0 })}` : null}
+              unit="Dólares constantes 2015 · por habitante" year={pbiPcRec?.[0]} valueColor="#FFA028"
+            />
+            <EstructuralKPI
+              label="PNB (INB)" value={fmtBillones(pnbRec?.[1])}
+              unit="Producto Nacional Bruto · método Atlas" year={pnbRec?.[0]} valueColor="#FFD54F"
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111", marginTop: 1 }}>
+            <EstructuralKPI
+              label="PBI Verde"
+              value={pbiVerdeRec ? `${fmtNum(pbiVerdeRec[1], 1)}%` : null}
+              unit="Ahorro neto ajustado por recursos naturales y contaminación · % del INB"
+              year={pbiVerdeRec?.[0]}
+              valueColor={pbiVerdeRec ? (pbiVerdeRec[1] < 0 ? "#FF433D" : pbiVerdeRec[1] < 5 ? "#FFA028" : "#4AF6C3") : "#555"}
+              nota="Valor negativo = el país consume más capital del que genera."
+            />
+            <EstructuralKPI
+              label="Coeficiente de Gini"
+              value={giniRec ? fmtNum(giniRec[1], 1) : null}
+              unit="Desigualdad de ingresos · 0=igualdad perfecta · 100=máx. desigualdad"
+              year={giniRec?.[0]}
+              valueColor={giniRec ? (giniRec[1] > 45 ? "#FF433D" : giniRec[1] > 35 ? "#FFA028" : "#4AF6C3") : "#555"}
+              nota="América Latina promedio ≈ 45"
+            />
+            <EstructuralKPI
+              label="Población"
+              value={poblacionRec ? `${(poblacionRec[1] / 1e6).toFixed(1)}M` : null}
+              unit="Habitantes totales (millones)" year={poblacionRec?.[0]} valueColor="#4FC3F7"
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111", marginTop: 1 }}>
+            <EstructuralKPI
+              label="Tasa de Natalidad" value={natalidadRec ? fmtNum(natalidadRec[1], 1) : null}
+              unit="Nacimientos por cada 1.000 habitantes" year={natalidadRec?.[0]} valueColor="#4AF6C3"
+            />
+            <EstructuralKPI
+              label="Mortalidad Infantil" value={mortalidadRec ? fmtNum(mortalidadRec[1], 1) : null}
+              unit="Muertes por cada 1.000 nacidos vivos (menores de 1 año)"
+              year={mortalidadRec?.[0]}
+              valueColor={mortalidadRec ? (mortalidadRec[1] > 20 ? "#FF433D" : mortalidadRec[1] > 10 ? "#FFA028" : "#4AF6C3") : "#555"}
+            />
+            <EstructuralKPI
+              label="Esperanza de Vida" value={esperanzaRec ? `${fmtNum(esperanzaRec[1], 1)} años` : null}
+              unit="Al nacer · años" year={esperanzaRec?.[0]} valueColor="#4AF6C3"
+            />
+          </div>
+
+          <div style={{ padding: "6px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111", lineHeight: 1.6 }}>
+            Fuente: World Bank Open Data (api.worldbank.org) · Indicadores: NY.GDP.MKTP.KD, NY.GNP.ATLS.CD,
+            NY.ADJ.SVNG.GN.ZS, SI.POV.GINI, SP.DYN.CBRT.IN, SP.DYN.IMRT.IN, SP.POP.TOTL, SP.DYN.LE00.IN ·
+            Datos anuales. El año en cada tarjeta = último dato publicado disponible.
+          </div>
+        </>
+      )}
     </div>
   )
 }

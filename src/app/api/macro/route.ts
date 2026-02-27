@@ -19,6 +19,20 @@ import { NextRequest, NextResponse } from "next/server"
 
 const BASE_URL = "https://apis.datos.gob.ar/series/api/series/"
 
+const WB_BASE = "https://api.worldbank.org/v2/country/AR/indicator"
+
+const WB_INDICATORS: Record<string, string> = {
+  pbi_usd:           "NY.GDP.MKTP.KD",
+  pbi_percapita:     "NY.GDP.PCAP.KD",
+  pnb_usd:           "NY.GNP.ATLS.CD",
+  pbi_verde:         "NY.ADJ.SVNG.GN.ZS",
+  gini:              "SI.POV.GINI",
+  natalidad:         "SP.DYN.CBRT.IN",
+  mortalidad_infantil: "SP.DYN.IMRT.IN",
+  poblacion:         "SP.POP.TOTL",
+  esperanza_vida:    "SP.DYN.LE00.IN",
+}
+
 // IDs verificados de la API pública datos.gob.ar
 const SERIES_IDS: Record<string, string> = {
   // ACTIVIDAD
@@ -43,6 +57,11 @@ const SERIES_IDS: Record<string, string> = {
   resultado_primario: "379.9_RESULTADO_017__31_73",
   resultado_financiero: "378.9_RESULTADO_017_0_M_18_90",
   recaudacion: "172.3_TL_RECAION_M_0_0_17",
+  // MERCADO LABORAL — EPH trimestral
+  tasa_desempleo:   "45.3_TD_TOTAL_0_Q_34",
+  tasa_actividad:   "45.3_TA_TOTAL_0_Q_34",
+  tasa_empleo:      "45.3_TE_TOTAL_0_Q_34",
+  tasa_subocupacion:"45.3_TS_TOTAL_0_Q_34",
 }
 
 // In-memory cache
@@ -85,6 +104,34 @@ async function getMultiserie(keys: string[], limit = 36): Promise<Record<string,
 
   setCache(cacheKey, result, 3600)
   return result
+}
+
+async function fetchWorldBank(indicatorId: string, limit = 20): Promise<[string, number][]> {
+  const cacheKey = `wb_${indicatorId}_${limit}`
+  const cached = getCache<[string, number][]>(cacheKey)
+  if (cached) return cached
+
+  try {
+    const url = `${WB_BASE}/${indicatorId}?format=json&per_page=${limit}&mrv=${limit}`
+    const res = await fetch(url, {
+      headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
+      next: { revalidate: 86400 },
+    })
+    if (!res.ok) throw new Error(`World Bank API ${res.status}`)
+
+    const json = await res.json()
+    const entries: { date: string; value: number | null }[] = json[1] ?? []
+    const result: [string, number][] = entries
+      .filter((e) => e.value != null)
+      .map((e) => [e.date, e.value as number])
+      .sort((a, b) => Number(b[0]) - Number(a[0]))
+
+    setCache(cacheKey, result, 86400)
+    return result
+  } catch (err) {
+    console.error(`[WB] Error fetching ${indicatorId}:`, err)
+    return []
+  }
 }
 
 /** Calcula variación interanual desde serie de niveles */
@@ -152,6 +199,45 @@ export async function GET(request: NextRequest) {
     if (endpoint === "fiscal") {
       const data = await getMultiserie(["resultado_primario", "resultado_financiero", "recaudacion"], 36)
       return NextResponse.json({ data, updated_at: new Date().toISOString(), source: "apis.datos.gob.ar" })
+    }
+
+    if (endpoint === "laboral") {
+      const data = await getMultiserie(
+        ["tasa_desempleo", "tasa_actividad", "tasa_empleo", "tasa_subocupacion"],
+        40,
+      )
+      return NextResponse.json({
+        data,
+        updated_at: new Date().toISOString(),
+        source: "apis.datos.gob.ar · INDEC EPH Continua",
+        frecuencia: "trimestral",
+        nota: "31 aglomerados urbanos. Población de 14 años y más.",
+      })
+    }
+
+    if (endpoint === "estructural") {
+      const [
+        pbi_usd, pbi_percapita, pnb_usd, pbi_verde,
+        gini, natalidad, mortalidad_infantil, poblacion, esperanza_vida,
+      ] = await Promise.all([
+        fetchWorldBank(WB_INDICATORS.pbi_usd, 15),
+        fetchWorldBank(WB_INDICATORS.pbi_percapita, 15),
+        fetchWorldBank(WB_INDICATORS.pnb_usd, 15),
+        fetchWorldBank(WB_INDICATORS.pbi_verde, 15),
+        fetchWorldBank(WB_INDICATORS.gini, 15),
+        fetchWorldBank(WB_INDICATORS.natalidad, 15),
+        fetchWorldBank(WB_INDICATORS.mortalidad_infantil, 15),
+        fetchWorldBank(WB_INDICATORS.poblacion, 5),
+        fetchWorldBank(WB_INDICATORS.esperanza_vida, 15),
+      ])
+
+      return NextResponse.json({
+        data: { pbi_usd, pbi_percapita, pnb_usd, pbi_verde, gini, natalidad, mortalidad_infantil, poblacion, esperanza_vida },
+        updated_at: new Date().toISOString(),
+        source: "World Bank Open Data API · api.worldbank.org",
+        frecuencia: "anual",
+        nota: "PBI verde = Ahorro neto ajustado por recursos naturales y contaminación (% del INB). Datos anuales.",
+      })
     }
 
     return NextResponse.json(
