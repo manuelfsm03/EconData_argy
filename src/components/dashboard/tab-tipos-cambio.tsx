@@ -222,7 +222,7 @@ function KPIStrip({ data }: { data: TCEntry[] }) {
   return (
     <div style={{ display: "flex", gap: 1, background: "#111", padding: 1, flexWrap: "wrap" }}>
       {kpis.map((k) => (
-        <div key={k.key} style={{ flex: "1 1 110px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "10px 12px" }}>
+        <div key={k.key} style={{ flex: "1 1 80px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "10px 12px" }}>
           <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 }}>{k.name}</div>
           <div style={{ fontSize: 20, fontWeight: 700, color: k.color, fontFamily: "monospace" }}>
             {k.value ? `$${fmtNum(k.value)}` : "—"}

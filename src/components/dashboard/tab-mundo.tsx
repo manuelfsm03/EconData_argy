@@ -67,8 +67,8 @@ function QuoteCard({
         padding: "8px 10px",
         cursor: "pointer",
         textAlign: "left",
-        minWidth: 110,
-        flex: "1 1 110px",
+        minWidth: 80,
+        flex: "1 1 80px",
       }}
     >
       <div style={{ fontSize: 9, color: selected ? "#FFA028" : "#666", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
@@ -163,7 +163,7 @@ export function TabMundo() {
           <div style={{ padding: "3px 8px", background: "#0a0a0a", fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid #111" }}>
             {grupo}
           </div>
-          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", background: "#111", padding: 1 }}>
+          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", background: "#111", padding: 1, overflowX: "auto" }}>
             {tickers.map((t) => (
               <QuoteCard
                 key={t}
