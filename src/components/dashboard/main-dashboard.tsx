@@ -12,7 +12,6 @@ import { TabDepositos } from "./tab-depositos"
 import { TabReservas } from "./tab-reservas"
 import { TabMarketData } from "./tab-market-data"
 import { TabArbScanner } from "./tab-arb-scanner"
-import { MercuryFeed } from "./mercury-feed"
 import { TabEconomia } from "./tab-economia"
 import { TabMacro } from "./tab-macro"
 import { TabDeuda } from "./tab-deuda"
@@ -239,7 +238,6 @@ export function Dashboard() {
           <TabsTrigger value="reservas">Reservas</TabsTrigger>
           <TabsTrigger value="market-data">Market Data</TabsTrigger>
           <TabsTrigger value="arbitraje">Arbitraje</TabsTrigger>
-          <TabsTrigger value="mercury">Mercury</TabsTrigger>
           <TabsTrigger value="news">Noticias</TabsTrigger>
           <TabsTrigger value="bonos">Bonos</TabsTrigger>
           <TabsTrigger value="acciones">Acciones AR</TabsTrigger>
@@ -464,10 +462,6 @@ export function Dashboard() {
           <TabArbScanner />
         </TabsContent>
 
-        {/* ═══════════ MERCURY ═══════════ */}
-        <TabsContent value="mercury">
-          <MercuryFeed />
-        </TabsContent>
 
         {/* ═══════════ NOTICIAS ═══════════ */}
         <TabsContent value="news">
