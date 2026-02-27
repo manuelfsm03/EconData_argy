@@ -57,11 +57,11 @@ const SERIES_IDS: Record<string, string> = {
   resultado_primario: "379.9_RESULTADO_017__31_73",
   resultado_financiero: "378.9_RESULTADO_017_0_M_18_90",
   recaudacion: "172.3_TL_RECAION_M_0_0_17",
-  // MERCADO LABORAL — EPH trimestral
-  tasa_desempleo:   "45.3_TD_TOTAL_0_Q_34",
-  tasa_actividad:   "45.3_TA_TOTAL_0_Q_34",
-  tasa_empleo:      "45.3_TE_TOTAL_0_Q_34",
-  tasa_subocupacion:"45.3_TS_TOTAL_0_Q_34",
+  // MERCADO LABORAL — EPH Continua trimestral (31 aglomerados)
+  tasa_desempleo:   "42.3_EPH_PUNTUATAL_0_M_30",
+  tasa_actividad:   "43.2_ECTAT_0_T_33",
+  tasa_empleo:      "44.2_ECTET_0_T_30",
+  tasa_subocupacion:"46.2_ECTST_0_T_36",
 }
 
 // In-memory cache
@@ -206,6 +206,12 @@ export async function GET(request: NextRequest) {
         ["tasa_desempleo", "tasa_actividad", "tasa_empleo", "tasa_subocupacion"],
         40,
       )
+      // Valores vienen en proporción (0.066 = 6.6%) → convertir a porcentaje
+      for (const key of ["tasa_desempleo", "tasa_actividad", "tasa_empleo", "tasa_subocupacion"] as const) {
+        if (data[key]) {
+          data[key] = data[key].map(([d, v]) => [d, parseFloat((v * 100).toFixed(2))] as [string, number])
+        }
+      }
       return NextResponse.json({
         data,
         updated_at: new Date().toISOString(),
