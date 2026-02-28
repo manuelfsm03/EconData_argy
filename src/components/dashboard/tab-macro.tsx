@@ -14,6 +14,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { BBGAreaChart } from "../charts/bbg-area-chart"
+import { BBGLineChart } from "../charts/bbg-line-chart"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -277,6 +278,58 @@ function EstructuralKPI({
   )
 }
 
+// ── Tipos actividad expandida ─────────────────────────────────────────────────
+
+type EmaeSectorialRow = {
+  date: string
+  agro: number | null
+  industria: number | null
+  construccion: number | null
+  comercio: number | null
+  transporte: number | null
+  finanzas: number | null
+  energia: number | null
+  turismo: number | null
+}
+
+type UCIRow = {
+  date: string
+  nivel_general: number | null
+  alimentos: number | null
+  textiles: number | null
+  quimicos: number | null
+  automotriz: number | null
+  metalmecanica: number | null
+  minerales: number | null
+}
+
+type SuperRow = {
+  date: string
+  corrientes_mm: number | null
+  constantes_mm: number | null
+}
+
+type ConfianzaRow = {
+  date: string
+  icc_nacional: number | null
+  situacion_personal: number | null
+  situacion_macro: number | null
+  bienes_durables: number | null
+  capital: number | null
+  gba: number | null
+  interior: number | null
+}
+
+type ActividadData = {
+  uci: UCIRow[]
+  supermercados: SuperRow[]
+}
+
+type ConfianzaData = {
+  data: ConfianzaRow[]
+  ultimo: ConfianzaRow | null
+}
+
 // ── EMAE Tab ──────────────────────────────────────────────────────────────────
 
 function EmaeView() {
@@ -286,6 +339,12 @@ function EmaeView() {
   const [laboralLoading, setLaboralLoading] = useState(true)
   const [estructuralData, setEstructuralData] = useState<EstructuralData | null>(null)
   const [estructuralLoading, setEstructuralLoading] = useState(true)
+  const [emaeSectorialData, setEmaeSectorialData] = useState<EmaeSectorialRow[]>([])
+  const [emaeSectorialLoading, setEmaeSectorialLoading] = useState(true)
+  const [actividadData, setActividadData] = useState<ActividadData | null>(null)
+  const [actividadLoading, setActividadLoading] = useState(true)
+  const [confianzaData, setConfianzaData] = useState<ConfianzaData | null>(null)
+  const [confianzaLoading, setConfianzaLoading] = useState(true)
 
   useEffect(() => {
     fetch("/api/macro?endpoint=emae")
@@ -302,6 +361,21 @@ function EmaeView() {
       .then((r) => r.json())
       .then((j) => { setEstructuralData(j.data); setEstructuralLoading(false) })
       .catch(() => setEstructuralLoading(false))
+
+    fetch("/api/macro?endpoint=emae_sectorial")
+      .then(r => r.json())
+      .then(j => { setEmaeSectorialData(j.data ?? []); setEmaeSectorialLoading(false) })
+      .catch(() => setEmaeSectorialLoading(false))
+
+    fetch("/api/macro?endpoint=actividad")
+      .then(r => r.json())
+      .then(j => { setActividadData(j); setActividadLoading(false) })
+      .catch(() => setActividadLoading(false))
+
+    fetch("/api/macro?endpoint=confianza")
+      .then(r => r.json())
+      .then(j => { setConfianzaData(j); setConfianzaLoading(false) })
+      .catch(() => setConfianzaLoading(false))
   }, [])
 
   if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando EMAE...</div>
@@ -480,6 +554,283 @@ function EmaeView() {
           <div style={{ padding: "6px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111", lineHeight: 1.6 }}>
             PBI, per cápita, población, Gini, natalidad y mortalidad: INDEC vía apis.datos.gob.ar ·
             Esperanza de vida: World Bank (SP.DYN.LE00.IN) · El año en cada tarjeta = último dato publicado disponible.
+          </div>
+        </>
+      )}
+
+      {/* ══ EMAE SECTORIAL ═══════════════════════════════════════════════════ */}
+      <SectionHeader
+        title="EMAE — Apertura Sectorial"
+        source="INDEC · Índice Base 2004=100 · Valores originales"
+      />
+      {emaeSectorialLoading ? (
+        <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando EMAE sectorial...</div>
+      ) : emaeSectorialData.length === 0 ? (
+        <div style={{ padding: 12, color: "#444", fontSize: 11 }}>Sin datos disponibles</div>
+      ) : (
+        <>
+          {/* Snapshot: KPIs por sector con variación interanual */}
+          {(() => {
+            const ultimo = emaeSectorialData[emaeSectorialData.length - 1]
+            const anterior = emaeSectorialData.length >= 13
+              ? emaeSectorialData[emaeSectorialData.length - 13]
+              : null
+            const sectores: { key: keyof EmaeSectorialRow; label: string; color: string }[] = [
+              { key: "agro",         label: "Agro",        color: "#4AF6C3" },
+              { key: "industria",    label: "Industria",   color: "#FFA028" },
+              { key: "construccion", label: "Construcc.",  color: "#FF433D" },
+              { key: "comercio",     label: "Comercio",    color: "#4FC3F7" },
+              { key: "transporte",   label: "Transporte",  color: "#FFD54F" },
+              { key: "finanzas",     label: "Finanzas",    color: "#CE93D8" },
+              { key: "energia",      label: "Energía",     color: "#80CBC4" },
+              { key: "turismo",      label: "Turismo",     color: "#F48FB1" },
+            ]
+            return (
+              <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+                {sectores.map(s => {
+                  const val = ultimo?.[s.key] as number | null
+                  const valAnterior = anterior?.[s.key] as number | null
+                  const varIA = val && valAnterior ? (((val - valAnterior) / valAnterior) * 100) : null
+                  return (
+                    <div key={s.key} style={{
+                      flex: "1 1 130px", background: "#0a0a0a", border: "1px solid #1a1a1a",
+                      borderTop: `2px solid ${s.color}`, padding: "8px 10px",
+                    }}>
+                      <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+                        {s.label}
+                      </div>
+                      <div style={{ fontSize: 17, fontWeight: 700, color: s.color, fontFamily: "monospace" }}>
+                        {val ? fmtNum(val, 1) : "—"}
+                      </div>
+                      <div style={{ fontSize: 8, color: "#444" }}>Índice 2004=100</div>
+                      {varIA != null && (
+                        <div style={{ fontSize: 9, color: varIA >= 0 ? "#4AF6C3" : "#FF433D", marginTop: 2 }}>
+                          {varIA >= 0 ? "▲" : "▼"} {Math.abs(varIA).toFixed(1)}% i.a.
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
+
+          {/* Gráfico de líneas comparativo sectores — usa BBGLineChart */}
+          <div style={{ padding: "8px 0" }}>
+            <BBGLineChart
+              title="EMAE — COMPARATIVA SECTORIAL"
+              data={emaeSectorialData}
+              lines={[
+                { key: "agro",         name: "Agro",       color: "#4AF6C3" },
+                { key: "industria",    name: "Industria",  color: "#FFA028" },
+                { key: "construccion", name: "Construcc.", color: "#FF433D" },
+                { key: "comercio",     name: "Comercio",   color: "#4FC3F7" },
+                { key: "transporte",   name: "Transporte", color: "#FFD54F" },
+              ]}
+              height={260}
+              yAxisLabel="Índice 2004=100"
+              defaultRange="all"
+            />
+          </div>
+        </>
+      )}
+
+      {/* ══ UTILIZACIÓN CAPACIDAD INSTALADA ══════════════════════════════════ */}
+      <SectionHeader
+        title="Actividad Industrial — Utilización de Capacidad Instalada"
+        source="INDEC · UCI Base 2004 · % sobre capacidad total"
+      />
+      {actividadLoading ? (
+        <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando UCI...</div>
+      ) : !actividadData?.uci?.length ? (
+        <div style={{ padding: 12, color: "#444", fontSize: 11 }}>Sin datos UCI disponibles</div>
+      ) : (
+        <>
+          {/* KPI nivel general */}
+          {(() => {
+            const ultimo = actividadData.uci[actividadData.uci.length - 1]
+            return (
+              <div style={{ display: "flex", gap: 1, padding: 1, background: "#111", flexWrap: "wrap" }}>
+                <KPI
+                  label="UCI — Nivel General"
+                  value={ultimo?.nivel_general ? `${fmtNum(ultimo.nivel_general, 1)}%` : null}
+                  unit={`Capacidad instalada utilizada · ${ultimo?.date ?? ""}`}
+                  valueColor={
+                    ultimo?.nivel_general
+                      ? ultimo.nivel_general > 70 ? "#4AF6C3"
+                        : ultimo.nivel_general > 60 ? "#FFA028" : "#FF433D"
+                      : "#555"
+                  }
+                />
+                <KPI label="Alimentos y Bebidas" value={ultimo?.alimentos   ? `${fmtNum(ultimo.alimentos, 1)}%`   : null} unit="% capacidad" valueColor="#4AF6C3" />
+                <KPI label="Automotriz"          value={ultimo?.automotriz  ? `${fmtNum(ultimo.automotriz, 1)}%`  : null} unit="% capacidad" valueColor="#FFA028" />
+                <KPI label="Metalmecánica"        value={ultimo?.metalmecanica ? `${fmtNum(ultimo.metalmecanica, 1)}%` : null} unit="% capacidad" valueColor="#4FC3F7" />
+                <KPI label="Químicos"             value={ultimo?.quimicos   ? `${fmtNum(ultimo.quimicos, 1)}%`   : null} unit="% capacidad" valueColor="#CE93D8" />
+              </div>
+            )
+          })()}
+
+          {/* Gráfico UCI nivel general + sectores — BBGLineChart */}
+          <div style={{ padding: "8px 0" }}>
+            <BBGLineChart
+              title="UCI — NIVEL GENERAL Y SECTORES CLAVE"
+              data={actividadData.uci}
+              lines={[
+                { key: "nivel_general", name: "General",     color: "#FFA028" },
+                { key: "alimentos",     name: "Alimentos",   color: "#4AF6C3" },
+                { key: "automotriz",    name: "Automotriz",  color: "#FF433D" },
+                { key: "metalmecanica", name: "Metalméc.",   color: "#4FC3F7" },
+                { key: "quimicos",      name: "Químicos",    color: "#CE93D8" },
+              ]}
+              height={240}
+              yAxisLabel="%"
+              formatValue={(v) => v.toFixed(1) + "%"}
+              defaultRange="all"
+            />
+          </div>
+        </>
+      )}
+
+      {/* ══ VENTAS SUPERMERCADOS ══════════════════════════════════════════════ */}
+      <SectionHeader
+        title="Ventas en Supermercados"
+        source="INDEC · Miles de millones ARS · Corrientes y constantes base 2017"
+      />
+      {actividadLoading ? (
+        <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando supermercados...</div>
+      ) : !actividadData?.supermercados?.length ? (
+        <div style={{ padding: 12, color: "#444", fontSize: 11 }}>Sin datos de supermercados disponibles</div>
+      ) : (
+        <>
+          {(() => {
+            const sup = actividadData.supermercados
+            const ultimo = sup[sup.length - 1]
+            const anterior = sup.length >= 13 ? sup[sup.length - 13] : null
+            const varConst = ultimo?.constantes_mm && anterior?.constantes_mm
+              ? (((ultimo.constantes_mm - anterior.constantes_mm) / anterior.constantes_mm) * 100)
+              : null
+            return (
+              <div style={{ display: "flex", gap: 1, padding: 1, background: "#111", flexWrap: "wrap" }}>
+                <KPI
+                  label="Ventas corrientes"
+                  value={ultimo?.corrientes_mm ? `$${fmtNum(ultimo.corrientes_mm, 0)}B` : null}
+                  unit={`Miles de millones ARS · ${ultimo?.date ?? ""}`}
+                  valueColor="#FFA028"
+                />
+                <KPI
+                  label="Ventas constantes"
+                  value={ultimo?.constantes_mm ? `$${fmtNum(ultimo.constantes_mm, 0)}B` : null}
+                  unit="Miles de millones ARS · Precios 2017"
+                  valueColor="#4FC3F7"
+                  var1={varConst} var1Label="i.a. real"
+                />
+              </div>
+            )
+          })()}
+
+          {/* Gráfico supermercados corrientes vs constantes — BBGLineChart */}
+          <div style={{ padding: "8px 0" }}>
+            <BBGLineChart
+              title="VENTAS SUPERMERCADOS — CORRIENTES VS CONSTANTES"
+              data={actividadData.supermercados}
+              lines={[
+                { key: "corrientes_mm", name: "Corrientes", color: "#FFA028" },
+                { key: "constantes_mm", name: "Constantes (2017)", color: "#4FC3F7" },
+              ]}
+              height={220}
+              yAxisLabel="MM ARS (miles de mill.)"
+              formatValue={(v) => `$${fmtNum(v, 0)}B`}
+              defaultRange="all"
+            />
+          </div>
+        </>
+      )}
+
+      {/* ══ CONFIANZA DEL CONSUMIDOR ══════════════════════════════════════════ */}
+      <SectionHeader
+        title="Índice de Confianza del Consumidor — ICC"
+        source="UTDT · Universidad Torcuato Di Tella · Encuesta mensual"
+      />
+      {confianzaLoading ? (
+        <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando ICC...</div>
+      ) : !confianzaData?.ultimo ? (
+        <div style={{ padding: 12, color: "#444", fontSize: 11 }}>Sin datos disponibles</div>
+      ) : (
+        <>
+          {/* KPIs último período */}
+          <div style={{ display: "flex", gap: 1, padding: 1, background: "#111", flexWrap: "wrap" }}>
+            <KPI
+              label="ICC Nacional"
+              value={confianzaData.ultimo.icc_nacional ? fmtNum(confianzaData.ultimo.icc_nacional, 1) : null}
+              unit={`Índice · ${confianzaData.ultimo.date} · Sobre 50 = optimismo`}
+              valueColor={
+                confianzaData.ultimo.icc_nacional
+                  ? confianzaData.ultimo.icc_nacional > 50 ? "#4AF6C3"
+                    : confianzaData.ultimo.icc_nacional > 35 ? "#FFA028" : "#FF433D"
+                  : "#555"
+              }
+            />
+            <KPI
+              label="Situación Personal"
+              value={confianzaData.ultimo.situacion_personal ? fmtNum(confianzaData.ultimo.situacion_personal, 1) : null}
+              unit="Subíndice — bienestar propio percibido"
+              valueColor="#4FC3F7"
+            />
+            <KPI
+              label="Situación Macroeconómica"
+              value={confianzaData.ultimo.situacion_macro ? fmtNum(confianzaData.ultimo.situacion_macro, 1) : null}
+              unit="Subíndice — percepción del contexto país"
+              valueColor="#FFD54F"
+            />
+            <KPI
+              label="Bienes Durables e Inmuebles"
+              value={confianzaData.ultimo.bienes_durables ? fmtNum(confianzaData.ultimo.bienes_durables, 1) : null}
+              unit="Subíndice — propensión a compras grandes"
+              valueColor="#CE93D8"
+            />
+          </div>
+
+          {/* Gráfico ICC nacional + subíndices — BBGLineChart */}
+          <div style={{ padding: "8px 0" }}>
+            <BBGLineChart
+              title="ICC — NACIONAL Y SUBÍNDICES"
+              data={confianzaData.data}
+              lines={[
+                { key: "icc_nacional",       name: "ICC Nacional",    color: "#FFA028" },
+                { key: "situacion_personal",  name: "Sit. Personal",  color: "#4FC3F7" },
+                { key: "situacion_macro",     name: "Sit. Macro",     color: "#FFD54F" },
+                { key: "bienes_durables",     name: "Bienes Dur.",    color: "#CE93D8" },
+              ]}
+              height={240}
+              yAxisLabel="Índice"
+              formatValue={(v) => fmtNum(v, 1)}
+              showZeroLine
+              defaultRange="all"
+            />
+          </div>
+
+          {/* Gráfico desagregado regional — Capital, GBA, Interior */}
+          <div style={{ padding: "8px 0" }}>
+            <BBGLineChart
+              title="ICC — DESAGREGADO REGIONAL"
+              data={confianzaData.data}
+              lines={[
+                { key: "capital",  name: "CABA",    color: "#4AF6C3" },
+                { key: "gba",      name: "GBA",     color: "#FFA028" },
+                { key: "interior", name: "Interior", color: "#4FC3F7" },
+              ]}
+              height={200}
+              yAxisLabel="Índice"
+              formatValue={(v) => fmtNum(v, 1)}
+              defaultRange="all"
+            />
+          </div>
+
+          {/* Nota metodológica */}
+          <div style={{ padding: "6px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111", lineHeight: 1.6 }}>
+            Fuente: Universidad Torcuato Di Tella (UTDT) · Encuesta mensual a hogares del AMBA e interior urbano ·
+            Índice compuesto: situación personal + situación macroeconómica + bienes durables ·
+            Escala: por debajo de 35 = pesimismo marcado · 35-50 = cautela · 50+ = optimismo.
           </div>
         </>
       )}

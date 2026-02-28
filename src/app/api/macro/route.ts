@@ -19,6 +19,13 @@ import { NextRequest, NextResponse } from "next/server"
 
 const BASE_URL = "https://apis.datos.gob.ar/series/api/series/"
 
+const CSV_URLS = {
+  emae_sectorial: "https://infra.datos.gob.ar/catalog/sspm/dataset/11/distribution/11.3/download/emae-apertura-por-sectores-valores-mensuales-indice-base-2004.csv",
+  uci:            "https://infra.datos.gob.ar/catalog/sspm/dataset/31/distribution/31.3/download/utilizacion-capacidad-instalada-industria-valores-mensuales-base-2004.csv",
+  supermercados:  "https://infra.datos.gob.ar/catalog/sspm/dataset/455/distribution/455.1/download/ventas-totales-supermercados-2.csv",
+  icc_mensual:    "https://infra.datos.gob.ar/catalog/sspm/dataset/380/distribution/380.3/download/indice-confianza-consumidor-valores-mensuales.csv",
+}
+
 const WB_BASE = "https://api.worldbank.org/v2/country/AR/indicator"
 
 // Solo esperanza de vida en World Bank (~600ms). El resto migró a datos.gob.ar
@@ -136,6 +143,35 @@ async function fetchWorldBank(indicatorId: string, limit = 20): Promise<[string,
     return result
   } catch (err) {
     console.error(`[WB] Error fetching ${indicatorId}:`, err)
+    return []
+  }
+}
+
+async function fetchCSVData(url: string, ttlSec = 3600): Promise<Record<string, string>[]> {
+  const cacheKey = `csv_${url.slice(-40)}`
+  const cached = getCache<Record<string, string>[]>(cacheKey)
+  if (cached) return cached
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "PanelDeControl/2.0", Accept: "text/csv,text/plain,*/*" },
+      next: { revalidate: ttlSec },
+      signal: AbortSignal.timeout(15000),
+    })
+    if (!res.ok) throw new Error(`CSV ${res.status}: ${url}`)
+    const text = await res.text()
+    const lines = text.trim().split("\n").filter(l => l.trim())
+    if (lines.length < 2) return []
+    const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""))
+    const rows = lines.slice(1).map(line => {
+      const vals = line.split(",")
+      return Object.fromEntries(
+        headers.map((h, i) => [h, (vals[i] ?? "").trim().replace(/^"|"$/g, "")])
+      )
+    })
+    setCache(cacheKey, rows, ttlSec)
+    return rows
+  } catch (err) {
+    console.error(`[CSV] Error fetching ${url}:`, err)
     return []
   }
 }
@@ -259,6 +295,91 @@ export async function GET(request: NextRequest) {
         source: "INDEC vía apis.datos.gob.ar · World Bank (esperanza de vida)",
         frecuencia: "anual/trimestral",
         nota: "PBI y per cápita: millones/unidades de USD corrientes. Gini: EPH INDEC escala 0–100. SMVM: Ministerio de Trabajo.",
+      })
+    }
+
+    // ── EMAE SECTORIAL ──────────────────────────────────────────────────────
+    if (endpoint === "emae_sectorial") {
+      const rows = await fetchCSVData(CSV_URLS.emae_sectorial)
+      // Últimas 24 filas (2 años), mapear indice_tiempo → date para compatibilidad con BBGAreaChart
+      const recent = rows.slice(-24).map(r => ({
+        date: r.indice_tiempo ?? "",
+        agro:         parseFloat(r.agricultura_ganaderia_caza_silvicultura ?? "") || null,
+        industria:    parseFloat(r.industria_manufacturera ?? "") || null,
+        construccion: parseFloat(r.construccion ?? "") || null,
+        comercio:     parseFloat(r.comercio_mayorista_minorista_reparaciones ?? "") || null,
+        transporte:   parseFloat(r.transporte_comunicaciones ?? "") || null,
+        finanzas:     parseFloat(r.intermediacion_financiera ?? "") || null,
+        energia:      parseFloat(r.electricidad_gas_agua ?? "") || null,
+        turismo:      parseFloat(r.hoteles_restaurantes ?? "") || null,
+      }))
+      return NextResponse.json({
+        data: recent,
+        updated_at: new Date().toISOString(),
+        source: "datos.gob.ar · INDEC · EMAE Apertura Sectorial Base 2004",
+      })
+    }
+
+    // ── ACTIVIDAD (UCI + SUPERMERCADOS) ─────────────────────────────────────
+    if (endpoint === "actividad") {
+      const [uciRows, superRows] = await Promise.all([
+        fetchCSVData(CSV_URLS.uci),
+        fetchCSVData(CSV_URLS.supermercados),
+      ])
+
+      // UCI — mapear indice_tiempo → date, nivel general y sectores clave
+      const uci = uciRows.slice(-24).map(r => ({
+        date:          r.indice_tiempo ?? "",
+        nivel_general: parseFloat(r.ucii_nivel_general ?? "") || null,
+        alimentos:     parseFloat(r.ucii_productos_alimenticios_bebidas ?? "") || null,
+        textiles:      parseFloat(r.ucii_productos_textiles ?? "") || null,
+        quimicos:      parseFloat(r.ucii_sustancias_productos_quimicos ?? "") || null,
+        automotriz:    parseFloat(r.ucii_vehiculosautomotores ?? "") || null,
+        metalmecanica: parseFloat(r.ucii_metalmecanica_no_industria_automotriz ?? "") || null,
+        minerales:     parseFloat(r.ucii_minerales_no_metalicos ?? "") || null,
+      }))
+
+      // Supermercados — corrientes y constantes en miles de millones
+      const supermercados = superRows.slice(-24).map(r => ({
+        date:           r.indice_tiempo ?? "",
+        corrientes_mm:  r.ventas_precios_corrientes ? parseFloat(r.ventas_precios_corrientes) / 1000 : null,
+        constantes_mm:  r.ventas_precios_constantes ? parseFloat(r.ventas_precios_constantes) / 1000 : null,
+      }))
+
+      return NextResponse.json({
+        uci,
+        supermercados,
+        updated_at: new Date().toISOString(),
+        source: "datos.gob.ar · INDEC",
+        nota_uci:   "Utilización de capacidad instalada. En % sobre capacidad total. Base 2004.",
+        nota_super: "Ventas de supermercados en miles de millones ARS. Constantes = precios base 2017.",
+      })
+    }
+
+    // ── CONFIANZA DEL CONSUMIDOR (UTDT) ─────────────────────────────────────
+    if (endpoint === "confianza") {
+      const rows = await fetchCSVData(CSV_URLS.icc_mensual)
+      // Mapear indice_tiempo → date, filtrar registros con dato nacional
+      const data = rows
+        .filter(r => r.icc_nacional && r.icc_nacional !== "")
+        .slice(-36)
+        .map(r => ({
+          date:               r.indice_tiempo ?? "",
+          icc_nacional:       parseFloat(r.icc_nacional) || null,
+          situacion_personal: parseFloat(r.desagregacion_subindices_situacion_personal ?? "") || null,
+          situacion_macro:    parseFloat(r.desagregacion_subindices_situacion_macro ?? "") || null,
+          bienes_durables:    parseFloat(r.desagregacion_subindices_bienes_durables_inmuebles ?? "") || null,
+          capital:            parseFloat(r.desagregacion_regiones_capital ?? "") || null,
+          gba:                parseFloat(r.desagregacion_regiones_gba ?? "") || null,
+          interior:           parseFloat(r.desagregacion_regiones_interior ?? "") || null,
+        }))
+
+      return NextResponse.json({
+        data,
+        ultimo: data[data.length - 1] ?? null,
+        updated_at: new Date().toISOString(),
+        source: "datos.gob.ar · UTDT — Universidad Torcuato Di Tella",
+        nota: "Índice compuesto. Encuesta mensual a hogares. Escala: sobre 50 = optimismo.",
       })
     }
 
