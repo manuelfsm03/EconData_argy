@@ -212,8 +212,7 @@ function PonderacionesTable() {
 type EstructuralData = {
   pbi_usd: [string, number][]
   pbi_percapita: [string, number][]
-  pnb_usd: [string, number][]
-  pbi_verde: [string, number][]
+  smvm: [string, number][]
   gini: [string, number][]
   natalidad: [string, number][]
   mortalidad_infantil: [string, number][]
@@ -320,19 +319,19 @@ function EmaeView() {
 
   const pbiRec        = estructuralData?.pbi_usd?.[0]
   const pbiPcRec      = estructuralData?.pbi_percapita?.[0]
-  const pnbRec        = estructuralData?.pnb_usd?.[0]
-  const pbiVerdeRec   = estructuralData?.pbi_verde?.[0]
+  const smvmRec       = estructuralData?.smvm?.[0]
   const giniRec       = estructuralData?.gini?.[0]
   const natalidadRec  = estructuralData?.natalidad?.[0]
   const mortalidadRec = estructuralData?.mortalidad_infantil?.[0]
   const esperanzaRec  = estructuralData?.esperanza_vida?.[0]
   const poblacionRec  = estructuralData?.poblacion?.[0]
 
+  // PBI en millones de USD → convertir a billones para display
   const fmtBillones = (v: number | undefined) => {
     if (!v) return null
-    if (v >= 1e12) return `USD ${(v / 1e12).toFixed(2)}T`
-    if (v >= 1e9)  return `USD ${(v / 1e9).toFixed(0)}B`
-    return `USD ${v.toLocaleString("es-AR")}`
+    const abs = v * 1e6  // datos.gob.ar entrega en millones de USD
+    if (abs >= 1e12) return `USD ${(abs / 1e12).toFixed(2)}T`
+    return `USD ${(abs / 1e9).toFixed(0)}B`
   }
 
   return (
@@ -419,72 +418,68 @@ function EmaeView() {
       )}
 
       {/* ── INDICADORES ESTRUCTURALES ──────────────────────────────────── */}
-      <SectionHeader title="Indicadores Estructurales" source="World Bank Open Data · actualización anual" />
+      <SectionHeader title="Indicadores Estructurales" source="INDEC · datos.gob.ar · World Bank" />
       {estructuralLoading ? (
         <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando indicadores estructurales...</div>
       ) : (
         <>
+          {/* Fila 1 — Actividad económica */}
           <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
             <EstructuralKPI
               label="PBI" value={fmtBillones(pbiRec?.[1])}
-              unit="Producto Bruto Interno · precios constantes 2015" year={pbiRec?.[0]} valueColor="#FFA028"
+              unit="PIB · USD corrientes · INDEC Cuentas Nacionales" year={pbiRec?.[0]} valueColor="#FFA028"
             />
             <EstructuralKPI
               label="PBI per Cápita"
               value={pbiPcRec ? `USD ${pbiPcRec[1].toLocaleString("es-AR", { maximumFractionDigits: 0 })}` : null}
-              unit="Dólares constantes 2015 · por habitante" year={pbiPcRec?.[0]} valueColor="#FFA028"
-            />
-            <EstructuralKPI
-              label="PNB (INB)" value={fmtBillones(pnbRec?.[1])}
-              unit="Producto Nacional Bruto · método Atlas" year={pnbRec?.[0]} valueColor="#FFD54F"
-            />
-          </div>
-
-          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111", marginTop: 1 }}>
-            <EstructuralKPI
-              label="PBI Verde"
-              value={pbiVerdeRec ? `${fmtNum(pbiVerdeRec[1], 1)}%` : null}
-              unit="Ahorro neto ajustado por recursos naturales y contaminación · % del INB"
-              year={pbiVerdeRec?.[0]}
-              valueColor={pbiVerdeRec ? (pbiVerdeRec[1] < 0 ? "#FF433D" : pbiVerdeRec[1] < 5 ? "#FFA028" : "#4AF6C3") : "#555"}
-              nota="Valor negativo = el país consume más capital del que genera."
-            />
-            <EstructuralKPI
-              label="Coeficiente de Gini"
-              value={giniRec ? fmtNum(giniRec[1], 1) : null}
-              unit="Desigualdad de ingresos · 0=igualdad perfecta · 100=máx. desigualdad"
-              year={giniRec?.[0]}
-              valueColor={giniRec ? (giniRec[1] > 45 ? "#FF433D" : giniRec[1] > 35 ? "#FFA028" : "#4AF6C3") : "#555"}
-              nota="América Latina promedio ≈ 45"
+              unit="USD corrientes · por habitante · INDEC" year={pbiPcRec?.[0]} valueColor="#FFA028"
             />
             <EstructuralKPI
               label="Población"
               value={poblacionRec ? `${(poblacionRec[1] / 1e6).toFixed(1)}M` : null}
-              unit="Habitantes totales (millones)" year={poblacionRec?.[0]} valueColor="#4FC3F7"
+              unit="Habitantes totales · proyección INDEC" year={poblacionRec?.[0]} valueColor="#4FC3F7"
             />
           </div>
 
+          {/* Fila 2 — Sociales */}
           <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111", marginTop: 1 }}>
             <EstructuralKPI
-              label="Tasa de Natalidad" value={natalidadRec ? fmtNum(natalidadRec[1], 1) : null}
-              unit="Nacimientos por cada 1.000 habitantes" year={natalidadRec?.[0]} valueColor="#4AF6C3"
+              label="Coeficiente de Gini"
+              value={giniRec ? fmtNum(giniRec[1], 1) : null}
+              unit="Desigualdad de ingresos per cápita familiar · EPH INDEC"
+              year={giniRec?.[0]}
+              valueColor={giniRec ? (giniRec[1] > 45 ? "#FF433D" : giniRec[1] > 35 ? "#FFA028" : "#4AF6C3") : "#555"}
+              nota="0 = igualdad perfecta · 100 = máx. desigualdad · AL promedio ≈ 45"
             />
             <EstructuralKPI
-              label="Mortalidad Infantil" value={mortalidadRec ? fmtNum(mortalidadRec[1], 1) : null}
-              unit="Muertes por cada 1.000 nacidos vivos (menores de 1 año)"
-              year={mortalidadRec?.[0]}
-              valueColor={mortalidadRec ? (mortalidadRec[1] > 20 ? "#FF433D" : mortalidadRec[1] > 10 ? "#FFA028" : "#4AF6C3") : "#555"}
+              label="SMVM"
+              value={smvmRec ? `$${smvmRec[1].toLocaleString("es-AR", { maximumFractionDigits: 0 })}` : null}
+              unit="Salario Mínimo Vital y Móvil · ARS · mensual · Ministerio de Trabajo"
+              year={smvmRec?.[0]} valueColor="#4FC3F7"
             />
             <EstructuralKPI
               label="Esperanza de Vida" value={esperanzaRec ? `${fmtNum(esperanzaRec[1], 1)} años` : null}
-              unit="Al nacer · años" year={esperanzaRec?.[0]} valueColor="#4AF6C3"
+              unit="Al nacer · años · World Bank" year={esperanzaRec?.[0]} valueColor="#4AF6C3"
+            />
+          </div>
+
+          {/* Fila 3 — Demográficos */}
+          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111", marginTop: 1 }}>
+            <EstructuralKPI
+              label="Tasa de Natalidad" value={natalidadRec ? fmtNum(natalidadRec[1], 1) : null}
+              unit="Nacimientos por cada 1.000 habitantes · INDEC" year={natalidadRec?.[0]} valueColor="#4AF6C3"
+            />
+            <EstructuralKPI
+              label="Mortalidad Infantil" value={mortalidadRec ? fmtNum(mortalidadRec[1], 1) : null}
+              unit="Muertes por cada 1.000 nacidos vivos (menores de 1 año) · INDEC"
+              year={mortalidadRec?.[0]}
+              valueColor={mortalidadRec ? (mortalidadRec[1] > 20 ? "#FF433D" : mortalidadRec[1] > 10 ? "#FFA028" : "#4AF6C3") : "#555"}
             />
           </div>
 
           <div style={{ padding: "6px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111", lineHeight: 1.6 }}>
-            Fuente: World Bank Open Data (api.worldbank.org) · Indicadores: NY.GDP.MKTP.KD, NY.GNP.ATLS.CD,
-            NY.ADJ.SVNG.GN.ZS, SI.POV.GINI, SP.DYN.CBRT.IN, SP.DYN.IMRT.IN, SP.POP.TOTL, SP.DYN.LE00.IN ·
-            Datos anuales. El año en cada tarjeta = último dato publicado disponible.
+            PBI, per cápita, población, Gini, natalidad y mortalidad: INDEC vía apis.datos.gob.ar ·
+            Esperanza de vida: World Bank (SP.DYN.LE00.IN) · El año en cada tarjeta = último dato publicado disponible.
           </div>
         </>
       )}

@@ -21,16 +21,9 @@ const BASE_URL = "https://apis.datos.gob.ar/series/api/series/"
 
 const WB_BASE = "https://api.worldbank.org/v2/country/AR/indicator"
 
+// Solo esperanza de vida en World Bank (~600ms). El resto migró a datos.gob.ar
 const WB_INDICATORS: Record<string, string> = {
-  pbi_usd:           "NY.GDP.MKTP.KD",
-  pbi_percapita:     "NY.GDP.PCAP.KD",
-  pnb_usd:           "NY.GNP.ATLS.CD",
-  pbi_verde:         "NY.ADJ.SVNG.GN.ZS",
-  gini:              "SI.POV.GINI",
-  natalidad:         "SP.DYN.CBRT.IN",
-  mortalidad_infantil: "SP.DYN.IMRT.IN",
-  poblacion:         "SP.POP.TOTL",
-  esperanza_vida:    "SP.DYN.LE00.IN",
+  esperanza_vida: "SP.DYN.LE00.IN",
 }
 
 // IDs verificados de la API pública datos.gob.ar
@@ -62,6 +55,14 @@ const SERIES_IDS: Record<string, string> = {
   tasa_actividad:   "43.2_ECTAT_0_T_33",
   tasa_empleo:      "44.2_ECTET_0_T_30",
   tasa_subocupacion:"46.2_ECTST_0_T_36",
+  // ESTRUCTURALES — INDEC vía datos.gob.ar (reemplazo de World Bank lento)
+  pbi_usd_indec:    "9.2_PDPC_2004_T_30",    // PIB en USD corrientes (trimestral → anual)
+  pbi_percapita_usd:"9.2_PPCDC_2004_T_33",   // PIB per cápita USD corrientes
+  poblacion_indec:  "9.2_P_2004_T_9",         // Población Argentina
+  gini_indec:       "65.1_CGI_0_0_21",         // Coeficiente Gini EPH (semestral)
+  natalidad_indec:  "tn_arg",                  // Tasa de natalidad
+  mortalidad_indec: "tmi_arg",                 // Tasa mortalidad infantil
+  smvm:             "57.1_SMVMM_0_M_34",       // Salario Mínimo Vital y Móvil (mensual)
 }
 
 // In-memory cache
@@ -227,27 +228,37 @@ export async function GET(request: NextRequest) {
     }
 
     if (endpoint === "estructural") {
-      const [
-        pbi_usd, pbi_percapita, pnb_usd, pbi_verde,
-        gini, natalidad, mortalidad_infantil, poblacion, esperanza_vida,
-      ] = await Promise.all([
-        fetchWorldBank(WB_INDICATORS.pbi_usd, 15),
-        fetchWorldBank(WB_INDICATORS.pbi_percapita, 15),
-        fetchWorldBank(WB_INDICATORS.pnb_usd, 15),
-        fetchWorldBank(WB_INDICATORS.pbi_verde, 15),
-        fetchWorldBank(WB_INDICATORS.gini, 15),
-        fetchWorldBank(WB_INDICATORS.natalidad, 15),
-        fetchWorldBank(WB_INDICATORS.mortalidad_infantil, 15),
-        fetchWorldBank(WB_INDICATORS.poblacion, 5),
-        fetchWorldBank(WB_INDICATORS.esperanza_vida, 15),
+      // 6 series INDEC en un solo request + 1 WB (esperanza vida, ~600ms)
+      const [indec, esperanza_vida] = await Promise.all([
+        getMultiserie(
+          ["pbi_usd_indec", "pbi_percapita_usd", "poblacion_indec", "gini_indec", "natalidad_indec", "mortalidad_indec", "smvm"],
+          5,
+        ),
+        fetchWorldBank(WB_INDICATORS.esperanza_vida, 5),
       ])
 
+      // Gini: datos.gob.ar devuelve escala 0–1 (e.g. 0.442) → convertir a 0–100
+      if (indec.gini_indec) {
+        indec.gini_indec = indec.gini_indec.map(
+          ([d, v]) => [d, parseFloat((v * 100).toFixed(1))] as [string, number],
+        )
+      }
+
       return NextResponse.json({
-        data: { pbi_usd, pbi_percapita, pnb_usd, pbi_verde, gini, natalidad, mortalidad_infantil, poblacion, esperanza_vida },
+        data: {
+          pbi_usd:           indec.pbi_usd_indec    || [],
+          pbi_percapita:     indec.pbi_percapita_usd || [],
+          poblacion:         indec.poblacion_indec   || [],
+          gini:              indec.gini_indec        || [],
+          natalidad:         indec.natalidad_indec   || [],
+          mortalidad_infantil: indec.mortalidad_indec || [],
+          smvm:              indec.smvm              || [],
+          esperanza_vida,
+        },
         updated_at: new Date().toISOString(),
-        source: "World Bank Open Data API · api.worldbank.org",
-        frecuencia: "anual",
-        nota: "PBI verde = Ahorro neto ajustado por recursos naturales y contaminación (% del INB). Datos anuales.",
+        source: "INDEC vía apis.datos.gob.ar · World Bank (esperanza de vida)",
+        frecuencia: "anual/trimestral",
+        nota: "PBI y per cápita: millones/unidades de USD corrientes. Gini: EPH INDEC escala 0–100. SMVM: Ministerio de Trabajo.",
       })
     }
 
