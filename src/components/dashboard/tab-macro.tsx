@@ -418,6 +418,23 @@ function EmaeView() {
   const esperanzaRec  = estructuralData?.esperanza_vida?.[0]
   const poblacionRec  = estructuralData?.poblacion?.[0]
 
+  // Merge series demográficas en formato BBGLineChart
+  const demograficoData = (() => {
+    type DRow = { date: string; natalidad: number | null; mortalidad: number | null; esperanza: number | null }
+    const m = new Map<string, DRow>()
+    // Normaliza "2023" → "2023-01-01" para alinear fuentes distintas
+    const norm = (d: string) => d.length === 4 ? `${d}-01-01` : d
+    const set = (raw: string, k: keyof Omit<DRow, "date">, v: number) => {
+      const d = norm(raw)
+      const r = m.get(d) ?? { date: d, natalidad: null, mortalidad: null, esperanza: null }
+      m.set(d, { ...r, [k]: v })
+    }
+    for (const [d, v] of (estructuralData?.natalidad ?? [])) set(d, "natalidad", v)
+    for (const [d, v] of (estructuralData?.mortalidad_infantil ?? [])) set(d, "mortalidad", v)
+    for (const [d, v] of (estructuralData?.esperanza_vida ?? [])) set(d, "esperanza", v)
+    return Array.from(m.values()).sort((a, b) => a.date.localeCompare(b.date))
+  })()
+
   // PBI en millones de USD → convertir a billones para display
   const fmtBillones = (v: number | undefined) => {
     if (!v) return null
@@ -568,6 +585,41 @@ function EmaeView() {
               valueColor={mortalidadRec ? (mortalidadRec[1] > 20 ? "#FF433D" : mortalidadRec[1] > 10 ? "#FFA028" : "#4AF6C3") : "#555"}
             />
           </div>
+
+          {/* Gráfico 1 — Natalidad y Mortalidad Infantil */}
+          {demograficoData.length > 0 && (
+            <div style={{ padding: "8px 0 0" }}>
+              <BBGLineChart
+                title="NATALIDAD Y MORTALIDAD INFANTIL — EVOLUCIÓN HISTÓRICA"
+                data={demograficoData}
+                lines={[
+                  { key: "natalidad",  name: "Tasa de Natalidad (c/1.000 hab.)",       color: "#4AF6C3" },
+                  { key: "mortalidad", name: "Mortalidad Infantil (c/1.000 nac. vivos)", color: "#FF433D" },
+                ]}
+                height={220}
+                yAxisLabel="Por 1.000"
+                formatValue={(v) => fmtNum(v, 1)}
+                defaultRange="all"
+              />
+            </div>
+          )}
+
+          {/* Gráfico 2 — Esperanza de vida */}
+          {demograficoData.some(d => d.esperanza !== null) && (
+            <div style={{ padding: "8px 0 0" }}>
+              <BBGLineChart
+                title="ESPERANZA DE VIDA AL NACER"
+                data={demograficoData}
+                lines={[
+                  { key: "esperanza", name: "Esperanza de vida (años)", color: "#4FC3F7" },
+                ]}
+                height={180}
+                yAxisLabel="Años"
+                formatValue={(v) => fmtNum(v, 1)}
+                defaultRange="all"
+              />
+            </div>
+          )}
 
           <div style={{ padding: "6px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111", lineHeight: 1.6 }}>
             PBI, per cápita, población, Gini, natalidad y mortalidad: INDEC vía apis.datos.gob.ar ·
