@@ -17,7 +17,7 @@ import { BBGAreaChart } from "../charts/bbg-area-chart"
 import { BBGLineChart } from "../charts/bbg-line-chart"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceLine,
+  ResponsiveContainer, ReferenceLine, Legend,
 } from "recharts"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -598,38 +598,74 @@ function EmaeView() {
             />
           </div>
 
-          {/* Gráfico 1 — Natalidad y Mortalidad Infantil */}
+          {/* Gráfico 1 — Natalidad y Mortalidad Infantil (barras agrupadas) */}
           {demograficoData.length > 0 && (
-            <div style={{ padding: "8px 0 0" }}>
-              <BBGLineChart
-                title="NATALIDAD Y MORTALIDAD INFANTIL — EVOLUCIÓN HISTÓRICA"
-                data={demograficoData}
-                lines={[
-                  { key: "natalidad",  name: "Tasa de Natalidad (c/1.000 hab.)",       color: "#4AF6C3" },
-                  { key: "mortalidad", name: "Mortalidad Infantil (c/1.000 nac. vivos)", color: "#FF433D" },
-                ]}
-                height={220}
-                yAxisLabel="Por 1.000"
-                formatValue={(v) => fmtNum(v, 1)}
-                defaultRange="all"
-              />
+            <div className="bbg-panel" style={{ marginTop: 8 }}>
+              <div className="bbg-panel-header">NATALIDAD Y MORTALIDAD INFANTIL — EVOLUCIÓN HISTÓRICA</div>
+              <div style={{ padding: "8px 4px 4px 0" }}>
+                <ResponsiveContainer width="100%" height={210}>
+                  <BarChart data={demograficoData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }} barCategoryGap="30%" barGap={3}>
+                    <CartesianGrid stroke="#1a1a1a" strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(v: string) => v.slice(0, 4)}
+                      tick={{ fill: "#555", fontSize: 9 }}
+                      axisLine={{ stroke: "#333" }}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: "#555", fontSize: 9 }}
+                      axisLine={{ stroke: "#333" }}
+                      tickLine={false}
+                      tickFormatter={(v: number) => fmtNum(v, 1)}
+                      label={{ value: "Por 1.000", angle: -90, position: "insideLeft", fill: "#555", fontSize: 9 }}
+                    />
+                    <Tooltip
+                      contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10, color: "#FFA028" }}
+                      formatter={(v: number | undefined) => v != null ? fmtNum(v, 1) : "—"}
+                      cursor={{ fill: "rgba(255,255,255,0.03)" }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 9, color: "#888" }} iconType="rect" iconSize={10} />
+                    <Bar dataKey="natalidad" name="Natalidad (c/1.000 hab.)"       fill="#4AF6C3" radius={[2, 2, 0, 0]} maxBarSize={20} />
+                    <Bar dataKey="mortalidad" name="Mort. Infantil (c/1.000 nac.)" fill="#FF433D" radius={[2, 2, 0, 0]} maxBarSize={20} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           )}
 
-          {/* Gráfico 2 — Esperanza de vida */}
+          {/* Gráfico 2 — Esperanza de Vida (barras simples) */}
           {demograficoData.some(d => d.esperanza !== null) && (
-            <div style={{ padding: "8px 0 0" }}>
-              <BBGLineChart
-                title="ESPERANZA DE VIDA AL NACER"
-                data={demograficoData}
-                lines={[
-                  { key: "esperanza", name: "Esperanza de vida (años)", color: "#4FC3F7" },
-                ]}
-                height={180}
-                yAxisLabel="Años"
-                formatValue={(v) => fmtNum(v, 1)}
-                defaultRange="all"
-              />
+            <div className="bbg-panel" style={{ marginTop: 8 }}>
+              <div className="bbg-panel-header">ESPERANZA DE VIDA AL NACER</div>
+              <div style={{ padding: "8px 4px 4px 0" }}>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={demograficoData.filter(d => d.esperanza !== null)} margin={{ top: 4, right: 12, left: 0, bottom: 0 }} barCategoryGap="40%">
+                    <CartesianGrid stroke="#1a1a1a" strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(v: string) => v.slice(0, 4)}
+                      tick={{ fill: "#555", fontSize: 9 }}
+                      axisLine={{ stroke: "#333" }}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      domain={["auto", "auto"]}
+                      tick={{ fill: "#555", fontSize: 9 }}
+                      axisLine={{ stroke: "#333" }}
+                      tickLine={false}
+                      tickFormatter={(v: number) => fmtNum(v, 1)}
+                      label={{ value: "Años", angle: -90, position: "insideLeft", fill: "#555", fontSize: 9 }}
+                    />
+                    <Tooltip
+                      contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10, color: "#FFA028" }}
+                      formatter={(v: number | undefined) => v != null ? [`${fmtNum(v, 1)} años`, "Esperanza de vida"] : ["—", "Esperanza de vida"]}
+                      cursor={{ fill: "rgba(255,255,255,0.03)" }}
+                    />
+                    <Bar dataKey="esperanza" name="Esperanza de vida (años)" fill="#4FC3F7" radius={[2, 2, 0, 0]} maxBarSize={28} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           )}
 
