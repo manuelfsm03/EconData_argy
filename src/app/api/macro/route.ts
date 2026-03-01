@@ -88,7 +88,7 @@ function setCache(key: string, data: unknown, ttlSec: number) {
 async function getMultiserie(keys: string[], limit = 36): Promise<Record<string, [string, number][]>> {
   const cacheKey = `multi_${keys.join("_")}_${limit}`
   const cached = getCache<Record<string, [string, number][]>>(cacheKey)
-  if (cached) return cached
+  if (cached) return structuredClone(cached)
 
   const validKeys = keys.filter((k) => k in SERIES_IDS)
   const ids = validKeys.map((k) => SERIES_IDS[k]).join(",")
@@ -111,7 +111,7 @@ async function getMultiserie(keys: string[], limit = 36): Promise<Record<string,
   }
 
   setCache(cacheKey, result, 3600)
-  return result
+  return structuredClone(result)
 }
 
 async function fetchWorldBank(indicatorId: string, limit = 20): Promise<[string, number][]> {
