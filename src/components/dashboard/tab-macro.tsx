@@ -330,6 +330,17 @@ type ConfianzaData = {
   ultimo: ConfianzaRow | null
 }
 
+type IcgRow = {
+  date: string
+  icg_general: number | null
+  evaluacion: number | null
+  interes: number | null
+  eficiencia: number | null
+  honestidad: number | null
+  capacidad: number | null
+}
+type IcgData = { data: IcgRow[]; ultimo: IcgRow | null }
+
 // ── EMAE Tab ──────────────────────────────────────────────────────────────────
 
 function EmaeView() {
@@ -345,6 +356,8 @@ function EmaeView() {
   const [actividadLoading, setActividadLoading] = useState(true)
   const [confianzaData, setConfianzaData] = useState<ConfianzaData | null>(null)
   const [confianzaLoading, setConfianzaLoading] = useState(true)
+  const [icgData, setIcgData] = useState<IcgData | null>(null)
+  const [icgLoading, setIcgLoading] = useState(true)
 
   useEffect(() => {
     fetch("/api/macro?endpoint=emae")
@@ -376,6 +389,11 @@ function EmaeView() {
       .then(r => r.json())
       .then(j => { setConfianzaData(j); setConfianzaLoading(false) })
       .catch(() => setConfianzaLoading(false))
+
+    fetch("/api/macro?endpoint=icg")
+      .then(r => r.json())
+      .then(j => { setIcgData(j); setIcgLoading(false) })
+      .catch(() => setIcgLoading(false))
   }, [])
 
   if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando EMAE...</div>
@@ -831,6 +849,78 @@ function EmaeView() {
             Fuente: Universidad Torcuato Di Tella (UTDT) · Encuesta mensual a hogares del AMBA e interior urbano ·
             Índice compuesto: situación personal + situación macroeconómica + bienes durables ·
             Escala: por debajo de 35 = pesimismo marcado · 35-50 = cautela · 50+ = optimismo.
+          </div>
+        </>
+      )}
+
+      {/* ══ CONFIANZA EN EL GOBIERNO ══════════════════════════════════════════ */}
+      <SectionHeader
+        title="Índice de Confianza en el Gobierno — ICG"
+        source="UTDT · Universidad Torcuato Di Tella · Encuesta mensual"
+      />
+      {icgLoading ? (
+        <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando ICG...</div>
+      ) : !icgData?.ultimo ? (
+        <div style={{ padding: 12, color: "#444", fontSize: 11 }}>Sin datos disponibles</div>
+      ) : (
+        <>
+          {/* KPIs último período */}
+          <div style={{ display: "flex", gap: 1, padding: 1, background: "#111", flexWrap: "wrap" }}>
+            <KPI
+              label="ICG General"
+              value={icgData.ultimo.icg_general ? fmtNum(icgData.ultimo.icg_general, 2) : null}
+              unit={`Índice · ${icgData.ultimo.date} · Sobre 5`}
+              valueColor={
+                icgData.ultimo.icg_general
+                  ? icgData.ultimo.icg_general >= 3 ? "#4AF6C3"
+                    : icgData.ultimo.icg_general >= 2 ? "#FFA028" : "#FF433D"
+                  : "#555"
+              }
+            />
+            <KPI
+              label="Honestidad"
+              value={icgData.ultimo.honestidad ? fmtNum(icgData.ultimo.honestidad, 2) : null}
+              unit="Subíndice — percepción de probidad"
+              valueColor="#4AF6C3"
+            />
+            <KPI
+              label="Capacidad"
+              value={icgData.ultimo.capacidad ? fmtNum(icgData.ultimo.capacidad, 2) : null}
+              unit="Subíndice — competencia percibida"
+              valueColor="#7C83FD"
+            />
+            <KPI
+              label="Eficiencia"
+              value={icgData.ultimo.eficiencia ? fmtNum(icgData.ultimo.eficiencia, 2) : null}
+              unit="Subíndice — gestión de recursos"
+              valueColor="#FFD54F"
+            />
+          </div>
+
+          {/* Gráfico ICG — evolución y subíndices */}
+          <div style={{ padding: "8px 0" }}>
+            <BBGLineChart
+              title="ICG — EVOLUCIÓN Y SUBÍNDICES"
+              data={icgData.data}
+              lines={[
+                { key: "icg_general", name: "ICG General", color: "#FFA028" },
+                { key: "honestidad",  name: "Honestidad",  color: "#4AF6C3" },
+                { key: "capacidad",   name: "Capacidad",   color: "#7C83FD" },
+                { key: "eficiencia",  name: "Eficiencia",  color: "#FFD54F" },
+                { key: "evaluacion",  name: "Evaluación",  color: "#4FC3F7" },
+              ]}
+              height={240}
+              yAxisLabel="Índice (0–5)"
+              formatValue={(v) => fmtNum(v, 2)}
+              defaultRange="all"
+            />
+          </div>
+
+          {/* Nota metodológica */}
+          <div style={{ padding: "6px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111", lineHeight: 1.6 }}>
+            Fuente: Universidad Torcuato Di Tella (UTDT) · Encuesta mensual · Escala 0–5 ·
+            Subíndices: evaluación general, interés general, eficiencia, honestidad y capacidad ·
+            Por debajo de 2 = desconfianza marcada · 2–3 = confianza moderada · 3+ = confianza alta.
           </div>
         </>
       )}

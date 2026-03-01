@@ -24,6 +24,7 @@ const CSV_URLS = {
   uci:            "https://infra.datos.gob.ar/catalog/sspm/dataset/31/distribution/31.3/download/utilizacion-capacidad-instalada-industria-valores-mensuales-base-2004.csv",
   supermercados:  "https://infra.datos.gob.ar/catalog/sspm/dataset/455/distribution/455.1/download/ventas-totales-supermercados-2.csv",
   icc_mensual:    "https://infra.datos.gob.ar/catalog/sspm/dataset/380/distribution/380.3/download/indice-confianza-consumidor-valores-mensuales.csv",
+  icg_mensual:    "https://infra.datos.gob.ar/catalog/sspm/dataset/370/distribution/370.3/download/indice-confianza-gobierno-valores-mensuales.csv",
 }
 
 const WB_BASE = "https://api.worldbank.org/v2/country/AR/indicator"
@@ -380,6 +381,30 @@ export async function GET(request: NextRequest) {
         updated_at: new Date().toISOString(),
         source: "datos.gob.ar · UTDT — Universidad Torcuato Di Tella",
         nota: "Índice compuesto. Encuesta mensual a hogares. Escala: sobre 50 = optimismo.",
+      })
+    }
+
+    // ── CONFIANZA EN EL GOBIERNO (UTDT) ─────────────────────────────────────
+    if (endpoint === "icg") {
+      const rows = await fetchCSVData(CSV_URLS.icg_mensual)
+      const data = rows
+        .filter(r => r.icg_nivel_general && r.icg_nivel_general !== "")
+        .slice(-36)
+        .map(r => ({
+          date:       r.indice_tiempo ?? "",
+          icg_general: parseFloat(r.icg_nivel_general) || null,
+          evaluacion:  parseFloat(r.evaluacion_general) || null,
+          interes:     parseFloat(r.interes_general) || null,
+          eficiencia:  parseFloat(r.eficiencia) || null,
+          honestidad:  parseFloat(r.honestidad) || null,
+          capacidad:   parseFloat(r.capacidad) || null,
+        }))
+      return NextResponse.json({
+        data,
+        ultimo: data[data.length - 1] ?? null,
+        updated_at: new Date().toISOString(),
+        source: "datos.gob.ar · UTDT — Universidad Torcuato Di Tella",
+        nota: "Índice compuesto. Encuesta mensual. Escala 0–5. Por encima de 2.5 = confianza relativa.",
       })
     }
 
