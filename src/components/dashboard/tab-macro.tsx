@@ -15,6 +15,10 @@
 import { useState, useEffect, useCallback } from "react"
 import { BBGAreaChart } from "../charts/bbg-area-chart"
 import { BBGLineChart } from "../charts/bbg-line-chart"
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, ReferenceLine,
+} from "recharts"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -330,6 +334,8 @@ type ConfianzaData = {
   ultimo: ConfianzaRow | null
 }
 
+type PiramideRow = { age: string; varones: number; mujeres: number }
+
 type IcgRow = {
   date: string
   icg_general: number | null
@@ -358,6 +364,7 @@ function EmaeView() {
   const [confianzaLoading, setConfianzaLoading] = useState(true)
   const [icgData, setIcgData] = useState<IcgData | null>(null)
   const [icgLoading, setIcgLoading] = useState(true)
+  const [piramideData, setPiramideData] = useState<PiramideRow[]>([])
 
   useEffect(() => {
     fetch("/api/macro?endpoint=emae")
@@ -394,6 +401,11 @@ function EmaeView() {
       .then(r => r.json())
       .then(j => { setIcgData(j); setIcgLoading(false) })
       .catch(() => setIcgLoading(false))
+
+    fetch("/api/macro?endpoint=piramide")
+      .then(r => r.json())
+      .then(j => setPiramideData(j.data ?? []))
+      .catch(() => {})
   }, [])
 
   if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando EMAE...</div>
@@ -621,9 +633,63 @@ function EmaeView() {
             </div>
           )}
 
+          {/* Pirámide Poblacional — Censo 2022 INDEC */}
+          {piramideData.length > 0 && (
+            <div style={{ padding: "8px 0 0" }}>
+              <div style={{ padding: "6px 10px 4px", fontSize: 9, fontWeight: 700, color: "#aaa", letterSpacing: 1, textTransform: "uppercase" }}>
+                PIRÁMIDE POBLACIONAL — CENSO 2022
+                <span style={{ fontSize: 8, fontWeight: 400, color: "#555", marginLeft: 8 }}>miles de personas</span>
+              </div>
+              {/* Leyenda */}
+              <div style={{ display: "flex", gap: 16, padding: "0 10px 6px", fontSize: 8, color: "#666" }}>
+                <span><span style={{ color: "#4FC3F7" }}>■</span> Varones</span>
+                <span><span style={{ color: "#F48FB1" }}>■</span> Mujeres</span>
+              </div>
+              <ResponsiveContainer width="100%" height={360}>
+                <BarChart
+                  data={[...piramideData].reverse()}
+                  layout="vertical"
+                  margin={{ top: 0, right: 20, left: 36, bottom: 0 }}
+                  barCategoryGap="10%"
+                  barGap={1}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    domain={[-2000, 2000]}
+                    tickFormatter={(v) => String(Math.abs(v))}
+                    tick={{ fontSize: 8, fill: "#555" }}
+                    axisLine={{ stroke: "#333" }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="age"
+                    tick={{ fontSize: 8, fill: "#888" }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={34}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "rgba(255,255,255,0.03)" }}
+                    contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10, borderRadius: 4 }}
+                    labelStyle={{ color: "#aaa", fontWeight: 700 }}
+                    formatter={(value: number | undefined, name: string | undefined) => [
+                      value != null ? `${Math.abs(value).toLocaleString("es-AR")}k` : "—",
+                      name === "varones" ? "Varones" : "Mujeres",
+                    ]}
+                  />
+                  <ReferenceLine x={0} stroke="#333" strokeWidth={1} />
+                  <Bar dataKey="varones" fill="#4FC3F7" radius={[0, 2, 2, 0]} maxBarSize={14} />
+                  <Bar dataKey="mujeres" fill="#F48FB1" radius={[2, 0, 0, 2]} maxBarSize={14} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
           <div style={{ padding: "6px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111", lineHeight: 1.6 }}>
             PBI, per cápita, población, Gini, natalidad y mortalidad: INDEC vía apis.datos.gob.ar ·
-            Esperanza de vida: World Bank (SP.DYN.LE00.IN) · El año en cada tarjeta = último dato publicado disponible.
+            Esperanza de vida: World Bank (SP.DYN.LE00.IN) · Pirámide: Censo Nacional de Población 2022 (INDEC) · El año en cada tarjeta = último dato publicado disponible.
           </div>
         </>
       )}

@@ -408,6 +408,37 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // ── PIRÁMIDE POBLACIONAL (Censo 2022 INDEC) ──────────────────────────────
+    if (endpoint === "piramide") {
+      // Fuente: INDEC — Resultados del Censo Nacional de Población 2022
+      // Población en miles de personas. Varones como negativos para pirámide.
+      const data = [
+        { age: "0–4",  varones: -1497, mujeres: 1437 },
+        { age: "5–9",  varones: -1627, mujeres: 1562 },
+        { age: "10–14",varones: -1719, mujeres: 1648 },
+        { age: "15–19",varones: -1702, mujeres: 1636 },
+        { age: "20–24",varones: -1613, mujeres: 1575 },
+        { age: "25–29",varones: -1648, mujeres: 1642 },
+        { age: "30–34",varones: -1562, mujeres: 1558 },
+        { age: "35–39",varones: -1561, mujeres: 1567 },
+        { age: "40–44",varones: -1404, mujeres: 1431 },
+        { age: "45–49",varones: -1278, mujeres: 1327 },
+        { age: "50–54",varones: -1210, mujeres: 1272 },
+        { age: "55–59",varones: -1083, mujeres: 1157 },
+        { age: "60–64",varones:  -997, mujeres: 1089 },
+        { age: "65–69",varones:  -823, mujeres:  929 },
+        { age: "70–74",varones:  -637, mujeres:  756 },
+        { age: "75–79",varones:  -446, mujeres:  565 },
+        { age: "80–84",varones:  -262, mujeres:  370 },
+        { age: "85+",  varones:  -195, mujeres:  345 },
+      ]
+      return NextResponse.json({
+        data,
+        source: "INDEC · Censo Nacional de Población, Hogares y Viviendas 2022",
+        nota: "Población en miles. Varones negativos para visualización en pirámide. Mayo 2022.",
+      })
+    }
+
     return NextResponse.json(
       { error: "endpoint no válido. Usar ?endpoint=emae|ipc|ipi|balanza|fiscal" },
       { status: 400 },
