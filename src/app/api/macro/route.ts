@@ -195,6 +195,8 @@ function calcInteranual(niveles: [string, number][]): [string, number][] {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const endpoint = searchParams.get("endpoint") ?? "emae"
+  const yearParam   = searchParams.get("year")    ?? "2025"
+  const countryParam = searchParams.get("country") ?? "32"
 
   try {
     if (endpoint === "emae") {
@@ -408,34 +410,32 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // ── PIRÁMIDE POBLACIONAL (Censo 2022 INDEC) ──────────────────────────────
+    // ── PIRÁMIDE POBLACIONAL (populationpyramid.net · UN WPP 2024) ───────────
     if (endpoint === "piramide") {
-      // Fuente: INDEC — Resultados del Censo Nacional de Población 2022
-      // Población en miles de personas. Varones como negativos para pirámide.
-      const data = [
-        { age: "0–4",  varones: -1497, mujeres: 1437 },
-        { age: "5–9",  varones: -1627, mujeres: 1562 },
-        { age: "10–14",varones: -1719, mujeres: 1648 },
-        { age: "15–19",varones: -1702, mujeres: 1636 },
-        { age: "20–24",varones: -1613, mujeres: 1575 },
-        { age: "25–29",varones: -1648, mujeres: 1642 },
-        { age: "30–34",varones: -1562, mujeres: 1558 },
-        { age: "35–39",varones: -1561, mujeres: 1567 },
-        { age: "40–44",varones: -1404, mujeres: 1431 },
-        { age: "45–49",varones: -1278, mujeres: 1327 },
-        { age: "50–54",varones: -1210, mujeres: 1272 },
-        { age: "55–59",varones: -1083, mujeres: 1157 },
-        { age: "60–64",varones:  -997, mujeres: 1089 },
-        { age: "65–69",varones:  -823, mujeres:  929 },
-        { age: "70–74",varones:  -637, mujeres:  756 },
-        { age: "75–79",varones:  -446, mujeres:  565 },
-        { age: "80–84",varones:  -262, mujeres:  370 },
-        { age: "85+",  varones:  -195, mujeres:  345 },
-      ]
+      const url = `https://www.populationpyramid.net/api/pp/${countryParam}/${yearParam}/?csv=true`
+      const rows = await fetchCSVData(url, 86400) // 24h — datos ONU estables
+      if (!rows.length) {
+        return NextResponse.json({ error: "Sin datos para ese país/año", data: [] }, { status: 404 })
+      }
+      let totalM = 0, totalF = 0
+      const data = rows
+        .filter(r => r.Age)
+        .map(r => {
+          const m = parseInt(r.M ?? "0") || 0
+          const f = parseInt(r.F ?? "0") || 0
+          totalM += m
+          totalF += f
+          return { age: r.Age, varones: -m, mujeres: f }
+        })
       return NextResponse.json({
         data,
-        source: "INDEC · Censo Nacional de Población, Hogares y Viviendas 2022",
-        nota: "Población en miles. Varones negativos para visualización en pirámide. Mayo 2022.",
+        year: yearParam,
+        country: countryParam,
+        total_m: totalM,
+        total_f: totalF,
+        total: totalM + totalF,
+        proyeccion: parseInt(yearParam) > 2025,
+        source: "populationpyramid.net · UN World Population Prospects 2024",
       })
     }
 

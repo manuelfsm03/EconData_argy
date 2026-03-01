@@ -335,6 +335,107 @@ type ConfianzaData = {
 }
 
 type PiramideRow = { age: string; varones: number; mujeres: number }
+type PiramideMeta = { year: string; country: string; total_m: number; total_f: number; total: number; proyeccion: boolean }
+
+// ── Países para el explorador de pirámides ────────────────────────────────────
+const PAISES = [
+  // América del Sur
+  { code: "32",  name: "Argentina" },
+  { code: "68",  name: "Bolivia" },
+  { code: "76",  name: "Brasil" },
+  { code: "152", name: "Chile" },
+  { code: "170", name: "Colombia" },
+  { code: "218", name: "Ecuador" },
+  { code: "600", name: "Paraguay" },
+  { code: "604", name: "Perú" },
+  { code: "858", name: "Uruguay" },
+  { code: "862", name: "Venezuela" },
+  // América del Norte y Central
+  { code: "124", name: "Canadá" },
+  { code: "484", name: "México" },
+  { code: "840", name: "Estados Unidos" },
+  // Europa
+  { code: "276", name: "Alemania" },
+  { code: "724", name: "España" },
+  { code: "250", name: "Francia" },
+  { code: "380", name: "Italia" },
+  { code: "643", name: "Rusia" },
+  { code: "826", name: "Reino Unido" },
+  { code: "792", name: "Turquía" },
+  // Asia
+  { code: "156", name: "China" },
+  { code: "356", name: "India" },
+  { code: "392", name: "Japón" },
+  { code: "410", name: "Corea del Sur" },
+  { code: "682", name: "Arabia Saudita" },
+  // África y Oceanía
+  { code: "566", name: "Nigeria" },
+  { code: "710", name: "Sudáfrica" },
+  { code: "818", name: "Egipto" },
+  { code: "36",  name: "Australia" },
+  // Mundo
+  { code: "900", name: "Mundo" },
+]
+
+// ── Componente reutilizable de pirámide ───────────────────────────────────────
+function PyramidChart({ data, height = 400 }: { data: PiramideRow[]; height?: number }) {
+  const maxVal = data.length > 0
+    ? Math.max(...data.map(r => Math.max(Math.abs(r.varones), r.mujeres)))
+    : 2000000
+  const fmtPop = (v: number) => {
+    const a = Math.abs(v)
+    if (a >= 1e6) return `${(a / 1e6).toFixed(1)}M`
+    if (a >= 1000) return `${Math.round(a / 1000)}k`
+    return String(Math.round(a))
+  }
+  return (
+    <>
+      <div style={{ display: "flex", gap: 16, padding: "6px 12px", fontSize: 8, color: "#666" }}>
+        <span><span style={{ color: "#4FC3F7" }}>■</span> Varones</span>
+        <span><span style={{ color: "#F48FB1" }}>■</span> Mujeres</span>
+      </div>
+      <ResponsiveContainer width="100%" height={height}>
+        <BarChart
+          data={[...data].reverse()}
+          layout="vertical"
+          margin={{ top: 0, right: 20, left: 40, bottom: 4 }}
+          barCategoryGap="10%"
+          barGap={1}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" horizontal={false} />
+          <XAxis
+            type="number"
+            domain={[-maxVal * 1.1, maxVal * 1.1]}
+            tickFormatter={fmtPop}
+            tick={{ fontSize: 8, fill: "#555" }}
+            axisLine={{ stroke: "#333" }}
+            tickLine={false}
+          />
+          <YAxis
+            type="category"
+            dataKey="age"
+            tick={{ fontSize: 8, fill: "#888" }}
+            axisLine={false}
+            tickLine={false}
+            width={38}
+          />
+          <Tooltip
+            cursor={{ fill: "rgba(255,255,255,0.03)" }}
+            contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10, borderRadius: 4 }}
+            labelStyle={{ color: "#aaa", fontWeight: 700 }}
+            formatter={(value: number | undefined, name: string | undefined) => [
+              value != null ? fmtPop(value) : "—",
+              name === "varones" ? "Varones" : "Mujeres",
+            ]}
+          />
+          <ReferenceLine x={0} stroke="#333" strokeWidth={1} />
+          <Bar dataKey="varones" fill="#4FC3F7" radius={[0, 2, 2, 0]} maxBarSize={14} />
+          <Bar dataKey="mujeres" fill="#F48FB1" radius={[2, 0, 0, 2]} maxBarSize={14} />
+        </BarChart>
+      </ResponsiveContainer>
+    </>
+  )
+}
 
 type IcgRow = {
   date: string
@@ -365,6 +466,17 @@ function EmaeView() {
   const [icgData, setIcgData] = useState<IcgData | null>(null)
   const [icgLoading, setIcgLoading] = useState(true)
   const [piramideData, setPiramideData] = useState<PiramideRow[]>([])
+  const [piramideMeta, setPiramideMeta] = useState<PiramideMeta | null>(null)
+  const [piramideLoading, setPiramideLoading] = useState(true)
+  const [piramideYear, setPiramideYear] = useState(2025)
+
+  useEffect(() => {
+    setPiramideLoading(true)
+    fetch(`/api/macro?endpoint=piramide&year=${piramideYear}&country=32`)
+      .then(r => r.json())
+      .then(j => { setPiramideData(j.data ?? []); setPiramideMeta(j); setPiramideLoading(false) })
+      .catch(() => setPiramideLoading(false))
+  }, [piramideYear])
 
   useEffect(() => {
     fetch("/api/macro?endpoint=emae")
@@ -402,10 +514,6 @@ function EmaeView() {
       .then(j => { setIcgData(j); setIcgLoading(false) })
       .catch(() => setIcgLoading(false))
 
-    fetch("/api/macro?endpoint=piramide")
-      .then(r => r.json())
-      .then(j => setPiramideData(j.data ?? []))
-      .catch(() => {})
   }, [])
 
   if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando EMAE...</div>
@@ -669,63 +777,56 @@ function EmaeView() {
             </div>
           )}
 
-          {/* Pirámide Poblacional — Censo 2022 INDEC */}
-          {piramideData.length > 0 && (
-            <div style={{ padding: "8px 0 0" }}>
-              <div style={{ padding: "6px 10px 4px", fontSize: 9, fontWeight: 700, color: "#aaa", letterSpacing: 1, textTransform: "uppercase" }}>
-                PIRÁMIDE POBLACIONAL — CENSO 2022
-                <span style={{ fontSize: 8, fontWeight: 400, color: "#555", marginLeft: 8 }}>miles de personas</span>
-              </div>
-              {/* Leyenda */}
-              <div style={{ display: "flex", gap: 16, padding: "0 10px 6px", fontSize: 8, color: "#666" }}>
-                <span><span style={{ color: "#4FC3F7" }}>■</span> Varones</span>
-                <span><span style={{ color: "#F48FB1" }}>■</span> Mujeres</span>
-              </div>
-              <ResponsiveContainer width="100%" height={360}>
-                <BarChart
-                  data={[...piramideData].reverse()}
-                  layout="vertical"
-                  margin={{ top: 0, right: 20, left: 36, bottom: 0 }}
-                  barCategoryGap="10%"
-                  barGap={1}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" horizontal={false} />
-                  <XAxis
-                    type="number"
-                    domain={[-2000, 2000]}
-                    tickFormatter={(v) => String(Math.abs(v))}
-                    tick={{ fontSize: 8, fill: "#555" }}
-                    axisLine={{ stroke: "#333" }}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="age"
-                    tick={{ fontSize: 8, fill: "#888" }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={34}
-                  />
-                  <Tooltip
-                    cursor={{ fill: "rgba(255,255,255,0.03)" }}
-                    contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10, borderRadius: 4 }}
-                    labelStyle={{ color: "#aaa", fontWeight: 700 }}
-                    formatter={(value: number | undefined, name: string | undefined) => [
-                      value != null ? `${Math.abs(value).toLocaleString("es-AR")}k` : "—",
-                      name === "varones" ? "Varones" : "Mujeres",
-                    ]}
-                  />
-                  <ReferenceLine x={0} stroke="#333" strokeWidth={1} />
-                  <Bar dataKey="varones" fill="#4FC3F7" radius={[0, 2, 2, 0]} maxBarSize={14} />
-                  <Bar dataKey="mujeres" fill="#F48FB1" radius={[2, 0, 0, 2]} maxBarSize={14} />
-                </BarChart>
-              </ResponsiveContainer>
+          {/* Pirámide Poblacional Argentina — UN WPP con selector de año */}
+          <div className="bbg-panel" style={{ marginTop: 8 }}>
+            <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>
+                PIRÁMIDE POBLACIONAL — ARGENTINA
+                {piramideMeta?.proyeccion && (
+                  <span style={{ fontSize: 8, fontWeight: 400, color: "#FFA028", marginLeft: 8 }}>· PROYECCIÓN ONU</span>
+                )}
+              </span>
+              {piramideMeta && (
+                <span style={{ fontSize: 8, fontWeight: 400, color: "#555", textTransform: "none" }}>
+                  Total: <span style={{ color: "#fff" }}>{(piramideMeta.total / 1e6).toFixed(1)}M</span>
+                  &nbsp;·&nbsp;<span style={{ color: "#4FC3F7" }}>V {(piramideMeta.total_m / 1e6).toFixed(1)}M</span>
+                  &nbsp;·&nbsp;<span style={{ color: "#F48FB1" }}>M {(piramideMeta.total_f / 1e6).toFixed(1)}M</span>
+                </span>
+              )}
             </div>
-          )}
+            <div style={{ padding: "8px 12px 4px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>Año</span>
+              <input
+                type="range" min={1950} max={2100} step={1} value={piramideYear}
+                onChange={e => setPiramideYear(Number(e.target.value))}
+                style={{ flex: 1, minWidth: 120, accentColor: "#FFA028", cursor: "pointer" }}
+              />
+              <span style={{ fontSize: 12, fontWeight: 700, color: piramideYear > 2025 ? "#FFA028" : "#4AF6C3", fontFamily: "monospace", minWidth: 38 }}>
+                {piramideYear}
+              </span>
+              <div style={{ display: "flex", gap: 2 }}>
+                {[1950, 1975, 2000, 2025, 2050, 2100].map(y => (
+                  <button key={y} onClick={() => setPiramideYear(y)} style={{
+                    fontSize: 8, padding: "2px 5px", border: "none", borderRadius: 2, cursor: "pointer",
+                    background: piramideYear === y ? "#FFA028" : "#1a1a1a",
+                    color: piramideYear === y ? "#000" : "#555",
+                  }}>{y}</button>
+                ))}
+              </div>
+            </div>
+            {piramideLoading ? (
+              <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11 }}>Cargando pirámide...</div>
+            ) : (
+              <PyramidChart data={piramideData} height={400} />
+            )}
+            <div style={{ padding: "4px 12px 6px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+              Fuente: populationpyramid.net · UN World Population Prospects 2024 · Años &gt;2025 = proyecciones ONU
+            </div>
+          </div>
 
           <div style={{ padding: "6px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111", lineHeight: 1.6 }}>
             PBI, per cápita, población, Gini, natalidad y mortalidad: INDEC vía apis.datos.gob.ar ·
-            Esperanza de vida: World Bank (SP.DYN.LE00.IN) · Pirámide: Censo Nacional de Población 2022 (INDEC) · El año en cada tarjeta = último dato publicado disponible.
+            Esperanza de vida: World Bank (SP.DYN.LE00.IN) · Pirámide: populationpyramid.net · UN WPP 2024 · El año en cada tarjeta = último dato publicado disponible.
           </div>
         </>
       )}
@@ -1290,13 +1391,124 @@ function FiscalView() {
   )
 }
 
+// ── Pirámides Explorador ────────────────────────────────────────────────────────
+
+function PiramidesView() {
+  const [country, setCountry] = useState("32")
+  const [year, setYear] = useState(2025)
+  const [data, setData] = useState<PiramideRow[]>([])
+  const [meta, setMeta] = useState<PiramideMeta | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    fetch(`/api/macro?endpoint=piramide&year=${year}&country=${country}`)
+      .then(r => r.json())
+      .then(j => { setData(j.data ?? []); setMeta(j); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [country, year])
+
+  const paisName = PAISES.find(p => p.code === country)?.name ?? country
+
+  return (
+    <div>
+      {/* Panel de controles */}
+      <div className="bbg-panel" style={{ marginBottom: 8 }}>
+        <div className="bbg-panel-header">EXPLORADOR DE PIRÁMIDES POBLACIONALES</div>
+        <div style={{ padding: "10px 12px", display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
+
+          {/* Selector de país */}
+          <div>
+            <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>País</div>
+            <select
+              value={country}
+              onChange={e => setCountry(e.target.value)}
+              style={{ background: "#0a0a0a", color: "#ccc", border: "1px solid #333", padding: "5px 10px", fontSize: 11, borderRadius: 2, cursor: "pointer" }}
+            >
+              {PAISES.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
+            </select>
+          </div>
+
+          {/* Selector de año */}
+          <div style={{ flex: "1 1 200px" }}>
+            <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+              Año:&nbsp;
+              <span style={{ color: year > 2025 ? "#FFA028" : "#4AF6C3", fontWeight: 700, fontFamily: "monospace" }}>{year}</span>
+              {year > 2025 && <span style={{ color: "#FFA028", marginLeft: 6 }}>· PROYECCIÓN ONU</span>}
+            </div>
+            <input
+              type="range" min={1950} max={2100} step={1} value={year}
+              onChange={e => setYear(Number(e.target.value))}
+              style={{ width: "100%", accentColor: "#FFA028", cursor: "pointer" }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#444", marginTop: 2 }}>
+              <span>1950</span><span>2025</span><span>2100</span>
+            </div>
+          </div>
+
+          {/* Accesos rápidos de año */}
+          <div>
+            <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Acceso rápido</div>
+            <div style={{ display: "flex", gap: 2 }}>
+              {[1950, 1975, 2000, 2025, 2050, 2075, 2100].map(y => (
+                <button key={y} onClick={() => setYear(y)} style={{
+                  fontSize: 8, padding: "3px 6px", border: "none", borderRadius: 2, cursor: "pointer",
+                  background: year === y ? "#FFA028" : "#1a1a1a",
+                  color: year === y ? "#000" : "#555",
+                }}>{y}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Stats */}
+          {meta && (
+            <div style={{ display: "flex", gap: 16, marginLeft: "auto" }}>
+              {[
+                { label: "Total", value: `${(meta.total / 1e6).toFixed(1)}M`, color: "#fff" },
+                { label: "Varones", value: `${(meta.total_m / 1e6).toFixed(1)}M`, color: "#4FC3F7" },
+                { label: "Mujeres", value: `${(meta.total_f / 1e6).toFixed(1)}M`, color: "#F48FB1" },
+              ].map(s => (
+                <div key={s.label} style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase" }}>{s.label}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: s.color, fontFamily: "monospace" }}>{s.value}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Pirámide */}
+      <div className="bbg-panel">
+        <div className="bbg-panel-header">
+          {paisName.toUpperCase()} · {year}
+          {meta?.proyeccion && <span style={{ fontSize: 8, fontWeight: 400, color: "#FFA028", marginLeft: 8 }}>· PROYECCIÓN ONU</span>}
+        </div>
+        {loading ? (
+          <div style={{ padding: 40, color: "#555", textAlign: "center", fontSize: 11 }}>Cargando pirámide de {paisName}...</div>
+        ) : data.length > 0 ? (
+          <>
+            <PyramidChart data={data} height={480} />
+            <div style={{ padding: "4px 12px 8px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+              Fuente: populationpyramid.net · UN World Population Prospects 2024 · Años &gt;2025 = proyecciones ONU · Código de país: {country}
+            </div>
+          </>
+        ) : (
+          <div style={{ padding: 40, color: "#444", textAlign: "center", fontSize: 11 }}>Sin datos disponibles para {paisName} {year}</div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 const MACRO_TABS = [
-  { key: "emae", label: "EMAE" },
-  { key: "ipc", label: "IPC" },
-  { key: "balanza", label: "Balanza Comercial" },
-  { key: "fiscal", label: "Fiscal" },
+  { key: "emae",     label: "EMAE" },
+  { key: "ipc",      label: "IPC" },
+  { key: "balanza",  label: "Balanza Comercial" },
+  { key: "fiscal",   label: "Fiscal" },
+  { key: "piramides", label: "Pirámides" },
 ]
 
 export function TabMacro() {
@@ -1306,10 +1518,11 @@ export function TabMacro() {
     <div>
       <div className="bbg-panel-header">MACROECONOMÍA ARGENTINA — DATOS.GOB.AR / INDEC</div>
       <SubTabs tabs={MACRO_TABS} active={activeTab} onChange={setActiveTab} />
-      {activeTab === "emae" && <EmaeView />}
-      {activeTab === "ipc" && <IpcView />}
-      {activeTab === "balanza" && <BalanzaView />}
-      {activeTab === "fiscal" && <FiscalView />}
+      {activeTab === "emae"      && <EmaeView />}
+      {activeTab === "ipc"       && <IpcView />}
+      {activeTab === "balanza"   && <BalanzaView />}
+      {activeTab === "fiscal"    && <FiscalView />}
+      {activeTab === "piramides" && <PiramidesView />}
     </div>
   )
 }
