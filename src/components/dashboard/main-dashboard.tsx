@@ -227,8 +227,8 @@ export function Dashboard() {
       <TickerTape />
 
       {/* Main content */}
-      <Tabs defaultValue="resumen">
-        <TabsList style={{ overflowX: "auto", overflowY: "hidden", whiteSpace: "nowrap", display: "flex", flexWrap: "nowrap", maxWidth: "100vw", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+      <Tabs defaultValue="resumen" style={{ maxWidth: "100vw", overflow: "hidden" }}>
+        <TabsList style={{ overflowX: "auto", overflowY: "hidden", whiteSpace: "nowrap", display: "flex", flexWrap: "nowrap", maxWidth: "100vw", width: "100%", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="tipos-cambio">Tipos de Cambio</TabsTrigger>
           <TabsTrigger value="rofex">Rofex</TabsTrigger>
@@ -251,7 +251,7 @@ export function Dashboard() {
 
         {/* ═══════════ RESUMEN ═══════════ */}
         <TabsContent value="resumen">
-          <div className="flex flex-col md:flex-row gap-px" style={{ background: "#222222" }}>
+          <div className="flex flex-col md:flex-row gap-px" style={{ background: "#222222", maxWidth: "100%", overflow: "hidden" }}>
             {/* Left: Cotizaciones */}
             <div className="flex-1 min-w-0" style={{ background: "#000000" }}>
               <div className="bbg-panel-header">Cotizaciones del Dia</div>
