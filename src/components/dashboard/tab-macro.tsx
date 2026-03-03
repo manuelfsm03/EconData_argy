@@ -17,7 +17,7 @@ import { BBGAreaChart } from "../charts/bbg-area-chart"
 import { BBGLineChart } from "../charts/bbg-line-chart"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceLine, Legend,
+  ResponsiveContainer, ReferenceLine, Legend, AreaChart, Area,
 } from "recharts"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -379,24 +379,30 @@ const PAISES = [
 
 // ── Componente reutilizable de pirámide ───────────────────────────────────────
 function PyramidChart({ data, height = 400 }: { data: PiramideRow[]; height?: number }) {
-  const maxVal = data.length > 0
-    ? Math.max(...data.map(r => Math.max(Math.abs(r.varones), r.mujeres)))
-    : 2000000
-  const fmtPop = (v: number) => {
-    const a = Math.abs(v)
-    if (a >= 1e6) return `${(a / 1e6).toFixed(1)}M`
-    if (a >= 1000) return `${Math.round(a / 1000)}k`
-    return String(Math.round(a))
-  }
+  const total = data.reduce((s, r) => s + Math.abs(r.varones) + r.mujeres, 0) || 1
+  const pctData = [...data].reverse().map(r => ({
+    age: r.age,
+    varones: parseFloat(((r.varones / total) * 100).toFixed(3)),
+    mujeres: parseFloat(((r.mujeres / total) * 100).toFixed(3)),
+    varones_abs: Math.abs(r.varones),
+    mujeres_abs: r.mujeres,
+  }))
+  const maxPct = pctData.length > 0
+    ? Math.max(...pctData.map(r => Math.max(Math.abs(r.varones), r.mujeres)))
+    : 8
+  const domain = Math.ceil(maxPct * 1.15)
+  const fmtAbs = (n: number) => n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : `${Math.round(n / 1000)}k`
+
   return (
     <>
-      <div style={{ display: "flex", gap: 16, padding: "6px 12px", fontSize: 8, color: "#666" }}>
-        <span><span style={{ color: "#4FC3F7" }}>■</span> Varones</span>
-        <span><span style={{ color: "#F48FB1" }}>■</span> Mujeres</span>
+      {/* Hombre / Mujer labels */}
+      <div style={{ display: "flex", justifyContent: "space-around", padding: "6px 52px 2px", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+        <span style={{ color: "#4FC3F7" }}>◀ Hombre</span>
+        <span style={{ color: "#F48FB1" }}>Mujer ▶</span>
       </div>
       <ResponsiveContainer width="100%" height={height}>
         <BarChart
-          data={[...data].reverse()}
+          data={pctData}
           layout="vertical"
           margin={{ top: 0, right: 20, left: 40, bottom: 4 }}
           barCategoryGap="10%"
@@ -405,8 +411,8 @@ function PyramidChart({ data, height = 400 }: { data: PiramideRow[]; height?: nu
           <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" horizontal={false} />
           <XAxis
             type="number"
-            domain={[-maxVal * 1.1, maxVal * 1.1]}
-            tickFormatter={fmtPop}
+            domain={[-domain, domain]}
+            tickFormatter={(v: number) => `${Math.abs(v).toFixed(0)}%`}
             tick={{ fontSize: 8, fill: "#555" }}
             axisLine={{ stroke: "#333" }}
             tickLine={false}
@@ -423,10 +429,14 @@ function PyramidChart({ data, height = 400 }: { data: PiramideRow[]; height?: nu
             cursor={{ fill: "rgba(255,255,255,0.03)" }}
             contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10, borderRadius: 4 }}
             labelStyle={{ color: "#aaa", fontWeight: 700 }}
-            formatter={(value: number | undefined, name: string | undefined) => [
-              value != null ? fmtPop(value) : "—",
-              name === "varones" ? "Varones" : "Mujeres",
-            ]}
+            formatter={(value: number | undefined, name: string | undefined, props: { payload?: { varones_abs?: number; mujeres_abs?: number } }) => {
+              if (value == null) return ["—", name]
+              const abs = name === "varones"
+                ? (props.payload?.varones_abs ?? 0)
+                : (props.payload?.mujeres_abs ?? 0)
+              const label = name === "varones" ? "Hombre" : "Mujer"
+              return [`${Math.abs(value).toFixed(2)}%  (${fmtAbs(abs)})`, label]
+            }}
           />
           <ReferenceLine x={0} stroke="#333" strokeWidth={1} />
           <Bar dataKey="varones" fill="#4FC3F7" radius={[0, 2, 2, 0]} maxBarSize={14} />
@@ -434,6 +444,89 @@ function PyramidChart({ data, height = 400 }: { data: PiramideRow[]; height?: nu
         </BarChart>
       </ResponsiveContainer>
     </>
+  )
+}
+
+// ── Gráfico de serie de población total 1950–2100 ─────────────────────────────
+type SeriePt = { year: number; total_m: number; total_f: number; total: number }
+
+function PoblacionSerieChart({ country, selectedYear }: { country: string; selectedYear: number }) {
+  const [serie, setSerie] = useState<SeriePt[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    const years = Array.from({ length: 16 }, (_, i) => 1950 + i * 10)
+    Promise.all(
+      years.map(y =>
+        fetch(`/api/macro?endpoint=piramide&year=${y}&country=${country}`)
+          .then(r => r.json())
+          .then(j => j.total ? ({ year: y, total_m: j.total_m, total_f: j.total_f, total: j.total }) : null)
+          .catch(() => null)
+      )
+    ).then(results => {
+      setSerie(results.filter(Boolean) as SeriePt[])
+      setLoading(false)
+    })
+  }, [country])
+
+  const fmtPop = (v: number) =>
+    v >= 1e9 ? `${(v / 1e9).toFixed(1)}B` : `${(v / 1e6).toFixed(0)}M`
+
+  return (
+    <div className="bbg-panel" style={{ marginTop: 8 }}>
+      <div className="bbg-panel-header">POBLACIÓN TOTAL — EVOLUCIÓN 1950–2100</div>
+      {loading ? (
+        <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11 }}>Cargando serie de población...</div>
+      ) : (
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart data={serie} margin={{ top: 8, right: 20, left: 10, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
+            <XAxis
+              dataKey="year"
+              tick={{ fontSize: 8, fill: "#555" }}
+              axisLine={{ stroke: "#333" }}
+              tickLine={false}
+            />
+            <YAxis
+              tickFormatter={fmtPop}
+              tick={{ fontSize: 8, fill: "#555" }}
+              axisLine={{ stroke: "#333" }}
+              tickLine={false}
+              width={42}
+            />
+            <Tooltip
+              contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10, borderRadius: 4 }}
+              labelStyle={{ color: "#aaa", fontWeight: 700 }}
+              formatter={(v: number | undefined, name: string | undefined) => {
+                if (v == null) return ["—", name]
+                const label = name === "total_m" ? "Hombre" : "Mujer"
+                return [fmtPop(v), label]
+              }}
+            />
+            <ReferenceLine
+              x={2025}
+              stroke="#444"
+              strokeDasharray="4 3"
+              label={{ value: "2025", position: "insideTopLeft", fill: "#444", fontSize: 8 }}
+            />
+            {selectedYear !== 2025 && (
+              <ReferenceLine
+                x={selectedYear}
+                stroke="#FFA028"
+                strokeDasharray="4 3"
+                label={{ value: String(selectedYear), position: "insideTopLeft", fill: "#FFA028", fontSize: 8 }}
+              />
+            )}
+            <Area dataKey="total_f" stackId="pop" fill="#F48FB1" stroke="#F48FB1" fillOpacity={0.55} name="Mujer" />
+            <Area dataKey="total_m" stackId="pop" fill="#4FC3F7" stroke="#4FC3F7" fillOpacity={0.55} name="Hombre" />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
+      <div style={{ padding: "4px 12px 6px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+        Fuente: populationpyramid.net · UN World Population Prospects 2024 · Años &gt;2025 = proyecciones ONU
+      </div>
+    </div>
   )
 }
 
@@ -823,6 +916,8 @@ function EmaeView() {
               Fuente: populationpyramid.net · UN World Population Prospects 2024 · Años &gt;2025 = proyecciones ONU
             </div>
           </div>
+
+          <PoblacionSerieChart country="32" selectedYear={piramideYear} />
 
           <div style={{ padding: "6px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111", lineHeight: 1.6 }}>
             PBI, per cápita, población, Gini, natalidad y mortalidad: INDEC vía apis.datos.gob.ar ·
@@ -1497,6 +1592,8 @@ function PiramidesView() {
           <div style={{ padding: 40, color: "#444", textAlign: "center", fontSize: 11 }}>Sin datos disponibles para {paisName} {year}</div>
         )}
       </div>
+
+      <PoblacionSerieChart country={country} selectedYear={year} />
     </div>
   )
 }
