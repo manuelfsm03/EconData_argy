@@ -58,7 +58,9 @@ const SERIES_IDS: Record<string, string> = {
   resultado_primario: "379.9_RESULTADO_017__31_73",
   resultado_financiero: "378.9_RESULTADO_017_0_M_18_90",
   recaudacion: "172.3_TL_RECAION_M_0_0_17",
-  // RECAUDACIÓN DESAGREGADA — Informe Mensual SPN, dataset 452 (R/P1M hasta 2026)
+  rec_dgi:           "172.3_SOTAL_DDGI_M_0_0_12",       // Recaudación DGI total (mensual, hasta hoy)
+  rec_dga:           "172.3_SOTAL_DDGA_M_0_0_12",       // Recaudación DGA total (Aduana, mensual)
+  // RECAUDACIÓN DESAGREGADA — Informe Mensual SPN, dataset 452 (rezago ~1 mes vs ARCA)
   rec_iva:           "452.2_IVA_NETO_RROS_0_T_19_67",  // IVA neto (excl. reintegros)
   rec_ganancias:     "452.2_GANANCIASIAS_0_T_9_51",     // Impuesto a las Ganancias
   rec_seg_social:    "172.3_SRIDAD_IAL_M_0_0_16",       // Seg. Social (aportes + contrib.)
@@ -66,7 +68,6 @@ const SERIES_IDS: Record<string, string> = {
   rec_der_expo:      "452.2_DERECHOS_EION_0_T_20_42",   // Derechos de Exportación
   rec_der_impo:      "452.2_DERECHOS_IION_0_T_20_60",   // Derechos de Importación
   rec_bs_personales: "452.2_BIENES_PERLES_0_T_17_26",   // Bienes Personales
-  // rec_combustibles: "452.1_COMBUSTIBLLES_0_A_12_22", // TODO: solo trimestral en datos.gob.ar
   // MERCADO LABORAL — EPH Continua trimestral (31 aglomerados)
   tasa_desempleo:   "42.3_EPH_PUNTUATAL_0_M_30",
   tasa_actividad:   "43.2_ECTAT_0_T_33",
@@ -313,17 +314,26 @@ export async function GET(request: NextRequest) {
     // ── EMAE SECTORIAL ──────────────────────────────────────────────────────
     if (endpoint === "emae_sectorial") {
       const rows = await fetchCSVData(CSV_URLS.emae_sectorial)
-      // Últimas 24 filas (2 años), mapear indice_tiempo → date para compatibilidad con BBGAreaChart
-      const recent = rows.slice(-24).map(r => ({
-        date: r.indice_tiempo ?? "",
-        agro:         parseFloat(r.agricultura_ganaderia_caza_silvicultura ?? "") || null,
-        industria:    parseFloat(r.industria_manufacturera ?? "") || null,
-        construccion: parseFloat(r.construccion ?? "") || null,
-        comercio:     parseFloat(r.comercio_mayorista_minorista_reparaciones ?? "") || null,
-        transporte:   parseFloat(r.transporte_comunicaciones ?? "") || null,
-        finanzas:     parseFloat(r.intermediacion_financiera ?? "") || null,
-        energia:      parseFloat(r.electricidad_gas_agua ?? "") || null,
-        turismo:      parseFloat(r.hoteles_restaurantes ?? "") || null,
+      // Últimas 25 filas (para calcular variación interanual del mes más reciente)
+      const p = (r: Record<string, string>, k: string) => parseFloat(r[k] ?? "") || null
+      const recent = rows.slice(-25).map(r => ({
+        date:          r.indice_tiempo ?? "",
+        agro:          p(r, "agricultura_ganaderia_caza_silvicultura"),
+        pesca:         p(r, "pesca"),
+        mineria:       p(r, "explotacion_minas_canteras"),
+        industria:     p(r, "industria_manufacturera"),
+        energia:       p(r, "electricidad_gas_agua"),
+        construccion:  p(r, "construccion"),
+        comercio:      p(r, "comercio_mayorista_minorista_reparaciones"),
+        turismo:       p(r, "hoteles_restaurantes"),
+        transporte:    p(r, "transporte_comunicaciones"),
+        finanzas:      p(r, "intermediacion_financiera"),
+        inmobiliarias: p(r, "actividades_inmobiliarias_empresariales_alquiler"),
+        adm_publica:   p(r, "admin_publica_planes_seguridad_social_afiliacion_obligatoria"),
+        ensenanza:     p(r, "ensenianza"),
+        salud:         p(r, "servicios_sociales_salud"),
+        serv_comun:    p(r, "otras_actividades_servicios_comunitarias_sociales_personales"),
+        imp_subsidios: p(r, "impuestos_netos_subsidios"),
       }))
       return NextResponse.json({
         data: recent,
@@ -452,6 +462,8 @@ export async function GET(request: NextRequest) {
     if (endpoint === "fiscal_sankey") {
       const data = await getMultiserie([
         "recaudacion",
+        "rec_dgi",
+        "rec_dga",
         "resultado_primario",
         "resultado_financiero",
         "rec_iva",

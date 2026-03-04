@@ -287,14 +287,12 @@ function EstructuralKPI({
 
 type EmaeSectorialRow = {
   date: string
-  agro: number | null
-  industria: number | null
-  construccion: number | null
-  comercio: number | null
-  transporte: number | null
-  finanzas: number | null
-  energia: number | null
-  turismo: number | null
+  agro: number | null; pesca: number | null; mineria: number | null
+  industria: number | null; energia: number | null; construccion: number | null
+  comercio: number | null; turismo: number | null; transporte: number | null
+  finanzas: number | null; inmobiliarias: number | null; adm_publica: number | null
+  ensenanza: number | null; salud: number | null; serv_comun: number | null
+  imp_subsidios: number | null
 }
 
 type UCIRow = {
@@ -553,6 +551,7 @@ function EmaeView() {
   const [estructuralLoading, setEstructuralLoading] = useState(true)
   const [emaeSectorialData, setEmaeSectorialData] = useState<EmaeSectorialRow[]>([])
   const [emaeSectorialLoading, setEmaeSectorialLoading] = useState(true)
+  const [emaeSubTab, setEmaeSubTab] = useState("actividad")
   const [actividadData, setActividadData] = useState<ActividadData | null>(null)
   const [actividadLoading, setActividadLoading] = useState(true)
   const [confianzaData, setConfianzaData] = useState<ConfianzaData | null>(null)
@@ -672,6 +671,19 @@ function EmaeView() {
         <KPI label="Período" value={ultimoEmae?.[0] ?? null} unit="Último dato disponible" valueColor="#888" />
       </div>
 
+      <SubTabs
+        tabs={[
+          { key: "actividad",   label: "Actividad" },
+          { key: "sectorial",   label: "Apertura Sectorial" },
+          { key: "laboral",     label: "Mercado Laboral" },
+          { key: "estructural", label: "Estructural" },
+          { key: "industria",   label: "Industria & Confianza" },
+        ]}
+        active={emaeSubTab}
+        onChange={setEmaeSubTab}
+      />
+
+      {emaeSubTab === "actividad" && (<>
       {/* Gráfico EMAE */}
       {recentEmae.length > 0 && (
         <div style={{ padding: "8px 0" }}>
@@ -691,7 +703,9 @@ function EmaeView() {
         title="EMAE — Últimos 12 períodos"
         rows={recentEmae.map(([d, v]) => ({ label: d, value: fmtNum(v), color: "#FFA028" }))}
       />
+      </>)}
 
+      {emaeSubTab === "laboral" && (<>
       {/* ── MERCADO LABORAL ────────────────────────────────────────────── */}
       <SectionHeader
         title="Mercado Laboral — EPH"
@@ -739,7 +753,9 @@ function EmaeView() {
           )}
         </>
       )}
+      </>)}
 
+      {emaeSubTab === "estructural" && (<>
       {/* ── INDICADORES ESTRUCTURALES ──────────────────────────────────── */}
       <SectionHeader title="Indicadores Estructurales" source="INDEC · datos.gob.ar · World Bank" />
       {estructuralLoading ? (
@@ -926,7 +942,9 @@ function EmaeView() {
           </div>
         </>
       )}
+      </>)}
 
+      {emaeSubTab === "sectorial" && (<>
       {/* ══ EMAE SECTORIAL ═══════════════════════════════════════════════════ */}
       <SectionHeader
         title="EMAE — Apertura Sectorial"
@@ -938,72 +956,129 @@ function EmaeView() {
         <div style={{ padding: 12, color: "#444", fontSize: 11 }}>Sin datos disponibles</div>
       ) : (
         <>
-          {/* Snapshot: KPIs por sector con variación interanual */}
+          {/* Ranking: barras horizontales ordenadas por variación interanual */}
           {(() => {
-            const ultimo = emaeSectorialData[emaeSectorialData.length - 1]
-            const anterior = emaeSectorialData.length >= 13
-              ? emaeSectorialData[emaeSectorialData.length - 13]
-              : null
-            const sectores: { key: keyof EmaeSectorialRow; label: string; color: string }[] = [
-              { key: "agro",         label: "Agro",        color: "#4AF6C3" },
-              { key: "industria",    label: "Industria",   color: "#FFA028" },
-              { key: "construccion", label: "Construcc.",  color: "#FF433D" },
-              { key: "comercio",     label: "Comercio",    color: "#4FC3F7" },
-              { key: "transporte",   label: "Transporte",  color: "#FFD54F" },
-              { key: "finanzas",     label: "Finanzas",    color: "#CE93D8" },
-              { key: "energia",      label: "Energía",     color: "#80CBC4" },
-              { key: "turismo",      label: "Turismo",     color: "#F48FB1" },
+            const SECTORES: { key: keyof EmaeSectorialRow; label: string }[] = [
+              { key: "agro",          label: "Agro, ganadería y silvicultura" },
+              { key: "pesca",         label: "Pesca" },
+              { key: "mineria",       label: "Minería" },
+              { key: "industria",     label: "Industria Manufacturera" },
+              { key: "energia",       label: "Electricidad, gas y agua" },
+              { key: "construccion",  label: "Construcción" },
+              { key: "comercio",      label: "Comercio mayorista y minorista" },
+              { key: "turismo",       label: "Hoteles y restaurantes" },
+              { key: "transporte",    label: "Transporte y comunicaciones" },
+              { key: "finanzas",      label: "Intermediación financiera" },
+              { key: "inmobiliarias", label: "Inmobiliarias y empresariales" },
+              { key: "adm_publica",   label: "Administración pública" },
+              { key: "ensenanza",     label: "Enseñanza" },
+              { key: "salud",         label: "Servicios sociales y salud" },
+              { key: "serv_comun",    label: "Otros servicios comunitarios" },
             ]
+            const n = emaeSectorialData.length
+            const ultimo  = emaeSectorialData[n - 1]
+            const baseIA  = n >= 13 ? emaeSectorialData[n - 13] : null
+            const baseMes = n >= 2  ? emaeSectorialData[n - 2]  : null
+            const periodoLabel = ultimo?.date?.slice(0, 7) ?? ""
+
+            const ranking = SECTORES.map(s => {
+              const val   = ultimo?.[s.key]   as number | null
+              const prev1 = baseMes?.[s.key]  as number | null
+              const prev12= baseIA?.[s.key]   as number | null
+              const varIA  = val && prev12 ? (val / prev12 - 1) * 100 : null
+              const varMes = val && prev1  ? (val / prev1  - 1) * 100 : null
+              return { ...s, varIA, varMes }
+            })
+            .filter(s => s.varIA != null)
+            .sort((a, b) => (b.varIA ?? 0) - (a.varIA ?? 0))
+
+            const maxAbs = Math.max(...ranking.map(s => Math.abs(s.varIA ?? 0)), 1)
+
             return (
-              <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
-                {sectores.map(s => {
-                  const val = ultimo?.[s.key] as number | null
-                  const valAnterior = anterior?.[s.key] as number | null
-                  const varIA = val && valAnterior ? (((val - valAnterior) / valAnterior) * 100) : null
-                  return (
-                    <div key={s.key} style={{
-                      flex: "1 1 130px", background: "#0a0a0a", border: "1px solid #1a1a1a",
-                      borderTop: `2px solid ${s.color}`, padding: "8px 10px",
-                    }}>
-                      <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
-                        {s.label}
-                      </div>
-                      <div style={{ fontSize: 17, fontWeight: 700, color: s.color, fontFamily: "monospace" }}>
-                        {val ? fmtNum(val, 1) : "—"}
-                      </div>
-                      <div style={{ fontSize: 8, color: "#444" }}>Índice 2004=100</div>
-                      {varIA != null && (
-                        <div style={{ fontSize: 9, color: varIA >= 0 ? "#4AF6C3" : "#FF433D", marginTop: 2 }}>
-                          {varIA >= 0 ? "▲" : "▼"} {Math.abs(varIA).toFixed(1)}% i.a.
+              <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
+                  <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, fontWeight: 700 }}>
+                    EMAE — VARIACIÓN INTERANUAL POR SECTOR · {periodoLabel}
+                  </div>
+                  <div style={{ fontSize: 8, color: "#333" }}>Base 2004=100 · INDEC</div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  {ranking.map(s => {
+                    const v = s.varIA ?? 0
+                    const positive = v >= 0
+                    const barPct = Math.abs(v) / maxAbs * 44  // max 44% of width
+                    return (
+                      <div key={s.key} style={{ display: "grid", gridTemplateColumns: "180px 1fr 56px", alignItems: "center", gap: 8 }}>
+                        <div style={{ fontSize: 9, color: "#888", textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {s.label}
                         </div>
-                      )}
-                    </div>
-                  )
-                })}
+                        <div style={{ position: "relative", height: 14, background: "#111", borderRadius: 2 }}>
+                          {/* línea central */}
+                          <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 1, background: "#222" }} />
+                          <div style={{
+                            position: "absolute",
+                            height: "100%", borderRadius: 2,
+                            background: positive ? "#4AF6C3" : "#FF433D",
+                            opacity: 0.85,
+                            width: `${barPct}%`,
+                            left: positive ? "50%" : `${50 - barPct}%`,
+                          }} />
+                        </div>
+                        <div style={{
+                          fontSize: 10, fontWeight: 700, fontFamily: "monospace",
+                          color: positive ? "#4AF6C3" : "#FF433D",
+                          textAlign: "right",
+                        }}>
+                          {positive ? "+" : ""}{v.toFixed(1)}%
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                {ranking.length > 0 && (
+                  <div style={{ marginTop: 8, fontSize: 8, color: "#333" }}>
+                    Variación interanual calculada desde índice. Mes anterior (m/m): {
+                      ranking.slice(0, 3).map(s => `${s.label.split(" ")[0]} ${s.varMes != null ? (s.varMes >= 0 ? "+" : "") + s.varMes.toFixed(1) + "%" : "—"}`).join(" · ")
+                    }
+                  </div>
+                )}
               </div>
             )
           })()}
 
-          {/* Gráfico de líneas comparativo sectores — usa BBGLineChart */}
+          {/* Gráfico de líneas comparativo — todos los sectores con toggle */}
           <div style={{ padding: "8px 0" }}>
             <BBGLineChart
-              title="EMAE — COMPARATIVA SECTORIAL"
+              title="EMAE — EVOLUCIÓN SECTORIAL (ÍNDICE BASE 2004)"
               data={emaeSectorialData}
+              enableLineToggle
               lines={[
-                { key: "agro",         name: "Agro",       color: "#4AF6C3" },
-                { key: "industria",    name: "Industria",  color: "#FFA028" },
-                { key: "construccion", name: "Construcc.", color: "#FF433D" },
-                { key: "comercio",     name: "Comercio",   color: "#4FC3F7" },
-                { key: "transporte",   name: "Transporte", color: "#FFD54F" },
+                { key: "agro",          name: "Agro",         color: "#4AF6C3" },
+                { key: "pesca",         name: "Pesca",        color: "#26C6DA" },
+                { key: "mineria",       name: "Minería",      color: "#80CBC4" },
+                { key: "industria",     name: "Industria",    color: "#FFA028" },
+                { key: "energia",       name: "Energía",      color: "#FFD54F" },
+                { key: "construccion",  name: "Construcc.",   color: "#FF433D" },
+                { key: "comercio",      name: "Comercio",     color: "#4FC3F7" },
+                { key: "turismo",       name: "Turismo",      color: "#F48FB1" },
+                { key: "transporte",    name: "Transporte",   color: "#CE93D8" },
+                { key: "finanzas",      name: "Finanzas",     color: "#7C83FD" },
+                { key: "inmobiliarias", name: "Inmob.",       color: "#A5D6A7" },
+                { key: "adm_publica",   name: "Adm. Púb.",   color: "#BCAAA4" },
+                { key: "ensenanza",     name: "Enseñanza",   color: "#EF9A9A" },
+                { key: "salud",         name: "Salud",        color: "#B39DDB" },
+                { key: "serv_comun",    name: "Serv. Com.",   color: "#90A4AE" },
               ]}
-              height={260}
+              height={280}
               yAxisLabel="Índice 2004=100"
               defaultRange="all"
             />
           </div>
         </>
       )}
+      </>)}
 
+      {emaeSubTab === "industria" && (<>
       {/* ══ UTILIZACIÓN CAPACIDAD INSTALADA ══════════════════════════════════ */}
       <SectionHeader
         title="Actividad Industrial — Utilización de Capacidad Instalada"
@@ -1275,6 +1350,7 @@ function EmaeView() {
           </div>
         </>
       )}
+      </>)}
     </div>
   )
 }

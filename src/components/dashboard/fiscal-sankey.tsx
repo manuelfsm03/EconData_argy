@@ -57,9 +57,11 @@ const INCOME_COLORS: Record<string, string> = {
   "IVA":            "#4AF6C3", "Ganancias":      "#36D6B0",
   "Seg. Social":    "#2BB89E", "Déb./Créd.":     "#FFA028",
   "Der. Export.":   "#FFD166", "Der. Import.":   "#FF8C42",
-  "Bs. Personales": "#F48FB1", "Otros":          "#6C9BFF",
+  "Bs. Personales": "#F48FB1",
+  "Otros DGI":      "#6C9BFF", // Combustibles + Internos + Monotributo + resto DGI
+  "Otros Aduana":   "#A78BFA", // Otros derechos aduaneros (IVA importaciones, tasas, etc.)
   // legacy (otros tabs)
-  "Comercio Ext.":  "#FF8C42", "Otros Imp.":     "#6C9BFF",
+  "Otros":          "#6C9BFF", "Comercio Ext.":  "#FF8C42", "Otros Imp.": "#6C9BFF",
 }
 const EXPENSE_COLORS: Record<string, string> = {
   "Jubilaciones y Pensiones":  "#FF6B6B", "Transferencias Provincias": "#FF433D",
@@ -267,18 +269,27 @@ function StrokeSankeyChart({
 function BreakdownTable({ getValue, total, period }: {
   getValue: (key: string) => number; total: number; period: string
 }) {
+  const dgi = getValue("rec_dgi")
+  const dga = getValue("rec_dga")
+  const iva = getValue("rec_iva"); const gan = getValue("rec_ganancias")
+  const deb = getValue("rec_deb_cred"); const bsp = getValue("rec_bs_personales")
+  const dex = getValue("rec_der_expo"); const dim = getValue("rec_der_impo")
+  const otrosDGI = Math.max(0, dgi - iva - gan - deb - bsp)
+  const otrosDGA = Math.max(0, dga - dex - dim)
   const items = [
-    { label: "IVA Neto",         key: "rec_iva",           color: "#4AF6C3" },
-    { label: "Ganancias",        key: "rec_ganancias",     color: "#FFA028" },
-    { label: "Seg. Social",      key: "rec_seg_social",    color: "#7C83FD" },
-    { label: "Déb/Créditos",     key: "rec_deb_cred",      color: "#4FC3F7" },
-    { label: "Der. Exportación", key: "rec_der_expo",      color: "#FFD54F" },
-    { label: "Der. Importación", key: "rec_der_impo",      color: "#CE93D8" },
-    { label: "Bs. Personales",   key: "rec_bs_personales", color: "#F48FB1" },
+    { label: "IVA Neto",             key: "rec_iva",           color: "#4AF6C3", val: iva },
+    { label: "Ganancias",            key: "rec_ganancias",     color: "#FFA028", val: gan },
+    { label: "Seg. Social",          key: "rec_seg_social",    color: "#7C83FD", val: getValue("rec_seg_social") },
+    { label: "Déb/Créditos",         key: "rec_deb_cred",      color: "#4FC3F7", val: deb },
+    { label: "Der. Exportación",     key: "rec_der_expo",      color: "#FFD54F", val: dex },
+    { label: "Der. Importación",     key: "rec_der_impo",      color: "#CE93D8", val: dim },
+    { label: "Bs. Personales",       key: "rec_bs_personales", color: "#F48FB1", val: bsp },
+    { label: "Otros DGI", key: "__dgi__", color: "#6C9BFF", val: otrosDGI,
+      note: "Combustibles · Imp. Internos · Monotributo · Ganancia Mínima Presunta · resto DGI" },
+    { label: "Otros Aduana", key: "__dga__", color: "#A78BFA", val: otrosDGA,
+      note: "IVA sobre importaciones · tasas estadísticas · otros derechos aduaneros (DGA)" },
   ]
-  const known = items.reduce((s, it) => s + getValue(it.key), 0)
-  const otros = Math.max(0, total - known)
-  const allRows = [...items, { label: "Otros / No asignados", key: "__otros__", color: "#444" }]
+  const allRows = items
   return (
     <div className="bbg-panel" style={{ marginTop: 8 }}>
       <div className="bbg-panel-header">COMPOSICIÓN DE RECAUDACIÓN — {period.slice(0, 7)}</div>
@@ -291,21 +302,31 @@ function BreakdownTable({ getValue, total, period }: {
           </thead>
           <tbody>
             {allRows.map((it, i) => {
-              const val = it.key === "__otros__" ? otros : getValue(it.key)
+              const val = it.val
               const pct = total > 0 ? (val / total) * 100 : 0
+              const note = (it as { note?: string }).note
               return (
-                <tr key={i} style={{ borderBottom: "1px solid #0d0d0d" }}>
-                  <td style={{ padding: "4px 8px", fontSize: 10, color: "#ccc" }}>
-                    <span style={{ display: "inline-block", width: 8, height: 8, background: it.color, borderRadius: 1, marginRight: 6 }} />{it.label}
-                  </td>
-                  <td style={{ padding: "4px 8px", fontSize: 10, textAlign: "right", fontFamily: "monospace", color: "#ccc" }}>{fmtM(val)}</td>
-                  <td style={{ padding: "4px 8px", fontSize: 10, textAlign: "right", fontFamily: "monospace", color: "#888" }}>{pct.toFixed(1)}%</td>
-                  <td style={{ padding: "4px 12px 4px 4px", width: 80 }}>
-                    <div style={{ background: "#0d0d0d", height: 6, borderRadius: 3, overflow: "hidden" }}>
-                      <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: it.color, borderRadius: 3 }} />
-                    </div>
-                  </td>
-                </tr>
+                <>
+                  <tr key={i} style={{ borderBottom: note ? "none" : "1px solid #0d0d0d" }}>
+                    <td style={{ padding: "4px 8px", fontSize: 10, color: "#ccc" }}>
+                      <span style={{ display: "inline-block", width: 8, height: 8, background: it.color, borderRadius: 1, marginRight: 6 }} />{it.label}
+                    </td>
+                    <td style={{ padding: "4px 8px", fontSize: 10, textAlign: "right", fontFamily: "monospace", color: "#ccc" }}>{fmtM(val)}</td>
+                    <td style={{ padding: "4px 8px", fontSize: 10, textAlign: "right", fontFamily: "monospace", color: "#888" }}>{pct.toFixed(1)}%</td>
+                    <td style={{ padding: "4px 12px 4px 4px", width: 80 }}>
+                      <div style={{ background: "#0d0d0d", height: 6, borderRadius: 3, overflow: "hidden" }}>
+                        <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: it.color, borderRadius: 3 }} />
+                      </div>
+                    </td>
+                  </tr>
+                  {note && (
+                    <tr key={`${i}-note`} style={{ borderBottom: "1px solid #0d0d0d" }}>
+                      <td colSpan={4} style={{ padding: "1px 8px 5px 22px", fontSize: 9, color: "#444", fontStyle: "italic" }}>
+                        ↳ {note}
+                      </td>
+                    </tr>
+                  )}
+                </>
               )
             })}
             <tr style={{ borderTop: "1px solid #333" }}>
@@ -360,9 +381,14 @@ function SubTabs({ tabs, active, onChange }: {
 
 function buildFlujoGraph(
   iva: number, ganancias: number, segSocial: number, debCred: number,
-  derExpo: number, derImpo: number, bsPersonales: number, otrosRec: number,
+  derExpo: number, derImpo: number, bsPersonales: number,
+  dgi: number, dga: number,
   resPrimario: number, resFinanciero: number,
 ) {
+  // Residuos: lo que DGI/DGA recauda pero el IMIG no desglosa individualmente
+  // (Combustibles, Imp. Internos, Monotributo, IVA importaciones, otros derechos aduaneros)
+  const otrosDGI  = Math.max(0, dgi - iva - ganancias - debCred - bsPersonales)
+  const otrosDGA  = Math.max(0, dga - derExpo - derImpo)
   const incomeRaw: [string, number][] = [
     ["IVA",            iva],
     ["Ganancias",      ganancias],
@@ -371,7 +397,8 @@ function buildFlujoGraph(
     ["Der. Export.",   derExpo],
     ["Der. Import.",   derImpo],
     ["Bs. Personales", bsPersonales],
-    ["Otros",          otrosRec],
+    ["Otros DGI",      otrosDGI],   // Combustibles + Internos + Monotributo + resto DGI
+    ["Otros Aduana",   otrosDGA],   // IVA importaciones + otros derechos aduaneros
   ]
   const incomeEntries = incomeRaw.filter(([, v]) => v > 0)
   const totalIngresos = incomeEntries.reduce((s, [, v]) => s + v, 0)
@@ -420,10 +447,14 @@ export function FiscalSankeyView() {
       .then(r => r.json())
       .then(j => {
         setFiscalData(j.data)
-        const dates = (j.data?.recaudacion ?? []).map(([d]: [string, number]) => d)
-        if (dates.length > 0) {
-          setPeriod(dates[0])
-          setAnnualYear(dates[0].slice(0, 4))
+        // Usar la fecha más reciente donde existen datos desagregados (rec_iva como proxy)
+        // Dataset 452 (IVA, Ganancias, etc.) puede tener un mes de rezago vs recaudacion (dataset 172)
+        const ivaDate  = (j.data?.rec_iva ?? [])[0]?.[0] as string | undefined
+        const recDate  = (j.data?.recaudacion ?? [])[0]?.[0] as string | undefined
+        const bestDate = ivaDate ?? recDate ?? ""
+        if (bestDate) {
+          setPeriod(bestDate)
+          setAnnualYear(bestDate.slice(0, 4))
         }
         setLoading(false)
       })
@@ -460,10 +491,11 @@ export function FiscalSankeyView() {
   const derExpo      = getValue("rec_der_expo")
   const derImpo      = getValue("rec_der_impo")
   const bsPersonales = getValue("rec_bs_personales")
+  const dgi          = getValue("rec_dgi")
+  const dga          = getValue("rec_dga")
   const totalRec     = getValue("recaudacion")
   const resPrimario  = getValue("resultado_primario")
   const resFinanciero = getValue("resultado_financiero")
-  const otrosRec     = Math.max(0, totalRec - iva - ganancias - segSocial - debCred - derExpo - derImpo - bsPersonales)
 
   // ── Valores anuales ─────────────────────────────────────────────────────────
   const ivaA          = getAnnualValue("rec_iva")
@@ -473,15 +505,18 @@ export function FiscalSankeyView() {
   const derExpoA      = getAnnualValue("rec_der_expo")
   const derImpoA      = getAnnualValue("rec_der_impo")
   const bsPersonalesA = getAnnualValue("rec_bs_personales")
-  const totalRecA     = getAnnualValue("recaudacion")
+  const dgiA          = getAnnualValue("rec_dgi")
+  const dgaA          = getAnnualValue("rec_dga")
+  const totalRecA      = getAnnualValue("recaudacion")
   const resPrimarioA  = getAnnualValue("resultado_primario")
   const resFinancieroA = getAnnualValue("resultado_financiero")
-  const otrosRecA     = Math.max(0, totalRecA - ivaA - gananciasA - segSocialA - debCredA - derExpoA - derImpoA - bsPersonalesA)
+  // otrosRec: residuo para tabs didácticos (Distribución, Cashflow, Ahorro-Inversión)
+  const otrosRec  = Math.max(0, totalRec  - iva  - ganancias  - segSocial  - debCred  - derExpo  - derImpo  - bsPersonales)
 
   // ── Flujo Fiscal mensual ────────────────────────────────────────────────────
-  const flujo  = buildFlujoGraph(iva, ganancias, segSocial, debCred, derExpo, derImpo, bsPersonales, otrosRec, resPrimario, resFinanciero)
+  const flujo  = buildFlujoGraph(iva, ganancias, segSocial, debCred, derExpo, derImpo, bsPersonales, dgi, dga, resPrimario, resFinanciero)
   // ── Flujo Fiscal anual ──────────────────────────────────────────────────────
-  const flujoA = buildFlujoGraph(ivaA, gananciasA, segSocialA, debCredA, derExpoA, derImpoA, bsPersonalesA, otrosRecA, resPrimarioA, resFinancieroA)
+  const flujoA = buildFlujoGraph(ivaA, gananciasA, segSocialA, debCredA, derExpoA, derImpoA, bsPersonalesA, dgiA, dgaA, resPrimarioA, resFinancieroA)
 
   // ── Distribución Federal ────────────────────────────────────────────────────
   const copart = Math.max(0, totalRec - segSocial - derExpo)
@@ -664,20 +699,40 @@ export function FiscalSankeyView() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "#1A1A1A", borderTop: "1px solid #1A1A1A" }}>
             <div style={{ background: "#0D0D0D", padding: "10px 14px" }}>
               <div style={{ fontSize: 9, color: "#4AF6C3", letterSpacing: 1.5, marginBottom: 6, fontWeight: 700 }}>COMPOSICIÓN DE INGRESOS</div>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <tbody>{[...flujo.incomeEntries].sort((a, b) => b[1] - a[1]).map(([name, value]) => (
-                  <tr key={name} style={{ borderBottom: "1px solid #151515" }}>
-                    <td style={{ padding: "3px 0", fontSize: 10, color: INCOME_COLORS[name] ?? "#888" }}>{name}</td>
-                    <td style={{ padding: "3px 0", fontSize: 10, color: "#E0E0E0", textAlign: "right" }}>{fmtFull(value)}</td>
-                    <td style={{ padding: "3px 0 3px 8px", fontSize: 9, color: "#555", textAlign: "right", width: 44 }}>{((value / flujo.totalIngresos) * 100).toFixed(1)}%</td>
-                    <td style={{ padding: "3px 0 3px 6px", width: 60 }}>
-                      <div style={{ height: 4, borderRadius: 2, background: "#1A1A1A" }}>
-                        <div style={{ height: 4, borderRadius: 2, background: INCOME_COLORS[name] ?? "#888", width: `${(value / flujo.totalIngresos) * 100}%`, opacity: 0.7 }} />
-                      </div>
-                    </td>
-                  </tr>
-                ))}</tbody>
-              </table>
+              {(() => {
+                const INCOME_NOTES: Record<string, string> = {
+                  "Otros DGI":    "Combustibles · Imp. Internos · Monotributo · Gan. Mín. Presunta · resto DGI",
+                  "Otros Aduana": "IVA sobre importaciones · tasas estadísticas · otros derechos aduaneros",
+                }
+                return (
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <tbody>{[...flujo.incomeEntries].sort((a, b) => b[1] - a[1]).map(([name, value]) => {
+                      const note = INCOME_NOTES[name]
+                      return (
+                        <>
+                          <tr key={name} style={{ borderBottom: note ? "none" : "1px solid #151515" }}>
+                            <td style={{ padding: "3px 0", fontSize: 10, color: INCOME_COLORS[name] ?? "#888" }}>{name}</td>
+                            <td style={{ padding: "3px 0", fontSize: 10, color: "#E0E0E0", textAlign: "right" }}>{fmtFull(value)}</td>
+                            <td style={{ padding: "3px 0 3px 8px", fontSize: 9, color: "#555", textAlign: "right", width: 44 }}>{((value / flujo.totalIngresos) * 100).toFixed(1)}%</td>
+                            <td style={{ padding: "3px 0 3px 6px", width: 60 }}>
+                              <div style={{ height: 4, borderRadius: 2, background: "#1A1A1A" }}>
+                                <div style={{ height: 4, borderRadius: 2, background: INCOME_COLORS[name] ?? "#888", width: `${(value / flujo.totalIngresos) * 100}%`, opacity: 0.7 }} />
+                              </div>
+                            </td>
+                          </tr>
+                          {note && (
+                            <tr key={`${name}-note`} style={{ borderBottom: "1px solid #151515" }}>
+                              <td colSpan={4} style={{ padding: "1px 0 4px 0", fontSize: 8, color: "#3a3a3a", fontStyle: "italic" }}>
+                                ↳ {note}
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      )
+                    })}</tbody>
+                  </table>
+                )
+              })()}
             </div>
             <div style={{ background: "#0D0D0D", padding: "10px 14px" }}>
               <div style={{ fontSize: 9, color: "#FF433D", letterSpacing: 1.5, marginBottom: 6, fontWeight: 700 }}>COMPOSICIÓN DE GASTOS</div>
