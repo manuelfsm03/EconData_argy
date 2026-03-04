@@ -54,9 +54,12 @@ function fmtNum(v: number | null | undefined, dec = 1) {
 // ── Color schemes ─────────────────────────────────────────────────────────────
 
 const INCOME_COLORS: Record<string, string> = {
-  "IVA":           "#4AF6C3", "Ganancias":     "#36D6B0",
-  "Seg. Social":   "#2BB89E", "Déb./Créd.":    "#FFA028",
-  "Comercio Ext.": "#FF8C42", "Otros Imp.":    "#6C9BFF", "Otros": "#6C9BFF",
+  "IVA":            "#4AF6C3", "Ganancias":      "#36D6B0",
+  "Seg. Social":    "#2BB89E", "Déb./Créd.":     "#FFA028",
+  "Der. Export.":   "#FFD166", "Der. Import.":   "#FF8C42",
+  "Bs. Personales": "#F48FB1", "Otros":          "#6C9BFF",
+  // legacy (otros tabs)
+  "Comercio Ext.":  "#FF8C42", "Otros Imp.":     "#6C9BFF",
 }
 const EXPENSE_COLORS: Record<string, string> = {
   "Jubilaciones y Pensiones":  "#FF6B6B", "Transferencias Provincias": "#FF433D",
@@ -361,9 +364,14 @@ function buildFlujoGraph(
   resPrimario: number, resFinanciero: number,
 ) {
   const incomeRaw: [string, number][] = [
-    ["IVA",           iva],           ["Ganancias",     ganancias],
-    ["Seg. Social",   segSocial],     ["Déb./Créd.",    debCred],
-    ["Comercio Ext.", derExpo + derImpo], ["Otros Imp.", otrosRec + bsPersonales],
+    ["IVA",            iva],
+    ["Ganancias",      ganancias],
+    ["Seg. Social",    segSocial],
+    ["Déb./Créd.",     debCred],
+    ["Der. Export.",   derExpo],
+    ["Der. Import.",   derImpo],
+    ["Bs. Personales", bsPersonales],
+    ["Otros",          otrosRec],
   ]
   const incomeEntries = incomeRaw.filter(([, v]) => v > 0)
   const totalIngresos = incomeEntries.reduce((s, [, v]) => s + v, 0)
@@ -571,11 +579,21 @@ export function FiscalSankeyView() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   const periodLabel = mainTab === "anual" ? annualYear : period.slice(0, 7).toUpperCase()
-  const kpiRec      = mainTab === "anual" ? fmtM(totalRecA)      : fmtM(totalRec)
-  const kpiPrim     = mainTab === "anual" ? fmtM(resPrimarioA)   : fmtM(resPrimario)
-  const kpiFin      = mainTab === "anual" ? fmtM(resFinancieroA) : fmtM(resFinanciero)
-  const kpiPrimColor  = (mainTab === "anual" ? resPrimarioA  : resPrimario)  >= 0 ? "#4AF6C3" : "#FF433D"
-  const kpiFinColor   = (mainTab === "anual" ? resFinancieroA : resFinanciero) >= 0 ? "#4AF6C3" : "#FF433D"
+  // Cuando la API devuelve 0 (dato no publicado aún), estimar desde el Sankey
+  const estPrim = flujo.totalIngresos - flujo.totalGastos
+  const estPrimA = flujoA.totalIngresos - flujoA.totalGastos
+  const resPrimEff  = resPrimario  !== 0 ? resPrimario  : estPrim
+  const resFinEff   = resFinanciero !== 0 ? resFinanciero : estPrim  // sin intereses = igual al primario
+  const resPrimEffA  = resPrimarioA  !== 0 ? resPrimarioA  : estPrimA
+  const resFinEffA   = resFinancieroA !== 0 ? resFinancieroA : estPrimA
+
+  const kpiRec       = mainTab === "anual" ? fmtM(totalRecA)   : fmtM(totalRec)
+  const kpiPrim      = mainTab === "anual" ? fmtM(resPrimEffA) : fmtM(resPrimEff)
+  const kpiFin       = mainTab === "anual" ? fmtM(resFinEffA)  : fmtM(resFinEff)
+  const kpiPrimLabel = (mainTab === "anual" ? resPrimarioA  : resPrimario)  !== 0 ? "Resultado Primario"   : "Resultado Primario (est.)"
+  const kpiFinLabel  = (mainTab === "anual" ? resFinancieroA : resFinanciero) !== 0 ? "Resultado Financiero" : "Resultado Financiero (est.)"
+  const kpiPrimColor = (mainTab === "anual" ? resPrimEffA  : resPrimEff)  >= 0 ? "#4AF6C3" : "#FF433D"
+  const kpiFinColor  = (mainTab === "anual" ? resFinEffA   : resFinEff)   >= 0 ? "#4AF6C3" : "#FF433D"
 
   return (
     <div style={{ fontFamily: "'JetBrains Mono','SF Mono','Fira Code',monospace" }}>
@@ -603,9 +621,9 @@ export function FiscalSankeyView() {
 
       {/* ── KPIs compartidos ── */}
       <div style={{ display: "flex", gap: 1, padding: 1, background: "#111", flexWrap: "wrap" }}>
-        <KPI label="Recaudación Total"    value={kpiRec}  unit={`ARS · ${periodLabel}`}       valueColor="#FFA028" />
-        <KPI label="Resultado Primario"   value={kpiPrim} unit="SPN no financiero · base caja" valueColor={kpiPrimColor} />
-        <KPI label="Resultado Financiero" value={kpiFin}  unit="Incluyendo intereses de deuda" valueColor={kpiFinColor} />
+        <KPI label="Recaudación Total" value={kpiRec}  unit={`ARS · ${periodLabel}`}                                     valueColor="#FFA028" />
+        <KPI label={kpiPrimLabel}      value={kpiPrim} unit="SPN no financiero · base caja"                              valueColor={kpiPrimColor} />
+        <KPI label={kpiFinLabel}       value={kpiFin}  unit="Incluyendo intereses de deuda"                              valueColor={kpiFinColor} />
       </div>
 
       {/* ── Tabs ── */}
@@ -628,8 +646,8 @@ export function FiscalSankeyView() {
             {[
               { label: "INGRESOS TOTALES",     value: flujo.totalIngresos, color: "#4AF6C3" },
               { label: "GASTOS TOTALES",        value: flujo.totalGastos,   color: "#FF433D" },
-              { label: "RESULTADO PRIMARIO",    value: resPrimario,         color: resPrimario  >= 0 ? "#4AF6C3" : "#FF433D" },
-              { label: "RESULTADO FINANCIERO",  value: resFinanciero,       color: resFinanciero >= 0 ? "#4AF6C3" : "#FF433D" },
+              { label: resPrimario  !== 0 ? "RESULTADO PRIMARIO"   : "RESULTADO PRIMARIO (est.)",  value: resPrimario  !== 0 ? resPrimario  : flujo.totalIngresos - flujo.totalGastos, color: (resPrimario  !== 0 ? resPrimario  : flujo.totalIngresos - flujo.totalGastos) >= 0 ? "#4AF6C3" : "#FF433D" },
+              { label: resFinanciero !== 0 ? "RESULTADO FINANCIERO" : "RESULTADO FINANCIERO (est.)", value: resFinanciero !== 0 ? resFinanciero : flujo.totalIngresos - flujo.totalGastos, color: (resFinanciero !== 0 ? resFinanciero : flujo.totalIngresos - flujo.totalGastos) >= 0 ? "#4AF6C3" : "#FF433D" },
             ].map(({ label, value, color }) => (
               <div key={label} style={{ background: "#0D0D0D", padding: "10px 14px" }}>
                 <div style={{ fontSize: 9, color: "#555", letterSpacing: 1.5, textTransform: "uppercase" }}>{label}</div>
