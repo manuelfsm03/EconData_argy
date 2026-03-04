@@ -15,6 +15,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { BBGAreaChart } from "../charts/bbg-area-chart"
 import { BBGLineChart } from "../charts/bbg-line-chart"
+import { FiscalSankeyView } from "./fiscal-sankey"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Legend, AreaChart, Area,
@@ -1618,7 +1619,8 @@ export function TabMacro() {
       {activeTab === "emae"      && <EmaeView />}
       {activeTab === "ipc"       && <IpcView />}
       {activeTab === "balanza"   && <BalanzaView />}
-      {activeTab === "fiscal"    && <FiscalView />}
+      {activeTab === "fiscal"    && <FiscalSankeyView />}
+      {/* FiscalView comentada para rollback — ver función FiscalView() más abajo */}
       {activeTab === "piramides" && <PiramidesView />}
     </div>
   )

@@ -58,6 +58,15 @@ const SERIES_IDS: Record<string, string> = {
   resultado_primario: "379.9_RESULTADO_017__31_73",
   resultado_financiero: "378.9_RESULTADO_017_0_M_18_90",
   recaudacion: "172.3_TL_RECAION_M_0_0_17",
+  // RECAUDACIÓN DESAGREGADA — Informe Mensual SPN, dataset 452 (R/P1M hasta 2026)
+  rec_iva:           "452.2_IVA_NETO_RROS_0_T_19_67",  // IVA neto (excl. reintegros)
+  rec_ganancias:     "452.2_GANANCIASIAS_0_T_9_51",     // Impuesto a las Ganancias
+  rec_seg_social:    "172.3_SRIDAD_IAL_M_0_0_16",       // Seg. Social (aportes + contrib.)
+  rec_deb_cred:      "452.2_DEBITOS_CRTOS_0_T_16_22",   // Débitos y Créditos bancarios
+  rec_der_expo:      "452.2_DERECHOS_EION_0_T_20_42",   // Derechos de Exportación
+  rec_der_impo:      "452.2_DERECHOS_IION_0_T_20_60",   // Derechos de Importación
+  rec_bs_personales: "452.2_BIENES_PERLES_0_T_17_26",   // Bienes Personales
+  // rec_combustibles: "452.1_COMBUSTIBLLES_0_A_12_22", // TODO: solo trimestral en datos.gob.ar
   // MERCADO LABORAL — EPH Continua trimestral (31 aglomerados)
   tasa_desempleo:   "42.3_EPH_PUNTUATAL_0_M_30",
   tasa_actividad:   "43.2_ECTAT_0_T_33",
@@ -439,8 +448,25 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // ── FISCAL SANKEY — recaudación desagregada ──────────────────────────────
+    if (endpoint === "fiscal_sankey") {
+      const data = await getMultiserie([
+        "recaudacion",
+        "resultado_primario",
+        "resultado_financiero",
+        "rec_iva",
+        "rec_ganancias",
+        "rec_seg_social",
+        "rec_deb_cred",
+        "rec_der_expo",
+        "rec_der_impo",
+        "rec_bs_personales",
+      ], 36)
+      return NextResponse.json({ data, updated_at: new Date().toISOString(), source: "apis.datos.gob.ar · ARCA · dataset 452" })
+    }
+
     return NextResponse.json(
-      { error: "endpoint no válido. Usar ?endpoint=emae|ipc|ipi|balanza|fiscal" },
+      { error: "endpoint no válido. Usar ?endpoint=emae|ipc|ipi|balanza|fiscal|fiscal_sankey" },
       { status: 400 },
     )
   } catch (error) {
