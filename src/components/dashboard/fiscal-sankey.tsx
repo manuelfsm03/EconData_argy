@@ -1,11 +1,16 @@
 /**
- * FiscalSankeyView — 4 vistas del flujo fiscal
- * Todos los tabs usan el mismo engine stroke-based (estilo Bloomberg / d3-sankey)
+ * FiscalSankeyView — 5 vistas del flujo fiscal
+ * Tabs: Flujo Fiscal · Distribución Federal · Cashflow Didáctico · Ahorro-Inversión · Anual
+ * Todos usan stroke-based Sankey (estilo Bloomberg / d3-sankey)
  */
 
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartTooltip,
+  ResponsiveContainer, ReferenceLine, Cell,
+} from "recharts"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -122,7 +127,7 @@ function linkPath(lk: LayoutLink): string {
   return `M${sx},${lk.y0} C${mx},${lk.y0} ${mx},${lk.y1} ${tx},${lk.y1}`
 }
 
-// Helper: construye RawNode/RawLink desde listas con nombres ──────────────────
+// buildGraph: convierte nodos/links con nombres → índices ─────────────────────
 
 function buildGraph(
   nodeSpecs: { name: string; column: 0 | 1 | 2; color: string }[],
@@ -139,7 +144,7 @@ function buildGraph(
   }
 }
 
-// ── StrokeSankeyChart — componente reutilizable ───────────────────────────────
+// ── StrokeSankeyChart ─────────────────────────────────────────────────────────
 
 function StrokeSankeyChart({
   nodes, links,
@@ -172,20 +177,16 @@ function StrokeSankeyChart({
   const iW = Math.max(dim.width  - margin.left - margin.right, 160)
   const iH = Math.max(dim.height - margin.top  - margin.bottom, 160)
   const layout = strokeSankeyLayout({ nodes, links, width: iW, height: iH, nodePadding: 7, nodeWidth: 14 })
-
   const leftTotal  = layout.nodes.filter(nd => nd._col === 0).reduce((s, nd) => s + nd.value, 0)
   const rightTotal = layout.nodes.filter(nd => nd._col === 2).reduce((s, nd) => s + nd.value, 0)
 
   return (
     <div style={{ background: "#0A0A0A", color: "#E0E0E0" }}>
-      {/* Section labels */}
       <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 16px 4px" }}>
         <div style={{ fontSize: 9, color: leftColor,   letterSpacing: 2, textTransform: "uppercase", fontWeight: 700 }}>{leftLabel}</div>
         <div style={{ fontSize: 9, color: centerColor, letterSpacing: 2, textTransform: "uppercase", fontWeight: 700 }}>{centerLabel}</div>
         <div style={{ fontSize: 9, color: rightColor,  letterSpacing: 2, textTransform: "uppercase", fontWeight: 700 }}>{rightLabel}</div>
       </div>
-
-      {/* SVG */}
       <div ref={containerRef} style={{ overflow: "hidden" }}>
         <svg width={dim.width} height={dim.height} style={{ display: "block" }}>
           <g transform={`translate(${margin.left},${margin.top})`}>
@@ -228,13 +229,13 @@ function StrokeSankeyChart({
                   {isLeft && nodeH > 8 && (
                     <>
                       <text x={nd.x0 - 8} y={midY - 5} textAnchor="end" fill={nd.color} fontSize={9} fontWeight={600} fontFamily="inherit">{nd.name}</text>
-                      <text x={nd.x0 - 8} y={midY + 7} textAnchor="end" fill="#666"     fontSize={8}             fontFamily="inherit">{fmtMM(nd.value)}{pct ? ` · ${pct}%` : ""}</text>
+                      <text x={nd.x0 - 8} y={midY + 7} textAnchor="end" fill="#666" fontSize={8} fontFamily="inherit">{fmtMM(nd.value)}{pct ? ` · ${pct}%` : ""}</text>
                     </>
                   )}
                   {isRight && nodeH > 8 && (
                     <>
                       <text x={nd.x1 + 8} y={midY - 5} textAnchor="start" fill={nd.color} fontSize={9} fontWeight={600} fontFamily="inherit">{nd.name}</text>
-                      <text x={nd.x1 + 8} y={midY + 7} textAnchor="start" fill="#666"     fontSize={8}             fontFamily="inherit">{fmtMM(nd.value)}{pct ? ` · ${pct}%` : ""}</text>
+                      <text x={nd.x1 + 8} y={midY + 7} textAnchor="start" fill="#666" fontSize={8} fontFamily="inherit">{fmtMM(nd.value)}{pct ? ` · ${pct}%` : ""}</text>
                     </>
                   )}
                 </g>
@@ -243,8 +244,6 @@ function StrokeSankeyChart({
           </g>
         </svg>
       </div>
-
-      {/* Hover tooltip */}
       {hovL !== null && layout.links[hovL] && (() => {
         const lk = layout.links[hovL]
         return (
@@ -260,7 +259,7 @@ function StrokeSankeyChart({
   )
 }
 
-// ── BreakdownTable (para Distribución Federal) ────────────────────────────────
+// ── BreakdownTable ────────────────────────────────────────────────────────────
 
 function BreakdownTable({ getValue, total, period }: {
   getValue: (key: string) => number; total: number; period: string
@@ -319,7 +318,7 @@ function BreakdownTable({ getValue, total, period }: {
   )
 }
 
-// ── KPI card ──────────────────────────────────────────────────────────────────
+// ── KPI / SubTabs ─────────────────────────────────────────────────────────────
 
 function KPI({ label, value, unit, var1, var1Label, var2, var2Label, valueColor }: {
   label: string; value: string | null; unit: string
@@ -335,8 +334,6 @@ function KPI({ label, value, unit, var1, var1Label, var2, var2Label, valueColor 
     </div>
   )
 }
-
-// ── SubTabs ───────────────────────────────────────────────────────────────────
 
 function SubTabs({ tabs, active, onChange }: {
   tabs: { key: string; label: string }[]; active: string; onChange: (k: string) => void
@@ -355,51 +352,14 @@ function SubTabs({ tabs, active, onChange }: {
   )
 }
 
-// ── FiscalSankeyView ──────────────────────────────────────────────────────────
+// ── Función reutilizable para construir el Sankey de flujo fiscal ──────────────
+// Calcula superávit como residuo real (totalIngresos - totalGastos estimados)
 
-export function FiscalSankeyView() {
-  const [fiscalData, setFiscalData] = useState<FiscalData | null>(null)
-  const [loading, setLoading]       = useState(true)
-  const [period, setPeriod]         = useState<string>("")
-  const [mainTab, setMainTab]       = useState<"flujo" | "distribucion" | "cashflow" | "ahorro">("flujo")
-
-  useEffect(() => {
-    fetch("/api/macro?endpoint=fiscal_sankey")
-      .then(r => r.json())
-      .then(j => {
-        setFiscalData(j.data)
-        const dates = (j.data?.recaudacion ?? []).map(([d]: [string, number]) => d)
-        if (dates.length > 0) setPeriod(dates[0])
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [])
-
-  const getValue = (key: string, p = period): number => {
-    if (!fiscalData) return 0
-    const entry = (fiscalData[key] ?? []).find(([d]) => d === p)
-    return entry ? entry[1] : 0
-  }
-  const periods = (fiscalData?.recaudacion ?? []).map(([d]) => d).slice(0, 36)
-
-  if (loading)     return <div style={{ padding: 48, color: "#555", fontSize: 11, textAlign: "center" }}>Cargando datos fiscales...</div>
-  if (!fiscalData) return <div style={{ padding: 24, color: "#444", fontSize: 11 }}>Sin datos disponibles</div>
-
-  // ── Valores comunes ─────────────────────────────────────────────────────────
-  const iva          = getValue("rec_iva")
-  const ganancias    = getValue("rec_ganancias")
-  const segSocial    = getValue("rec_seg_social")
-  const debCred      = getValue("rec_deb_cred")
-  const derExpo      = getValue("rec_der_expo")
-  const derImpo      = getValue("rec_der_impo")
-  const bsPersonales = getValue("rec_bs_personales")
-  const totalRec     = getValue("recaudacion")
-  const resPrimario  = getValue("resultado_primario")
-  const resFinanciero = getValue("resultado_financiero")
-  const otrosRec     = Math.max(0, totalRec - iva - ganancias - segSocial - debCred - derExpo - derImpo - bsPersonales)
-
-  // ── Tab 1: Flujo Fiscal ─────────────────────────────────────────────────────
-  const gastoTotal    = totalRec + Math.abs(resPrimario < 0 ? resPrimario : 0)
+function buildFlujoGraph(
+  iva: number, ganancias: number, segSocial: number, debCred: number,
+  derExpo: number, derImpo: number, bsPersonales: number, otrosRec: number,
+  resPrimario: number, resFinanciero: number,
+) {
   const incomeRaw: [string, number][] = [
     ["IVA",           iva],           ["Ganancias",     ganancias],
     ["Seg. Social",   segSocial],     ["Déb./Créd.",    debCred],
@@ -407,19 +367,22 @@ export function FiscalSankeyView() {
   ]
   const incomeEntries = incomeRaw.filter(([, v]) => v > 0)
   const totalIngresos = incomeEntries.reduce((s, [, v]) => s + v, 0)
+
+  const gastoBase  = totalIngresos + Math.abs(resPrimario < 0 ? resPrimario : 0)
   const expenseRaw: [string, number][] = [
-    ["Jubilaciones y Pensiones",  gastoTotal * 0.42], ["Transferencias Provincias", gastoTotal * 0.18],
-    ["Salarios Públicos",         gastoTotal * 0.11], ["Subsidios Energía",         gastoTotal * 0.06],
-    ["Educación y Cultura",       gastoTotal * 0.05], ["Salud",                     gastoTotal * 0.04],
-    ["Defensa y Seguridad",       gastoTotal * 0.03], ["Obra Pública",              gastoTotal * 0.03],
+    ["Jubilaciones y Pensiones",  gastoBase * 0.42], ["Transferencias Provincias", gastoBase * 0.18],
+    ["Salarios Públicos",         gastoBase * 0.11], ["Subsidios Energía",         gastoBase * 0.06],
+    ["Educación y Cultura",       gastoBase * 0.05], ["Salud",                     gastoBase * 0.04],
+    ["Defensa y Seguridad",       gastoBase * 0.03], ["Obra Pública",              gastoBase * 0.03],
     ["Intereses Deuda",           Math.abs(resFinanciero - resPrimario)],
-    ["Otros Gastos",              gastoTotal * 0.05],
+    ["Otros Gastos",              gastoBase * 0.05],
   ]
   const expenseEntries = expenseRaw.filter(([, v]) => v > 0)
-  const totalGastos    = expenseEntries.reduce((s, [, v]) => s + v, 0)
-  const superavit      = resPrimario > 0 ? resPrimario : 0
+  const totalGastos   = expenseEntries.reduce((s, [, v]) => s + v, 0)
+  // Superávit = residuo real (funciona incluso cuando resPrimario = 0 por datos no disponibles)
+  const superavit = Math.max(0, totalIngresos - totalGastos)
 
-  const flujoGraph = buildGraph(
+  const graph = buildGraph(
     [
       ...incomeEntries.map(([name]) => ({ name, column: 0 as const, color: INCOME_COLORS[name] ?? "#6C9BFF" })),
       { name: "TESORO NACIONAL", column: 1 as const, color: "#FFA028" },
@@ -432,24 +395,97 @@ export function FiscalSankeyView() {
       ...(superavit > 0 ? [{ source: "TESORO NACIONAL", target: "SUPERÁVIT", value: superavit }] : []),
     ],
   )
+  return { graph, incomeEntries, expenseEntries, totalIngresos, totalGastos, superavit }
+}
 
-  // ── Tab 2: Distribución Federal ─────────────────────────────────────────────
+// ── FiscalSankeyView ──────────────────────────────────────────────────────────
+
+export function FiscalSankeyView() {
+  const [fiscalData, setFiscalData] = useState<FiscalData | null>(null)
+  const [loading, setLoading]       = useState(true)
+  const [period, setPeriod]         = useState<string>("")
+  const [annualYear, setAnnualYear] = useState<string>("")
+  const [mainTab, setMainTab]       = useState<"flujo" | "distribucion" | "cashflow" | "ahorro" | "anual">("flujo")
+
+  useEffect(() => {
+    fetch("/api/macro?endpoint=fiscal_sankey")
+      .then(r => r.json())
+      .then(j => {
+        setFiscalData(j.data)
+        const dates = (j.data?.recaudacion ?? []).map(([d]: [string, number]) => d)
+        if (dates.length > 0) {
+          setPeriod(dates[0])
+          setAnnualYear(dates[0].slice(0, 4))
+        }
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const getValue = (key: string, p = period): number => {
+    if (!fiscalData) return 0
+    const entry = (fiscalData[key] ?? []).find(([d]) => d === p)
+    return entry ? entry[1] : 0
+  }
+
+  // Suma todos los meses de un año para una serie
+  const getAnnualValue = (key: string, y = annualYear): number => {
+    if (!fiscalData) return 0
+    return (fiscalData[key] ?? [])
+      .filter(([d]) => d.startsWith(y))
+      .reduce((s, [, v]) => s + v, 0)
+  }
+
+  const periods = (fiscalData?.recaudacion ?? []).map(([d]) => d).slice(0, 36)
+  const years   = !fiscalData ? [] :
+    [...new Set((fiscalData.recaudacion ?? []).map(([d]) => d.slice(0, 4)))]
+      .sort((a, b) => b.localeCompare(a))
+
+  if (loading)     return <div style={{ padding: 48, color: "#555", fontSize: 11, textAlign: "center" }}>Cargando datos fiscales...</div>
+  if (!fiscalData) return <div style={{ padding: 24, color: "#444", fontSize: 11 }}>Sin datos disponibles</div>
+
+  // ── Valores mensuales ───────────────────────────────────────────────────────
+  const iva          = getValue("rec_iva")
+  const ganancias    = getValue("rec_ganancias")
+  const segSocial    = getValue("rec_seg_social")
+  const debCred      = getValue("rec_deb_cred")
+  const derExpo      = getValue("rec_der_expo")
+  const derImpo      = getValue("rec_der_impo")
+  const bsPersonales = getValue("rec_bs_personales")
+  const totalRec     = getValue("recaudacion")
+  const resPrimario  = getValue("resultado_primario")
+  const resFinanciero = getValue("resultado_financiero")
+  const otrosRec     = Math.max(0, totalRec - iva - ganancias - segSocial - debCred - derExpo - derImpo - bsPersonales)
+
+  // ── Valores anuales ─────────────────────────────────────────────────────────
+  const ivaA          = getAnnualValue("rec_iva")
+  const gananciasA    = getAnnualValue("rec_ganancias")
+  const segSocialA    = getAnnualValue("rec_seg_social")
+  const debCredA      = getAnnualValue("rec_deb_cred")
+  const derExpoA      = getAnnualValue("rec_der_expo")
+  const derImpoA      = getAnnualValue("rec_der_impo")
+  const bsPersonalesA = getAnnualValue("rec_bs_personales")
+  const totalRecA     = getAnnualValue("recaudacion")
+  const resPrimarioA  = getAnnualValue("resultado_primario")
+  const resFinancieroA = getAnnualValue("resultado_financiero")
+  const otrosRecA     = Math.max(0, totalRecA - ivaA - gananciasA - segSocialA - debCredA - derExpoA - derImpoA - bsPersonalesA)
+
+  // ── Flujo Fiscal mensual ────────────────────────────────────────────────────
+  const flujo  = buildFlujoGraph(iva, ganancias, segSocial, debCred, derExpo, derImpo, bsPersonales, otrosRec, resPrimario, resFinanciero)
+  // ── Flujo Fiscal anual ──────────────────────────────────────────────────────
+  const flujoA = buildFlujoGraph(ivaA, gananciasA, segSocialA, debCredA, derExpoA, derImpoA, bsPersonalesA, otrosRecA, resPrimarioA, resFinancieroA)
+
+  // ── Distribución Federal ────────────────────────────────────────────────────
   const copart = Math.max(0, totalRec - segSocial - derExpo)
   const distribGraph = buildGraph(
     [
-      { name: "IVA",           column: 0, color: "#4AF6C3" },
-      { name: "Ganancias",     column: 0, color: "#FFA028" },
-      { name: "Seg. Social",   column: 0, color: "#7C83FD" },
-      { name: "Déb/Créd",      column: 0, color: "#4FC3F7" },
-      { name: "Der. Expo.",    column: 0, color: "#FFD54F" },
-      { name: "Der. Impo.",    column: 0, color: "#CE93D8" },
-      { name: "Bs. Pers.",     column: 0, color: "#F48FB1" },
-      { name: "Otros",         column: 0, color: "#555"    },
-      { name: "RECAUDACIÓN",   column: 1, color: "#FFA028" },
-      { name: "Tesoro Nac.",   column: 2, color: "#4AF6C3" },
-      { name: "Provincias",    column: 2, color: "#4FC3F7" },
-      { name: "ANSeS",         column: 2, color: "#7C83FD" },
-      { name: "CABA + ATN",    column: 2, color: "#FFD54F" },
+      { name: "IVA",         column: 0, color: "#4AF6C3" }, { name: "Ganancias",   column: 0, color: "#FFA028" },
+      { name: "Seg. Social", column: 0, color: "#7C83FD" }, { name: "Déb/Créd",    column: 0, color: "#4FC3F7" },
+      { name: "Der. Expo.",  column: 0, color: "#FFD54F" }, { name: "Der. Impo.",  column: 0, color: "#CE93D8" },
+      { name: "Bs. Pers.",   column: 0, color: "#F48FB1" }, { name: "Otros",       column: 0, color: "#555"    },
+      { name: "RECAUDACIÓN", column: 1, color: "#FFA028" },
+      { name: "Tesoro Nac.", column: 2, color: "#4AF6C3" }, { name: "Provincias",  column: 2, color: "#4FC3F7" },
+      { name: "ANSeS",       column: 2, color: "#7C83FD" }, { name: "CABA + ATN",  column: 2, color: "#FFD54F" },
     ],
     [
       { source: "IVA",         target: "RECAUDACIÓN", value: iva },
@@ -467,24 +503,17 @@ export function FiscalSankeyView() {
     ],
   )
 
-  // ── Tab 3: Cashflow Didáctico ───────────────────────────────────────────────
+  // ── Cashflow ────────────────────────────────────────────────────────────────
   const cashflowGraph = buildGraph(
     [
-      { name: "IVA",           column: 0, color: "#4AF6C3" },
-      { name: "Ganancias",     column: 0, color: "#FFA028" },
-      { name: "Seg. Social",   column: 0, color: "#7C83FD" },
-      { name: "Déb/Créd",      column: 0, color: "#4FC3F7" },
-      { name: "Der. Expo.",    column: 0, color: "#FFD54F" },
-      { name: "Der. Impo.",    column: 0, color: "#CE93D8" },
-      { name: "Bs. Pers.",     column: 0, color: "#F48FB1" },
-      { name: "Otros",         column: 0, color: "#555"    },
-      { name: "TESORO",        column: 1, color: "#FFA028" },
-      { name: "Jubilaciones",  column: 2, color: "#7C83FD" },
-      { name: "Trans. Prov.",  column: 2, color: "#4FC3F7" },
-      { name: "Salarios",      column: 2, color: "#4AF6C3" },
-      { name: "Subsidios",     column: 2, color: "#FFD54F" },
-      { name: "Deuda",         column: 2, color: "#FF433D" },
-      { name: "Otros Gastos",  column: 2, color: "#666"    },
+      { name: "IVA",         column: 0, color: "#4AF6C3" }, { name: "Ganancias",   column: 0, color: "#FFA028" },
+      { name: "Seg. Social", column: 0, color: "#7C83FD" }, { name: "Déb/Créd",    column: 0, color: "#4FC3F7" },
+      { name: "Der. Expo.",  column: 0, color: "#FFD54F" }, { name: "Der. Impo.",  column: 0, color: "#CE93D8" },
+      { name: "Bs. Pers.",   column: 0, color: "#F48FB1" }, { name: "Otros",       column: 0, color: "#555"    },
+      { name: "TESORO",      column: 1, color: "#FFA028" },
+      { name: "Jubilaciones", column: 2, color: "#7C83FD" }, { name: "Trans. Prov.", column: 2, color: "#4FC3F7" },
+      { name: "Salarios",     column: 2, color: "#4AF6C3" }, { name: "Subsidios",    column: 2, color: "#FFD54F" },
+      { name: "Deuda",        column: 2, color: "#FF433D" }, { name: "Otros Gastos", column: 2, color: "#666"    },
     ],
     [
       { source: "IVA",         target: "TESORO", value: iva },
@@ -495,16 +524,16 @@ export function FiscalSankeyView() {
       { source: "Der. Impo.",  target: "TESORO", value: derImpo },
       { source: "Bs. Pers.",   target: "TESORO", value: bsPersonales },
       { source: "Otros",       target: "TESORO", value: otrosRec },
-      { source: "TESORO", target: "Jubilaciones", value: totalRec * 0.38 },
-      { source: "TESORO", target: "Trans. Prov.", value: totalRec * 0.18 },
-      { source: "TESORO", target: "Salarios",     value: totalRec * 0.12 },
-      { source: "TESORO", target: "Subsidios",    value: totalRec * 0.08 },
-      { source: "TESORO", target: "Deuda",        value: totalRec * 0.15 },
-      { source: "TESORO", target: "Otros Gastos", value: totalRec * 0.09 },
+      { source: "TESORO", target: "Jubilaciones",  value: totalRec * 0.38 },
+      { source: "TESORO", target: "Trans. Prov.",  value: totalRec * 0.18 },
+      { source: "TESORO", target: "Salarios",      value: totalRec * 0.12 },
+      { source: "TESORO", target: "Subsidios",     value: totalRec * 0.08 },
+      { source: "TESORO", target: "Deuda",         value: totalRec * 0.15 },
+      { source: "TESORO", target: "Otros Gastos",  value: totalRec * 0.09 },
     ],
   )
 
-  // ── Tab 4: Ahorro-Inversión ─────────────────────────────────────────────────
+  // ── Ahorro-Inversión ────────────────────────────────────────────────────────
   const tributarios   = totalRec * 0.62
   const noTributarios = totalRec * 0.04
   const rentas        = totalRec * 0.03
@@ -512,16 +541,11 @@ export function FiscalSankeyView() {
   const gastoA        = totalRec + Math.abs(resPrimario)
   const ahorroGraph = buildGraph(
     [
-      { name: "Tributarios",    column: 0, color: "#4AF6C3" },
-      { name: "Seg. Social",    column: 0, color: "#7C83FD" },
-      { name: "No Tributarios", column: 0, color: "#FFA028" },
-      { name: "Rentas Prop.",   column: 0, color: "#FFD54F" },
-      { name: "Otros Ing.",     column: 0, color: "#555"    },
-      { name: "INGRESOS SPN",   column: 1, color: "#4AF6C3" },
-      { name: "Prest. Soc.",    column: 2, color: "#7C83FD" },
-      { name: "Funcionam.",     column: 2, color: "#4FC3F7" },
-      { name: "Transferencias", column: 2, color: "#FFA028" },
-      { name: "Cap. Inversión", column: 2, color: "#4AF6C3" },
+      { name: "Tributarios",    column: 0, color: "#4AF6C3" }, { name: "Seg. Social",    column: 0, color: "#7C83FD" },
+      { name: "No Tributarios", column: 0, color: "#FFA028" }, { name: "Rentas Prop.",   column: 0, color: "#FFD54F" },
+      { name: "Otros Ing.",     column: 0, color: "#555"    }, { name: "INGRESOS SPN",   column: 1, color: "#4AF6C3" },
+      { name: "Prest. Soc.",    column: 2, color: "#7C83FD" }, { name: "Funcionam.",     column: 2, color: "#4FC3F7" },
+      { name: "Transferencias", column: 2, color: "#FFA028" }, { name: "Cap. Inversión", column: 2, color: "#4AF6C3" },
       { name: "Intereses",      column: 2, color: "#FF433D" },
     ],
     [
@@ -538,50 +562,74 @@ export function FiscalSankeyView() {
     ],
   )
 
+  // ── Datos para gráfico de barras anual ──────────────────────────────────────
+  type BalancePt = { year: string; primario: number; label: string }
+  const balanceByYear: BalancePt[] = [...years].reverse().map(y => {
+    const primario = getAnnualValue("resultado_primario", y)
+    return { year: y, primario, label: fmtMM(primario) }
+  })
+
   // ── Render ─────────────────────────────────────────────────────────────────
+  const periodLabel = mainTab === "anual" ? annualYear : period.slice(0, 7).toUpperCase()
+  const kpiRec      = mainTab === "anual" ? fmtM(totalRecA)      : fmtM(totalRec)
+  const kpiPrim     = mainTab === "anual" ? fmtM(resPrimarioA)   : fmtM(resPrimario)
+  const kpiFin      = mainTab === "anual" ? fmtM(resFinancieroA) : fmtM(resFinanciero)
+  const kpiPrimColor  = (mainTab === "anual" ? resPrimarioA  : resPrimario)  >= 0 ? "#4AF6C3" : "#FF433D"
+  const kpiFinColor   = (mainTab === "anual" ? resFinancieroA : resFinanciero) >= 0 ? "#4AF6C3" : "#FF433D"
+
   return (
     <div style={{ fontFamily: "'JetBrains Mono','SF Mono','Fira Code',monospace" }}>
 
-      {/* Header compartido */}
+      {/* ── Header ── */}
       <div style={{ background: "linear-gradient(180deg,#111 0%,#0A0A0A 100%)", borderBottom: "1px solid #1A1A1A", padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <div>
           <div style={{ fontSize: 9, color: "#555", letterSpacing: 2, textTransform: "uppercase" }}>Sector Público Nacional · Flujo Fiscal</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#FFA028", marginTop: 2 }}>ANÁLISIS FISCAL — {period.slice(0, 7).toUpperCase()}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#FFA028", marginTop: 2 }}>ANÁLISIS FISCAL — {periodLabel}</div>
         </div>
-        <select value={period} onChange={e => setPeriod(e.target.value)}
-          style={{ background: "#111", color: "#E0E0E0", border: "1px solid #222", padding: "5px 8px", fontSize: 10, fontFamily: "inherit", borderRadius: 4, cursor: "pointer" }}>
-          {periods.map(p => <option key={p} value={p}>{p.slice(0, 7)}</option>)}
-        </select>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {mainTab === "anual" ? (
+            <select value={annualYear} onChange={e => setAnnualYear(e.target.value)}
+              style={{ background: "#111", color: "#E0E0E0", border: "1px solid #222", padding: "5px 8px", fontSize: 10, fontFamily: "inherit", borderRadius: 4, cursor: "pointer" }}>
+              {years.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          ) : (
+            <select value={period} onChange={e => setPeriod(e.target.value)}
+              style={{ background: "#111", color: "#E0E0E0", border: "1px solid #222", padding: "5px 8px", fontSize: 10, fontFamily: "inherit", borderRadius: 4, cursor: "pointer" }}>
+              {periods.map(p => <option key={p} value={p}>{p.slice(0, 7)}</option>)}
+            </select>
+          )}
+        </div>
       </div>
 
-      {/* KPIs compartidos */}
+      {/* ── KPIs compartidos ── */}
       <div style={{ display: "flex", gap: 1, padding: 1, background: "#111", flexWrap: "wrap" }}>
-        <KPI label="Recaudación Total"    value={fmtM(totalRec)}      unit={`ARS · ${period.slice(0, 7)}`}  valueColor="#FFA028" />
-        <KPI label="Resultado Primario"   value={fmtM(resPrimario)}   unit="SPN no financiero · base caja"  valueColor={resPrimario  >= 0 ? "#4AF6C3" : "#FF433D"} />
-        <KPI label="Resultado Financiero" value={fmtM(resFinanciero)} unit="Incluyendo intereses de deuda"   valueColor={resFinanciero >= 0 ? "#4AF6C3" : "#FF433D"} />
+        <KPI label="Recaudación Total"    value={kpiRec}  unit={`ARS · ${periodLabel}`}       valueColor="#FFA028" />
+        <KPI label="Resultado Primario"   value={kpiPrim} unit="SPN no financiero · base caja" valueColor={kpiPrimColor} />
+        <KPI label="Resultado Financiero" value={kpiFin}  unit="Incluyendo intereses de deuda" valueColor={kpiFinColor} />
       </div>
 
-      {/* Tabs */}
+      {/* ── Tabs ── */}
       <SubTabs
         tabs={[
           { key: "flujo",        label: "Flujo Fiscal" },
           { key: "distribucion", label: "Distribución Federal" },
           { key: "cashflow",     label: "Cashflow Didáctico" },
           { key: "ahorro",       label: "Ahorro-Inversión" },
+          { key: "anual",        label: "Vista Anual" },
         ]}
         active={mainTab}
         onChange={v => setMainTab(v as typeof mainTab)}
       />
 
-      {/* ══ TAB 1: Flujo Fiscal ══ */}
+      {/* ══ TAB: Flujo Fiscal (mensual) ══ */}
       {mainTab === "flujo" && (
         <div style={{ background: "#0A0A0A" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 1, background: "#1A1A1A" }}>
             {[
-              { label: "INGRESOS TOTALES",     value: totalIngresos,  color: "#4AF6C3" },
-              { label: "GASTOS TOTALES",        value: totalGastos,    color: "#FF433D" },
-              { label: "RESULTADO PRIMARIO",    value: resPrimario,    color: resPrimario  >= 0 ? "#4AF6C3" : "#FF433D" },
-              { label: "RESULTADO FINANCIERO",  value: resFinanciero,  color: resFinanciero >= 0 ? "#4AF6C3" : "#FF433D" },
+              { label: "INGRESOS TOTALES",     value: flujo.totalIngresos, color: "#4AF6C3" },
+              { label: "GASTOS TOTALES",        value: flujo.totalGastos,   color: "#FF433D" },
+              { label: "RESULTADO PRIMARIO",    value: resPrimario,         color: resPrimario  >= 0 ? "#4AF6C3" : "#FF433D" },
+              { label: "RESULTADO FINANCIERO",  value: resFinanciero,       color: resFinanciero >= 0 ? "#4AF6C3" : "#FF433D" },
             ].map(({ label, value, color }) => (
               <div key={label} style={{ background: "#0D0D0D", padding: "10px 14px" }}>
                 <div style={{ fontSize: 9, color: "#555", letterSpacing: 1.5, textTransform: "uppercase" }}>{label}</div>
@@ -590,51 +638,44 @@ export function FiscalSankeyView() {
               </div>
             ))}
           </div>
-
           <StrokeSankeyChart
-            nodes={flujoGraph.nodes} links={flujoGraph.links}
+            nodes={flujo.graph.nodes} links={flujo.graph.links}
             leftLabel="← FUENTES DE INGRESO" centerLabel="TESORO" rightLabel="DESTINO DEL GASTO →"
             leftColor="#4AF6C3" centerColor="#FFA028" rightColor="#FF433D"
           />
-
-          {/* Tablas desglose */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "#1A1A1A", borderTop: "1px solid #1A1A1A" }}>
             <div style={{ background: "#0D0D0D", padding: "10px 14px" }}>
               <div style={{ fontSize: 9, color: "#4AF6C3", letterSpacing: 1.5, marginBottom: 6, fontWeight: 700 }}>COMPOSICIÓN DE INGRESOS</div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <tbody>
-                  {[...incomeEntries].sort((a, b) => b[1] - a[1]).map(([name, value]) => (
-                    <tr key={name} style={{ borderBottom: "1px solid #151515" }}>
-                      <td style={{ padding: "3px 0", fontSize: 10, color: INCOME_COLORS[name] ?? "#888" }}>{name}</td>
-                      <td style={{ padding: "3px 0", fontSize: 10, color: "#E0E0E0", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtFull(value)}</td>
-                      <td style={{ padding: "3px 0 3px 8px", fontSize: 9, color: "#555", textAlign: "right", width: 44 }}>{((value / totalIngresos) * 100).toFixed(1)}%</td>
-                      <td style={{ padding: "3px 0 3px 6px", width: 60 }}>
-                        <div style={{ height: 4, borderRadius: 2, background: "#1A1A1A" }}>
-                          <div style={{ height: 4, borderRadius: 2, background: INCOME_COLORS[name] ?? "#888", width: `${(value / totalIngresos) * 100}%`, opacity: 0.7 }} />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+                <tbody>{[...flujo.incomeEntries].sort((a, b) => b[1] - a[1]).map(([name, value]) => (
+                  <tr key={name} style={{ borderBottom: "1px solid #151515" }}>
+                    <td style={{ padding: "3px 0", fontSize: 10, color: INCOME_COLORS[name] ?? "#888" }}>{name}</td>
+                    <td style={{ padding: "3px 0", fontSize: 10, color: "#E0E0E0", textAlign: "right" }}>{fmtFull(value)}</td>
+                    <td style={{ padding: "3px 0 3px 8px", fontSize: 9, color: "#555", textAlign: "right", width: 44 }}>{((value / flujo.totalIngresos) * 100).toFixed(1)}%</td>
+                    <td style={{ padding: "3px 0 3px 6px", width: 60 }}>
+                      <div style={{ height: 4, borderRadius: 2, background: "#1A1A1A" }}>
+                        <div style={{ height: 4, borderRadius: 2, background: INCOME_COLORS[name] ?? "#888", width: `${(value / flujo.totalIngresos) * 100}%`, opacity: 0.7 }} />
+                      </div>
+                    </td>
+                  </tr>
+                ))}</tbody>
               </table>
             </div>
             <div style={{ background: "#0D0D0D", padding: "10px 14px" }}>
               <div style={{ fontSize: 9, color: "#FF433D", letterSpacing: 1.5, marginBottom: 6, fontWeight: 700 }}>COMPOSICIÓN DE GASTOS</div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <tbody>
-                  {[...expenseEntries].sort((a, b) => b[1] - a[1]).map(([name, value]) => (
-                    <tr key={name} style={{ borderBottom: "1px solid #151515" }}>
-                      <td style={{ padding: "3px 0", fontSize: 10, color: EXPENSE_COLORS[name] ?? "#888" }}>{name}</td>
-                      <td style={{ padding: "3px 0", fontSize: 10, color: "#E0E0E0", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtFull(value)}</td>
-                      <td style={{ padding: "3px 0 3px 8px", fontSize: 9, color: "#555", textAlign: "right", width: 44 }}>{((value / totalGastos) * 100).toFixed(1)}%</td>
-                      <td style={{ padding: "3px 0 3px 6px", width: 60 }}>
-                        <div style={{ height: 4, borderRadius: 2, background: "#1A1A1A" }}>
-                          <div style={{ height: 4, borderRadius: 2, background: EXPENSE_COLORS[name] ?? "#888", width: `${(value / totalGastos) * 100}%`, opacity: 0.7 }} />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+                <tbody>{[...flujo.expenseEntries].sort((a, b) => b[1] - a[1]).map(([name, value]) => (
+                  <tr key={name} style={{ borderBottom: "1px solid #151515" }}>
+                    <td style={{ padding: "3px 0", fontSize: 10, color: EXPENSE_COLORS[name] ?? "#888" }}>{name}</td>
+                    <td style={{ padding: "3px 0", fontSize: 10, color: "#E0E0E0", textAlign: "right" }}>{fmtFull(value)}</td>
+                    <td style={{ padding: "3px 0 3px 8px", fontSize: 9, color: "#555", textAlign: "right", width: 44 }}>{((value / flujo.totalGastos) * 100).toFixed(1)}%</td>
+                    <td style={{ padding: "3px 0 3px 6px", width: 60 }}>
+                      <div style={{ height: 4, borderRadius: 2, background: "#1A1A1A" }}>
+                        <div style={{ height: 4, borderRadius: 2, background: EXPENSE_COLORS[name] ?? "#888", width: `${(value / flujo.totalGastos) * 100}%`, opacity: 0.7 }} />
+                      </div>
+                    </td>
+                  </tr>
+                ))}</tbody>
               </table>
             </div>
           </div>
@@ -645,7 +686,7 @@ export function FiscalSankeyView() {
         </div>
       )}
 
-      {/* ══ TAB 2: Distribución Federal ══ */}
+      {/* ══ TAB: Distribución Federal ══ */}
       {mainTab === "distribucion" && (
         <div>
           <div style={{ padding: "5px 12px", background: "#001507", borderLeft: "3px solid #4AF6C3", fontSize: 9, color: "#4AF6C3", lineHeight: 1.6 }}>
@@ -664,7 +705,7 @@ export function FiscalSankeyView() {
         </div>
       )}
 
-      {/* ══ TAB 3: Cashflow Didáctico ══ */}
+      {/* ══ TAB: Cashflow Didáctico ══ */}
       {mainTab === "cashflow" && (
         <div>
           <div style={{ padding: "5px 12px", background: "#1a0800", borderLeft: "3px solid #FFA028", fontSize: 9, color: "#FFA028", lineHeight: 1.6 }}>
@@ -681,7 +722,7 @@ export function FiscalSankeyView() {
         </div>
       )}
 
-      {/* ══ TAB 4: Ahorro-Inversión ══ */}
+      {/* ══ TAB: Ahorro-Inversión ══ */}
       {mainTab === "ahorro" && (
         <div>
           <div style={{ padding: "5px 12px", background: "#08001a", borderLeft: "3px solid #7C83FD", fontSize: 9, color: "#7C83FD", lineHeight: 1.6 }}>
@@ -694,6 +735,74 @@ export function FiscalSankeyView() {
           />
           <div style={{ padding: "6px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
             Fuente: ARCA · apis.datos.gob.ar · Esquema Ahorro-Inversión-Financiamiento (Sec. de Hacienda)
+          </div>
+        </div>
+      )}
+
+      {/* ══ TAB: Vista Anual ══ */}
+      {mainTab === "anual" && (
+        <div style={{ background: "#0A0A0A" }}>
+          {/* KPI anual extra */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 1, background: "#1A1A1A" }}>
+            {[
+              { label: "INGRESOS ANUALES",   value: flujoA.totalIngresos, color: "#4AF6C3" },
+              { label: "GASTOS ESTIMADOS",   value: flujoA.totalGastos,   color: "#FF433D" },
+              { label: "RESULTADO PRIMARIO", value: resPrimarioA,         color: resPrimarioA  >= 0 ? "#4AF6C3" : "#FF433D" },
+              { label: "SUPERÁVIT ESTIMADO", value: flujoA.superavit,     color: flujoA.superavit > 0 ? "#4AF6C3" : "#555" },
+            ].map(({ label, value, color }) => (
+              <div key={label} style={{ background: "#0D0D0D", padding: "10px 14px" }}>
+                <div style={{ fontSize: 9, color: "#555", letterSpacing: 1.5, textTransform: "uppercase" }}>{label}</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color, marginTop: 2, fontFamily: "inherit" }}>{fmtFull(value)}</div>
+                <div style={{ fontSize: 9, color: "#444", marginTop: 1 }}>$ millones · {annualYear}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Sankey anual */}
+          <StrokeSankeyChart
+            nodes={flujoA.graph.nodes} links={flujoA.graph.links}
+            leftLabel="← FUENTES DE INGRESO" centerLabel="TESORO" rightLabel="DESTINO DEL GASTO →"
+            leftColor="#4AF6C3" centerColor="#FFA028" rightColor="#FF433D"
+          />
+
+          {/* Gráfico de barras: evolución del resultado primario anual */}
+          <div className="bbg-panel" style={{ marginTop: 8 }}>
+            <div className="bbg-panel-header">
+              RESULTADO PRIMARIO — EVOLUCIÓN ANUAL
+              <span style={{ fontSize: 8, fontWeight: 400, color: "#555", marginLeft: 8 }}>acumulado por año · base caja</span>
+            </div>
+            <div style={{ padding: "12px 8px 4px" }}>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={balanceByYear} margin={{ top: 8, right: 24, bottom: 4, left: 16 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" vertical={false} />
+                  <XAxis dataKey="year" tick={{ fill: "#555", fontSize: 9, fontFamily: "inherit" }}
+                    axisLine={{ stroke: "#333" }} tickLine={false} />
+                  <YAxis tickFormatter={v => fmtMM(v as number)}
+                    tick={{ fill: "#555", fontSize: 9, fontFamily: "inherit" }}
+                    axisLine={{ stroke: "#333" }} tickLine={false} width={64} />
+                  <ReferenceLine y={0} stroke="#444" strokeWidth={1} />
+                  <RechartTooltip
+                    contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10, fontFamily: "inherit", borderRadius: 4 }}
+                    labelStyle={{ color: "#888", marginBottom: 4 }}
+                    formatter={(value: number | undefined) => [fmtM(value ?? 0), "Resultado Primario"]}
+                    cursor={{ fill: "#ffffff08" }}
+                  />
+                  <Bar dataKey="primario" radius={[2, 2, 0, 0]} maxBarSize={48}>
+                    {balanceByYear.map((entry, i) => (
+                      <Cell key={i}
+                        fill={entry.primario >= 0 ? "#4AF6C3" : "#FF433D"}
+                        fillOpacity={entry.year === annualYear ? 1 : 0.6}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div style={{ padding: "7px 14px", borderTop: "1px solid #1A1A1A", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 4 }}>
+            <div style={{ fontSize: 8, color: "#333" }}>FUENTE: ARCA · apis.datos.gob.ar · datasets 172 / 378 / 379 / 452</div>
+            <div style={{ fontSize: 8, color: "#333" }}>⚠ Gastos anuales: proporciones estimadas. Resultado primario: suma de flujos mensuales.</div>
           </div>
         </div>
       )}
