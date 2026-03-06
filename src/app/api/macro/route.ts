@@ -477,6 +477,145 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ data, updated_at: new Date().toISOString(), source: "apis.datos.gob.ar · ARCA · dataset 452" })
     }
 
+    // ── ARGENDATA — PIB PER CÁPITA HISTÓRICO ────────────────────────────────
+    if (endpoint === "argendata_crecim") {
+      const BASE = "https://raw.githubusercontent.com/argendatafundar/data/main/CRECIM/"
+      const [histRows, relRows] = await Promise.all([
+        fetchCSVData(`${BASE}pib_per_capita_historico.csv`),
+        fetchCSVData(`${BASE}pib_per_capita_historico_relativo_arg.csv`),
+      ])
+
+      const PAISES_NIV = new Set(["Argentina", "Brasil", "Chile", "México", "Estados Unidos"])
+      const PAISES_REL = new Set(["Brasil", "Chile", "México", "Uruguay"])
+
+      // Pivote nivel: { date, Argentina, Brasil, ... }
+      const nivelMap: Record<string, Record<string, unknown>> = {}
+      for (const r of histRows) {
+        const pais = r.geonombreFundar ?? ""
+        if (!PAISES_NIV.has(pais)) continue
+        const anio = r.anio ?? ""
+        if (parseInt(anio) < 1900) continue
+        if (!nivelMap[anio]) nivelMap[anio] = { date: `${anio}-01-01` }
+        nivelMap[anio][pais] = parseFloat(r.pib_per_capita ?? "") || null
+      }
+      const nivel = Object.values(nivelMap).sort((a, b) =>
+        (a.date as string).localeCompare(b.date as string)
+      )
+
+      // Pivote relativo: { date, Brasil, Chile, México, Uruguay }
+      const relMap: Record<string, Record<string, unknown>> = {}
+      for (const r of relRows) {
+        const pais = r.geonombreFundar ?? ""
+        if (!PAISES_REL.has(pais)) continue
+        const anio = r.anio ?? ""
+        if (parseInt(anio) < 1900) continue
+        if (!relMap[anio]) relMap[anio] = { date: `${anio}-01-01` }
+        relMap[anio][pais] = parseFloat(r.relativo_arg ?? "") || null
+      }
+      const relativo = Object.values(relMap).sort((a, b) =>
+        (a.date as string).localeCompare(b.date as string)
+      )
+
+      return NextResponse.json({
+        data: { nivel, relativo },
+        updated_at: new Date().toISOString(),
+        source: "Argendata/Fundar — Maddison Project Database 2023",
+      })
+    }
+
+    // ── ARGENDATA — DESIGUALDAD E INFORMALIDAD ──────────────────────────────
+    if (endpoint === "argendata_desigualdad") {
+      const [giniArgRows, giniMundoRows, informalRows, desempleoRows] = await Promise.all([
+        fetchCSVData("https://raw.githubusercontent.com/argendatafundar/data/main/DESIGU/ISA_desigualdad_i2.csv"),
+        fetchCSVData("https://raw.githubusercontent.com/argendatafundar/data/main/DESIGU/ISA_mundo_i1.csv"),
+        fetchCSVData("https://raw.githubusercontent.com/argendatafundar/data/main/INFDES/tasa_informalidad_argentina_tipo_anio.csv"),
+        fetchCSVData("https://raw.githubusercontent.com/argendatafundar/data/main/INFDES/tasa_desempleo_arg_mundial_modelada.csv"),
+      ])
+
+      // Gini ARG: serie temporal (columna "ano")
+      const gini_arg: [string, number][] = giniArgRows
+        .filter(r => r.ano && r.gini)
+        .map(r => [`${r.ano}-01-01`, parseFloat(r.gini)] as [string, number])
+        .sort(([a], [b]) => (a as string).localeCompare(b as string))
+
+      // Gini mundo: cross-sectional (sin anio)
+      const gini_mundo = giniMundoRows
+        .filter(r => r.gini)
+        .map(r => ({ pais: r.geonombreFundar ?? r.pais ?? "", gini: parseFloat(r.gini) }))
+        .filter(r => !isNaN(r.gini))
+        .sort((a, b) => a.gini - b.gini)
+
+      // Informalidad: dos series (Definición productiva / Definición legal)
+      const productiva: [string, number][] = []
+      const legal: [string, number][] = []
+      for (const r of informalRows) {
+        if (!r.anio || !r.valor) continue
+        const date = `${r.anio}-01-01`
+        const val = parseFloat(r.valor)
+        if (r.tipo_informalidad === "Definición productiva") productiva.push([date, val])
+        else legal.push([date, val])
+      }
+      productiva.sort(([a], [b]) => a.localeCompare(b))
+      legal.sort(([a], [b]) => a.localeCompare(b))
+
+      // Desempleo mundial: serie por país, valores en proporción → %
+      const PAISES_DESEMP = new Set(["Argentina", "Brasil", "Chile", "México", "Uruguay", "Bolivia", "Mundo"])
+      const desempleoMap: Record<string, Record<string, unknown>> = {}
+      for (const r of desempleoRows) {
+        const pais = r.geonombreFundar ?? ""
+        if (!PAISES_DESEMP.has(pais)) continue
+        const anio = r.anio ?? ""
+        if (!desempleoMap[anio]) desempleoMap[anio] = { date: `${anio}-01-01` }
+        const val = parseFloat(r.tasa_desempleo ?? "")
+        desempleoMap[anio][pais] = isNaN(val) ? null : parseFloat((val * 100).toFixed(2))
+      }
+      const desempleo_mundial = Object.values(desempleoMap).sort((a, b) =>
+        (a.date as string).localeCompare(b.date as string)
+      )
+
+      return NextResponse.json({
+        data: { gini_arg, gini_mundo, informalidad: { productiva, legal }, desempleo_mundial },
+        updated_at: new Date().toISOString(),
+        source: "Argendata/Fundar — CEDLAS/EPH · SEDLAC · OIT/Banco Mundial",
+      })
+    }
+
+    // ── ARGENDATA — COMPOSICIÓN COMERCIO EXTERIOR ────────────────────────────
+    if (endpoint === "argendata_comext") {
+      const BASE = "https://raw.githubusercontent.com/argendatafundar/data/main/COMEXT/"
+      const [expoRows, impoRows] = await Promise.all([
+        fetchCSVData(`${BASE}composicion_exportaciones_bienes_sitc_seccion.csv`),
+        fetchCSVData(`${BASE}composicion_importaciones_bienes_sitc_seccion.csv`),
+      ])
+
+      const pivot = (rows: Record<string, string>[], valCol: string) => {
+        const byYear: Record<string, Record<string, unknown>> = {}
+        const catSet = new Set<string>()
+        for (const r of rows) {
+          if (r.geocodigoFundar !== "ARG") continue
+          const year = r.year ?? ""
+          const cat = r.sitc_product_name_es ?? "Otros"
+          const val = parseFloat(r[valCol] ?? "") || 0
+          catSet.add(cat)
+          if (!byYear[year]) byYear[year] = { date: `${year}-01-01` }
+          byYear[year][cat] = parseFloat(val.toFixed(2))
+        }
+        const series = Object.values(byYear).sort((a, b) =>
+          (a.date as string).localeCompare(b.date as string)
+        )
+        return { series, categorias: Array.from(catSet) }
+      }
+
+      const expo = pivot(expoRows, "export_value_pc")
+      const impo = pivot(impoRows, "import_value_pc")
+
+      return NextResponse.json({
+        data: { expo, impo },
+        updated_at: new Date().toISOString(),
+        source: "Argendata/Fundar — Atlas de Complejidad Económica, Harvard Growth Lab",
+      })
+    }
+
     return NextResponse.json(
       { error: "endpoint no válido. Usar ?endpoint=emae|ipc|ipi|balanza|fiscal|fiscal_sankey" },
       { status: 400 },

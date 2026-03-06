@@ -161,8 +161,41 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const ticker = searchParams.get("ticker")
   const hist = searchParams.get("hist")
+  const endpoint = searchParams.get("endpoint")
 
   try {
+    // ── ELECTRICIDAD MUNDIAL (OWID) ─────────────────────────────────────────
+    if (endpoint === "electricidad") {
+      const cacheKey = "owid_electricidad"
+      const cached = getCache<Record<string, unknown>[]>(cacheKey)
+      if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), source: "Our World in Data — Ember / Energy Institute" })
+
+      const OWID_ENTITIES = new Set(["Argentina", "Brazil", "China", "European Union (27)", "India", "United States"])
+      const url = "https://ourworldindata.org/grapher/electricity-generation.csv?tab=chart"
+      const res = await fetch(url, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(15000) })
+      if (!res.ok) return NextResponse.json({ error: "OWID no disponible", data: [] }, { status: 502 })
+
+      const text = await res.text()
+      const lines = text.trim().split("\n")
+      const byYear: Record<string, Record<string, unknown>> = {}
+      for (const line of lines.slice(1)) {
+        const parts = line.split(",")
+        const entity = parts[0]?.replace(/"/g, "").trim() ?? ""
+        if (!OWID_ENTITIES.has(entity)) continue
+        const year = parts[2]?.trim() ?? ""
+        const twh = parseFloat(parts[3]?.trim() ?? "")
+        if (!year || isNaN(twh)) continue
+        if (!byYear[year]) byYear[year] = { date: `${year}-01-01` }
+        byYear[year][entity] = parseFloat(twh.toFixed(2))
+      }
+      const data = Object.values(byYear).sort((a, b) =>
+        (a.date as string).localeCompare(b.date as string)
+      )
+
+      setCache(cacheKey, data, 3600)
+      return NextResponse.json({ data, updated_at: new Date().toISOString(), source: "Our World in Data — Ember / Energy Institute Statistical Review" })
+    }
+
     if (ticker && hist) {
       if (!(ticker in TICKERS)) {
         return NextResponse.json({ error: "ticker desconocido", valid: Object.keys(TICKERS) }, { status: 400 })
