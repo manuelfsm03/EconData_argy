@@ -9,6 +9,69 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { BBGLineChart } from "../charts/bbg-line-chart"
+
+function SubTabs({ tabs, active, onChange }: { tabs: { key: string; label: string }[]; active: string; onChange: (k: string) => void }) {
+  return (
+    <div style={{ display: "flex", gap: 1, background: "#111", padding: 1, flexWrap: "wrap" }}>
+      {tabs.map((t) => (
+        <button
+          key={t.key}
+          onClick={() => onChange(t.key)}
+          style={{
+            padding: "4px 10px", fontSize: 10, background: active === t.key ? "#1a1a1a" : "transparent",
+            color: active === t.key ? "#FFA028" : "#555", border: "none",
+            borderBottom: active === t.key ? "2px solid #FFA028" : "2px solid transparent",
+            cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700,
+          }}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function ElectricidadMundialView() {
+  const [data, setData] = useState<Record<string, unknown>[] | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/mundo?endpoint=electricidad")
+      .then((r) => r.json())
+      .then((j) => { setData(j.data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando datos de electricidad...</div>
+  if (!data || data.length === 0) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos disponibles.</div>
+
+  const lines = [
+    { key: "China",                  name: "China",     color: "#FF433D" },
+    { key: "United States",          name: "EE.UU.",    color: "#4FC3F7" },
+    { key: "India",                  name: "India",     color: "#FFA028" },
+    { key: "European Union (27)",    name: "UE-27",     color: "#4AF6C3" },
+    { key: "Brazil",                 name: "Brasil",    color: "#FFD54F" },
+    { key: "Argentina",              name: "Argentina", color: "#CE93D8" },
+  ]
+
+  return (
+    <div>
+      <BBGLineChart
+        title="GENERACIÓN DE ELECTRICIDAD POR PAÍS (TWh)"
+        data={data}
+        lines={lines}
+        enableLineToggle
+        height={320}
+        yAxisLabel="TWh"
+        defaultRange="all"
+      />
+      <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+        Fuente: Our World in Data — Ember / Energy Institute Statistical Review · Licencia CC BY 4.0
+      </div>
+    </div>
+  )
+}
 
 interface QuoteResult {
   precio: number
@@ -94,6 +157,7 @@ function QuoteCard({
 }
 
 export function TabMundo() {
+  const [mundoTab, setMundoTab] = useState("mercados")
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
   const [selectedTicker, setSelectedTicker] = useState("sp500")
   const [historico, setHistorico] = useState<[string, number][] | null>(null)
@@ -149,13 +213,17 @@ export function TabMundo() {
   return (
     <div>
       <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between" }}>
-        <span>MERCADOS MUNDIALES — YAHOO FINANCE</span>
-        {lastUpdate && (
+        <span>MERCADOS MUNDIALES — YAHOO FINANCE / OWID</span>
+        {lastUpdate && mundoTab === "mercados" && (
           <span style={{ color: "#444", fontWeight: 400 }}>
             UPD {new Date(lastUpdate).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
           </span>
         )}
       </div>
+      <SubTabs tabs={[{ key: "mercados", label: "Mercados" }, { key: "energia", label: "Energía Global" }]}
+        active={mundoTab} onChange={setMundoTab} />
+      {mundoTab === "energia" && <ElectricidadMundialView />}
+      {mundoTab === "mercados" && (<>
 
       {/* Groups */}
       {Object.entries(GRUPOS).map(([grupo, tickers]) => (
@@ -227,6 +295,7 @@ export function TabMundo() {
           <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Sin datos históricos disponibles.</div>
         )}
       </div>
+      </>)}
     </div>
   )
 }

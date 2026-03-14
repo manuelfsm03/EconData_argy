@@ -27,6 +27,7 @@ interface BBGLineChartProps {
   formatValue?: (v: number) => string
   enableDateRange?: boolean
   defaultRange?: DateRange
+  enableLineToggle?: boolean
 }
 
 function compactNum(v: number): string {
@@ -88,40 +89,58 @@ const RANGE_OPTIONS: { value: DateRange; label: string }[] = [
 
 export function BBGLineChart({
   data, lines, title, yAxisLabel, yAxisRight, height = 180,
-  showZeroLine, formatValue, enableDateRange = true, defaultRange = "1m"
+  showZeroLine, formatValue, enableDateRange = true, defaultRange = "1m",
+  enableLineToggle = false,
 }: BBGLineChartProps) {
   const [range, setRange] = useState<DateRange>(defaultRange)
+  const [hidden, setHidden] = useState<Set<string>>(new Set())
   const fmt = formatValue || compactNum
-  
+
+  const toggleLine = (key: string) =>
+    setHidden(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s })
+
+  const visibleLines = enableLineToggle ? lines.filter(l => !hidden.has(l.key)) : lines
+
   const filteredData = useMemo(() => {
     return filterDataByRange(data, range)
   }, [data, range])
 
   return (
     <div className="bbg-panel">
-      <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
         <span>{title}</span>
-        {enableDateRange && (
-          <div style={{ display: "flex", gap: "2px" }}>
-            {RANGE_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setRange(opt.value)}
-                style={{
-                  fontSize: "9px",
-                  padding: "2px 6px",
-                  border: "none",
-                  background: range === opt.value ? "#FFA028" : "transparent",
-                  color: range === opt.value ? "#000" : "#888",
-                  cursor: "pointer",
-                  borderRadius: "2px",
-                }}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        )}
+        <div style={{ display: "flex", gap: "2px", flexWrap: "wrap", alignItems: "center" }}>
+          {enableLineToggle && lines.map(l => (
+            <button
+              key={l.key}
+              onClick={() => toggleLine(l.key)}
+              style={{
+                fontSize: "9px", padding: "2px 7px", border: "none", borderRadius: "2px", cursor: "pointer",
+                background: hidden.has(l.key) ? "#111" : l.color,
+                color: hidden.has(l.key) ? "#444" : "#000",
+                fontWeight: 700, letterSpacing: 0.5,
+                opacity: hidden.has(l.key) ? 0.5 : 1,
+              }}
+            >{l.name}</button>
+          ))}
+          {enableDateRange && (
+            <>
+              {enableLineToggle && <span style={{ width: 1, height: 12, background: "#222", margin: "0 4px" }} />}
+              {RANGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setRange(opt.value)}
+                  style={{
+                    fontSize: "9px", padding: "2px 6px", border: "none",
+                    background: range === opt.value ? "#FFA028" : "transparent",
+                    color: range === opt.value ? "#000" : "#888",
+                    cursor: "pointer", borderRadius: "2px",
+                  }}
+                >{opt.label}</button>
+              ))}
+            </>
+          )}
+        </div>
       </div>
       <div style={{ padding: "4px 4px 0 0" }}>
         <ResponsiveContainer width="100%" height={height}>
@@ -162,7 +181,7 @@ export function BBGLineChart({
               wrapperStyle={{ fontSize: "9px", color: "#888888" }}
               iconType="line" iconSize={10}
             />
-            {lines.map((l) => (
+            {visibleLines.map((l) => (
               <Line
                 key={l.key}
                 type="monotone"
