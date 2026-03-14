@@ -63,14 +63,14 @@ function extractItems(xml: string, feed: RSSFeed): RSSItem[] {
   while ((match = itemRegex.exec(xml)) !== null) {
     const c = match[1]
     const title =
-      c.match(/<title><!\[CDATA\[(.*?)\]\]>/s)?.[1] ??
-      c.match(/<title>(.*?)<\/title>/s)?.[1] ?? ""
+      c.match(/<title><!\[CDATA\[([\s\S]*?)\]\]>/)?.[1] ??
+      c.match(/<title>([\s\S]*?)<\/title>/)?.[1] ?? ""
     const link =
-      c.match(/<link><!\[CDATA\[(.*?)\]\]>/s)?.[1] ??
-      c.match(/<link>(.*?)<\/link>/s)?.[1] ?? ""
+      c.match(/<link><!\[CDATA\[([\s\S]*?)\]\]>/)?.[1] ??
+      c.match(/<link>([\s\S]*?)<\/link>/)?.[1] ?? ""
     const desc =
-      c.match(/<description><!\[CDATA\[(.*?)\]\]>/s)?.[1] ??
-      c.match(/<description>(.*?)<\/description>/s)?.[1] ?? null
+      c.match(/<description><!\[CDATA\[([\s\S]*?)\]\]>/)?.[1] ??
+      c.match(/<description>([\s\S]*?)<\/description>/)?.[1] ?? null
     const pubDate = c.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ?? ""
 
     const cleanTitle = title.replace(/<[^>]*>/g, "").trim()
