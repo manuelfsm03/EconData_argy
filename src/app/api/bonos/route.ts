@@ -1,157 +1,217 @@
 /**
  * /api/bonos — Screener de bonos soberanos hard dollar
  *
- * Fuentes de datos:
- *   - Rava Bursátil: https://www.rava.com/perfil/{ticker} (scraping HTML)
- *   - BYMA DATA (si está disponible): precios de cierre oficiales
- *   - Flujos de pago: base de datos local (prisma/seed-bonds.ts)
+ * GET /api/bonos           → screener de todos los bonos con métricas
+ * GET /api/bonos?ticker=AL30 → detalle de un bono con cashflows
+ * GET /api/bonos?tipo=lecap  → screener de LECAPs/BONCAPs
  *
- * Endpoints:
- *   GET /api/bonos           — screener completo con métricas calculadas
- *   GET /api/bonos?ticker=AL30  — detalle de un bono específico
- *   GET /api/bonos?tipo=lecap   — screener de LECAPs/BONCAPs
- *
- * Fase 1 — M1.1 del ROADMAP
+ * Precios: api-merval (real-time)
+ * Métricas: TIR, Duration Mod/Mac, Convexity, DV01, Avg Life, Accrued Interest
  */
 
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
-// ── Cálculos financieros ───────────────────────────────────────────────────────
+// ── ISIN lookup (from bondterminal scrape, not in DB schema) ─────────────────
+
+const ISIN_MAP: Record<string, string> = {
+  GD29: "US040114HX11", GD30: "US040114HS26", GD35: "US040114HT09",
+  GD38: "US040114HU71", GD41: "US040114HV54", GD46: "US040114HW38",
+  AL29: "ARARGE3209Y4", AL30: "ARARGE3209S6", AL35: "ARARGE3209T4",
+  AE38: "ARARGE3209U2",
+}
+
+// Outstanding estimado en millones USD
+const OUTSTANDING: Record<string, number> = {
+  GD29: 1845, GD30: 11585, GD35: 20502, GD38: 11405,
+  GD41: 10482, GD46: 1949,
+  AL29: 7610, AL30: 12150, AL35: 10270, AE38: 4570,
+}
+
+// ── Financial calculations ───────────────────────────────────────────────────
+
+interface CashflowInput {
+  fechaPago: Date
+  cupon: number
+  amortizacion: number
+  flujoTotal: number
+}
+
+function yearFrac(from: Date, to: Date): number {
+  return (to.getTime() - from.getTime()) / (365.25 * 24 * 3600 * 1000)
+}
 
 /**
- * Calcula la TIR de un bono por Newton-Raphson dado un precio y flujos de caja.
- * @param precio - Precio limpio (% del VN, ej: 70 = 70%)
- * @param cashflows - [{fecha, flujoTotal}] futuros a partir de hoy
- * @returns TIR anual en porcentaje, o null si no converge
+ * Calculate YTM via Newton-Raphson.
+ * Price = sum(CF_i / (1+y)^t_i)
  */
-function calcularTIR(
-  precio: number,
-  cashflows: { fechaPago: Date; flujoTotal: number }[],
+function calcYTM(
+  price: number,
+  cashflows: { t: number; cf: number }[],
 ): number | null {
-  const hoy = new Date()
-  const flujos = cashflows
-    .map((cf) => ({
-      t: (cf.fechaPago.getTime() - hoy.getTime()) / (365.25 * 24 * 3600 * 1000), // años
-      flujo: cf.flujoTotal,
-    }))
-    .filter((cf) => cf.t > 0)
+  if (cashflows.length === 0 || price <= 0) return null
 
-  if (flujos.length === 0) return null
+  const f = (r: number) =>
+    cashflows.reduce((s, { t, cf }) => s + cf / Math.pow(1 + r, t), 0) - price
 
-  // Precio como valor presente: -precio (salida) + suma(PV de flujos)
-  const f = (r: number) => {
-    const pv = flujos.reduce((sum, { t, flujo }) => sum + flujo / Math.pow(1 + r, t), 0)
-    return pv - precio
-  }
+  const df = (r: number) =>
+    cashflows.reduce((s, { t, cf }) => s - (t * cf) / Math.pow(1 + r, t + 1), 0)
 
-  const df = (r: number) => {
-    return flujos.reduce((sum, { t, flujo }) => sum - (t * flujo) / Math.pow(1 + r, t + 1), 0)
-  }
-
-  let r = 0.1 // Inicial 10% anual
-  for (let i = 0; i < 100; i++) {
+  let r = 0.08
+  for (let i = 0; i < 200; i++) {
     const fr = f(r)
     const dfr = df(r)
-    if (Math.abs(dfr) < 1e-10) break
+    if (Math.abs(dfr) < 1e-12) break
     const delta = fr / dfr
     r -= delta
-    if (Math.abs(delta) < 1e-8) return parseFloat((r * 100).toFixed(4))
+    if (Math.abs(delta) < 1e-9) return r * 100
+    if (r < -0.5 || r > 5) break // diverged
   }
   return null
 }
 
 /**
- * Duration modificada (Macaulay / (1 + y))
+ * Calculate all duration/convexity metrics given price and YTM.
  */
-function calcularDuration(
-  precio: number,
-  cashflows: { fechaPago: Date; flujoTotal: number }[],
-  tir: number,
-): number | null {
-  const hoy = new Date()
-  const r = tir / 100
-  const flujos = cashflows
-    .map((cf) => ({
-      t: (cf.fechaPago.getTime() - hoy.getTime()) / (365.25 * 24 * 3600 * 1000),
-      flujo: cf.flujoTotal,
-    }))
-    .filter((cf) => cf.t > 0)
+function calcMetrics(
+  price: number,
+  cashflows: { t: number; cf: number; amort: number }[],
+  ytmPct: number,
+) {
+  const y = ytmPct / 100
 
-  if (flujos.length === 0 || precio <= 0) return null
+  // PV-weighted calculations
+  let macaulay = 0
+  let convexity = 0
+  let pvTotal = 0
 
-  const macaulay =
-    flujos.reduce((sum, { t, flujo }) => {
-      const pv = flujo / Math.pow(1 + r, t)
-      return sum + (t * pv) / precio
-    }, 0)
-
-  const durMod = macaulay / (1 + r)
-  return parseFloat(durMod.toFixed(4))
-}
-
-// ── Price scraping ─────────────────────────────────────────────────────────────
-
-/**
- * Scrape precio de Rava Bursátil (HTML público)
- * Intenta varias URL patterns.
- */
-async function scrapePrecioRava(ticker: string): Promise<{ precio: number | null; precioCci: number | null }> {
-  const urls = [
-    `https://api.rava.com/app/cotiz/getCotizacion?ticker=${ticker}`,
-    `https://www.rava.com/cotizaciones/getCotizacion?ticker=${ticker}`,
-  ]
-
-  for (const url of urls) {
-    try {
-      const res = await fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 PanelDeControl/2.0",
-          Accept: "application/json",
-        },
-        signal: AbortSignal.timeout(5000),
-        next: { revalidate: 300 },
-      })
-      if (!res.ok) continue
-
-      const ct = res.headers.get("content-type") ?? ""
-      if (ct.includes("json")) {
-        const j = await res.json()
-        // Rava devuelve diferentes estructuras — intentar varias
-        const precio =
-          j?.ultimo ?? j?.price ?? j?.cierre ?? j?.data?.ultimo ?? j?.data?.price ?? null
-        const precioCci = j?.ultimoCci ?? j?.priceCci ?? null
-        if (precio) return { precio: parseFloat(precio), precioCci: precioCci ? parseFloat(precioCci) : null }
-      }
-    } catch {
-      continue
-    }
+  for (const { t, cf } of cashflows) {
+    const pv = cf / Math.pow(1 + y, t)
+    pvTotal += pv
+    macaulay += t * pv
+    convexity += t * (t + 1) * cf / Math.pow(1 + y, t + 2)
   }
 
-  // Fallback: scraping HTML de página de perfil
+  if (pvTotal <= 0) return null
+
+  const durationMac = macaulay / pvTotal
+  const durationMod = durationMac / (1 + y)
+  const conv = convexity / pvTotal
+
+  // DV01: dollar price change per 1bp yield shift per $1000 face
+  const dv01 = (durationMod * price) / 1000
+
+  // Average life: weighted average time of principal payments
+  let avgLifeNum = 0
+  let avgLifeDen = 0
+  for (const { t, amort } of cashflows) {
+    if (amort > 0) {
+      avgLifeNum += t * amort
+      avgLifeDen += amort
+    }
+  }
+  const avgLife = avgLifeDen > 0 ? avgLifeNum / avgLifeDen : null
+
+  return { durationMac, durationMod, convexity: conv, dv01, avgLife }
+}
+
+/**
+ * Calculate accrued interest.
+ * Argentine sovereign bonds pay semiannually (Jan 9 / Jul 9).
+ */
+function calcAccruedInterest(
+  settlement: Date,
+  allCashflows: CashflowInput[],
+): number {
+  const sorted = [...allCashflows].sort(
+    (a, b) => a.fechaPago.getTime() - b.fechaPago.getTime(),
+  )
+
+  let prevDate: Date | null = null
+  let nextCf: CashflowInput | null = null
+
+  for (const cf of sorted) {
+    if (cf.fechaPago > settlement) {
+      nextCf = cf
+      break
+    }
+    prevDate = cf.fechaPago
+  }
+
+  if (!nextCf) return 0
+
+  if (!prevDate) {
+    const nextDate = nextCf.fechaPago
+    const inferredPrev = new Date(nextDate)
+    inferredPrev.setMonth(inferredPrev.getMonth() - 6)
+    prevDate = inferredPrev
+  }
+
+  const periodDays =
+    (nextCf.fechaPago.getTime() - prevDate.getTime()) / (24 * 3600 * 1000)
+  const elapsed =
+    (settlement.getTime() - prevDate.getTime()) / (24 * 3600 * 1000)
+
+  if (periodDays <= 0 || elapsed < 0) return 0
+
+  return (elapsed / periodDays) * nextCf.cupon
+}
+
+// ── Price fetching from api-merval ──────────────────────────────────────────
+
+const MERVAL_BASE = "https://api-merval-production.up.railway.app/v1/quotes"
+
+interface MervalQuote {
+  price: number | null
+  close: number | null
+  change1D: number | null
+}
+
+async function fetchMervalPrices(
+  tickers: string[],
+): Promise<Map<string, MervalQuote>> {
+  const result = new Map<string, MervalQuote>()
+  if (tickers.length === 0) return result
+
   try {
-    const res = await fetch(`https://www.rava.com/perfil/${ticker.toLowerCase()}`, {
-      headers: { "User-Agent": "Mozilla/5.0 PanelDeControl/2.0" },
+    const symbols = tickers.map((t) => `${t}D:24hs`)
+    const params = symbols.map((s) => `symbols=${s}`).join("&")
+    const url = `${MERVAL_BASE}/batch?${params}&depth=1`
+
+    const res = await fetch(url, {
+      headers: { "User-Agent": "PanelDeControl/3.0" },
       signal: AbortSignal.timeout(8000),
-      next: { revalidate: 300 },
     })
-    if (res.ok) {
-      const html = await res.text()
-      // Buscar precio en el HTML (estructura común de Rava)
-      const priceMatch = html.match(/class="[^"]*precio[^"]*"[^>]*>([\d,. ]+)</)
-      if (priceMatch) {
-        const precio = parseFloat(priceMatch[1].replace(/\./g, "").replace(",", "."))
-        if (!isNaN(precio) && precio > 0) return { precio, precioCci: null }
+    if (!res.ok) return result
+
+    const json = await res.json()
+    const quotes = json?.quotes ?? json?.data ?? []
+
+    for (const q of quotes) {
+      const sym = String(q.symbol ?? "")
+        .replace(/D(:24hs)?$/, "")
+        .replace(/:24hs$/, "")
+      const md = q.marketData ?? q
+      const last = md?.LA?.price != null ? parseFloat(md.LA.price) : null
+      const close = md?.CL?.price != null ? parseFloat(md.CL.price) : null
+      const price = last ?? close
+      const change1D =
+        last != null && close != null && close > 0
+          ? ((last - close) / close) * 100
+          : null
+
+      if (sym) {
+        result.set(sym, { price, close, change1D })
       }
     }
   } catch {
-    // Scraping failed
+    // Silent fail - prices will be null
   }
 
-  return { precio: null, precioCci: null }
+  return result
 }
 
-// ── In-memory cache ────────────────────────────────────────────────────────────
+// ── In-memory cache ─────────────────────────────────────────────────────────
 
 const _cache: Record<string, { data: unknown; expiry: number }> = {}
 function getCache<T>(key: string): T | null {
@@ -163,7 +223,7 @@ function setCache(key: string, data: unknown, ttlSec: number) {
   _cache[key] = { data, expiry: Date.now() + ttlSec * 1000 }
 }
 
-// ── Handler ────────────────────────────────────────────────────────────────────
+// ── Handler ─────────────────────────────────────────────────────────────────
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -174,7 +234,11 @@ export async function GET(request: NextRequest) {
   if (tipoParam === "lecap") {
     const cacheKey = "lecaps_screener"
     const cached = getCache<unknown[]>(cacheKey)
-    if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString() })
+    if (cached)
+      return NextResponse.json({
+        data: cached,
+        updated_at: new Date().toISOString(),
+      })
 
     try {
       const instrumentos = await prisma.capInstrument.findMany({
@@ -183,8 +247,9 @@ export async function GET(request: NextRequest) {
       })
 
       const screener = instrumentos.map((inst) => {
-        const hoy = new Date()
-        const diasVto = Math.round((inst.vencimiento.getTime() - hoy.getTime()) / (24 * 3600 * 1000))
+        const diasVto = Math.round(
+          (inst.vencimiento.getTime() - Date.now()) / (24 * 3600 * 1000),
+        )
         return {
           ticker: inst.ticker,
           tipo: inst.tipo,
@@ -202,17 +267,21 @@ export async function GET(request: NextRequest) {
         data: screener,
         updated_at: new Date().toISOString(),
         source: "db_local + byma",
-        nota: "Precios se actualizan via cron diario. Para actualizar manualmente: POST /api/bonos/sync",
       })
     } catch (error) {
       return NextResponse.json({ error: String(error) }, { status: 500 })
     }
   }
 
-  // Screener completo de soberanos
-  const cacheKey = tickerParam ? `bono_${tickerParam}` : "bonos_screener"
+  // Sovereign bond screener
+  const cacheKey = tickerParam ? `bono_${tickerParam}` : "bonos_screener_v2"
   const cached = getCache<unknown>(cacheKey)
-  if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), cached: true })
+  if (cached)
+    return NextResponse.json({
+      data: cached,
+      updated_at: new Date().toISOString(),
+      cached: true,
+    })
 
   try {
     const where = tickerParam ? { ticker: tickerParam.toUpperCase() } : {}
@@ -224,94 +293,126 @@ export async function GET(request: NextRequest) {
 
     if (bonds.length === 0) {
       return NextResponse.json(
-        { error: "Bono no encontrado. Verificar que el seed fue ejecutado.", ticker: tickerParam },
+        { error: "Bono no encontrado", ticker: tickerParam },
         { status: 404 },
       )
     }
 
+    // Fetch all prices from api-merval
+    const allTickers = bonds.map((b) => b.ticker)
+    const prices = await fetchMervalPrices(allTickers)
+
     const hoy = new Date()
-    const screener = await Promise.all(
-      bonds.map(async (bond) => {
-        // Flujos futuros
-        const flujosFF = bond.cashflows.filter((cf) => cf.fechaPago > hoy)
 
-        // Precio: intentar desde DB primero, luego scraping
-        let precio = bond.precio
-        let fuente = "db"
-        if (!precio) {
-          const { precio: precioRava } = await scrapePrecioRava(bond.ticker)
-          if (precioRava) {
-            precio = precioRava
-            fuente = "rava"
-            // Guardar precio en DB
-            await prisma.sovereignBond.update({
-              where: { id: bond.id },
-              data: { precio: precioRava, updatedAt: new Date() },
-            }).catch(() => {})
-          }
+    const screener = bonds.map((bond) => {
+      // Future cashflows only
+      const futureCFs = bond.cashflows.filter((cf) => cf.fechaPago > hoy)
+      const timedCFs = futureCFs.map((cf) => ({
+        t: yearFrac(hoy, cf.fechaPago),
+        cf: cf.flujoTotal,
+        amort: cf.amortizacion,
+      }))
+
+      // Price from merval
+      const merval = prices.get(bond.ticker)
+      const precio = merval?.price ?? bond.precio
+      const change1D = merval?.change1D ?? null
+
+      // VN residual
+      const vnResidual = futureCFs.reduce((s, cf) => s + cf.amortizacion, 0)
+
+      // Paridad
+      const paridad =
+        vnResidual > 0 && precio ? (precio / vnResidual) * 100 : null
+
+      // Current yield = annual coupon payments / price
+      const annualCoupon = futureCFs
+        .filter((cf) => yearFrac(hoy, cf.fechaPago) <= 1)
+        .reduce((s, cf) => s + cf.cupon, 0)
+      const currentYield =
+        precio && precio > 0 ? (annualCoupon / precio) * 100 : null
+
+      // YTM
+      let tir: number | null = null
+      let metrics: ReturnType<typeof calcMetrics> = null
+      if (precio && timedCFs.length > 0) {
+        tir = calcYTM(precio, timedCFs)
+        if (tir != null) {
+          metrics = calcMetrics(precio, timedCFs, tir)
         }
+      }
 
-        // VN residual (suma de amortizaciones futuras)
-        const vnResidual = flujosFF.reduce((sum, cf) => sum + cf.amortizacion, 0)
+      // Accrued interest
+      const accruedInterest = calcAccruedInterest(hoy, bond.cashflows)
 
-        // Paridad = precio / VN residual * 100
-        const paridad = vnResidual > 0 && precio ? (precio / vnResidual) * 100 : null
+      // Build response
+      const result: Record<string, unknown> = {
+        ticker: bond.ticker,
+        isin: ISIN_MAP[bond.ticker] ?? null,
+        nombre: bond.nombre,
+        ley: bond.ley,
+        cupon: bond.cupon,
+        vencimiento: bond.vencimiento.toISOString().split("T")[0],
+        precio: precio != null ? round(precio, 2) : null,
+        tir: tir != null ? round(tir, 2) : null,
+        paridad: paridad != null ? round(paridad, 2) : null,
+        currentYield: currentYield != null ? round(currentYield, 2) : null,
+        durationMod: metrics ? round(metrics.durationMod, 4) : null,
+        durationMac: metrics ? round(metrics.durationMac, 4) : null,
+        convexity: metrics ? round(metrics.convexity, 4) : null,
+        dv01: metrics ? round(metrics.dv01, 4) : null,
+        avgLife: metrics?.avgLife != null ? round(metrics.avgLife, 2) : null,
+        accruedInterest: round(accruedInterest, 4),
+        change1D: change1D != null ? round(change1D, 2) : null,
+        outstanding: OUTSTANDING[bond.ticker] ?? 0,
+        vnResidual: round(vnResidual, 4),
+        fuente: merval?.price != null ? "api-merval" : "db",
+      }
 
-        // Current yield = (cupon anual / precio) * 100
-        const cuponAnual = bond.cupon
-        const currentYield = precio && precio > 0 ? (cuponAnual / precio) * 100 : null
+      // Include cashflows for single-ticker queries
+      if (tickerParam) {
+        result.cashflows = bond.cashflows.map((cf) => ({
+          fecha: cf.fechaPago.toISOString().split("T")[0],
+          cupon: cf.cupon,
+          amortizacion: cf.amortizacion,
+          total: cf.flujoTotal,
+          remaining: parseFloat(
+            (
+              bond.cashflows
+                .filter((c) => c.fechaPago >= cf.fechaPago)
+                .reduce((s, c) => s + c.amortizacion, 0)
+            ).toFixed(2),
+          ),
+        }))
+      }
 
-        // TIR (solo si tenemos precio)
-        let tir: number | null = null
-        let durationMod: number | null = null
-        if (precio && flujosFF.length > 0) {
-          tir = calcularTIR(precio, flujosFF)
-          if (tir !== null) {
-            durationMod = calcularDuration(precio, flujosFF, tir)
-          }
-          // Persistir métricas
-          await prisma.sovereignBond.update({
+      // Persist metrics to DB (fire and forget)
+      if (precio) {
+        prisma.sovereignBond
+          .update({
             where: { id: bond.id },
             data: {
+              precio,
               tir: tir ?? undefined,
               paridad: paridad ?? undefined,
               currentYield: currentYield ?? undefined,
-              durationMod: durationMod ?? undefined,
+              durationMod: metrics?.durationMod ?? undefined,
             },
-          }).catch(() => {})
-        }
+          })
+          .catch(() => {})
+      }
 
-        return {
-          ticker: bond.ticker,
-          nombre: bond.nombre,
-          ley: bond.ley,
-          cupon: bond.cupon,
-          vencimiento: bond.vencimiento.toISOString().split("T")[0],
-          precio: precio ? parseFloat(precio.toFixed(2)) : null,
-          paridad: paridad ? parseFloat(paridad.toFixed(2)) : null,
-          tir: tir ? parseFloat(tir.toFixed(2)) : null,
-          currentYield: currentYield ? parseFloat(currentYield.toFixed(2)) : null,
-          durationMod: durationMod ? parseFloat(durationMod.toFixed(2)) : null,
-          vnResidual: parseFloat(vnResidual.toFixed(4)),
-          flujosFF: tickerParam ? flujosFF.map((cf) => ({
-            fecha: cf.fechaPago.toISOString().split("T")[0],
-            cupon: cf.cupon,
-            amortizacion: cf.amortizacion,
-            total: cf.flujoTotal,
-          })) : undefined,
-          fuente,
-        }
-      }),
-    )
+      return result
+    })
 
-    setCache(cacheKey, tickerParam ? screener[0] : screener, 300)
+    const responseData = tickerParam ? screener[0] : screener
+    setCache(cacheKey, responseData, 300)
 
     return NextResponse.json({
-      data: tickerParam ? screener[0] : screener,
+      data: responseData,
       count: screener.length,
       updated_at: new Date().toISOString(),
-      source: "db_local + rava (precios)",
-      nota: "Precios de Rava. Para seed de flujos: ts-node prisma/seed-bonds.ts",
+      source: "api-merval + bondterminal cashflows",
     })
   } catch (error) {
     console.error("[/api/bonos]", error)
@@ -320,4 +421,9 @@ export async function GET(request: NextRequest) {
       { status: 500 },
     )
   }
+}
+
+function round(v: number, dec: number): number {
+  const m = Math.pow(10, dec)
+  return Math.round(v * m) / m
 }
