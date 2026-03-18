@@ -12,10 +12,12 @@ interface RSSItem {
 const RSS_FEEDS = [
   { url: "https://www.ambito.com/rss/economia.xml", source: "Ámbito" },
   { url: "https://www.ambito.com/rss/finanzas.xml", source: "Ámbito Finanzas" },
-  { url: "https://www.infobae.com/feeds/rss/economia/", source: "Infobae" },
-  { url: "https://www.cronista.com/rss/", source: "El Cronista" },
+  { url: "https://www.infobae.com/arc/outboundfeeds/rss/", source: "Infobae" },
+  { url: "https://www.cronista.com/files/rss/news.xml", source: "El Cronista" },
   { url: "https://www.iprofesional.com/rss/finanzas", source: "iProfesional" },
-  { url: "https://www.baenegocios.com/rss", source: "BAE Negocios" },
+  { url: "https://www.baenegocios.com/feed/", source: "BAE Negocios" },
+  { url: "http://www.perfil.com/feed/economia", source: "Perfil" },
+  { url: "https://www.eleconomista.com.ar/feed/", source: "El Economista" },
 ]
 
 // Simple XML item extractor (no dependency needed)

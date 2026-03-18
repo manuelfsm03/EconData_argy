@@ -1,129 +1,145 @@
-# ROADMAP — Apartado de Noticias
-> **Responsable:** Lorenzo  
-> **Rama:** `lorenzo`  
-> **Última actualización:** 02 marzo 2026
+# Cargar los datos (si no los tienes cargados)
+# DATOS <- datos_cobre  # Si usaste mi código anterior
 
----
+# Verificar la estructura de los datos
+str(DATOS)
+summary(DATOS)
 
-## Estado actual
+# 1. Primero, limpiar los datos y manejar valores problemáticos
+# Identificar filas con valores válidos para todas las variables
+# (valores positivos para poder calcular logaritmos)
 
-Ya existe en el proyecto:
-- ✅ `NewsFeed` — tabla RSS básica (Ámbito, Infobae, Cronista, iProfesional, BAE Negocios)
-- ✅ `TabGeopolitica` — noticias internacionales con categorías y filtros
-- ✅ `/api/rss-news` — endpoint RSS multi-fuente
-- ✅ `/api/geopolitica` — endpoint RSS internacional con categorización
-- ✅ `/api/noticias/[ticker]` — noticias por ticker (usado en detalle de acciones)
+# Crear una copia de trabajo
+datos_trabajo <- DATOS
 
----
+# Ver valores cero o negativos en las variables que usaremos
+cat("Valores en I (producción industrial):\n")
+print(datos_trabajo$I)
+cat("\nValores en L (precio Londres):\n")
+print(datos_trabajo$L)
+cat("\nValores en H (viviendas):\n")
+print(datos_trabajo$H)
+cat("\nValores en A (aluminio):\n")
+print(datos_trabajo$A)
 
-## FASE 1 — Mejorar el feed actual (M5.1)
-> Prioridad: ALTA
+# 2. Filtrar solo filas con valores válidos para todas las variables
+# (mayores que 0 y no NA)
+datos_validos <- datos_trabajo[
+  datos_trabajo$I > 0 & 
+  datos_trabajo$L > 0 & 
+  datos_trabajo$H > 0 & 
+  !is.na(datos_trabajo$A) & 
+  datos_trabajo$A > 0, 
+]
 
-### M5.1.1 — Refactor del componente `NewsFeed`
-- [ ] Rediseño visual: layout de dos columnas (lista izquierda + preview derecha)
-- [ ] Chips de filtro por categoría: `macro`, `finanzas`, `agro`, `crypto`, `geopolítica`
-- [ ] Buscador por keyword en tiempo real
-- [ ] Detección y eliminación de noticias duplicadas
-- [ ] Indicador de tiempo relativo ("hace 5 min", "hace 2 hs")
-- [ ] Paginación o scroll infinito
+cat("\nNúmero de observaciones válidas:", nrow(datos_validos), "\n")
+cat("Años incluidos:\n")
+print(datos_validos$ANO)
 
-### M5.1.2 — Mejorar el API `/api/rss-news`
-- [ ] Agregar más fuentes: Reuters LATAM, Bloomberg Línea, La Nación Economía
-- [ ] Categorización automática de noticias (mismo sistema que `TabGeopolitica`)
-- [ ] Deduplicación server-side por título similar (no solo por URL)
-- [ ] Caché más inteligente: TTL diferente por fuente
-- [ ] Endpoint con soporte para query params: `?categoria=macro&fuente=ambito&limit=20`
+# 3. Calcular los logaritmos
+Y <- log(datos_validos$C)  # Variable dependiente: log(Precio cobre US)
 
-### M5.1.3 — Unificación NEWS + GEOPOLÍTICA
-- [ ] Fusionar ambos tabs en uno con subtabs internos:
-  - `Argentina` — fuentes locales
-  - `Global` — BBC, Al Jazeera, France24
-  - `Geopolítica` — con impacto AR (lo que ya existe)
-- [ ] Evitar duplicación de lógica entre `NewsFeed` y `TabGeopolitica`
+# Crear matriz de diseño con intercepto
+X <- cbind(1,  # intercepto (columna de unos)
+           log(datos_validos$I),  # log(Producción industrial)
+           log(datos_validos$L),  # log(Precio cobre Londres)
+           log(datos_validos$H),  # log(Viviendas)
+           log(datos_validos$A))  # log(Precio aluminio)
 
----
+# Asignar nombres a las columnas
+colnames(X) <- c("Intercepto", "log_I", "log_L", "log_H", "log_A")
 
-## FASE 2 — Cables estilo Bloomberg (M5.2)
-> Prioridad: MEDIA
+# 4. Estimar los betas usando la fórmula de mínimos cuadrados
+# beta = (X'X)^(-1) X'Y
+beta <- solve(t(X) %*% X) %*% (t(X) %*% Y)
 
-### M5.2.1 — Ticker tape de noticias
-- [ ] Barra horizontal en la parte superior del dashboard
-- [ ] Noticias desfilando de derecha a izquierda en loop
-- [ ] Visible desde cualquier tab del panel
-- [ ] Click en una noticia abre el link en nueva pestaña
-- [ ] Pausa al hacer hover
+# Mostrar resultados
+cat("\n=== ESTIMACIÓN DE COEFICIENTES BETA ===\n")
+print(beta)
 
-### M5.2.2 — Panel de breaking news
-- [ ] Detector de noticias "importantes" por keywords: `BCRA`, `dólar`, `FMI`, `Milei`, `reservas`
-- [ ] Notificación visual cuando entra una noticia de alto impacto
-- [ ] Badge contador de noticias nuevas desde última visita
+# 5. Calcular valores predichos y residuos
+Y_pred <- X %*% beta
+residuos <- Y - Y_pred
 
----
+# 6. Calcular estadísticos adicionales
+n <- nrow(X)  # número de observaciones
+k <- ncol(X) - 1  # número de variables independientes (sin contar intercepto)
 
-## FASE 3 — Features avanzados (M5.3)
-> Prioridad: BAJA (post FASE 1 y 2)
+# Varianza del error (sigma^2)
+sigma2 <- sum(residuos^2) / (n - k - 1)
 
-### M5.3.1 — Resumen automático con IA
-- [ ] Botón "Resumir" en cada noticia → llama a `/api/resumir` → Claude API
-- [ ] Resumen en 2-3 líneas en español
-- [ ] Badge de sentiment: 🟢 positivo / 🔴 negativo / 🟡 neutral para Argentina
+# Matriz de varianza-covarianza de los coeficientes
+var_beta <- sigma2 * solve(t(X) %*% X)
 
-### M5.3.2 — Búsqueda histórica
-- [ ] Guardar noticias en DB (modelo `Noticia` en Prisma)
-- [ ] Búsqueda por fecha, fuente, categoría
-- [ ] "Noticias del día que el dólar subió X%"
+# Errores estándar
+errores_estandar <- sqrt(diag(var_beta))
 
-### M5.3.3 — Newsletter / Export
-- [ ] Botón para exportar las noticias del día a PDF o texto
-- [ ] Resumen diario de las 10 noticias más importantes
+# Estadístico t
+t_estadistico <- beta / errores_estandar
 
----
+# P-valores (aproximados, asumiendo distribución t)
+p_valores <- 2 * (1 - pt(abs(t_estadistico), df = n - k - 1))
 
-## Orden de ejecución sugerido
+# 7. Crear tabla completa de resultados
+resultados <- data.frame(
+  Coeficiente = round(beta, 4),
+  Error_Est = round(errores_estandar, 4),
+  t_estadistico = round(t_estadistico, 4),
+  p_valor = round(p_valores, 4)
+)
 
-```
-SEMANA 1:
-└── M5.1.1 — Refactor NewsFeed (UI + filtros + buscador)
+# Formatear p-valores pequeños
+resultados$p_valor <- ifelse(resultados$p_valor < 0.0001, "< 0.0001", resultados$p_valor)
 
-SEMANA 2:
-└── M5.1.2 — Mejorar API (más fuentes + categorización + deduplicación)
+cat("\n=== RESULTADOS COMPLETOS DE LA REGRESIÓN ===\n")
+print(resultados)
 
-SEMANA 3:
-└── M5.1.3 — Unificar NEWS + GEOPOLÍTICA
+# 8. Calcular R-cuadrado
+SST <- sum((Y - mean(Y))^2)  # Suma de cuadrados total
+SSE <- sum(residuos^2)        # Suma de cuadrados del error
+SSR <- SST - SSE              # Suma de cuadrados de la regresión
 
-SEMANA 4:
-└── M5.2.1 — Ticker tape de noticias
+R2 <- 1 - SSE/SST
+R2_ajustado <- 1 - (1-R2)*(n-1)/(n-k-1)
 
-SEMANA 5:
-└── M5.2.2 — Breaking news detector
+cat("\n=== MEDIDAS DE BONDAD DE AJUSTE ===\n")
+cat("R-cuadrado (R²):", round(R2, 4), "\n")
+cat("R-cuadrado ajustado:", round(R2_ajustado, 4), "\n")
+cat("Error estándar de la regresión (sigma):", round(sqrt(sigma2), 4), "\n")
 
-SEMANA 6+:
-└── M5.3.x — Features avanzados con IA
-```
+# 9. Comparación con la función lm() de R (para verificar)
+cat("\n=== VERIFICACIÓN CON lm() ===\n")
+modelo_lm <- lm(log(C) ~ log(I) + log(L) + log(H) + log(A), data = datos_validos)
+summary(modelo_lm)
 
----
+# 10. Intervalos de confianza al 95%
+cat("\n=== INTERVALOS DE CONFIANZA AL 95% ===\n")
+alpha <- 0.05
+t_critico <- qt(1 - alpha/2, df = n - k - 1)
 
-## Archivos relevantes del proyecto
+intervalos <- data.frame(
+  Coeficiente = beta,
+  LI = beta - t_critico * errores_estandar,
+  LS = beta + t_critico * errores_estandar
+)
+print(round(intervalos, 4))
 
-| Archivo | Descripción |
-|---|---|
-| `src/components/dashboard/news-feed.tsx` | Componente principal de noticias |
-| `src/components/dashboard/tab-geopolitica.tsx` | Tab geopolítica con categorías |
-| `src/app/api/rss-news/route.ts` | API RSS noticias locales |
-| `src/app/api/geopolitica/route.ts` | API RSS noticias internacionales |
-| `src/app/api/noticias/[ticker]/route.ts` | API noticias por ticker |
-| `src/app/api/rss-proxy/route.ts` | Proxy para feeds RSS externos |
+# 11. Matriz de correlaciones de las variables en log
+cat("\n=== MATRIZ DE CORRELACIONES (variables en log) ===\n")
+datos_log <- data.frame(
+  log_C = Y,
+  log_I = log(datos_validos$I),
+  log_L = log(datos_validos$L),
+  log_H = log(datos_validos$H),
+  log_A = log(datos_validos$A)
+)
+print(round(cor(datos_log), 4))
 
----
-
-## Reglas de trabajo
-
-1. **Siempre trabajar en la rama `lorenzo`** — nunca pushear a `main`
-2. Mantener la **estética Bloomberg** (dark, tablas, colores del proyecto)
-3. Cada nuevo endpoint debe tener **caché** implementado
-4. Los componentes nuevos deben ser **consistentes** con el resto del panel
-5. Abrir **Pull Request** cuando una fase esté completa para revisión del equipo
-
----
-
-*roadmap generado para Lorenzo — rama `lorenzo` — EconData_argy*
+# 12. Prueba de multicolinealidad (VIF)
+cat("\n=== FACTOR DE INFLACIÓN DE LA VARIANZA (VIF) ===\n")
+if(require(car, quietly = TRUE)) {
+  vif_values <- vif(modelo_lm)
+  print(vif_values)
+} else {
+  cat("Instala el paquete 'car' para calcular VIF: install.packages('car')\n")
+}
