@@ -17,14 +17,33 @@
 import { NextRequest, NextResponse } from "next/server"
 
 const RSS_FEEDS: Record<string, string> = {
-  bbc_world: "http://feeds.bbci.co.uk/news/world/rss.xml",
-  bbc_business: "http://feeds.bbci.co.uk/news/business/rss.xml",
-  aljazeera_en: "https://www.aljazeera.com/xml/rss/all.xml",
-  france24_es: "https://www.france24.com/es/rss",
-  bbc_mundo: "https://feeds.bbci.co.uk/mundo/rss.xml",
-  infobae_eco: "https://www.infobae.com/feeds/rss/economia/",
-  ambito_inter: "https://www.ambito.com/rss/internacionales.xml",
-  cronista_mundo: "https://www.cronista.com/rss/mundo/",
+  // Existentes
+  bbc_world:      "http://feeds.bbci.co.uk/news/world/rss.xml",
+  bbc_business:   "http://feeds.bbci.co.uk/news/business/rss.xml",
+  aljazeera_en:   "https://www.aljazeera.com/xml/rss/all.xml",
+  france24_es:    "https://www.france24.com/es/rss",
+  bbc_mundo:      "https://feeds.bbci.co.uk/mundo/rss.xml",
+  infobae_eco:    "https://www.infobae.com/arc/outboundfeeds/rss/",
+  ambito_inter:   "https://www.ambito.com/rss/internacionales.xml",
+  cronista_mundo: "https://www.cronista.com/files/rss/news.xml",
+  // EEUU
+  politico:       "https://rss.politico.com/politics-news.xml",
+  wsj:            "https://feeds.a.dj.com/rss/RSSWorldNews.xml",
+  // UK
+  guardian:       "https://www.theguardian.com/world/rss",
+  financial_times:"https://www.ft.com/rss/home",
+  // Alemania
+  handelsblatt:   "https://www.handelsblatt.com/contentexport/feed/top-themen",
+  // Medio Oriente
+  al_monitor:     "https://www.al-monitor.com/rss.xml",
+  // Rusia
+  meduza:         "https://meduza.io/rss/all",
+  kommersant:     "https://www.kommersant.ru/RSS/main.xml",
+  // China
+  wire_china:     "https://thewirechina.com/feed/",
+  // Brasil
+  folha:          "https://feeds.folha.uol.com.br/emcimadahora/rss091.xml",
+  infomoney:      "https://www.infomoney.com.br/feed/",
 }
 
 const CATEGORIES: Record<string, string[]> = {
