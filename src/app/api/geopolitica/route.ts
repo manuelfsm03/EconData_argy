@@ -17,6 +17,14 @@
 import { NextRequest, NextResponse } from "next/server"
 
 const RSS_FEEDS: Record<string, string> = {
+  // Argentina
+  ambito_eco:     "https://www.ambito.com/rss/economia.xml",
+  ambito_fin:     "https://www.ambito.com/rss/finanzas.xml",
+  iprofesional:   "https://www.iprofesional.com/rss/finanzas",
+  bae_negocios:   "https://www.baenegocios.com/feed/",
+  la_nacion:      "https://www.lanacion.com.ar/arc/outboundfeeds/rss/category/economia/",
+  perfil:         "http://www.perfil.com/feed/economia",
+  el_economista:  "https://www.eleconomista.com.ar/feed/",
   // Existentes
   bbc_world:      "http://feeds.bbci.co.uk/news/world/rss.xml",
   bbc_business:   "http://feeds.bbci.co.uk/news/business/rss.xml",
