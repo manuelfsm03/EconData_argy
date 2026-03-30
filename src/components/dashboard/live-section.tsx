@@ -2,101 +2,57 @@
 
 import { useState } from "react"
 
-interface Channel {
-  id:      string
-  label:   string
-  country: string
-  videoId: string
-}
-
-const CHANNELS: Channel[] = [
-  { id: "tn",        label: "TN",        country: "AR", videoId: "cb12KmMMDJA" },
-  { id: "cnn",       label: "CNN",       country: "US", videoId: "iDd-K24d7Fg" },
-  { id: "france24",  label: "FRANCE 24", country: "FR", videoId: "Ap-UM1O9RBU" },
-  { id: "aljazeera", label: "AL JAZEERA",country: "ME", videoId: "gCNeDWCI0vo" },
+const CHANNELS = [
+  { id: "tn",        label: "TN",         country: "AR", videoId: "cb12KmMMDJA" },
+  { id: "cnn",       label: "CNN",        country: "US", videoId: "iDd-K24d7Fg" },
+  { id: "france24",  label: "FRANCE 24",  country: "FR", videoId: "Ap-UM1O9RBU" },
+  { id: "aljazeera", label: "AL JAZEERA", country: "ME", videoId: "gCNeDWCI0vo" },
 ]
 
 export function LiveSection() {
-  const [activeId, setActiveId]   = useState<string>("tn")
   const [collapsed, setCollapsed] = useState(false)
 
-  const active = CHANNELS.find((c) => c.id === activeId)
-
   return (
-    <div style={{ borderBottom: "1px solid #1a1a1a" }}>
+    <div style={{ borderTop: "1px solid #1a1a1a" }}>
       {/* Header */}
       <div
         className="bbg-panel-header"
         style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", userSelect: "none" }}
         onClick={() => setCollapsed((v) => !v)}
       >
-        <span
-          style={{
-            width: 7, height: 7, borderRadius: "50%",
-            background: activeId ? "#FF433D" : "#555",
-            display: "inline-block",
-            boxShadow: activeId ? "0 0 6px #FF433D" : "none",
-          }}
-        />
-        NOTICIAS EN VIVO
+        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#FF433D", display: "inline-block", boxShadow: "0 0 6px #FF433D" }} />
+        EN VIVO
         <span style={{ marginLeft: "auto", color: "#333", fontSize: 9, fontWeight: 400 }}>
           {collapsed ? "▼ EXPANDIR" : "▲ COLAPSAR"}
         </span>
       </div>
 
       {!collapsed && (
-        <>
-          {/* Channel tabs */}
-          <div style={{ display: "flex", gap: 1, background: "#0a0a0a", padding: "4px 8px", overflowX: "auto" }}>
-            {CHANNELS.map((ch) => {
-              const isActive = activeId === ch.id
-              return (
-                <button
-                  key={ch.id}
-                  onClick={() => setActiveId(ch.id)}
-                  style={{
-                    padding: "4px 14px",
-                    fontSize: 10,
-                    fontWeight: 700,
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                    border: "1px solid",
-                    borderColor: isActive ? "#FF433D" : "#222",
-                    background: isActive ? "#1a0000" : "transparent",
-                    color: isActive ? "#FF433D" : "#555",
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  {isActive && (
-                    <span style={{ marginRight: 5, color: "#FF433D", fontSize: 8 }}>●</span>
-                  )}
-                  {ch.label}
-                  <span style={{ marginLeft: 6, fontSize: 8, color: isActive ? "#FF433D88" : "#333" }}>
-                    {ch.country}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Iframe — solo carga si hay canal activo */}
-          {active && (
-            <div style={{ position: "relative", paddingBottom: "42%", height: 0, background: "#050505" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, background: "#111" }}>
+          {CHANNELS.map((ch) => (
+            <div key={ch.id} style={{ position: "relative", background: "#000" }}>
+              {/* Label overlay */}
+              <div style={{
+                position: "absolute", top: 0, left: 0, zIndex: 1,
+                background: "#000000cc", padding: "2px 6px",
+                fontSize: 9, fontWeight: 700, letterSpacing: "0.06em",
+                color: "#FF433D", display: "flex", alignItems: "center", gap: 4,
+              }}>
+                <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#FF433D", display: "inline-block" }} />
+                {ch.label}
+                <span style={{ color: "#555", fontWeight: 400 }}>{ch.country}</span>
+              </div>
               <iframe
-                key={active.videoId}
-                src={`https://www.youtube.com/embed/${active.videoId}?autoplay=1&mute=1&rel=0&modestbranding=1&vq=hd720`}
-                style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
+                src={`https://www.youtube.com/embed/${ch.videoId}?autoplay=1&mute=1&rel=0&modestbranding=1&vq=hd720`}
+                style={{ display: "block", width: "100%", height: 150, border: "none" }}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 allowFullScreen
                 loading="lazy"
-                title={active.label}
+                title={ch.label}
               />
             </div>
-          )}
-
-        </>
+          ))}
+        </div>
       )}
     </div>
   )

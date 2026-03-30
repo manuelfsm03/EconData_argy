@@ -176,9 +176,6 @@ export function NewsFeed() {
 
   return (
     <div>
-      {/* EN VIVO */}
-      <LiveSection />
-
       {/* Tabs de categoría */}
       <div
         style={{
@@ -294,6 +291,9 @@ export function NewsFeed() {
           />
         </div>
       </div>
+
+      {/* EN VIVO */}
+      <LiveSection />
     </div>
   )
 }
