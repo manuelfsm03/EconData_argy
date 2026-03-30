@@ -147,7 +147,7 @@ function parseRssItems(xml: string): { title: string; link: string; pub: string;
       items.push({ title, link, pub, summary: summary.replace(/<[^>]+>/g, "").slice(0, 280) })
     }
   }
-  return items.slice(0, 6)
+  return items.slice(0, 10)
 }
 
 // In-memory cache
@@ -218,8 +218,8 @@ async function getFeed(): Promise<{ items: NewsItem[]; count: number; categories
   })
 
   const result = {
-    items: unique.slice(0, 60),
-    count: Math.min(unique.length, 60),
+    items: unique.slice(0, 300),
+    count: Math.min(unique.length, 300),
     categories: Object.keys(CAT_COLORS),
   }
 
