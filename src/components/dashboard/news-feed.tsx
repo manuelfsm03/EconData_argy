@@ -175,7 +175,7 @@ export function NewsFeed() {
   const activeCat = CATEGORIES.find((c) => c.key === category)
 
   return (
-    <div>
+    <div style={{ display: "flex", flexDirection: "column", height: "calc(100dvh - 68px)" }}>
       {/* Tabs de categoría */}
       <div
         style={{
@@ -222,9 +222,9 @@ export function NewsFeed() {
       </div>
 
       {/* Dos columnas: Argentina | Internacional */}
-      <div style={{ display: "flex", gap: 1, background: "#111111" }}>
+      <div style={{ display: "flex", gap: 1, background: "#111111", flex: 1, minHeight: 0 }}>
         {/* Argentina */}
-        <div style={{ flex: 1, minWidth: 0, background: "#000000", overflow: "hidden" }}>
+        <div style={{ flex: 1, minWidth: 0, background: "#000000", overflow: "hidden", display: "flex", flexDirection: "column" }}>
           <div
             className="bbg-panel-header"
             style={{ display: "flex", alignItems: "center", gap: 6 }}
@@ -235,7 +235,7 @@ export function NewsFeed() {
               {argentina.length}
             </span>
           </div>
-          <div style={{ overflowY: "auto", height: "calc(100vh - 460px)" }}>
+          <div style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
             <NewsTable
               rows={argentina}
               extra={moreAR}
@@ -248,7 +248,7 @@ export function NewsFeed() {
         </div>
 
         {/* Internacional */}
-        <div style={{ flex: 1, minWidth: 0, background: "#000000" }}>
+        <div style={{ flex: 1, minWidth: 0, background: "#000000", display: "flex", flexDirection: "column" }}>
           <div
             className="bbg-panel-header"
             style={{ display: "flex", alignItems: "center", gap: 6 }}
@@ -283,7 +283,7 @@ export function NewsFeed() {
               </button>
             ))}
           </div>
-          <div style={{ overflowY: "auto", height: "calc(100vh - 460px)" }}>
+          <div style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
             <NewsTable
               rows={internacional}
               extra={moreIN}
