@@ -41,6 +41,7 @@ const RSS_FEEDS: Record<string, string> = {
   guardian:       "https://www.theguardian.com/world/rss",
   financial_times:"https://www.ft.com/rss/home",
   // Alemania
+  dw_espanol:     "https://rss.dw.com/rdf/rss-es-eco",
   handelsblatt:   "https://www.handelsblatt.com/contentexport/feed/top-themen",
   // Medio Oriente
   al_monitor:     "https://www.al-monitor.com/rss.xml",
