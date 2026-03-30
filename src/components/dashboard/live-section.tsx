@@ -47,7 +47,7 @@ export function LiveSection() {
                 <span style={{ color: "#555", fontWeight: 400 }}>{ch.country}</span>
               </div>
               <iframe
-                src={`https://www.youtube.com/embed/${ch.videoId}?autoplay=1&mute=1&rel=0&modestbranding=1&vq=hd720`}
+                src={`https://www.youtube.com/embed/${ch.videoId}?autoplay=1&rel=0&modestbranding=1&vq=hd720`}
                 style={{ display: "block", width: "100%", height: 150, border: "none" }}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 allowFullScreen
