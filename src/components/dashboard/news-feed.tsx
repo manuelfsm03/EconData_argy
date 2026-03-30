@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { LiveSection } from "./live-section"
 
 interface RSSItem {
   id: string
@@ -175,6 +176,9 @@ export function NewsFeed() {
 
   return (
     <div>
+      {/* EN VIVO */}
+      <LiveSection />
+
       {/* Tabs de categoría */}
       <div
         style={{
