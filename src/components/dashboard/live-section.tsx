@@ -4,12 +4,12 @@ import { useState } from "react"
 
 const CHANNELS = [
   { id: "tn",        label: "TN",         country: "AR", videoId: "cb12KmMMDJA" },
-  { id: "cnn",       label: "CNN",        country: "US", videoId: "iDd-K24d7Fg" },
+  { id: "abc",       label: "ABC NEWS",   country: "US", videoId: "BC3LInervmo" },
   { id: "france24",  label: "FRANCE 24",  country: "FR", videoId: "Ap-UM1O9RBU" },
   { id: "aljazeera", label: "AL JAZEERA", country: "ME", videoId: "gCNeDWCI0vo" },
   { id: "c5n",       label: "C5N",        country: "AR", videoId: "SF06Qy1Ct6Y" },
   { id: "dw",        label: "DW NEWS",    country: "DE", videoId: "LuKwFajn37U" },
-  { id: "bbc",       label: "BBC NEWS",   country: "UK", videoId: "2thdi9qLqs8" },
+  { id: "skynews",   label: "SKY NEWS",   country: "UK", videoId: "76zNJpupnqs" },
   { id: "euronews",  label: "EURONEWS",   country: "EU", videoId: "pykpO5kQJ98" },
 ]
 
