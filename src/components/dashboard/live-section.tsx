@@ -10,7 +10,7 @@ const CHANNELS = [
   { id: "c5n",       label: "C5N",        country: "AR", videoId: "SF06Qy1Ct6Y" },
   { id: "dw",        label: "DW NEWS",    country: "DE", videoId: "LuKwFajn37U" },
   { id: "bbc",       label: "BBC NEWS",   country: "UK", videoId: "2thdi9qLqs8" },
-  { id: "cgtn",      label: "CGTN",       country: "CN", videoId: "WTrVdjqdYq8" },
+  { id: "euronews",  label: "EURONEWS",   country: "EU", videoId: "pykpO5kQJ98" },
 ]
 
 export function LiveSection() {
