@@ -17,7 +17,7 @@ const CHANNELS: Channel[] = [
 ]
 
 export function LiveSection() {
-  const [activeId, setActiveId]   = useState<string | null>(null)
+  const [activeId, setActiveId]   = useState<string>("tn")
   const [collapsed, setCollapsed] = useState(false)
 
   const active = CHANNELS.find((c) => c.id === activeId)
@@ -53,7 +53,7 @@ export function LiveSection() {
               return (
                 <button
                   key={ch.id}
-                  onClick={() => setActiveId(isActive ? null : ch.id)}
+                  onClick={() => setActiveId(ch.id)}
                   style={{
                     padding: "4px 14px",
                     fontSize: 10,
@@ -86,7 +86,7 @@ export function LiveSection() {
             <div style={{ position: "relative", paddingBottom: "42%", height: 0, background: "#050505" }}>
               <iframe
                 key={active.videoId}
-                src={`https://www.youtube.com/embed/${active.videoId}?autoplay=0&rel=0&modestbranding=1`}
+                src={`https://www.youtube.com/embed/${active.videoId}?autoplay=1&mute=1&rel=0&modestbranding=1&vq=hd720`}
                 style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 allowFullScreen
@@ -96,11 +96,6 @@ export function LiveSection() {
             </div>
           )}
 
-          {!active && (
-            <div style={{ padding: "10px 12px", fontSize: 9, color: "#333", background: "#050505", textAlign: "center" }}>
-              SELECCIONÁ UN CANAL PARA VER EN VIVO
-            </div>
-          )}
         </>
       )}
     </div>
