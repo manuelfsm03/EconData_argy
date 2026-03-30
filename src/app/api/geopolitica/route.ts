@@ -169,7 +169,24 @@ interface NewsItem {
   category: string
   color: string
   region: string
+  country: string
   summary: string
+}
+
+const FEED_COUNTRY: Record<string, string> = {
+  ambito_eco: "argentina", ambito_fin: "argentina", iprofesional: "argentina",
+  bae_negocios: "argentina", la_nacion: "argentina", perfil: "argentina",
+  el_economista: "argentina", infobae_eco: "argentina", ambito_inter: "argentina",
+  cronista_mundo: "argentina",
+  bbc_world: "uk", bbc_business: "uk", bbc_mundo: "uk",
+  guardian: "uk", financial_times: "uk",
+  politico: "eeuu", wsj: "eeuu",
+  france24_es: "francia",
+  dw_espanol: "alemania", handelsblatt: "alemania",
+  aljazeera_en: "medio-oriente", al_monitor: "medio-oriente",
+  meduza: "rusia", kommersant: "rusia",
+  wire_china: "china",
+  folha: "brasil", infomoney: "brasil",
 }
 
 async function getFeed(): Promise<{ items: NewsItem[]; count: number; categories: string[] }> {
@@ -200,6 +217,7 @@ async function getFeed(): Promise<{ items: NewsItem[]; count: number; categories
             category: cat,
             color: CAT_COLORS[cat] ?? CAT_COLORS.general,
             region,
+            country: FEED_COUNTRY[sourceName] ?? "otros",
             summary: item.summary,
           })
         }
