@@ -224,7 +224,7 @@ export function NewsFeed() {
       {/* Dos columnas: Argentina | Internacional */}
       <div style={{ display: "flex", gap: 1, background: "#111111" }}>
         {/* Argentina */}
-        <div style={{ flex: 1, minWidth: 0, background: "#000000" }}>
+        <div style={{ flex: 1, minWidth: 0, background: "#000000", overflow: "hidden" }}>
           <div
             className="bbg-panel-header"
             style={{ display: "flex", alignItems: "center", gap: 6 }}
@@ -235,14 +235,16 @@ export function NewsFeed() {
               {argentina.length}
             </span>
           </div>
-          <NewsTable
-            rows={argentina}
-            extra={moreAR}
-            loading={loading}
-            expandedId={expandedId}
-            onToggle={onToggle}
-            onMore={() => setMoreAR((n) => n + INITIAL)}
-          />
+          <div style={{ overflowY: "auto", height: "calc(100vh - 460px)" }}>
+            <NewsTable
+              rows={argentina}
+              extra={moreAR}
+              loading={loading}
+              expandedId={expandedId}
+              onToggle={onToggle}
+              onMore={() => setMoreAR((n) => n + INITIAL)}
+            />
+          </div>
         </div>
 
         {/* Internacional */}
@@ -281,14 +283,16 @@ export function NewsFeed() {
               </button>
             ))}
           </div>
-          <NewsTable
-            rows={internacional}
-            extra={moreIN}
-            loading={loading}
-            expandedId={expandedId}
-            onToggle={onToggle}
-            onMore={() => setMoreIN((n) => n + INITIAL)}
-          />
+          <div style={{ overflowY: "auto", height: "calc(100vh - 460px)" }}>
+            <NewsTable
+              rows={internacional}
+              extra={moreIN}
+              loading={loading}
+              expandedId={expandedId}
+              onToggle={onToggle}
+              onMore={() => setMoreIN((n) => n + INITIAL)}
+            />
+          </div>
         </div>
       </div>
 
