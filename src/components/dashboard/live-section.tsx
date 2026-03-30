@@ -7,6 +7,10 @@ const CHANNELS = [
   { id: "cnn",       label: "CNN",        country: "US", videoId: "iDd-K24d7Fg" },
   { id: "france24",  label: "FRANCE 24",  country: "FR", videoId: "Ap-UM1O9RBU" },
   { id: "aljazeera", label: "AL JAZEERA", country: "ME", videoId: "gCNeDWCI0vo" },
+  { id: "c5n",       label: "C5N",        country: "AR", videoId: "SF06Qy1Ct6Y" },
+  { id: "dw",        label: "DW NEWS",    country: "DE", videoId: "LuKwFajn37U" },
+  { id: "bbc",       label: "BBC NEWS",   country: "UK", videoId: "2thdi9qLqs8" },
+  { id: "cgtn",      label: "CGTN",       country: "CN", videoId: "WTrVdjqdYq8" },
 ]
 
 export function LiveSection() {
@@ -28,7 +32,7 @@ export function LiveSection() {
       </div>
 
       {!collapsed && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, background: "#111" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gridTemplateRows: "repeat(2, 150px)", gap: 1, background: "#111" }}>
           {CHANNELS.map((ch) => (
             <div key={ch.id} style={{ position: "relative", background: "#000" }}>
               {/* Label overlay */}
