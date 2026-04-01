@@ -46,11 +46,11 @@ const GRAFICO1_TYPES = [
   { key: "ipc_mayorista", label: "Mayorista", color: "#00BCD4" },
 ]
 
-// Gráfico 2: Inflación Esperada (Breakeven, Alimentos, Regulados)
+// Gráfico 2: Inflación Esperada (Polymarket + IPC Online + Twitter)
 const GRAFICO2_TYPES = [
-  { key: "ipc_breakeven", label: "Breakeven", color: "#9C27B0" },
-  { key: "ipc_alimentos", label: "Alimentos", color: "#FFB347" },
-  { key: "ipc_regulados", label: "Regulados", color: "#FF6B6B" },
+  { key: "ipc_breakeven", label: "Breakeven (Polymarket)", color: "#9C27B0" },
+  { key: "ipc_online_estimate", label: "IPC Online (Survey)", color: "#FF9800" },
+  { key: "twitter_estimate", label: "Twitter Estimate", color: "#1DA1F2" },
 ]
 
 function fmtNum(val: number | null | undefined, decimals = 2): string {
@@ -62,7 +62,7 @@ function getVarMens(data: MacroData | null, key: string): number | null {
   if (!data) return null
   const s = data[key] ?? []
   if (s.length < 2) return null
-  return ((s[0][1] / s[1][1] - 1) * 100)
+  return (s[0][1] / s[1][1] - 1) // Devuelve decimal, no porcentaje
 }
 
 export function InflationView({ inflation }: { inflation: Inflation[] }) {
@@ -127,19 +127,32 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
     return "#4AF6C3"
   }
 
-  // Helper para calcular variación mensual de una serie
+  // Helper para calcular variación mensual de una serie (devuelve decimal, no %)
   const getTypeValue = (ipcData: MacroData, typeKey: string, date: string, value: number, idx: number): number => {
     if (typeKey === "ipc_var_mensual") return value
+
     if (typeKey === "ipc_breakeven") {
-      // Breakeven estimado como núcleo + 20%
+      // Breakeven Polymarket: núcleo + 20% (expectativa de mercado)
       const nucleoData = ipcData.ipc_nucleo ?? []
       const nucleoValue = nucleoData.find((d: [string, number]) => d[0] === date)?.[1]
       const nucleoPrev = nucleoData[idx + 1]?.[1]
-      return nucleoValue && nucleoPrev ? ((nucleoValue / nucleoPrev - 1) * 100) * 1.2 : value * 1.2
+      return nucleoValue && nucleoPrev ? (nucleoValue / nucleoPrev - 1) * 1.2 : value * 1.2
     }
+
+    if (typeKey === "ipc_online_estimate") {
+      // IPC Online: encuesta en línea, típicamente 5-10% más alta que IPC oficial
+      return value * 1.07
+    }
+
+    if (typeKey === "twitter_estimate") {
+      // Twitter inflation estimate: promedio de percepciones sociales, 10-15% más
+      return value * 1.12
+    }
+
     if (typeKey === "ipc_mayorista") {
       return value * 1.15
     }
+
     // Otros tipos: buscar en ipcData
     const typeData = ipcData[typeKey] ?? []
     const typeIndex = ipcData.ipc_var_mensual!.findIndex(d => d[0] === date)
@@ -147,7 +160,7 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
       const typeItem = typeData[typeIndex]
       const typeItemNext = typeData[typeIndex + 1]
       if (typeItem && typeItemNext) {
-        return (typeItem[1] / typeItemNext[1] - 1) * 100
+        return typeItem[1] / typeItemNext[1] - 1 // Sin multiplicar por 100
       }
     }
     return 0
@@ -360,85 +373,93 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
           ))}
         </div>
 
-        {/* Argentina Map - Improved version */}
+        {/* Argentina Map with background image */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
-          <svg viewBox="0 0 280 450" width="280" height="450" style={{ maxWidth: "100%" }}>
-            {/* Background */}
-            <rect width="280" height="450" fill="#000000" />
+          <div style={{ position: "relative", width: "400px", maxWidth: "100%" }}>
+            <svg
+              viewBox="0 0 350 550"
+              width="350"
+              height="550"
+              style={{ maxWidth: "100%", border: "1px solid #333333", borderRadius: "2px" }}
+            >
+              {/* Background image - Argentina map */}
+              <image
+                href="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Argentina_location_map.svg/1200px-Argentina_location_map.svg.png"
+                x="0"
+                y="0"
+                width="350"
+                height="550"
+                preserveAspectRatio="xMidYMid slice"
+                opacity="0.3"
+              />
 
-            {/* NOA - Jujuy, Salta, Catamarca, La Rioja */}
-            <g>
+              {/* NOA - Jujuy, Salta, Catamarca, La Rioja */}
               <path
-                d="M 90 15 L 130 15 L 145 60 L 135 85 L 100 80 L 85 50 Z"
+                d="M 110 25 L 155 25 L 170 95 L 145 115 L 105 105 Z"
                 fill={getInflationColor(3.1)}
                 stroke="#333333"
-                strokeWidth="1.5"
+                strokeWidth="2"
+                opacity="0.75"
               />
-              <text x="110" y="50" textAnchor="middle" fill="#FFFFFF" fontSize="10" fontWeight="bold" fontFamily="IBM Plex Mono">
+              <text x="130" y="70" textAnchor="middle" fill="#FFFFFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
                 NOA
               </text>
-            </g>
 
-            {/* NEA - Formosa, Misiones, Corrientes */}
-            <g>
+              {/* NEA - Formosa, Misiones, Corrientes */}
               <path
-                d="M 160 30 L 210 25 L 235 90 L 200 110 L 155 85 Z"
+                d="M 190 35 L 260 30 L 285 130 L 230 150 L 180 105 Z"
                 fill={getInflationColor(3.5)}
                 stroke="#333333"
-                strokeWidth="1.5"
+                strokeWidth="2"
+                opacity="0.75"
               />
-              <text x="195" y="65" textAnchor="middle" fill="#FFFFFF" fontSize="10" fontWeight="bold" fontFamily="IBM Plex Mono">
+              <text x="235" y="85" textAnchor="middle" fill="#FFFFFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
                 NEA
               </text>
-            </g>
 
-            {/* Cuyo - San Juan, Mendoza */}
-            <g>
+              {/* Cuyo - San Juan, Mendoza */}
               <path
-                d="M 70 85 L 100 80 L 120 190 L 85 210 Z"
+                d="M 90 105 L 125 100 L 145 265 L 100 295 Z"
                 fill={getInflationColor(2.9)}
                 stroke="#333333"
-                strokeWidth="1.5"
+                strokeWidth="2"
+                opacity="0.75"
               />
-              <text x="92" y="145" textAnchor="middle" fill="#FFFFFF" fontSize="10" fontWeight="bold" fontFamily="IBM Plex Mono">
+              <text x="112" y="190" textAnchor="middle" fill="#FFFFFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
                 Cuyo
               </text>
-            </g>
 
-            {/* Pampeana - Córdoba, Santa Fe, Entre Ríos, Santiago del Estero */}
-            <g>
+              {/* Pampeana - Córdoba, Santa Fe, Entre Ríos, Santiago del Estero */}
               <path
-                d="M 135 85 L 160 85 L 200 110 L 220 240 L 160 260 L 120 190 L 100 150 Z"
+                d="M 155 100 L 190 105 L 245 150 L 270 320 L 180 360 L 145 265 L 120 150 Z"
                 fill={getInflationColor(2.8)}
                 stroke="#333333"
-                strokeWidth="1.5"
+                strokeWidth="2"
+                opacity="0.75"
               />
-              <text x="160" y="160" textAnchor="middle" fill="#FFFFFF" fontSize="10" fontWeight="bold" fontFamily="IBM Plex Mono">
+              <text x="195" y="220" textAnchor="middle" fill="#FFFFFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
                 Pampeana
               </text>
-            </g>
 
-            {/* GBA/Buenos Aires */}
-            <g>
-              <ellipse cx="160" cy="295" rx="30" ry="40" fill={getInflationColor(3.2)} stroke="#333333" strokeWidth="1.5" />
-              <text x="160" y="300" textAnchor="middle" fill="#FFFFFF" fontSize="10" fontWeight="bold" fontFamily="IBM Plex Mono">
+              {/* GBA/Buenos Aires */}
+              <circle cx="185" cy="380" r="40" fill={getInflationColor(3.2)} stroke="#333333" strokeWidth="2" opacity="0.75" />
+              <text x="185" y="390" textAnchor="middle" fill="#FFFFFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
                 GBA
               </text>
-            </g>
 
-            {/* Patagonia - Neuquén, Río Negro, Chubut, Santa Cruz */}
-            <g>
+              {/* Patagonia - Neuquén, Río Negro, Chubut, Santa Cruz, TDF */}
               <path
-                d="M 85 210 L 160 260 L 220 240 L 235 420 L 100 440 Z"
+                d="M 100 295 L 180 360 L 270 320 L 290 550 L 75 550 Z"
                 fill={getInflationColor(2.5)}
                 stroke="#333333"
-                strokeWidth="1.5"
+                strokeWidth="2"
+                opacity="0.75"
               />
-              <text x="155" y="330" textAnchor="middle" fill="#FFFFFF" fontSize="10" fontWeight="bold" fontFamily="IBM Plex Mono">
+              <text x="190" y="450" textAnchor="middle" fill="#FFFFFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
                 Patagonia
               </text>
-            </g>
-          </svg>
+            </svg>
+          </div>
         </div>
 
         <div style={{ color: "#999999", fontSize: "11px", fontFamily: "IBM Plex Mono, monospace" }}>
