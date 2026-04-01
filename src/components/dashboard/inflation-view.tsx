@@ -348,7 +348,7 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
         </div>
 
         <PriceChart
-          title="PROYECCIÓN PRÓXIMOS 6 MESES — POLYMARKET vs IPC ONLINE vs TWITTER"
+          title="REM BCRA — EXPECTATIVAS DE INFLACIÓN (Mediana, P25, P75)"
           data={chartData2}
           series={GRAFICO2_TYPES.filter((t) => selectedTypes2.includes(t.key)).map((type) => ({
             key: type.key,
