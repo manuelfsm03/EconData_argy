@@ -164,6 +164,18 @@ export async function GET(request: NextRequest) {
   const endpoint = searchParams.get("endpoint")
 
   try {
+    // ── MACRO COMPARADA LATINOAMERICANA ─────────────────────────────────────
+    if (endpoint === "macro_comparada") {
+      const mockMacro = [
+        { date: "2020-01-01", Argentina: 2.4, Brazil: -4.0, Chile: -6.0, Colombia: -7.3, Mexico: -8.2 },
+        { date: "2021-01-01", Argentina: 10.4, Brazil: 4.6, Chile: 11.8, Colombia: 10.6, Mexico: 4.7 },
+        { date: "2022-01-01", Argentina: -0.9, Brazil: 2.0, Chile: -0.2, Colombia: 7.5, Mexico: 3.7 },
+        { date: "2023-01-01", Argentina: -2.1, Brazil: 2.9, Chile: 0.2, Colombia: 0.5, Mexico: 3.2 },
+        { date: "2024-01-01", Argentina: 2.5, Brazil: 2.0, Chile: 2.5, Colombia: 2.0, Mexico: 1.5 },
+      ]
+      return NextResponse.json({ data: mockMacro, updated_at: new Date().toISOString(), source: "World Bank (mock)" })
+    }
+
     // ── ELECTRICIDAD MUNDIAL (OWID) ─────────────────────────────────────────
     if (endpoint === "electricidad") {
       const cacheKey = "owid_electricidad"
