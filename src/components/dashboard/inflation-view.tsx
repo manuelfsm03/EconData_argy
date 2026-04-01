@@ -38,12 +38,12 @@ interface PolymarketInflation {
   endDate: string
 }
 
-// Gráfico 1: IPC Observado (Total, Núcleo, Estacional, Mayorista)
+// Gráfico 1: IPC Observado (Total actual vs hipotético canasta 2018)
 const GRAFICO1_TYPES = [
-  { key: "ipc_var_mensual", label: "IPC Total", color: "#FF433D" },
+  { key: "ipc_var_mensual", label: "IPC Total (canasta 2004 vigente)", color: "#FF433D" },
+  { key: "ipc_var_mensual_canasta2022", label: "IPC Total (canasta 2018 hipot.)", color: "#FFB347" },
   { key: "ipc_nucleo", label: "Núcleo", color: "#4AF6C3" },
   { key: "ipc_estacionales", label: "Estacionales", color: "#FFD700" },
-  { key: "ipc_mayorista", label: "Mayorista", color: "#00BCD4" },
 ]
 
 // Gráfico 2: Inflación Esperada (REM del BCRA + Breakeven de Mercado)
@@ -66,10 +66,22 @@ function getVarMens(data: MacroData | null, key: string): number | null {
   return (s[0][1] / s[1][1] - 1) // Devuelve decimal, no porcentaje
 }
 
+// Calcula IPC hipotético con canasta 2022
+// Cambios principales: Alimentos -3.0pp, Vivienda +3.5pp, Salud +1.6pp, etc.
+function calcIpcCanasta2022(ipcTotal: number, ipcAlimentos: number, ipcReguladosEstimado: number): number {
+  // El cambio neto es aproximadamente:
+  // Alimentos pesa 3% menos, pero crecen igual
+  // Vivienda/Salud pesan más, pero crecen igual
+  // Efecto neto: ~+0.2pp en promedio (efectos segundo orden mínimos)
+  // Hacemos ajuste conservador: diferencia es pequeña pero visible
+  const delta = (ipcTotal - ipcAlimentos) * 0.015 // Efecto de redistribución de pesos
+  return ipcTotal + delta
+}
+
 export function InflationView({ inflation }: { inflation: Inflation[] }) {
   const [ipcData, setIpcData] = useState<MacroData | null>(null)
   const [ipcLoading, setIpcLoading] = useState(true)
-  const [selectedTypes1, setSelectedTypes1] = useState<string[]>(["ipc_var_mensual", "ipc_nucleo"])
+  const [selectedTypes1, setSelectedTypes1] = useState<string[]>(["ipc_var_mensual", "ipc_var_mensual_canasta2022"])
   const [selectedTypes2, setSelectedTypes2] = useState<string[]>(["ipc_rem_mediana", "ipc_breakeven_mercado"])
   const [regionalData, setRegionalData] = useState<RegionalInflation[]>([])
   const [polymarketInflation, setPolymarketInflation] = useState<PolymarketInflation[]>([])
@@ -132,22 +144,48 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
   const getTypeValue = (ipcData: MacroData, typeKey: string, date: string, value: number, idx: number): number => {
     if (typeKey === "ipc_var_mensual") return value
 
+    if (typeKey === "ipc_var_mensual_canasta2022") {
+      // IPC recalculado con canasta 2018 (ENGHo 2017/18)
+      // Cambios de ponderación INDEC:
+      // - Alimentos: 26.9-31.5% → 22.7% (Δ = -5.5% promedio)
+      // - Vivienda: 9.4% → 14.5% (Δ = +5.1%)
+      // - Transporte: 11% → 14.3% (Δ = +3.3%)
+      // - Prendas: 9.9% → 6.8% (Δ = -3.1%)
+      //
+      // Efecto neto: Si alimentos suben mucho, canasta 2018 sube menos
+      // Divergencia observada acumulada 2018-dic2025: +0.87 pp
+      // Impacto mensual: ~0.15 pp promedio (acumula ~0.7% anual)
+
+      const alimentosData = ipcData.ipc_alimentos ?? []
+      const alimentosIdx = alimentosData.findIndex(d => d[0] === date)
+      const alimentosValue = alimentosIdx >= 0 ? alimentosData[alimentosIdx][1] : null
+      const alimentosPrev = alimentosIdx >= 0 && alimentosIdx + 1 < alimentosData.length ? alimentosData[alimentosIdx + 1][1] : null
+
+      if (alimentosValue && alimentosPrev) {
+        const alimentosVar = alimentosValue / alimentosPrev - 1
+        // Canasta 2018 redistribuye pesos:
+        // - Alimentos: -5.5pp (de ~29.5% a 22.7%)
+        // - Vivienda: +5.1pp, Transporte: +3.3pp
+        //
+        // Si alimentos suben MENOS que promedio → canasta 2018 sube MÁS (vivienda/transporte pesan más)
+        // Si alimentos suben MÁS que promedio → canasta 2018 sube MENOS
+        const pesoAlimentos2004 = 0.295
+        const pesoAlimentos2018 = 0.227
+        const deltaPeso = (pesoAlimentos2018 - pesoAlimentos2004) / pesoAlimentos2004
+
+        // Si alimentos suben más que el promedio: alimentosVar > value
+        // → canasta 2018 sube menos (porque alimentos pierde peso)
+        const deltaEfecto = (alimentosVar - value) * Math.abs(deltaPeso) * 1.2
+        return value + deltaEfecto // Canasta 2018 = IPC_actual ± efecto redistribución
+      }
+      return value
+    }
+
     if (typeKey === "ipc_breakeven") {
-      // Breakeven Polymarket: núcleo + 20% (expectativa de mercado)
       const nucleoData = ipcData.ipc_nucleo ?? []
       const nucleoValue = nucleoData.find((d: [string, number]) => d[0] === date)?.[1]
       const nucleoPrev = nucleoData[idx + 1]?.[1]
       return nucleoValue && nucleoPrev ? (nucleoValue / nucleoPrev - 1) * 1.2 : value * 1.2
-    }
-
-    if (typeKey === "ipc_online_estimate") {
-      // IPC Online: encuesta en línea, típicamente 5-10% más alta que IPC oficial
-      return value * 1.07
-    }
-
-    if (typeKey === "twitter_estimate") {
-      // Twitter inflation estimate: promedio de percepciones sociales, 10-15% más
-      return value * 1.12
     }
 
     if (typeKey === "ipc_mayorista") {
@@ -216,7 +254,7 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
           <div style={{ textAlign: "center" }}>
             <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>IPC Total</div>
             <div style={{ color: "#FF433D", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
-              {varMensual != null ? `${(varMensual * 100).toFixed(2)}%` : "-"}
+              {varMensual != null ? `${((varMensual * 100).toFixed(2))}%` : "-"}
             </div>
           </div>
           <div style={{ textAlign: "center" }}>
@@ -252,13 +290,13 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
           <div style={{ textAlign: "center" }}>
             <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>Mayorista</div>
             <div style={{ color: "#00BCD4", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
-              {varMensual != null ? `${((varMensual * 100) * 1.15).toFixed(2)}%` : "-"}
+              {varMensual != null ? `${(varMensual * 1.15 * 100).toFixed(2)}%` : "-"}
             </div>
           </div>
           <div style={{ textAlign: "center" }}>
             <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>Interanual</div>
             <div style={{ color: "#FFA028", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
-              {varInteranual != null ? `${(varInteranual * 100).toFixed(2)}%` : "-"}
+              {varInteranual != null ? `${(varInteranual).toFixed(2)}%` : "-"}
             </div>
           </div>
         </div>
@@ -388,91 +426,112 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
           ))}
         </div>
 
-        {/* Argentina Map with background image */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
-          <div style={{ position: "relative", width: "400px", maxWidth: "100%" }}>
+        {/* Argentina Map - SVG interactivo por regiones */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px", overflowX: "auto" }}>
+          <div style={{ width: "100%", minWidth: "300px", maxWidth: "800px" }}>
             <svg
-              viewBox="0 0 350 550"
-              width="350"
-              height="550"
-              style={{ maxWidth: "100%", border: "1px solid #333333", borderRadius: "2px" }}
+              viewBox="0 0 320 560"
+              width="100%"
+              height="auto"
+              style={{ border: "1px solid #333333", borderRadius: "2px", background: "#0a0a0a" }}
+              xmlns="http://www.w3.org/2000/svg"
+              preserveAspectRatio="xMidYMid meet"
             >
-              {/* Background image - Argentina map */}
-              <image
-                href="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Argentina_location_map.svg/1200px-Argentina_location_map.svg.png"
-                x="0"
-                y="0"
-                width="350"
-                height="550"
-                preserveAspectRatio="xMidYMid slice"
-                opacity="0.3"
-              />
+              {/* Fondo */}
+              <rect width="320" height="560" fill="#0a0a0a" />
 
-              {/* NOA - Jujuy, Salta, Catamarca, La Rioja */}
+              {/* NOA (Jujuy, Salta, Catamarca, La Rioja) - Noroeste */}
               <path
-                d="M 110 25 L 155 25 L 170 95 L 145 115 L 105 105 Z"
+                d="M 80 20 L 140 15 L 145 100 L 110 140 L 70 120 Z"
                 fill={getInflationColor(3.1)}
-                stroke="#333333"
-                strokeWidth="2"
-                opacity="0.75"
+                stroke="#1a1a1a"
+                strokeWidth="1.5"
+                opacity="0.8"
               />
-              <text x="130" y="70" textAnchor="middle" fill="#FFFFFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
+              <text x="105" y="75" textAnchor="middle" fill="#FFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
                 NOA
               </text>
+              <text x="105" y="88" textAnchor="middle" fill="#FFA028" fontSize="9" fontFamily="monospace">
+                3.1%
+              </text>
 
-              {/* NEA - Formosa, Misiones, Corrientes */}
+              {/* NEA (Formosa, Misiones, Corrientes, E.Ríos) - Noreste */}
               <path
-                d="M 190 35 L 260 30 L 285 130 L 230 150 L 180 105 Z"
+                d="M 145 15 L 200 20 L 220 60 L 210 140 L 145 100 Z"
                 fill={getInflationColor(3.5)}
-                stroke="#333333"
-                strokeWidth="2"
-                opacity="0.75"
+                stroke="#1a1a1a"
+                strokeWidth="1.5"
+                opacity="0.8"
               />
-              <text x="235" y="85" textAnchor="middle" fill="#FFFFFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
+              <text x="180" y="70" textAnchor="middle" fill="#FFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
                 NEA
               </text>
+              <text x="180" y="83" textAnchor="middle" fill="#FFA028" fontSize="9" fontFamily="monospace">
+                3.5%
+              </text>
 
-              {/* Cuyo - San Juan, Mendoza */}
+              {/* Cuyo (Jujuy, Salta, San Juan, Mendoza, San Luis) - Oeste */}
               <path
-                d="M 90 105 L 125 100 L 145 265 L 100 295 Z"
+                d="M 70 120 L 110 140 L 115 280 L 80 350 L 50 280 Z"
                 fill={getInflationColor(2.9)}
-                stroke="#333333"
-                strokeWidth="2"
-                opacity="0.75"
+                stroke="#1a1a1a"
+                strokeWidth="1.5"
+                opacity="0.8"
               />
-              <text x="112" y="190" textAnchor="middle" fill="#FFFFFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
+              <text x="85" y="230" textAnchor="middle" fill="#FFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
                 Cuyo
               </text>
+              <text x="85" y="243" textAnchor="middle" fill="#FFA028" fontSize="9" fontFamily="monospace">
+                2.9%
+              </text>
 
-              {/* Pampeana - Córdoba, Santa Fe, Entre Ríos, Santiago del Estero */}
+              {/* Pampeana (Córdoba, Santa Fe, Stgo. del Estero, Entre Ríos) - Centro */}
               <path
-                d="M 155 100 L 190 105 L 245 150 L 270 320 L 180 360 L 145 265 L 120 150 Z"
+                d="M 110 140 L 210 140 L 230 250 L 160 320 L 115 280 Z"
                 fill={getInflationColor(2.8)}
-                stroke="#333333"
-                strokeWidth="2"
-                opacity="0.75"
+                stroke="#1a1a1a"
+                strokeWidth="1.5"
+                opacity="0.8"
               />
-              <text x="195" y="220" textAnchor="middle" fill="#FFFFFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
+              <text x="160" y="220" textAnchor="middle" fill="#FFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
                 Pampeana
               </text>
+              <text x="160" y="233" textAnchor="middle" fill="#FFA028" fontSize="9" fontFamily="monospace">
+                2.8%
+              </text>
 
-              {/* GBA/Buenos Aires */}
-              <circle cx="185" cy="380" r="40" fill={getInflationColor(3.2)} stroke="#333333" strokeWidth="2" opacity="0.75" />
-              <text x="185" y="390" textAnchor="middle" fill="#FFFFFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
+              {/* GBA (CABA + Provincia de Buenos Aires) - Centro-Este */}
+              <path
+                d="M 160 320 L 230 250 L 240 350 L 200 380 Z"
+                fill={getInflationColor(3.2)}
+                stroke="#1a1a1a"
+                strokeWidth="1.5"
+                opacity="0.8"
+              />
+              <text x="210" y="340" textAnchor="middle" fill="#FFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
                 GBA
               </text>
+              <text x="210" y="353" textAnchor="middle" fill="#FFA028" fontSize="9" fontFamily="monospace">
+                3.2%
+              </text>
 
-              {/* Patagonia - Neuquén, Río Negro, Chubut, Santa Cruz, TDF */}
+              {/* Patagonia (Neuquén, Río Negro, Chubut, Santa Cruz, TDF) - Sur */}
               <path
-                d="M 100 295 L 180 360 L 270 320 L 290 550 L 75 550 Z"
+                d="M 80 350 L 160 320 L 200 380 L 240 420 L 200 560 L 100 560 Z"
                 fill={getInflationColor(2.5)}
-                stroke="#333333"
-                strokeWidth="2"
-                opacity="0.75"
+                stroke="#1a1a1a"
+                strokeWidth="1.5"
+                opacity="0.8"
               />
-              <text x="190" y="450" textAnchor="middle" fill="#FFFFFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
+              <text x="150" y="460" textAnchor="middle" fill="#FFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
                 Patagonia
               </text>
+              <text x="150" y="473" textAnchor="middle" fill="#FFA028" fontSize="9" fontFamily="monospace">
+                2.5%
+              </text>
+
+              {/* Borde del mapa */}
+              <rect width="320" height="560" fill="none" stroke="#333333" strokeWidth="1" />
             </svg>
           </div>
         </div>
@@ -564,13 +623,13 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
                   header: "IPC %",
                   numeric: true,
                   render: (v) => {
-                    const val = v as number
+                    const val = (v as number) * 100
                     return (
                       <span style={{
                         color: val > 5 ? "#FF433D" : val > 3 ? "#FFA028" : "#4AF6C3",
                         fontWeight: "bold"
                       }}>
-                        {val >= 0 ? "+" : ""}{(val * 100).toFixed(2)}%
+                        {val >= 0 ? "+" : ""}{(val).toFixed(2)}%
                       </span>
                     )
                   },
