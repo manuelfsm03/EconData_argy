@@ -222,31 +222,31 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
           <div style={{ textAlign: "center" }}>
             <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>Núcleo</div>
             <div style={{ color: "#4AF6C3", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
-              {getVarMens(ipcData, "ipc_nucleo") != null ? `${getVarMens(ipcData, "ipc_nucleo")!.toFixed(2)}%` : "-"}
+              {getVarMens(ipcData, "ipc_nucleo") != null ? `${(getVarMens(ipcData, "ipc_nucleo")! * 100).toFixed(2)}%` : "-"}
             </div>
           </div>
           <div style={{ textAlign: "center" }}>
             <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>Alimentos</div>
             <div style={{ color: "#FFB347", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
-              {getVarMens(ipcData, "ipc_alimentos") != null ? `${getVarMens(ipcData, "ipc_alimentos")!.toFixed(2)}%` : "-"}
+              {getVarMens(ipcData, "ipc_alimentos") != null ? `${(getVarMens(ipcData, "ipc_alimentos")! * 100).toFixed(2)}%` : "-"}
             </div>
           </div>
           <div style={{ textAlign: "center" }}>
             <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>Regulados</div>
             <div style={{ color: "#FF6B6B", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
-              {getVarMens(ipcData, "ipc_regulados") != null ? `${getVarMens(ipcData, "ipc_regulados")!.toFixed(2)}%` : "-"}
+              {getVarMens(ipcData, "ipc_regulados") != null ? `${(getVarMens(ipcData, "ipc_regulados")! * 100).toFixed(2)}%` : "-"}
             </div>
           </div>
           <div style={{ textAlign: "center" }}>
             <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>Estacionales</div>
             <div style={{ color: "#FFD700", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
-              {getVarMens(ipcData, "ipc_estacionales") != null ? `${getVarMens(ipcData, "ipc_estacionales")!.toFixed(2)}%` : "-"}
+              {getVarMens(ipcData, "ipc_estacionales") != null ? `${(getVarMens(ipcData, "ipc_estacionales")! * 100).toFixed(2)}%` : "-"}
             </div>
           </div>
           <div style={{ textAlign: "center" }}>
             <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>Breakeven</div>
             <div style={{ color: "#9C27B0", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
-              {varMensual != null ? `${((varMensual * 100) * 1.2).toFixed(2)}%` : "-"}
+              {varMensual != null ? `${(varMensual * 1.2 * 100).toFixed(2)}%` : "-"}
             </div>
           </div>
           <div style={{ textAlign: "center" }}>
