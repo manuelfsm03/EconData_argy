@@ -196,10 +196,16 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
 
     months.forEach((month, i) => {
       const projectedValue = avgInflation * (1 - i * 0.05) // Tendencia a baja suave
+
       projections.push({
         date: month,
+        // Breakeven Polymarket: núcleo + 20% (expectativa de mercado)
         ipc_breakeven: projectedValue * 1.2,
+        // IPC Online: encuesta en línea sobre inflación esperada (estimado +7%)
+        // TODO: integrar API real desde https://www.ipcenlinea.com o similar
         ipc_online_estimate: projectedValue * 1.07,
+        // Twitter Estimate: análisis de menciones/sentimiento sobre inflación (estimado +12%)
+        // TODO: integrar API de análisis de sentimiento en redes sociales
         twitter_estimate: projectedValue * 1.12,
       })
     })
@@ -312,6 +318,7 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
             color: type.color,
           }))}
           height={300}
+          yAxisFormat="percentage"
         />
       </div>
 
@@ -359,6 +366,7 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
             color: type.color,
           }))}
           height={300}
+          yAxisFormat="percentage"
         />
       </div>
 

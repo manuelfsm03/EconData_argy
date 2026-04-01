@@ -29,9 +29,10 @@ interface PriceChartProps {
   title: string
   subtitle?: string
   height?: number
+  yAxisFormat?: "currency" | "percentage"
 }
 
-export function PriceChart({ data, series, title, height = 250 }: PriceChartProps) {
+export function PriceChart({ data, series, title, height = 250, yAxisFormat = "currency" }: PriceChartProps) {
   const formattedData = data.map((d) => ({
     ...d,
     date: typeof d.date === "string" ? d.date : format(d.date, "dd/MM"),
@@ -56,7 +57,11 @@ export function PriceChart({ data, series, title, height = 250 }: PriceChartProp
               fontSize={9}
               tickLine={false}
               axisLine={{ stroke: "#333333" }}
-              tickFormatter={(value) => `$${value}`}
+              tickFormatter={(value) =>
+                yAxisFormat === "percentage"
+                  ? `${(value * 100).toFixed(1)}%`
+                  : `$${value}`
+              }
             />
             <Tooltip
               contentStyle={{
