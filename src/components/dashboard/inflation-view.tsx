@@ -427,8 +427,8 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
         </div>
 
         {/* Argentina Map - SVG real de Wikimedia Commons con provincias coloreadas */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px", overflowX: "auto" }}>
-          <div style={{ width: "100%", minWidth: "300px", maxWidth: "100%" }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
+          <div style={{ position: "relative", width: "100%", maxWidth: "500px" }}>
             <embed
               src="/argentina_inflation_map.svg"
               type="image/svg+xml"
@@ -438,9 +438,63 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
                 background: "#0a0a0a",
                 width: "100%",
                 height: "auto",
-                minHeight: "500px"
+                minHeight: "400px",
+                display: "block"
               }}
             />
+
+            {/* Overlay con etiquetas de regiones */}
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                pointerEvents: "none",
+                fontSize: "11px",
+                fontWeight: "bold",
+                color: "#FFF",
+                fontFamily: "IBM Plex Mono, monospace",
+                textShadow: "0 0 4px #000000"
+              }}
+            >
+              {/* NOA - Noroeste */}
+              <div style={{ position: "absolute", top: "15%", left: "22%", textAlign: "center" }}>
+                <div>NOA</div>
+                <div style={{ color: "#FFA028", fontSize: "10px" }}>3.1%</div>
+              </div>
+
+              {/* NEA - Noreste */}
+              <div style={{ position: "absolute", top: "18%", right: "15%", textAlign: "center" }}>
+                <div>NEA</div>
+                <div style={{ color: "#FFA028", fontSize: "10px" }}>3.5%</div>
+              </div>
+
+              {/* Cuyo - Oeste */}
+              <div style={{ position: "absolute", top: "40%", left: "12%", textAlign: "center" }}>
+                <div>Cuyo</div>
+                <div style={{ color: "#FFA028", fontSize: "10px" }}>2.9%</div>
+              </div>
+
+              {/* Pampeana - Centro */}
+              <div style={{ position: "absolute", top: "45%", left: "38%", textAlign: "center" }}>
+                <div>Pampeana</div>
+                <div style={{ color: "#FFA028", fontSize: "10px" }}>2.8%</div>
+              </div>
+
+              {/* GBA - Centro-Este */}
+              <div style={{ position: "absolute", top: "55%", left: "50%", textAlign: "center", transform: "translateX(-50%)" }}>
+                <div>GBA</div>
+                <div style={{ color: "#FFA028", fontSize: "10px" }}>3.2%</div>
+              </div>
+
+              {/* Patagonia - Sur */}
+              <div style={{ position: "absolute", bottom: "15%", left: "35%", textAlign: "center" }}>
+                <div>Patagonia</div>
+                <div style={{ color: "#FFA028", fontSize: "10px" }}>2.5%</div>
+              </div>
+            </div>
           </div>
         </div>
 
