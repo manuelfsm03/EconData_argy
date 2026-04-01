@@ -12,7 +12,6 @@ import { TabDepositos } from "./tab-depositos"
 import { TabReservas } from "./tab-reservas"
 import { TabMarketData } from "./tab-market-data"
 import { TabArbScanner } from "./tab-arb-scanner"
-import { TabEconomia } from "./tab-economia"
 import { TabMacro } from "./tab-macro"
 import { TabDeuda } from "./tab-deuda"
 import { TabMundo } from "./tab-mundo"
@@ -242,7 +241,6 @@ export function Dashboard() {
           <TabsTrigger value="news">Noticias</TabsTrigger>
           <TabsTrigger value="bonos">Bonos</TabsTrigger>
           <TabsTrigger value="acciones">Acciones AR</TabsTrigger>
-          <TabsTrigger value="economia">Economía AR</TabsTrigger>
           <TabsTrigger value="macro">Macro</TabsTrigger>
           <TabsTrigger value="deuda">Deuda</TabsTrigger>
           <TabsTrigger value="mundo">Mundo</TabsTrigger>
@@ -454,11 +452,6 @@ export function Dashboard() {
         {/* ═══════════ ACCIONES AR ═══════════ */}
         <TabsContent value="acciones">
           <TabAcciones />
-        </TabsContent>
-
-        {/* ═══════════ ECONOMÍA AR ═══════════ */}
-        <TabsContent value="economia">
-          <TabEconomia />
         </TabsContent>
 
         {/* ═══════════ MACRO ═══════════ */}
