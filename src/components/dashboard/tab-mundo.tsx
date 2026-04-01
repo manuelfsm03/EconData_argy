@@ -227,6 +227,127 @@ function PetroleoView() {
   )
 }
 
+function IAView() {
+  const [segmento, setSegmento] = useState<"benchmarks" | "trending">("benchmarks")
+  const [data, setData] = useState<unknown[] | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    fetch(`/api/ia?endpoint=${segmento}`)
+      .then((r) => r.json())
+      .then((j) => { setData(j.data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [segmento])
+
+  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando datos de IA...</div>
+  if (!data) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos disponibles.</div>
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 1, background: "#111", padding: 1, marginBottom: 8, flexWrap: "wrap" }}>
+        {(["benchmarks", "trending"] as const).map((type) => (
+          <button
+            key={type}
+            onClick={() => setSegmento(type)}
+            style={{
+              padding: "4px 10px",
+              fontSize: 10,
+              background: segmento === type ? "#1a1a1a" : "transparent",
+              color: segmento === type ? "#FFA028" : "#555",
+              border: "none",
+              borderBottom: segmento === type ? "2px solid #FFA028" : "2px solid transparent",
+              cursor: "pointer",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              fontWeight: 700,
+            }}
+          >
+            {type === "benchmarks" ? "LLM Benchmarks" : "Modelos Trending"}
+          </button>
+        ))}
+      </div>
+
+      {segmento === "benchmarks" && (
+        <div style={{ background: "#060606", border: "1px solid #1a1a1a", margin: 1 }}>
+          <div style={{ padding: "8px", borderBottom: "1px solid #111", fontSize: 10, color: "#999", fontWeight: 600 }}>
+            COMPARATIVA DE LLMs — Puntuaciones en benchmarks estándar
+          </div>
+          <div style={{ overflowX: "auto", padding: 8 }}>
+            <table style={{ fontSize: 9, width: "100%", borderCollapse: "collapse", color: "#ccc" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #222" }}>
+                  <th style={{ textAlign: "left", padding: "4px 8px", color: "#FFA028" }}>Modelo</th>
+                  <th style={{ textAlign: "center", padding: "4px 8px" }}>Empresa</th>
+                  <th style={{ textAlign: "center", padding: "4px 8px" }}>MMLU</th>
+                  <th style={{ textAlign: "center", padding: "4px 8px" }}>HumanEval</th>
+                  <th style={{ textAlign: "center", padding: "4px 8px" }}>GSM8K</th>
+                  <th style={{ textAlign: "center", padding: "4px 8px" }}>MATH</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data as Array<any>).map((model, idx) => (
+                  <tr key={idx} style={{ borderBottom: "1px solid #111" }}>
+                    <td style={{ padding: "6px 8px" }}>{model.model}</td>
+                    <td style={{ textAlign: "center", padding: "6px 8px", fontSize: 8, color: "#999" }}>{model.company}</td>
+                    <td style={{ textAlign: "center", padding: "6px 8px", color: model.mmlu > 86 ? "#4AF6C3" : model.mmlu > 80 ? "#FFA028" : "#FF433D" }}>
+                      {model.mmlu.toFixed(1)}
+                    </td>
+                    <td style={{ textAlign: "center", padding: "6px 8px", color: model.humaneval > 85 ? "#4AF6C3" : model.humaneval > 70 ? "#FFA028" : "#FF433D" }}>
+                      {model.humaneval.toFixed(1)}
+                    </td>
+                    <td style={{ textAlign: "center", padding: "6px 8px", color: model.gsm8k > 93 ? "#4AF6C3" : model.gsm8k > 85 ? "#FFA028" : "#FF433D" }}>
+                      {model.gsm8k.toFixed(1)}
+                    </td>
+                    <td style={{ textAlign: "center", padding: "6px 8px", color: model.math > 85 ? "#4AF6C3" : model.math > 75 ? "#FFA028" : "#FF433D" }}>
+                      {model.math.toFixed(1)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ padding: "4px 8px", fontSize: 8, color: "#333", borderTop: "1px solid #111", background: "#0a0a0a" }}>
+            MMLU: General Knowledge | HumanEval: Code | GSM8K: Math | MATH: Advanced Math
+          </div>
+        </div>
+      )}
+
+      {segmento === "trending" && (
+        <div style={{ background: "#060606", border: "1px solid #1a1a1a", margin: 1 }}>
+          <div style={{ padding: "8px", borderBottom: "1px solid #111", fontSize: 10, color: "#999", fontWeight: 600 }}>
+            TOP MODELOS HUGGING FACE — Por descargas
+          </div>
+          <div style={{ padding: 8 }}>
+            {(data as Array<any>).map((model, idx) => (
+              <div key={idx} style={{ padding: "8px", borderBottom: "1px solid #111", fontSize: 9 }}>
+                <div style={{ color: "#FFA028", fontWeight: 600, marginBottom: 2 }}>
+                  #{idx + 1} {model.id}
+                </div>
+                <div style={{ color: "#888", fontSize: 8, marginBottom: 4 }}>
+                  ⬇️ {(model.downloads / 1_000_000).toFixed(1)}M descargas · 👍 {model.likes}
+                </div>
+                {model.tags && model.tags.length > 0 && (
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    {model.tags.slice(0, 3).map((tag: string) => (
+                      <span key={tag} style={{ background: "#1a1a1a", padding: "2px 6px", fontSize: 7, color: "#666", borderRadius: 2 }}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div style={{ padding: "4px 8px", fontSize: 8, color: "#333", borderTop: "1px solid #111", background: "#0a0a0a" }}>
+            Fuente: Hugging Face Hub API · Datos: modelos con tag 'gpt' ordenados por descargas
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SojaView() {
   const [segmento, setSegmento] = useState<"produccion" | "precio">("produccion")
   const [data, setData] = useState<Record<string, unknown>[] | null>(null)
@@ -606,12 +727,14 @@ export function TabMundo() {
         { key: "energia", label: "Electricidad" },
         { key: "petroleo", label: "Petróleo" },
         { key: "soja", label: "Soja" },
+        { key: "ia", label: "IA" },
         { key: "macro", label: "Macro Comparada" },
       ]}
         active={mundoTab} onChange={setMundoTab} />
       {mundoTab === "energia" && <ElectricidadMundialView />}
       {mundoTab === "petroleo" && <PetroleoView />}
       {mundoTab === "soja" && <SojaView />}
+      {mundoTab === "ia" && <IAView />}
       {mundoTab === "macro" && <MacroComparadaView />}
       {mundoTab === "mercados" && (<>
 
