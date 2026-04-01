@@ -227,6 +227,143 @@ function PetroleoView() {
   )
 }
 
+function PolymarketView() {
+  const [categoria, setCategoria] = useState<"politics" | "economics" | "geopolitics">("politics")
+  const [data, setData] = useState<
+    Array<{
+      question: string
+      slug: string
+      probability: number
+      volume24h: number
+      liquidity: number
+      category: string
+      endDate: string
+    }> | null
+  >(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    fetch(`/api/polymarket?category=${categoria}`)
+      .then((r) => r.json())
+      .then((j) => { setData(j.data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [categoria])
+
+  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando mercados de predicción...</div>
+  if (!data) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos disponibles.</div>
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 1, background: "#111", padding: 1, marginBottom: 8, flexWrap: "wrap" }}>
+        {(["politics", "economics", "geopolitics"] as const).map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setCategoria(cat)}
+            style={{
+              padding: "4px 10px",
+              fontSize: 10,
+              background: categoria === cat ? "#1a1a1a" : "transparent",
+              color: categoria === cat ? "#FFA028" : "#555",
+              border: "none",
+              borderBottom: categoria === cat ? "2px solid #FFA028" : "2px solid transparent",
+              cursor: "pointer",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              fontWeight: 700,
+            }}
+          >
+            {{
+              politics: "Política",
+              economics: "Economía",
+              geopolitics: "Geopolítica",
+            }[cat]}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ background: "#060606", border: "1px solid #1a1a1a", margin: 1 }}>
+        <div style={{ padding: "8px", borderBottom: "1px solid #111", fontSize: 10, color: "#999", fontWeight: 600 }}>
+          MERCADOS DE PREDICCIÓN — Ordenados por volumen 24h
+        </div>
+
+        <div>
+          {data.map((market, idx) => {
+            const probColor =
+              market.probability > 70
+                ? "#4AF6C3"
+                : market.probability > 50
+                  ? "#FFA028"
+                  : market.probability > 30
+                    ? "#FF9800"
+                    : "#FF433D"
+
+            return (
+              <div
+                key={idx}
+                style={{
+                  padding: "12px 8px",
+                  borderBottom: "1px solid #111",
+                  fontSize: 9,
+                }}
+              >
+                <div style={{ marginBottom: 6 }}>
+                  <div style={{ color: "#FFA028", fontWeight: 600, marginBottom: 4, fontSize: 10, lineHeight: "1.3" }}>
+                    {market.question}
+                  </div>
+                  <div style={{ color: "#666", fontSize: 8, marginBottom: 4 }}>
+                    {market.category} · Vence: {new Date(market.endDate).toLocaleDateString("es-AR")}
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ color: "#999", fontSize: 8, marginBottom: 2 }}>Probabilidad</div>
+                    <div style={{ color: probColor, fontWeight: 700, fontSize: 14, fontFamily: "monospace" }}>
+                      {market.probability.toFixed(1)}%
+                    </div>
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 150 }}>
+                    <div style={{ background: "#111", height: 4, borderRadius: 2, overflow: "hidden" }}>
+                      <div
+                        style={{
+                          background: probColor,
+                          height: "100%",
+                          width: `${market.probability}%`,
+                          transition: "width 0.3s",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ color: "#999", fontSize: 8, marginBottom: 2 }}>Vol. 24h</div>
+                    <div style={{ color: "#4AF6C3", fontWeight: 600, fontSize: 11, fontFamily: "monospace" }}>
+                      ${(market.volume24h / 1_000_000).toFixed(1)}M
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ color: "#999", fontSize: 8, marginBottom: 2 }}>Liquidez</div>
+                    <div style={{ color: "#FFD700", fontWeight: 600, fontSize: 11, fontFamily: "monospace" }}>
+                      ${(market.liquidity / 1_000).toFixed(0)}K
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div style={{ padding: "4px 8px", fontSize: 8, color: "#333", borderTop: "1px solid #111", background: "#0a0a0a" }}>
+          Fuente: Polymarket CLOB API · Odds implícitas en tiempo real · Mayor volumen = mayor confianza en el mercado
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function IAView() {
   const [segmento, setSegmento] = useState<"benchmarks" | "trending">("benchmarks")
   const [data, setData] = useState<unknown[] | null>(null)
@@ -728,6 +865,7 @@ export function TabMundo() {
         { key: "petroleo", label: "Petróleo" },
         { key: "soja", label: "Soja" },
         { key: "ia", label: "IA" },
+        { key: "polymarket", label: "Predicción" },
         { key: "macro", label: "Macro Comparada" },
       ]}
         active={mundoTab} onChange={setMundoTab} />
@@ -735,6 +873,7 @@ export function TabMundo() {
       {mundoTab === "petroleo" && <PetroleoView />}
       {mundoTab === "soja" && <SojaView />}
       {mundoTab === "ia" && <IAView />}
+      {mundoTab === "polymarket" && <PolymarketView />}
       {mundoTab === "macro" && <MacroComparadaView />}
       {mundoTab === "mercados" && (<>
 
