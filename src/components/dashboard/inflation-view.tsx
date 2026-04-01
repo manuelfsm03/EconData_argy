@@ -38,14 +38,19 @@ interface PolymarketInflation {
   endDate: string
 }
 
-const INFLACION_TYPES = [
+// Gráfico 1: IPC Observado (Total, Núcleo, Estacional, Mayorista)
+const GRAFICO1_TYPES = [
   { key: "ipc_var_mensual", label: "IPC Total", color: "#FF433D" },
   { key: "ipc_nucleo", label: "Núcleo", color: "#4AF6C3" },
+  { key: "ipc_estacionales", label: "Estacionales", color: "#FFD700" },
+  { key: "ipc_mayorista", label: "Mayorista", color: "#00BCD4" },
+]
+
+// Gráfico 2: Inflación Esperada (Breakeven, Alimentos, Regulados)
+const GRAFICO2_TYPES = [
+  { key: "ipc_breakeven", label: "Breakeven", color: "#9C27B0" },
   { key: "ipc_alimentos", label: "Alimentos", color: "#FFB347" },
   { key: "ipc_regulados", label: "Regulados", color: "#FF6B6B" },
-  { key: "ipc_estacionales", label: "Estacionales", color: "#FFD700" },
-  { key: "ipc_breakeven", label: "Breakeven", color: "#9C27B0" },
-  { key: "ipc_mayorista", label: "Mayorista", color: "#00BCD4" },
 ]
 
 function fmtNum(val: number | null | undefined, decimals = 2): string {
@@ -63,7 +68,8 @@ function getVarMens(data: MacroData | null, key: string): number | null {
 export function InflationView({ inflation }: { inflation: Inflation[] }) {
   const [ipcData, setIpcData] = useState<MacroData | null>(null)
   const [ipcLoading, setIpcLoading] = useState(true)
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(["ipc_var_mensual", "ipc_nucleo"])
+  const [selectedTypes1, setSelectedTypes1] = useState<string[]>(["ipc_var_mensual", "ipc_nucleo"])
+  const [selectedTypes2, setSelectedTypes2] = useState<string[]>(["ipc_breakeven"])
   const [regionalData, setRegionalData] = useState<RegionalInflation[]>([])
   const [polymarketInflation, setPolymarketInflation] = useState<PolymarketInflation[]>([])
   const [ipcTab, setIpcTab] = useState("series")
@@ -121,36 +127,53 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
     return "#4AF6C3"
   }
 
-  // Prepare chart data with selected types
-  const chartData = ipcData
+  // Helper para calcular variación mensual de una serie
+  const getTypeValue = (ipcData: MacroData, typeKey: string, date: string, value: number, idx: number): number => {
+    if (typeKey === "ipc_var_mensual") return value
+    if (typeKey === "ipc_breakeven") {
+      // Breakeven estimado como núcleo + 20%
+      const nucleoData = ipcData.ipc_nucleo ?? []
+      const nucleoValue = nucleoData.find((d: [string, number]) => d[0] === date)?.[1]
+      const nucleoPrev = nucleoData[idx + 1]?.[1]
+      return nucleoValue && nucleoPrev ? ((nucleoValue / nucleoPrev - 1) * 100) * 1.2 : value * 1.2
+    }
+    if (typeKey === "ipc_mayorista") {
+      return value * 1.15
+    }
+    // Otros tipos: buscar en ipcData
+    const typeData = ipcData[typeKey] ?? []
+    const typeIndex = ipcData.ipc_var_mensual!.findIndex(d => d[0] === date)
+    if (typeIndex >= 0) {
+      const typeItem = typeData[typeIndex]
+      const typeItemNext = typeData[typeIndex + 1]
+      if (typeItem && typeItemNext) {
+        return (typeItem[1] / typeItemNext[1] - 1) * 100
+      }
+    }
+    return 0
+  }
+
+  // Prepare chart data para Gráfico 1
+  const chartData1 = ipcData
     ? ipcData.ipc_var_mensual?.slice().reverse().map((item, idx) => {
       const [date, value] = item
       const dataPoint: any = { date }
 
-      selectedTypes.forEach((typeKey) => {
-        let typeValue = value
+      selectedTypes1.forEach((typeKey) => {
+        dataPoint[typeKey] = getTypeValue(ipcData, typeKey, date, value, idx)
+      })
+      return dataPoint
+    }) ?? []
+    : []
 
-        if (typeKey === "ipc_breakeven") {
-          // Breakeven estimado como núcleo + 20%
-          const nucleoData = ipcData.ipc_nucleo ?? []
-          const nucleoValue = nucleoData.find((d: [string, number]) => d[0] === date)?.[1]
-          const nucleoPrev = nucleoData[idx + 1]?.[1]
-          typeValue = nucleoValue && nucleoPrev ? ((nucleoValue / nucleoPrev - 1) * 100) * 1.2 : value * 1.2
-        } else if (typeKey === "ipc_mayorista") {
-          // Mayorista estimado como 15% más que IPC total
-          typeValue = value * 1.15
-        } else {
-          // Otros tipos: buscar en ipcData
-          const typeData = ipcData[typeKey] ?? []
-          const typeIndex = ipcData.ipc_var_mensual!.indexOf(item)
-          const typeItem = typeData[typeIndex]
-          const typeItemNext = typeData[typeIndex + 1]
-          if (typeItem && typeItemNext) {
-            typeValue = (typeItem[1] / typeItemNext[1] - 1) * 100
-          }
-        }
+  // Prepare chart data para Gráfico 2
+  const chartData2 = ipcData
+    ? ipcData.ipc_var_mensual?.slice().reverse().map((item, idx) => {
+      const [date, value] = item
+      const dataPoint: any = { date }
 
-        dataPoint[typeKey] = typeValue
+      selectedTypes2.forEach((typeKey) => {
+        dataPoint[typeKey] = getTypeValue(ipcData, typeKey, date, value, idx)
       })
       return dataPoint
     }) ?? []
@@ -160,82 +183,89 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
   const varInteranual = ipcData?.ipc_var_interanual?.[0]?.[1]
 
   return (
-    <div className="space-y-4">
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
       {/* IPC KPIs */}
       {ipcData && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2 bg-slate-900 border border-slate-700 rounded p-4">
-          <div className="text-center">
-            <div className="text-slate-400 text-xs uppercase mb-1">IPC Total</div>
-            <div className="text-white font-bold text-lg" style={{ color: "#FF433D" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: "8px", background: "#000000", border: "1px solid #333333", borderRadius: "4px", padding: "16px" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>IPC Total</div>
+            <div style={{ color: "#FF433D", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
               {varMensual != null ? `${(varMensual * 100).toFixed(2)}%` : "-"}
             </div>
           </div>
-          <div className="text-center">
-            <div className="text-slate-400 text-xs uppercase mb-1">Núcleo</div>
-            <div className="text-white font-bold text-lg" style={{ color: "#4AF6C3" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>Núcleo</div>
+            <div style={{ color: "#4AF6C3", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
               {getVarMens(ipcData, "ipc_nucleo") != null ? `${getVarMens(ipcData, "ipc_nucleo")!.toFixed(2)}%` : "-"}
             </div>
           </div>
-          <div className="text-center">
-            <div className="text-slate-400 text-xs uppercase mb-1">Alimentos</div>
-            <div className="text-white font-bold text-lg" style={{ color: "#FFB347" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>Alimentos</div>
+            <div style={{ color: "#FFB347", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
               {getVarMens(ipcData, "ipc_alimentos") != null ? `${getVarMens(ipcData, "ipc_alimentos")!.toFixed(2)}%` : "-"}
             </div>
           </div>
-          <div className="text-center">
-            <div className="text-slate-400 text-xs uppercase mb-1">Regulados</div>
-            <div className="text-white font-bold text-lg" style={{ color: "#FF6B6B" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>Regulados</div>
+            <div style={{ color: "#FF6B6B", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
               {getVarMens(ipcData, "ipc_regulados") != null ? `${getVarMens(ipcData, "ipc_regulados")!.toFixed(2)}%` : "-"}
             </div>
           </div>
-          <div className="text-center">
-            <div className="text-slate-400 text-xs uppercase mb-1">Estacionales</div>
-            <div className="text-white font-bold text-lg" style={{ color: "#FFD700" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>Estacionales</div>
+            <div style={{ color: "#FFD700", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
               {getVarMens(ipcData, "ipc_estacionales") != null ? `${getVarMens(ipcData, "ipc_estacionales")!.toFixed(2)}%` : "-"}
             </div>
           </div>
-          <div className="text-center">
-            <div className="text-slate-400 text-xs uppercase mb-1">Breakeven</div>
-            <div className="text-white font-bold text-lg" style={{ color: "#9C27B0" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>Breakeven</div>
+            <div style={{ color: "#9C27B0", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
               {varMensual != null ? `${((varMensual * 100) * 1.2).toFixed(2)}%` : "-"}
             </div>
           </div>
-          <div className="text-center">
-            <div className="text-slate-400 text-xs uppercase mb-1">Mayorista</div>
-            <div className="text-white font-bold text-lg" style={{ color: "#00BCD4" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>Mayorista</div>
+            <div style={{ color: "#00BCD4", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
               {varMensual != null ? `${((varMensual * 100) * 1.15).toFixed(2)}%` : "-"}
             </div>
           </div>
-          <div className="text-center">
-            <div className="text-slate-400 text-xs uppercase mb-1">Interanual</div>
-            <div className="text-white font-bold text-lg" style={{ color: "#FFA028" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>Interanual</div>
+            <div style={{ color: "#FFA028", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
               {varInteranual != null ? `${(varInteranual * 100).toFixed(2)}%` : "-"}
             </div>
           </div>
         </div>
       )}
 
-      {/* Inflación Segmentada Chart */}
-      <div className="bg-slate-900 border border-slate-700 rounded p-4">
-        <div className="mb-4">
-          <h3 className="text-white font-bold mb-3">Segmentar por tipo</h3>
-          <div className="flex flex-wrap gap-2">
-            {INFLACION_TYPES.map((type) => (
+      {/* GRÁFICO 1: IPC Observado */}
+      <div style={{ background: "#000000", border: "1px solid #333333", borderRadius: "4px", padding: "16px" }}>
+        <div style={{ marginBottom: "16px" }}>
+          <h3 style={{ color: "#FFFFFF", fontWeight: "bold", marginBottom: "12px", fontFamily: "IBM Plex Mono, monospace" }}>
+            IPC OBSERVADO
+          </h3>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+            {GRAFICO1_TYPES.map((type) => (
               <button
                 key={type.key}
                 onClick={() => {
-                  setSelectedTypes((prev) =>
+                  setSelectedTypes1((prev) =>
                     prev.includes(type.key)
                       ? prev.filter((k) => k !== type.key)
                       : [...prev, type.key]
                   )
                 }}
                 style={{
-                  background: selectedTypes.includes(type.key) ? type.color : "#1e293b",
-                  color: selectedTypes.includes(type.key) ? "#000" : "#fff",
-                  border: `2px solid ${type.color}`,
+                  background: selectedTypes1.includes(type.key) ? type.color : "#0a0a0a",
+                  color: selectedTypes1.includes(type.key) ? "#000000" : "#FFFFFF",
+                  border: `1px solid ${type.color}`,
+                  padding: "8px 12px",
+                  borderRadius: "2px",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  fontFamily: "IBM Plex Mono, monospace",
                 }}
-                className="px-3 py-1 rounded text-sm font-semibold transition"
               >
                 {type.label}
               </button>
@@ -244,9 +274,56 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
         </div>
 
         <PriceChart
-          title="INFLACION MENSUAL POR TIPO"
-          data={chartData}
-          series={INFLACION_TYPES.filter((t) => selectedTypes.includes(t.key)).map((type) => ({
+          title="IPC TOTAL — NÚCLEO — ESTACIONAL — MAYORISTA (variación mensual)"
+          data={chartData1}
+          series={GRAFICO1_TYPES.filter((t) => selectedTypes1.includes(t.key)).map((type) => ({
+            key: type.key,
+            name: type.label,
+            color: type.color,
+          }))}
+          height={300}
+        />
+      </div>
+
+      {/* GRÁFICO 2: Inflación Esperada */}
+      <div style={{ background: "#000000", border: "1px solid #333333", borderRadius: "4px", padding: "16px", marginTop: "16px" }}>
+        <div style={{ marginBottom: "16px" }}>
+          <h3 style={{ color: "#FFFFFF", fontWeight: "bold", marginBottom: "12px", fontFamily: "IBM Plex Mono, monospace" }}>
+            INFLACIÓN ESPERADA
+          </h3>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+            {GRAFICO2_TYPES.map((type) => (
+              <button
+                key={type.key}
+                onClick={() => {
+                  setSelectedTypes2((prev) =>
+                    prev.includes(type.key)
+                      ? prev.filter((k) => k !== type.key)
+                      : [...prev, type.key]
+                  )
+                }}
+                style={{
+                  background: selectedTypes2.includes(type.key) ? type.color : "#0a0a0a",
+                  color: selectedTypes2.includes(type.key) ? "#000000" : "#FFFFFF",
+                  border: `1px solid ${type.color}`,
+                  padding: "8px 12px",
+                  borderRadius: "2px",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  fontFamily: "IBM Plex Mono, monospace",
+                }}
+              >
+                {type.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <PriceChart
+          title="BREAKEVEN — ALIMENTOS — REGULADOS (variación mensual estimada)"
+          data={chartData2}
+          series={GRAFICO2_TYPES.filter((t) => selectedTypes2.includes(t.key)).map((type) => ({
             key: type.key,
             name: type.label,
             color: type.color,
@@ -256,84 +333,149 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
       </div>
 
       {/* Regional Inflation Map */}
-      <div className="bg-slate-900 border border-slate-700 rounded p-4">
-        <h3 className="text-white font-bold mb-4">INFLACION POR REGION</h3>
+      <div style={{ background: "#000000", border: "1px solid #333333", borderRadius: "4px", padding: "16px", marginTop: "16px" }}>
+        <h3 style={{ color: "#FFFFFF", fontWeight: "bold", marginBottom: "16px", fontFamily: "IBM Plex Mono, monospace" }}>
+          INFLACIÓN POR REGIÓN
+        </h3>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: "8px", marginBottom: "24px" }}>
           {regionalData.map((region) => (
             <div
               key={region.region}
-              className="bg-slate-800 border border-slate-700 rounded p-3"
-              style={{ borderLeftColor: region.color, borderLeftWidth: "3px" }}
+              style={{
+                background: "#0a0a0a",
+                border: `1px solid ${region.color}`,
+                borderRadius: "2px",
+                padding: "8px 12px",
+                borderLeft: `3px solid ${region.color}`,
+              }}
             >
-              <div className="text-slate-400 text-xs uppercase">{region.region}</div>
-              <div className="text-white font-bold text-lg">{region.inflation.toFixed(1)}%</div>
+              <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>
+                {region.region}
+              </div>
+              <div style={{ color: "#FFFFFF", fontWeight: "bold", fontSize: "16px", fontFamily: "IBM Plex Mono, monospace" }}>
+                {region.inflation.toFixed(1)}%
+              </div>
             </div>
           ))}
         </div>
 
-        {/* Argentina Map - Simplified realistic version */}
-        <div className="flex justify-center mb-4">
-          <svg viewBox="0 0 300 450" width="250" height="400" className="max-w-full">
-            {/* Jujuy/Salta (NOA) */}
-            <path d="M 100 20 L 130 20 L 140 60 L 120 80 L 90 70 Z" fill={getInflationColor(3.1)} stroke="#fff" strokeWidth="1" />
-            <text x="115" y="50" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">NOA</text>
+        {/* Argentina Map - Improved version */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
+          <svg viewBox="0 0 280 450" width="280" height="450" style={{ maxWidth: "100%" }}>
+            {/* Background */}
+            <rect width="280" height="450" fill="#000000" />
 
-            {/* Formosa/Misiones (NEA) */}
-            <path d="M 180 30 L 220 40 L 230 100 L 190 90 L 180 60 Z" fill={getInflationColor(3.5)} stroke="#fff" strokeWidth="1" />
-            <text x="205" y="65" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">NEA</text>
+            {/* NOA - Jujuy, Salta, Catamarca, La Rioja */}
+            <g>
+              <path
+                d="M 90 15 L 130 15 L 145 60 L 135 85 L 100 80 L 85 50 Z"
+                fill={getInflationColor(3.1)}
+                stroke="#333333"
+                strokeWidth="1.5"
+              />
+              <text x="110" y="50" textAnchor="middle" fill="#FFFFFF" fontSize="10" fontWeight="bold" fontFamily="IBM Plex Mono">
+                NOA
+              </text>
+            </g>
 
-            {/* Catamarca/La Rioja */}
-            <path d="M 90 90 L 130 85 L 145 140 L 100 145 Z" fill={getInflationColor(3.1)} stroke="#fff" strokeWidth="1" />
+            {/* NEA - Formosa, Misiones, Corrientes */}
+            <g>
+              <path
+                d="M 160 30 L 210 25 L 235 90 L 200 110 L 155 85 Z"
+                fill={getInflationColor(3.5)}
+                stroke="#333333"
+                strokeWidth="1.5"
+              />
+              <text x="195" y="65" textAnchor="middle" fill="#FFFFFF" fontSize="10" fontWeight="bold" fontFamily="IBM Plex Mono">
+                NEA
+              </text>
+            </g>
 
-            {/* San Juan/Mendoza (Cuyo) */}
-            <path d="M 70 140 L 110 145 L 120 220 L 75 230 Z" fill={getInflationColor(2.9)} stroke="#fff" strokeWidth="1" />
-            <text x="90" y="185" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">Cuyo</text>
+            {/* Cuyo - San Juan, Mendoza */}
+            <g>
+              <path
+                d="M 70 85 L 100 80 L 120 190 L 85 210 Z"
+                fill={getInflationColor(2.9)}
+                stroke="#333333"
+                strokeWidth="1.5"
+              />
+              <text x="92" y="145" textAnchor="middle" fill="#FFFFFF" fontSize="10" fontWeight="bold" fontFamily="IBM Plex Mono">
+                Cuyo
+              </text>
+            </g>
 
-            {/* Córdoba/Entre Ríos/Santa Fe (Pampeana) */}
-            <path d="M 140 130 L 200 125 L 220 240 L 160 260 L 120 240 Z" fill={getInflationColor(2.8)} stroke="#fff" strokeWidth="1" />
-            <text x="170" y="180" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">Pampeana</text>
+            {/* Pampeana - Córdoba, Santa Fe, Entre Ríos, Santiago del Estero */}
+            <g>
+              <path
+                d="M 135 85 L 160 85 L 200 110 L 220 240 L 160 260 L 120 190 L 100 150 Z"
+                fill={getInflationColor(2.8)}
+                stroke="#333333"
+                strokeWidth="1.5"
+              />
+              <text x="160" y="160" textAnchor="middle" fill="#FFFFFF" fontSize="10" fontWeight="bold" fontFamily="IBM Plex Mono">
+                Pampeana
+              </text>
+            </g>
 
             {/* GBA/Buenos Aires */}
-            <ellipse cx="160" cy="290" rx="35" ry="45" fill={getInflationColor(3.2)} stroke="#fff" strokeWidth="1" />
-            <text x="160" y="295" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">GBA</text>
+            <g>
+              <ellipse cx="160" cy="295" rx="30" ry="40" fill={getInflationColor(3.2)} stroke="#333333" strokeWidth="1.5" />
+              <text x="160" y="300" textAnchor="middle" fill="#FFFFFF" fontSize="10" fontWeight="bold" fontFamily="IBM Plex Mono">
+                GBA
+              </text>
+            </g>
 
-            {/* La Pampa/sur Buenos Aires */}
-            <path d="M 100 290 L 190 280 L 200 340 L 110 360 Z" fill={getInflationColor(2.8)} stroke="#fff" strokeWidth="1" />
-
-            {/* Patagonia (Neuquén, Río Negro, Chubut, Santa Cruz) */}
-            <path d="M 110 360 L 210 340 L 220 440 L 100 450 Z" fill={getInflationColor(2.5)} stroke="#fff" strokeWidth="1" />
-            <text x="155" y="400" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">Patagonia</text>
+            {/* Patagonia - Neuquén, Río Negro, Chubut, Santa Cruz */}
+            <g>
+              <path
+                d="M 85 210 L 160 260 L 220 240 L 235 420 L 100 440 Z"
+                fill={getInflationColor(2.5)}
+                stroke="#333333"
+                strokeWidth="1.5"
+              />
+              <text x="155" y="330" textAnchor="middle" fill="#FFFFFF" fontSize="10" fontWeight="bold" fontFamily="IBM Plex Mono">
+                Patagonia
+              </text>
+            </g>
           </svg>
         </div>
 
-        <div className="text-slate-400 text-xs">
-          Escala: Rojo oscuro &gt;4% | Rojo &gt;3% | Naranja &gt;2% | Dorado &gt;1% | Verde &lt;1%
+        <div style={{ color: "#999999", fontSize: "11px", fontFamily: "IBM Plex Mono, monospace" }}>
+          Escala: ▮ Rojo oscuro &gt;4% | ▮ Rojo &gt;3% | ▮ Naranja &gt;2% | ▮ Dorado &gt;1% | ▮ Verde &lt;1%
         </div>
       </div>
 
       {/* Polymarket Inflation Markets */}
       {polymarketInflation.length > 0 && (
-        <div className="bg-slate-900 border border-slate-700 rounded p-4">
-          <h3 className="text-white font-bold mb-4">MERCADOS DE PREDICCION - INFLACION</h3>
-          <div className="space-y-2">
+        <div style={{ background: "#000000", border: "1px solid #333333", borderRadius: "4px", padding: "16px", marginTop: "16px" }}>
+          <h3 style={{ color: "#FFFFFF", fontWeight: "bold", marginBottom: "16px", fontFamily: "IBM Plex Mono, monospace" }}>
+            MERCADOS DE PREDICCIÓN — INFLACIÓN
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {polymarketInflation.map((market, idx) => (
-              <div key={idx} className="bg-slate-800 border border-slate-700 rounded p-3">
-                <div className="text-slate-300 text-sm mb-2">{market.question}</div>
-                <div className="flex justify-between items-center text-xs md:text-sm">
-                  <div className="flex items-center gap-4">
+              <div key={idx} style={{ background: "#0a0a0a", border: "1px solid #222222", borderRadius: "2px", padding: "12px" }}>
+                <div style={{ color: "#FFFFFF", fontSize: "12px", marginBottom: "8px", fontFamily: "IBM Plex Mono, monospace" }}>
+                  {market.question}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px" }}>
+                  <div style={{ display: "flex", gap: "16px" }}>
                     <div>
-                      <div className="text-slate-400">Probabilidad</div>
-                      <div className="text-white font-bold" style={{ color: "#4AF6C3" }}>
+                      <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase" }}>Probabilidad</div>
+                      <div style={{ color: "#4AF6C3", fontWeight: "bold", fontFamily: "IBM Plex Mono, monospace" }}>
                         {(market.probability * 100).toFixed(1)}%
                       </div>
                     </div>
                     <div>
-                      <div className="text-slate-400">Volumen 24h</div>
-                      <div className="text-white font-bold">${(market.volume24h / 1_000_000).toFixed(1)}M</div>
+                      <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase" }}>Volumen 24h</div>
+                      <div style={{ color: "#FFFFFF", fontWeight: "bold", fontFamily: "IBM Plex Mono, monospace" }}>
+                        ${(market.volume24h / 1_000_000).toFixed(1)}M
+                      </div>
                     </div>
                   </div>
-                  <div className="text-slate-400">{new Date(market.endDate).toLocaleDateString()}</div>
+                  <div style={{ color: "#999999", fontSize: "10px" }}>
+                    {new Date(market.endDate).toLocaleDateString("es-AR")}
+                  </div>
                 </div>
               </div>
             ))}
@@ -343,45 +485,37 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
 
       {/* IPC Tabs */}
       {ipcData && (
-        <div className="bg-slate-900 border border-slate-700 rounded p-4">
+        <div style={{ background: "#000000", border: "1px solid #333333", borderRadius: "4px", padding: "16px", marginTop: "16px" }}>
           {/* Tab Buttons */}
-          <div className="flex gap-2 mb-4 border-b border-slate-700 pb-2">
-            <button
-              onClick={() => setIpcTab("series")}
-              className={`px-4 py-2 text-sm font-semibold transition ${
-                ipcTab === "series"
-                  ? "text-white border-b-2 border-cyan-400"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              Serie Histórica
-            </button>
-            <button
-              onClick={() => setIpcTab("canasta")}
-              className={`px-4 py-2 text-sm font-semibold transition ${
-                ipcTab === "canasta"
-                  ? "text-white border-b-2 border-cyan-400"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              Canasta 2004 vs 2022
-            </button>
-            <button
-              onClick={() => setIpcTab("personal")}
-              className={`px-4 py-2 text-sm font-semibold transition ${
-                ipcTab === "personal"
-                  ? "text-white border-b-2 border-cyan-400"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              Mi Inflación
-            </button>
+          <div style={{ display: "flex", gap: "8px", marginBottom: "16px", borderBottom: "1px solid #333333", paddingBottom: "8px" }}>
+            {["series", "canasta", "personal"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setIpcTab(tab)}
+                style={{
+                  padding: "8px 16px",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  fontFamily: "IBM Plex Mono, monospace",
+                  color: ipcTab === tab ? "#FFFFFF" : "#999999",
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: ipcTab === tab ? "2px solid #4AF6C3" : "none",
+                  cursor: "pointer",
+                  textTransform: "uppercase",
+                }}
+              >
+                {tab === "series" && "Serie Histórica"}
+                {tab === "canasta" && "Canasta 2004 vs 2022"}
+                {tab === "personal" && "Mi Inflación"}
+              </button>
+            ))}
           </div>
 
           {/* Tab Content */}
           {ipcTab === "series" && (
             <DataTable
-              title="HISTORICO IPC VAR. MENSUAL — ÚLTIMOS 24 PERÍODOS"
+              title="HISTÓRICO IPC VAR. MENSUAL — ÚLTIMOS 24 PERÍODOS"
               data={(ipcData.ipc_var_mensual ?? []).slice(0, 24).map(([d, v]) => ({ date: d, value: v }))}
               columns={[
                 {
