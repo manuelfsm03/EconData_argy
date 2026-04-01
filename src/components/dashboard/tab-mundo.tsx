@@ -74,9 +74,35 @@ function ElectricidadMundialView() {
 }
 
 function PetroleoView() {
-  const [dataType, setDataType] = useState<"production" | "consumption" | "reserves" | "refining">("production")
+  const [dataType, setDataType] = useState<"production" | "consumption" | "reserves" | "refining">("consumption")
   const [data, setData] = useState<Record<string, unknown>[] | null>(null)
   const [loading, setLoading] = useState(true)
+  const [selectedCountries, setSelectedCountries] = useState<Set<string>>(
+    new Set(["United States", "China", "Japan", "India", "Saudi Arabia", "Russia", "Iran", "Venezuela"])
+  )
+
+  const allCountriesAvailable = [
+    "United States", "China", "Japan", "India", "Saudi Arabia", "Russia", "Iran", "Venezuela",
+    "Canada", "Brazil", "Mexico", "Germany", "South Korea", "France", "United Kingdom",
+  ]
+
+  const countryColors: Record<string, string> = {
+    "United States": "#4FC3F7",
+    "China": "#FFD54F",
+    "Japan": "#FF6B6B",
+    "India": "#FFA028",
+    "Saudi Arabia": "#4AF6C3",
+    "Russia": "#FF433D",
+    "Iran": "#CE93D8",
+    "Venezuela": "#00BCD4",
+    "Canada": "#81C784",
+    "Brazil": "#FFB74D",
+    "Mexico": "#BA68C8",
+    "Germany": "#64B5F6",
+    "South Korea": "#E57373",
+    "France": "#FFD700",
+    "United Kingdom": "#80DEEA",
+  }
 
   useEffect(() => {
     setLoading(true)
@@ -89,14 +115,12 @@ function PetroleoView() {
   if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando datos de petróleo...</div>
   if (!data) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos disponibles.</div>
 
-  const lines = [
-    { key: "United States", name: "EE.UU.", color: "#4FC3F7" },
-    { key: "Russia", name: "Rusia", color: "#FF433D" },
-    { key: "Saudi Arabia", name: "Arabia S.", color: "#FFA028" },
-    { key: "Canada", name: "Canadá", color: "#4AF6C3" },
-    { key: "China", name: "China", color: "#FFD54F" },
-    { key: "Argentina", name: "Argentina", color: "#CE93D8" },
-  ]
+  const lines = Array.from(selectedCountries)
+    .map((country) => ({
+      key: country,
+      name: country,
+      color: countryColors[country] || "#999",
+    }))
 
   const titles: Record<typeof dataType, { title: string; label: string; source: string }> = {
     production: {
@@ -122,6 +146,16 @@ function PetroleoView() {
   }
 
   const config = titles[dataType]
+
+  const toggleCountry = (country: string) => {
+    const newSet = new Set(selectedCountries)
+    if (newSet.has(country)) {
+      newSet.delete(country)
+    } else {
+      newSet.add(country)
+    }
+    setSelectedCountries(newSet)
+  }
 
   return (
     <div>
@@ -151,6 +185,30 @@ function PetroleoView() {
             }[type]}
           </button>
         ))}
+      </div>
+
+      <div style={{ padding: "8px", background: "#0a0a0a", marginBottom: 8, borderBottom: "1px solid #111" }}>
+        <div style={{ fontSize: 9, color: "#999", marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>Seleccionar países:</div>
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {allCountriesAvailable.map((country) => (
+            <button
+              key={country}
+              onClick={() => toggleCountry(country)}
+              style={{
+                padding: "4px 8px",
+                fontSize: 9,
+                background: selectedCountries.has(country) ? countryColors[country] : "#1a1a1a",
+                color: selectedCountries.has(country) ? "#000" : "#666",
+                border: `1px solid ${selectedCountries.has(country) ? countryColors[country] : "#333"}`,
+                borderRadius: 3,
+                cursor: "pointer",
+                fontWeight: selectedCountries.has(country) ? 700 : 400,
+              }}
+            >
+              {country}
+            </button>
+          ))}
+        </div>
       </div>
 
       <BBGLineChart
