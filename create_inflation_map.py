@@ -1,12 +1,21 @@
 import folium
-import os
 
-# Crear mapa
+# Crear mapa centrado en Argentina - zoom más alto y ajustado
 m = folium.Map(
-    location=[-38.4, -63.6],
-    zoom_start=4,
+    location=[-37.5, -63.0],
+    zoom_start=5,
     tiles="CartoDB positron",
+    max_bounds=True,
+    min_zoom=5,
+    max_zoom=8
 )
+
+# Establecer bounds para limitar a Argentina
+# Noroeste: Jujuy aprox -23.5, -66
+# Sureste: Tierra del Fuego aprox -55, -52
+sw_corner = [-56, -74]
+ne_corner = [-21, -52]
+m.fit_bounds([sw_corner, ne_corner])
 
 # Regiones
 regions = {
@@ -48,6 +57,7 @@ regions = {
     }
 }
 
+# Agregar marcadores
 for region, data in regions.items():
     popup_html = f"""<div style="font-family: monospace; padding: 10px;"><strong style="color: {data['color']};">{region}</strong><br><span style="font-size: 11px;">Inflación: <strong>{data['inflation']}%</strong></span></div>"""
     
@@ -68,6 +78,5 @@ for region, data in regions.items():
         icon=folium.DivIcon(html=f"""<div style="font-size: 12px; font-weight: bold; color: white; text-shadow: 0 0 3px black; text-align: center;">{region}<br><span style="font-size: 10px;">{data['inflation']}%</span></div>""")
     ).add_to(m)
 
-output = "public/inflation_map.html"
-m.save(output)
-print(f"Mapa guardado en {output}")
+m.save("public/inflation_map.html")
+print("Mapa acotado a Argentina generado")
