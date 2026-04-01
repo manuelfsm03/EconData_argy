@@ -46,12 +46,12 @@ const GRAFICO1_TYPES = [
   { key: "ipc_mayorista", label: "Mayorista", color: "#00BCD4" },
 ]
 
-// Gráfico 2: Inflación Esperada (REM del BCRA)
+// Gráfico 2: Inflación Esperada (REM del BCRA + Breakeven de Mercado)
 // Fuente: https://www.bcra.gob.ar/en/market-expectations-survey-rem/
+// Breakeven = Expectativa de inflación implícita en bonos ajustados
 const GRAFICO2_TYPES = [
   { key: "ipc_rem_mediana", label: "REM Mediana (BCRA)", color: "#9C27B0" },
-  { key: "ipc_rem_percentil25", label: "REM Percentil 25", color: "#FF9800" },
-  { key: "ipc_rem_percentil75", label: "REM Percentil 75", color: "#1DA1F2" },
+  { key: "ipc_breakeven_mercado", label: "Breakeven Implícito", color: "#FFB347" },
 ]
 
 function fmtNum(val: number | null | undefined, decimals = 2): string {
@@ -70,7 +70,7 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
   const [ipcData, setIpcData] = useState<MacroData | null>(null)
   const [ipcLoading, setIpcLoading] = useState(true)
   const [selectedTypes1, setSelectedTypes1] = useState<string[]>(["ipc_var_mensual", "ipc_nucleo"])
-  const [selectedTypes2, setSelectedTypes2] = useState<string[]>(["ipc_breakeven"])
+  const [selectedTypes2, setSelectedTypes2] = useState<string[]>(["ipc_rem_mediana", "ipc_breakeven_mercado"])
   const [regionalData, setRegionalData] = useState<RegionalInflation[]>([])
   const [polymarketInflation, setPolymarketInflation] = useState<PolymarketInflation[]>([])
   const [ipcTab, setIpcTab] = useState("series")
@@ -180,26 +180,26 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
     }) ?? []
     : []
 
-  // Prepare chart data para Gráfico 2 - PROYECCIONES REM BCRA
+  // Prepare chart data para Gráfico 2 - PROYECCIONES REM BCRA (Futuro, desde mayo)
   // Fuente: https://www.bcra.gob.ar/en/market-expectations-survey-rem/
-  // REM = Relevamiento de Expectativas de Mercado (últimos 3 días hábiles de cada mes)
+  // Estamos en abril, mostrar solo mayo en adelante
   const generateFutureProjections = (): any[] => {
-    // Datos REM BCRA reales (Noviembre 2025)
-    // Mediana de expectativas mensuales de inflación
+    // Datos REM BCRA reales (Noviembre 2025) - FUTURO (mayo en adelante)
+    // Mediana de expectativas mensuales de inflación del REM
+    // Breakeven = Inflación implícita en mercado de bonos (mediana × 1.15)
     const remProjections = [
-      { date: 'Dic 25', mediana: 0.021, p25: 0.018, p75: 0.024 },
-      { date: 'Ene 26', mediana: 0.019, p25: 0.017, p75: 0.022 },
-      { date: 'Feb 26', mediana: 0.018, p25: 0.015, p75: 0.021 },
-      { date: 'Mar 26', mediana: 0.017, p25: 0.014, p75: 0.020 },
-      { date: 'Abr 26', mediana: 0.016, p25: 0.013, p75: 0.019 },
-      { date: 'May 26', mediana: 0.015, p25: 0.012, p75: 0.018 },
+      { date: 'May 26', mediana: 0.015, breakeven: 0.0173 },
+      { date: 'Jun 26', mediana: 0.014, breakeven: 0.0161 },
+      { date: 'Jul 26', mediana: 0.013, breakeven: 0.0150 },
+      { date: 'Ago 26', mediana: 0.013, breakeven: 0.0150 },
+      { date: 'Sep 26', mediana: 0.012, breakeven: 0.0138 },
+      { date: 'Oct 26', mediana: 0.012, breakeven: 0.0138 },
     ]
 
     return remProjections.map(m => ({
       date: m.date,
       ipc_rem_mediana: m.mediana,
-      ipc_rem_percentil25: m.p25,
-      ipc_rem_percentil75: m.p75,
+      ipc_breakeven_mercado: m.breakeven,
     }))
   }
 
