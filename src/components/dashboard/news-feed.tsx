@@ -9,246 +9,134 @@ interface RSSItem {
   description: string | null
   source: string
   pubDate: string
-  region: "argentina" | "internacional"
-  category: string
 }
 
-const CATEGORIES = [
-  { key: "todos",       label: "Todos",       color: "#888888" },
-  { key: "economía",    label: "Economía",    color: "#4FC3F7" },
-  { key: "finanzas",    label: "Finanzas",    color: "#FFD54F" },
-  { key: "política",    label: "Política",    color: "#ce93d8" },
-  { key: "comercio",    label: "Comercio",    color: "#4488ff" },
-  { key: "energía",     label: "Energía",     color: "#ffaa00" },
-  { key: "commodities", label: "Commodities", color: "#81c784" },
-]
-
-const INITIAL = 8
-
-function fmtTime(d: string): string {
-  try {
-    return new Date(d).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })
-  } catch {
-    return "--:--"
-  }
+interface NewsFeedProps {
+  items?: RSSItem[]
 }
 
-interface NewsTableProps {
-  rows: RSSItem[]
-  extra: number
-  loading: boolean
-  expandedId: string | null
-  onToggle: (id: string) => void
-  onMore: () => void
-}
-
-function NewsTable({ rows, extra, loading, expandedId, onToggle, onMore }: NewsTableProps) {
-  const visible   = rows.slice(0, INITIAL + extra)
-  const remaining = rows.length - visible.length
-
-  return (
-    <>
-      <table>
-        <thead>
-          <tr>
-            <th style={{ width: 40 }}>Hora</th>
-            <th style={{ width: 100 }}>Fuente</th>
-            <th>Titular</th>
-          </tr>
-        </thead>
-        <tbody>
-          {visible.map((item, i) => (
-            <tr
-              key={item.id + i}
-              style={{
-                background: i % 2 === 0 ? "#000000" : "#060606",
-                cursor: item.description ? "pointer" : "default",
-              }}
-              onClick={() => item.description && onToggle(item.id)}
-            >
-              <td style={{ color: "#FFA028", fontSize: 10, verticalAlign: "top" }}>
-                {fmtTime(item.pubDate)}
-              </td>
-              <td style={{ color: "#0068FF", fontSize: 10, verticalAlign: "top", fontWeight: 500 }}>
-                {item.source.toUpperCase().slice(0, 14)}
-              </td>
-              <td style={{ whiteSpace: "normal" }}>
-                <a
-                  href={item.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: "#FFFFFF", fontSize: 11 }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {item.title}
-                </a>
-                {expandedId === item.id && item.description && (
-                  <div style={{ color: "#888888", fontSize: 10, marginTop: 4, lineHeight: 1.4 }}>
-                    {item.description}
-                  </div>
-                )}
-              </td>
-            </tr>
-          ))}
-
-          {visible.length === 0 && (
-            <tr>
-              <td colSpan={3} style={{ color: "#555555", textAlign: "center", padding: 20 }}>
-                {loading ? "CARGANDO NOTICIAS..." : "SIN RESULTADOS"}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      {remaining > 0 && (
-        <div style={{ padding: "6px 12px", borderTop: "1px solid #111111" }}>
-          <button
-            onClick={onMore}
-            style={{
-              color: "#0068FF",
-              fontSize: 10,
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-            }}
-          >
-            Ver {remaining} más ▼
-          </button>
-        </div>
-      )}
-    </>
-  )
-}
-
-export function NewsFeed() {
-  const [items, setItems]           = useState<RSSItem[]>([])
-  const [loading, setLoading]       = useState(true)
-  const [category, setCategory]     = useState("todos")
+export function NewsFeed({ items: propItems }: NewsFeedProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [moreAR, setMoreAR]         = useState(0)
-  const [moreIN, setMoreIN]         = useState(0)
+  const [rssItems, setRssItems] = useState<RSSItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filterSource, setFilterSource] = useState<string | null>(null)
 
   const fetchRSS = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch("/api/rss-news")
-      if (res.ok) setItems(await res.json())
-    } catch { /* ignore */ }
-    finally { setLoading(false) }
+      if (res.ok) {
+        const data = await res.json()
+        setRssItems(data)
+      }
+    } catch (error) {
+      console.error("Error fetching RSS:", error)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
     fetchRSS()
-    const t = setInterval(fetchRSS, 5 * 60 * 1000)
-    return () => clearInterval(t)
+    const interval = setInterval(fetchRSS, 5 * 60 * 1000)
+    return () => clearInterval(interval)
   }, [fetchRSS])
 
-  // Resetear paginación al cambiar categoría
-  useEffect(() => { setMoreAR(0); setMoreIN(0) }, [category])
+  const items = rssItems.length > 0 ? rssItems : (propItems || [])
+  
+  const sources = [...new Set(items.map(i => i.source))]
+  const filtered = filterSource ? items.filter(i => i.source === filterSource) : items
 
-  const onToggle = (id: string) => setExpandedId((prev) => (prev === id ? null : id))
-
-  const filtered      = category === "todos" ? items : items.filter((i) => i.category === category)
-  const argentina     = filtered.filter((i) => i.region === "argentina")
-  const internacional = filtered.filter((i) => i.region === "internacional")
-
-  const activeCat = CATEGORIES.find((c) => c.key === category)
+  const fmtTime = (date: string) => {
+    try {
+      return new Date(date).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })
+    } catch {
+      return "--:--"
+    }
+  }
 
   return (
-    <div>
-      {/* Tabs de categoría */}
-      <div
-        style={{
-          display: "flex",
-          borderBottom: "1px solid #1a1a1a",
-          overflowX: "auto",
-          scrollbarWidth: "none",
-        }}
-      >
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat.key}
-            onClick={() => setCategory(cat.key)}
+    <div className="bbg-panel">
+      <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span>NOTICIAS — RSS FEEDS</span>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <select 
+            value={filterSource || ""} 
+            onChange={(e) => setFilterSource(e.target.value || null)}
             style={{
-              padding: "5px 14px",
-              fontSize: 10,
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              border: "none",
-              borderBottom: category === cat.key ? `2px solid ${cat.color}` : "2px solid transparent",
-              background: "none",
-              color: category === cat.key ? cat.color : "#444444",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              transition: "color 0.15s",
+              background: "#0a0a0a",
+              border: "1px solid #333",
+              color: "#888",
+              fontSize: "10px",
+              padding: "2px 6px",
+              borderRadius: "2px",
             }}
           >
-            {cat.label}
-          </button>
-        ))}
-        <span
-          style={{
-            marginLeft: "auto",
-            color: "#333333",
-            fontSize: 10,
-            padding: "5px 12px",
-            alignSelf: "center",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {filtered.length} noticias
-        </span>
+            <option value="">Todas las fuentes</option>
+            {sources.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <span style={{ color: "#555555", fontWeight: 400, fontSize: "10px" }}>
+            {filtered.length} noticias
+          </span>
+        </div>
       </div>
-
-      {/* Dos columnas: Argentina | Internacional */}
-      <div style={{ display: "flex", gap: 1, background: "#111111" }}>
-        {/* Argentina */}
-        <div style={{ flex: 1, minWidth: 0, background: "#000000" }}>
-          <div
-            className="bbg-panel-header"
-            style={{ display: "flex", alignItems: "center", gap: 6 }}
-          >
-            <span style={{ color: activeCat?.color ?? "#4FC3F7" }}>▐</span>
-            ARGENTINA
-            <span style={{ marginLeft: "auto", color: "#333333", fontWeight: 400 }}>
-              {argentina.length}
-            </span>
-          </div>
-          <NewsTable
-            rows={argentina}
-            extra={moreAR}
-            loading={loading}
-            expandedId={expandedId}
-            onToggle={onToggle}
-            onMore={() => setMoreAR((n) => n + INITIAL)}
-          />
-        </div>
-
-        {/* Internacional */}
-        <div style={{ flex: 1, minWidth: 0, background: "#000000" }}>
-          <div
-            className="bbg-panel-header"
-            style={{ display: "flex", alignItems: "center", gap: 6 }}
-          >
-            <span style={{ color: activeCat?.color ?? "#FFA028" }}>▐</span>
-            INTERNACIONAL
-            <span style={{ marginLeft: "auto", color: "#333333", fontWeight: 400 }}>
-              {internacional.length}
-            </span>
-          </div>
-          <NewsTable
-            rows={internacional}
-            extra={moreIN}
-            loading={loading}
-            expandedId={expandedId}
-            onToggle={onToggle}
-            onMore={() => setMoreIN((n) => n + INITIAL)}
-          />
-        </div>
+      
+      <div className="overflow-auto" style={{ maxHeight: "calc(100vh - 120px)" }}>
+        <table>
+          <thead>
+            <tr>
+              <th style={{ width: "45px" }}>Hora</th>
+              <th style={{ width: "110px" }}>Fuente</th>
+              <th>Titular</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((item, i) => (
+              <tr
+                key={item.id + i}
+                style={{
+                  background: expandedId === item.id ? "#0a0a0a" : i % 2 === 0 ? "#000000" : "#060606",
+                  cursor: item.description ? "pointer" : "default",
+                }}
+                onClick={() => item.description && setExpandedId(expandedId === item.id ? null : item.id)}
+              >
+                <td style={{ color: "#FFA028", fontSize: "10px", verticalAlign: "top" }}>
+                  {fmtTime(item.pubDate)}
+                </td>
+                <td style={{ color: "#0068FF", fontSize: "10px", verticalAlign: "top", fontWeight: 500 }}>
+                  {item.source.toUpperCase().slice(0, 16)}
+                </td>
+                <td style={{ whiteSpace: "normal" }}>
+                  <a
+                    href={item.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline"
+                    style={{ color: "#FFFFFF", fontSize: "11px" }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {item.title}
+                  </a>
+                  {expandedId === item.id && item.description && (
+                    <div style={{ color: "#888888", fontSize: "10px", marginTop: "4px", lineHeight: "1.4" }}>
+                      {item.description}
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+            
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={3} style={{ color: "#555555", textAlign: "center", padding: "20px" }}>
+                  {loading ? "CARGANDO NOTICIAS..." : "NO HAY NOTICIAS DISPONIBLES"}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   )
