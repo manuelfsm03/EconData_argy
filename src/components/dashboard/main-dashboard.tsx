@@ -21,6 +21,7 @@ import { TabBonos } from "./tab-bonos"
 import { TabTiposCambio } from "./tab-tipos-cambio"
 import { TabAcciones } from "./tab-acciones"
 import { TickerTape } from "./ticker-tape"
+import { InflationView } from "./inflation-view"
 import { formatPercent, formatDate } from "@/lib/utils"
 
 // Types
@@ -411,30 +412,7 @@ export function Dashboard() {
 
         {/* ═══════════ INFLACION ═══════════ */}
         <TabsContent value="inflacion">
-          <div className="mb-px">
-            <PriceChart
-              title="INFLACION MENSUAL"
-              data={inflation.slice().reverse().map((i) => ({
-                date: i.date,
-                monthly: i.monthly ? i.monthly * 100 : null,
-              }))}
-              series={[
-                { key: "monthly", name: "IPC Mensual %", color: "#FF433D" },
-              ]}
-              height={200}
-            />
-          </div>
-          <DataTable
-            title="HISTORICO DE INFLACION"
-            data={inflation}
-            columns={[
-              { key: "date", header: "Fecha", render: (v) => formatDate(v as string) },
-              { key: "monthly", header: "Mensual", numeric: true, render: (v) => <span className="bbg-negative">{formatPercent(v as number)}</span> },
-              { key: "interannual", header: "Interanual", numeric: true, render: (v) => <span style={{ color: "#FFA028" }}>{formatPercent(v as number)}</span> },
-              { key: "yearToDate", header: "YTD", numeric: true, render: (v) => <span style={{ color: "#FFD700" }}>{formatPercent(v as number)}</span> },
-              { key: "accumulated", header: "Acumulado", numeric: true, render: (v) => <span className="bbg-muted">{formatPercent(v as number)}</span> },
-            ]}
-          />
+          <InflationView inflation={inflation} />
         </TabsContent>
 
         {/* ═══════════ PLAZOS FIJOS Y TASAS ═══════════ */}
