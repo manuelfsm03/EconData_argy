@@ -3,6 +3,10 @@
 import { useState, useEffect } from "react"
 import { PriceChart } from "./price-chart"
 import { DataTable } from "./data-table"
+import dynamic from "next/dynamic"
+
+const PonderacionesTable = dynamic(() => import("./tab-macro").then(m => ({ default: (m as any).PonderacionesTable })), { ssr: false })
+const MiInflacionView = dynamic(() => import("./tab-macro").then(m => ({ default: (m as any).MiInflacionView })), { ssr: false })
 
 interface Inflation {
   date: string
@@ -62,6 +66,7 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
   const [selectedTypes, setSelectedTypes] = useState<string[]>(["ipc_var_mensual", "ipc_nucleo"])
   const [regionalData, setRegionalData] = useState<RegionalInflation[]>([])
   const [polymarketInflation, setPolymarketInflation] = useState<PolymarketInflation[]>([])
+  const [ipcTab, setIpcTab] = useState("series")
 
   useEffect(() => {
     // Fetch IPC data
@@ -336,35 +341,78 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
         </div>
       )}
 
-      {/* Historical IPC Table */}
+      {/* IPC Tabs */}
       {ipcData && (
-        <DataTable
-          title="HISTORICO IPC VAR. MENSUAL"
-          data={(ipcData.ipc_var_mensual ?? []).slice(0, 24).map(([d, v]) => ({ date: d, value: v }))}
-          columns={[
-            {
-              key: "date",
-              header: "Fecha",
-              render: (v) => v,
-            },
-            {
-              key: "value",
-              header: "IPC %",
-              numeric: true,
-              render: (v) => {
-                const val = v as number
-                return (
-                  <span style={{
-                    color: val > 5 ? "#FF433D" : val > 3 ? "#FFA028" : "#4AF6C3",
-                    fontWeight: "bold"
-                  }}>
-                    {val >= 0 ? "+" : ""}{(val * 100).toFixed(2)}%
-                  </span>
-                )
-              },
-            },
-          ]}
-        />
+        <div className="bg-slate-900 border border-slate-700 rounded p-4">
+          {/* Tab Buttons */}
+          <div className="flex gap-2 mb-4 border-b border-slate-700 pb-2">
+            <button
+              onClick={() => setIpcTab("series")}
+              className={`px-4 py-2 text-sm font-semibold transition ${
+                ipcTab === "series"
+                  ? "text-white border-b-2 border-cyan-400"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Serie Histórica
+            </button>
+            <button
+              onClick={() => setIpcTab("canasta")}
+              className={`px-4 py-2 text-sm font-semibold transition ${
+                ipcTab === "canasta"
+                  ? "text-white border-b-2 border-cyan-400"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Canasta 2004 vs 2022
+            </button>
+            <button
+              onClick={() => setIpcTab("personal")}
+              className={`px-4 py-2 text-sm font-semibold transition ${
+                ipcTab === "personal"
+                  ? "text-white border-b-2 border-cyan-400"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Mi Inflación
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          {ipcTab === "series" && (
+            <DataTable
+              title="HISTORICO IPC VAR. MENSUAL — ÚLTIMOS 24 PERÍODOS"
+              data={(ipcData.ipc_var_mensual ?? []).slice(0, 24).map(([d, v]) => ({ date: d, value: v }))}
+              columns={[
+                {
+                  key: "date",
+                  header: "Fecha",
+                  render: (v) => v,
+                },
+                {
+                  key: "value",
+                  header: "IPC %",
+                  numeric: true,
+                  render: (v) => {
+                    const val = v as number
+                    return (
+                      <span style={{
+                        color: val > 5 ? "#FF433D" : val > 3 ? "#FFA028" : "#4AF6C3",
+                        fontWeight: "bold"
+                      }}>
+                        {val >= 0 ? "+" : ""}{(val * 100).toFixed(2)}%
+                      </span>
+                    )
+                  },
+                },
+              ]}
+            />
+          )}
+
+          {ipcTab === "canasta" && <PonderacionesTable />}
+
+          {ipcTab === "personal" && <MiInflacionView />}
+        </div>
       )}
     </div>
   )

@@ -166,7 +166,7 @@ const PONDERACIONES = [
   { cat: "Otros bienes/servicios", actual: 6.0, propuesto: 5.4 },
 ]
 
-function PonderacionesTable() {
+export function PonderacionesTable() {
   return (
     <div style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -1363,7 +1363,7 @@ function EmaeView() {
 
 // ── Mi Inflación Component ──────────────────────────────────────────────────────
 
-function MiInflacionView() {
+export function MiInflacionView() {
   const [modo, setModo] = useState<"formulario" | "resultado">("formulario")
   const [ponderaciones, setPonderaciones] = useState<Record<string, number>>(
     Object.fromEntries(PONDERACIONES.map(p => [p.cat, p.actual]))
