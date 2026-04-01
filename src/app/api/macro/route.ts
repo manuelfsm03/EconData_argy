@@ -616,8 +616,50 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // ── AUTOMOTRIZ ──────────────────────────────────────────────────────────
+    if (endpoint === "automotriz") {
+      const data = await getMultiserie([
+        "produccion_autos",
+        "produccion_utilitarios",
+        "produccion_cat_b",
+        "exportaciones_autos",
+        "exportaciones_utilitarios",
+        "ventas_autos",
+        "ventas_utilitarios",
+        "ventas_nacionales_total",
+        "ventas_importados_total",
+      ], 60)
+
+      return NextResponse.json({
+        data,
+        updated_at: new Date().toISOString(),
+        source: "datos.gob.ar — SSPM/ADEFA",
+      })
+    }
+
+    // ── PATENTAMIENTOS ──────────────────────────────────────────────────────
+    if (endpoint === "patentamientos") {
+      const data = await getMultiserie([
+        "ventas_autos",
+        "ventas_utilitarios",
+        "ventas_nacionales_total",
+        "ventas_importados_total"
+      ], 60)
+
+      return NextResponse.json({
+        data: {
+          automoviles: data.ventas_autos || [],
+          utilitarios: data.ventas_utilitarios || [],
+          total: data.ventas_nacionales_total || [],
+          importados: data.ventas_importados_total || [],
+        },
+        updated_at: new Date().toISOString(),
+        source: "datos.gob.ar — SSPM/ADEFA (ventas)",
+      })
+    }
+
     return NextResponse.json(
-      { error: "endpoint no válido. Usar ?endpoint=emae|ipc|ipi|balanza|fiscal|fiscal_sankey" },
+      { error: "endpoint no válido. Usar ?endpoint=emae|ipc|ipi|balanza|fiscal|fiscal_sankey|automotriz|patentamientos" },
       { status: 400 },
     )
   } catch (error) {

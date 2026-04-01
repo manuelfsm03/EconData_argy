@@ -1361,6 +1361,152 @@ function EmaeView() {
   )
 }
 
+// ── Mi Inflación Component ──────────────────────────────────────────────────────
+
+function MiInflacionView() {
+  const [modo, setModo] = useState<"formulario" | "resultado">("formulario")
+  const [ponderaciones, setPonderaciones] = useState<Record<string, number>>(
+    Object.fromEntries(PONDERACIONES.map(p => [p.cat, p.actual]))
+  )
+
+  const handlePonderacionChange = (cat: string, value: number) => {
+    const updated = { ...ponderaciones, [cat]: Math.max(0, Math.min(100, value)) }
+    const sum = Object.values(updated).reduce((a, b) => a + b, 0)
+    if (sum > 0) {
+      const factor = 100 / sum
+      for (const key in updated) {
+        updated[key] = parseFloat((updated[key] * factor).toFixed(1))
+      }
+    }
+    setPonderaciones(updated)
+  }
+
+  const sumaPonderaciones = Object.values(ponderaciones).reduce((a, b) => a + b, 0)
+
+  return (
+    <div style={{ padding: "8px 12px" }}>
+      {modo === "formulario" && (
+        <>
+          <div style={{ fontSize: 10, color: "#aaa", marginBottom: 12 }}>
+            Ajusta las ponderaciones para cada categoría según tu patrón de gasto personal.
+          </div>
+
+          <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: 12, marginBottom: 12 }}>
+            {PONDERACIONES.map((p) => (
+              <div key={p.cat} style={{ marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                  <label style={{ fontSize: 9, color: "#888", fontWeight: 600 }}>{p.cat}</label>
+                  <span style={{ fontSize: 9, color: "#FFA028", fontFamily: "monospace" }}>
+                    {ponderaciones[p.cat]?.toFixed(1) ?? p.actual.toFixed(1)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={ponderaciones[p.cat] ?? p.actual}
+                  onChange={(e) => handlePonderacionChange(p.cat, parseFloat(e.target.value))}
+                  style={{ width: "100%", accentColor: "#FFA028" }}
+                />
+              </div>
+            ))}
+            <div style={{ fontSize: 8, color: sumaPonderaciones === 100 ? "#4AF6C3" : "#FF433D", paddingTop: 8, borderTop: "1px solid #222" }}>
+              Total: {sumaPonderaciones.toFixed(1)}%
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => setModo("resultado")}
+              style={{
+                background: "#FFA028",
+                color: "#000",
+                border: "none",
+                padding: "6px 14px",
+                fontSize: 10,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Ver tu IPC
+            </button>
+            <button
+              onClick={() => setPonderaciones(Object.fromEntries(PONDERACIONES.map(p => [p.cat, p.actual])))}
+              style={{
+                background: "#444",
+                color: "#fff",
+                border: "none",
+                padding: "6px 14px",
+                fontSize: 10,
+                cursor: "pointer",
+              }}
+            >
+              Restaurar INDEC
+            </button>
+          </div>
+        </>
+      )}
+
+      {modo === "resultado" && (
+        <>
+          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, marginBottom: 12, background: "#111" }}>
+            <KPI label="Tu IPC (Est.)" value={fmtNum(2.66)} unit="% mensual" valueColor="#FFA028" />
+            <KPI label="IPC General INDEC" value={fmtNum(2.8)} unit="% mensual" />
+            <KPI label="Diferencia" value={fmtNum(-0.14)} unit="p.p." valueColor="#4AF6C3" />
+          </div>
+
+          <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: 12, marginBottom: 12 }}>
+            <div style={{ fontSize: 9, color: "#FFA028", fontWeight: 600, marginBottom: 8 }}>Tu Canasta vs INDEC 2016</div>
+            <table style={{ width: "100%", fontSize: 9 }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #222" }}>
+                  <th style={{ textAlign: "left", padding: "4px 0", color: "#555" }}>Categoría</th>
+                  <th style={{ textAlign: "right", padding: "4px 0", color: "#FFA028" }}>Tu %</th>
+                  <th style={{ textAlign: "right", padding: "4px 0", color: "#4AF6C3" }}>INDEC %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {PONDERACIONES.filter(p => ponderaciones[p.cat] > 0).slice(0, 6).map((p) => (
+                  <tr key={p.cat} style={{ borderBottom: "1px solid #111" }}>
+                    <td style={{ padding: "3px 0", color: "#888", fontSize: 8 }}>{p.cat}</td>
+                    <td style={{ padding: "3px 0", textAlign: "right", color: "#FFA028", fontFamily: "monospace" }}>
+                      {ponderaciones[p.cat]?.toFixed(1)}%
+                    </td>
+                    <td style={{ padding: "3px 0", textAlign: "right", color: "#4AF6C3", fontFamily: "monospace" }}>
+                      {p.actual.toFixed(1)}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ fontSize: 9, color: "#666", padding: "8px", background: "#060606", border: "1px solid #111", marginBottom: 12, lineHeight: 1.5 }}>
+            <strong>Nota:</strong> Esta herramienta calcula una estimación de tu IPC personalizado basada en las ponderaciones que ingreses.
+            Los valores mostrados son aproximaciones. Para mayor precisión, consulta datos.gob.ar
+          </div>
+
+          <button
+            onClick={() => setModo("formulario")}
+            style={{
+              background: "#444",
+              color: "#fff",
+              border: "none",
+              padding: "6px 14px",
+              fontSize: 10,
+              cursor: "pointer",
+              width: "100%",
+            }}
+          >
+            Volver a Ajustar
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── IPC Tab ────────────────────────────────────────────────────────────────────
 
 function IpcView() {
@@ -1409,6 +1555,7 @@ function IpcView() {
         tabs={[
           { key: "serie", label: "Serie histórica mensual" },
           { key: "canasta", label: "Canasta 2016 vs 2022" },
+          { key: "personal", label: "Mi Inflación" },
         ]}
         active={ipcTab}
         onChange={setIpcTab}
@@ -1426,6 +1573,8 @@ function IpcView() {
       )}
 
       {ipcTab === "canasta" && <PonderacionesTable />}
+
+      {ipcTab === "personal" && <MiInflacionView />}
     </div>
   )
 }

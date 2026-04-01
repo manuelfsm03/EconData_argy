@@ -1,0 +1,5 @@
+{
+    "claudeCode.useTerminal": true,
+    "claudeCode.allowDangerouslySkipPermissions": true,
+    "claudeCode.initialPermissionMode": "acceptEdits"
+}

@@ -73,6 +73,113 @@ function ElectricidadMundialView() {
   )
 }
 
+function PetroleoView() {
+  const [data, setData] = useState<Record<string, unknown>[] | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/mundo?endpoint=petroleo")
+      .then((r) => r.json())
+      .then((j) => { setData(j.data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando datos de petróleo...</div>
+  if (!data || data.length === 0) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos disponibles.</div>
+
+  const lines = [
+    { key: "United States",          name: "EE.UU.",    color: "#4FC3F7" },
+    { key: "Russia",                 name: "Rusia",     color: "#FF433D" },
+    { key: "Saudi Arabia",           name: "Arabia S.",  color: "#FFA028" },
+    { key: "Canada",                 name: "Canadá",     color: "#4AF6C3" },
+    { key: "China",                  name: "China",      color: "#FFD54F" },
+    { key: "Argentina",              name: "Argentina",  color: "#CE93D8" },
+  ]
+
+  return (
+    <div>
+      <BBGLineChart
+        title="PRODUCCIÓN DE PETRÓLEO CRUDO (millones bbl/día)"
+        data={data}
+        lines={lines}
+        enableLineToggle
+        height={320}
+        yAxisLabel="mbbl/d"
+        defaultRange="all"
+      />
+      <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+        Fuente: Our World in Data — BP Statistical Review of World Energy · Licencia CC BY 4.0
+      </div>
+    </div>
+  )
+}
+
+function MacroComparadaView() {
+  const [data, setData] = useState<Record<string, unknown>[] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [indicador, setIndicador] = useState("gdp_growth")
+
+  useEffect(() => {
+    fetch("/api/mundo?endpoint=macro_comparada")
+      .then((r) => r.json())
+      .then((j) => { setData(j.data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando macro comparada...</div>
+  if (!data || data.length === 0) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos disponibles.</div>
+
+  const indicadores = [
+    { key: "gdp_growth", label: "Crecimiento PIB (%)" },
+    { key: "inflation", label: "Inflación (%)" },
+    { key: "unemployment", label: "Desempleo (%)" },
+  ]
+
+  const lines = [
+    { key: "Argentina",    name: "Argentina",   color: "#CE93D8" },
+    { key: "Brazil",       name: "Brasil",      color: "#FFD54F" },
+    { key: "Chile",        name: "Chile",       color: "#FFA028" },
+    { key: "Colombia",     name: "Colombia",    color: "#4AF6C3" },
+    { key: "Mexico",       name: "México",      color: "#4FC3F7" },
+  ]
+
+  return (
+    <div>
+      <div style={{ padding: "4px 8px", background: "#0a0a0a", marginBottom: 8, borderBottom: "1px solid #111" }}>
+        <select
+          value={indicador}
+          onChange={(e) => setIndicador(e.target.value)}
+          style={{
+            background: "#111",
+            border: "1px solid #1a1a1a",
+            color: "#FFA028",
+            padding: "4px 8px",
+            fontSize: 10,
+            fontWeight: 600,
+          }}
+        >
+          {indicadores.map((ind) => (
+            <option key={ind.key} value={ind.key}>{ind.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <BBGLineChart
+        title={`AMÉRICA LATINA — ${indicadores.find(i => i.key === indicador)?.label || "Indicador"}`}
+        data={data}
+        lines={lines}
+        enableLineToggle
+        height={300}
+        yAxisLabel="%"
+        defaultRange="all"
+      />
+      <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+        Fuente: World Bank Open Data · Licencia CC BY 4.0
+      </div>
+    </div>
+  )
+}
+
 interface QuoteResult {
   precio: number
   variacion_pct: number
@@ -220,9 +327,16 @@ export function TabMundo() {
           </span>
         )}
       </div>
-      <SubTabs tabs={[{ key: "mercados", label: "Mercados" }, { key: "energia", label: "Energía Global" }]}
+      <SubTabs tabs={[
+        { key: "mercados", label: "Mercados" },
+        { key: "energia", label: "Electricidad" },
+        { key: "petroleo", label: "Petróleo" },
+        { key: "macro", label: "Macro Comparada" },
+      ]}
         active={mundoTab} onChange={setMundoTab} />
       {mundoTab === "energia" && <ElectricidadMundialView />}
+      {mundoTab === "petroleo" && <PetroleoView />}
+      {mundoTab === "macro" && <MacroComparadaView />}
       {mundoTab === "mercados" && (<>
 
       {/* Groups */}
