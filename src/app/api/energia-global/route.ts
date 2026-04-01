@@ -18,6 +18,26 @@ const COUNTRY_GROUPS = {
   latam: ["ARG", "BRA", "VEN", "COL", "ECU", "MEX"],
 }
 
+const COUNTRY_CODE_MAP: Record<string, string> = {
+  USA: "United States",
+  RUS: "Russia",
+  SAU: "Saudi Arabia",
+  CAN: "Canada",
+  CHN: "China",
+  BRA: "Brazil",
+  IRN: "Iran",
+  IRQ: "Iraq",
+  KWT: "Kuwait",
+  UAE: "United Arab Emirates",
+  QAT: "Qatar",
+  BHR: "Bahrain",
+  ARG: "Argentina",
+  VEN: "Venezuela",
+  COL: "Colombia",
+  ECU: "Ecuador",
+  MEX: "Mexico",
+}
+
 // Cache en memoria
 const _cache: Record<string, { data: unknown; expiry: number }> = {}
 
@@ -29,6 +49,70 @@ function getCache<T>(key: string): T | null {
 
 function setCache(key: string, data: unknown, ttlSec: number) {
   _cache[key] = { data, expiry: Date.now() + ttlSec * 1000 }
+}
+
+// Mapeo de tipos de datos a IDs y unidades EIA
+const EIA_DATA_TYPES: Record<string, { activityId: string; unit: string; description: string }> = {
+  "1": { activityId: "2", unit: "TBPD", description: "Crude oil consumption" },
+  "2": { activityId: "0", unit: "BB", description: "Proved crude oil reserves" },
+  "3": { activityId: "10", unit: "TBPD", description: "Refinery capacity" },
+}
+
+async function fetchEIAData(
+  countries: string[],
+  dataTypeId: string,
+  label: string
+): Promise<Record<string, [string, number][]>> {
+  const cacheKey = `eia_${dataTypeId}_${countries.sort().join("_")}`
+  const cached = getCache<Record<string, [string, number][]>>(cacheKey)
+  if (cached) return cached
+
+  const apiKey = process.env.EIA_API_KEY
+  if (!apiKey) throw new Error("EIA_API_KEY not set — register free at eia.gov/opendata")
+
+  try {
+    const dataConfig = EIA_DATA_TYPES[dataTypeId]
+    if (!dataConfig) throw new Error(`Unknown data type: ${dataTypeId}`)
+
+    const countryFacets = countries.map((c) => `facets[countryRegionId][]=${c}`).join("&")
+    const frequency = dataTypeId === "2" ? "annual" : "monthly"
+    const url = `${EIA_BASE}/international/data/?api_key=${apiKey}&frequency=${frequency}&data[0]=value&facets[activityId][]=${dataConfig.activityId}&facets[productId][]=57&${countryFacets}&facets[unitId][]=${dataConfig.unit}&sort[0][column]=period&sort[0][direction]=desc&length=600`
+
+    const res = await fetch(url, {
+      headers: { "User-Agent": "PanelDeControl/2.0" },
+      signal: AbortSignal.timeout(15000),
+    })
+    if (!res.ok) throw new Error(`EIA API ${res.status}`)
+
+    const json = (await res.json()) as {
+      response?: {
+        data?: Array<{
+          countryRegionId: string
+          period: string
+          value: string
+        }>
+      }
+    }
+
+    const result: Record<string, [string, number][]> = {}
+    for (const row of json.response?.data || []) {
+      const codeOrName = row.countryRegionId
+      const countryName = COUNTRY_CODE_MAP[codeOrName] || codeOrName
+      const p = row.period
+      const v = parseFloat(row.value)
+      if (isNaN(v)) continue
+      if (!result[countryName]) result[countryName] = []
+      result[countryName].push([p, v])
+    }
+
+    for (const k of Object.keys(result)) result[k].sort((a, b) => b[0].localeCompare(a[0]))
+
+    setCache(cacheKey, result, 3600 * 6) // 6h cache
+    return result
+  } catch (error) {
+    console.error(`[EIA] Error fetching ${label}:`, error)
+    throw error
+  }
 }
 
 async function fetchEIAProduction(
@@ -64,12 +148,13 @@ async function fetchEIAProduction(
 
     const result: Record<string, [string, number][]> = {}
     for (const row of json.response?.data || []) {
-      const c = row.countryRegionId
+      const codeOrName = row.countryRegionId
+      const countryName = COUNTRY_CODE_MAP[codeOrName] || codeOrName
       const p = row.period
       const v = parseFloat(row.value)
       if (isNaN(v)) continue
-      if (!result[c]) result[c] = []
-      result[c].push([p, v])
+      if (!result[countryName]) result[countryName] = []
+      result[countryName].push([p, v])
     }
 
     for (const k of Object.keys(result)) result[k].sort((a, b) => b[0].localeCompare(a[0]))
@@ -132,8 +217,35 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    if (endpoint === "consumption") {
+      const data = await fetchEIAData(COUNTRY_GROUPS.top, "1", "Consumption")
+      return NextResponse.json({
+        data,
+        updated_at: new Date().toISOString(),
+        source: "U.S. EIA — Crude oil consumption (TBPD)",
+      })
+    }
+
+    if (endpoint === "reserves") {
+      const data = await fetchEIAData(COUNTRY_GROUPS.top, "2", "Reserves")
+      return NextResponse.json({
+        data,
+        updated_at: new Date().toISOString(),
+        source: "U.S. EIA — Proved crude oil reserves (BB)",
+      })
+    }
+
+    if (endpoint === "refining") {
+      const data = await fetchEIAData(COUNTRY_GROUPS.top, "3", "Refining")
+      return NextResponse.json({
+        data,
+        updated_at: new Date().toISOString(),
+        source: "U.S. EIA — Refinery crude oil capacity (TBPD)",
+      })
+    }
+
     return NextResponse.json(
-      { error: "Usar ?endpoint=production|hormuz|latam" },
+      { error: "Usar ?endpoint=production|consumption|reserves|refining|hormuz|latam" },
       { status: 400 }
     )
   } catch (error) {

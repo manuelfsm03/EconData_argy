@@ -74,41 +74,96 @@ function ElectricidadMundialView() {
 }
 
 function PetroleoView() {
+  const [dataType, setDataType] = useState<"production" | "consumption" | "reserves" | "refining">("production")
   const [data, setData] = useState<Record<string, unknown>[] | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/mundo?endpoint=petroleo")
+    setLoading(true)
+    fetch(`/api/energia-global?endpoint=${dataType}`)
       .then((r) => r.json())
       .then((j) => { setData(j.data); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [])
+  }, [dataType])
 
   if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando datos de petróleo...</div>
-  if (!data || data.length === 0) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos disponibles.</div>
+  if (!data) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos disponibles.</div>
 
   const lines = [
-    { key: "United States",          name: "EE.UU.",    color: "#4FC3F7" },
-    { key: "Russia",                 name: "Rusia",     color: "#FF433D" },
-    { key: "Saudi Arabia",           name: "Arabia S.",  color: "#FFA028" },
-    { key: "Canada",                 name: "Canadá",     color: "#4AF6C3" },
-    { key: "China",                  name: "China",      color: "#FFD54F" },
-    { key: "Argentina",              name: "Argentina",  color: "#CE93D8" },
+    { key: "United States", name: "EE.UU.", color: "#4FC3F7" },
+    { key: "Russia", name: "Rusia", color: "#FF433D" },
+    { key: "Saudi Arabia", name: "Arabia S.", color: "#FFA028" },
+    { key: "Canada", name: "Canadá", color: "#4AF6C3" },
+    { key: "China", name: "China", color: "#FFD54F" },
+    { key: "Argentina", name: "Argentina", color: "#CE93D8" },
   ]
+
+  const titles: Record<typeof dataType, { title: string; label: string; source: string }> = {
+    production: {
+      title: "PRODUCCIÓN DE PETRÓLEO CRUDO",
+      label: "Barriles/día",
+      source: "U.S. EIA — Producción mensual",
+    },
+    consumption: {
+      title: "CONSUMO DE PETRÓLEO CRUDO",
+      label: "Barriles/día",
+      source: "U.S. EIA — Consumo mensual",
+    },
+    reserves: {
+      title: "RESERVAS PROBADAS DE PETRÓLEO",
+      label: "Barriles (mil millones)",
+      source: "U.S. EIA — Reservas anuales",
+    },
+    refining: {
+      title: "CAPACIDAD DE REFINERÍA",
+      label: "Barriles/día",
+      source: "U.S. EIA — Capacidad de procesamiento",
+    },
+  }
+
+  const config = titles[dataType]
 
   return (
     <div>
+      <div style={{ display: "flex", gap: 1, background: "#111", padding: 1, marginBottom: 8, flexWrap: "wrap" }}>
+        {(["production", "consumption", "reserves", "refining"] as const).map((type) => (
+          <button
+            key={type}
+            onClick={() => setDataType(type)}
+            style={{
+              padding: "4px 10px",
+              fontSize: 10,
+              background: dataType === type ? "#1a1a1a" : "transparent",
+              color: dataType === type ? "#FFA028" : "#555",
+              border: "none",
+              borderBottom: dataType === type ? "2px solid #FFA028" : "2px solid transparent",
+              cursor: "pointer",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              fontWeight: 700,
+            }}
+          >
+            {{
+              production: "Producción",
+              consumption: "Consumo",
+              reserves: "Reservas",
+              refining: "Refinería",
+            }[type]}
+          </button>
+        ))}
+      </div>
+
       <BBGLineChart
-        title="PRODUCCIÓN DE PETRÓLEO CRUDO (millones bbl/día)"
+        title={config.title}
         data={data}
         lines={lines}
         enableLineToggle
         height={320}
-        yAxisLabel="mbbl/d"
+        yAxisLabel={config.label}
         defaultRange="all"
       />
       <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
-        Fuente: Our World in Data — BP Statistical Review of World Energy · Licencia CC BY 4.0
+        Fuente: {config.source}
       </div>
     </div>
   )
