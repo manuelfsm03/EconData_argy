@@ -1,6 +1,6 @@
 import folium
 
-# Crear mapa centrado en Argentina - zoom más alto y ajustado
+# Crear mapa centrado en Argentina
 m = folium.Map(
     location=[-37.5, -63.0],
     zoom_start=5,
@@ -10,11 +10,12 @@ m = folium.Map(
     max_zoom=8
 )
 
-# Establecer bounds para limitar a Argentina
+# Establecer bounds para limitar SOLO a territorio argentino continental
+# Excluyendo Malvinas
 # Noroeste: Jujuy aprox -23.5, -66
-# Sureste: Tierra del Fuego aprox -55, -52
-sw_corner = [-56, -74]
-ne_corner = [-21, -52]
+# Sureste: Tierra del Fuego aprox -54.5, -69 (sin incluir Malvinas)
+sw_corner = [-54.5, -73.5]  # Suroeste (Tierra del Fuego occidental)
+ne_corner = [-21.5, -52.5]  # Noreste (Misiones)
 m.fit_bounds([sw_corner, ne_corner])
 
 # Regiones
@@ -79,4 +80,4 @@ for region, data in regions.items():
     ).add_to(m)
 
 m.save("public/inflation_map.html")
-print("Mapa acotado a Argentina generado")
+print("Mapa ajustado sin Malvinas")
