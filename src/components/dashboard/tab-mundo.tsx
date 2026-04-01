@@ -227,6 +227,167 @@ function PetroleoView() {
   )
 }
 
+function SojaView() {
+  const [segmento, setSegmento] = useState<"produccion" | "precio">("produccion")
+  const [data, setData] = useState<Record<string, unknown>[] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [selectedCountries, setSelectedCountries] = useState<Set<string>>(
+    new Set(["Brazil", "Argentina", "United States", "China", "Paraguay", "India"])
+  )
+
+  const allCountriesAvailable = [
+    "Brazil", "Argentina", "United States", "China", "Paraguay", "India",
+    "Bolivia", "Indonesia", "Canada", "Mexico", "Ukraine", "Russia",
+  ]
+
+  const countryColors: Record<string, string> = {
+    "Brazil": "#FFB74D",
+    "Argentina": "#CE93D8",
+    "United States": "#4FC3F7",
+    "China": "#FFD54F",
+    "Paraguay": "#81C784",
+    "India": "#FFA028",
+    "Bolivia": "#FF6B6B",
+    "Indonesia": "#00BCD4",
+    "Canada": "#64B5F6",
+    "Mexico": "#BA68C8",
+    "Ukraine": "#80DEEA",
+    "Russia": "#FF433D",
+  }
+
+  useEffect(() => {
+    setLoading(true)
+    if (segmento === "produccion") {
+      fetch("https://ourworldindata.org/grapher/soybean-production.csv?tab=chart")
+        .then((r) => r.text())
+        .then((text) => {
+          const lines = text.trim().split("\n")
+          const byYear: Record<string, Record<string, unknown>> = {}
+          for (const line of lines.slice(1)) {
+            const parts = line.split(",")
+            const entity = parts[0]?.replace(/"/g, "").trim() ?? ""
+            if (!allCountriesAvailable.includes(entity)) continue
+            const year = parts[2]?.trim() ?? ""
+            const tonnes = parseFloat(parts[3]?.trim() ?? "")
+            if (!year || isNaN(tonnes)) continue
+            if (!byYear[year]) byYear[year] = { date: `${year}-01-01` }
+            byYear[year][entity] = parseFloat((tonnes / 1_000_000).toFixed(2)) // Convertir a millones de toneladas
+          }
+          const data = Object.values(byYear)
+            .sort((a, b) => (a.date as string).localeCompare(b.date as string))
+          setData(data)
+          setLoading(false)
+        })
+        .catch(() => setLoading(false))
+    } else {
+      // Precio: usar Yahoo Finance
+      fetch("/api/mundo?ticker=soja&hist=5y")
+        .then((r) => r.json())
+        .then((j) => {
+          const priceData = j.data as [string, number][]
+          const byDate: Record<string, Record<string, unknown>> = {}
+          for (const [date, price] of priceData) {
+            byDate[date] = { date, "SOJA (USD/bu)": parseFloat(price.toFixed(2)) }
+          }
+          setData(Object.values(byDate))
+          setLoading(false)
+        })
+        .catch(() => setLoading(false))
+    }
+  }, [segmento])
+
+  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando datos de soja...</div>
+  if (!data) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos disponibles.</div>
+
+  const isPrecio = segmento === "precio"
+  const lines = isPrecio
+    ? [{ key: "SOJA (USD/bu)", name: "Precio SOJA", color: "#FFA028" }]
+    : Array.from(selectedCountries)
+        .map((country) => ({
+          key: country,
+          name: country,
+          color: countryColors[country] || "#999",
+        }))
+
+  const toggleCountry = (country: string) => {
+    const newSet = new Set(selectedCountries)
+    if (newSet.has(country)) {
+      newSet.delete(country)
+    } else {
+      newSet.add(country)
+    }
+    setSelectedCountries(newSet)
+  }
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 1, background: "#111", padding: 1, marginBottom: 8, flexWrap: "wrap" }}>
+        {(["produccion", "precio"] as const).map((type) => (
+          <button
+            key={type}
+            onClick={() => setSegmento(type)}
+            style={{
+              padding: "4px 10px",
+              fontSize: 10,
+              background: segmento === type ? "#1a1a1a" : "transparent",
+              color: segmento === type ? "#FFA028" : "#555",
+              border: "none",
+              borderBottom: segmento === type ? "2px solid #FFA028" : "2px solid transparent",
+              cursor: "pointer",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              fontWeight: 700,
+            }}
+          >
+            {type === "produccion" ? "Producción Mundial" : "Precio Futuro"}
+          </button>
+        ))}
+      </div>
+
+      {segmento === "produccion" && (
+        <div style={{ padding: "8px", background: "#0a0a0a", marginBottom: 8, borderBottom: "1px solid #111" }}>
+          <div style={{ fontSize: 9, color: "#999", marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>
+            Seleccionar países:
+          </div>
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            {allCountriesAvailable.map((country) => (
+              <button
+                key={country}
+                onClick={() => toggleCountry(country)}
+                style={{
+                  padding: "4px 8px",
+                  fontSize: 9,
+                  background: selectedCountries.has(country) ? countryColors[country] : "#1a1a1a",
+                  color: selectedCountries.has(country) ? "#000" : "#666",
+                  border: `1px solid ${selectedCountries.has(country) ? countryColors[country] : "#333"}`,
+                  borderRadius: 3,
+                  cursor: "pointer",
+                  fontWeight: selectedCountries.has(country) ? 700 : 400,
+                }}
+              >
+                {country}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <BBGLineChart
+        title={segmento === "produccion" ? "PRODUCCIÓN MUNDIAL DE SOJA" : "PRECIO FUTURO DE SOJA"}
+        data={data}
+        lines={lines}
+        enableLineToggle
+        height={320}
+        yAxisLabel={segmento === "produccion" ? "Millones de toneladas" : "USD/bushel"}
+        defaultRange="all"
+      />
+      <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+        Fuente: {segmento === "produccion" ? "Our World in Data (FAO)" : "Yahoo Finance — Contrato ZS=F"}
+      </div>
+    </div>
+  )
+}
+
 function MacroComparadaView() {
   const [data, setData] = useState<Record<string, unknown>[] | null>(null)
   const [loading, setLoading] = useState(true)
@@ -444,11 +605,13 @@ export function TabMundo() {
         { key: "mercados", label: "Mercados" },
         { key: "energia", label: "Electricidad" },
         { key: "petroleo", label: "Petróleo" },
+        { key: "soja", label: "Soja" },
         { key: "macro", label: "Macro Comparada" },
       ]}
         active={mundoTab} onChange={setMundoTab} />
       {mundoTab === "energia" && <ElectricidadMundialView />}
       {mundoTab === "petroleo" && <PetroleoView />}
+      {mundoTab === "soja" && <SojaView />}
       {mundoTab === "macro" && <MacroComparadaView />}
       {mundoTab === "mercados" && (<>
 
