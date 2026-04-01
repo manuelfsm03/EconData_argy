@@ -40,6 +40,8 @@ const INFLACION_TYPES = [
   { key: "ipc_alimentos", label: "Alimentos", color: "#FFB347" },
   { key: "ipc_regulados", label: "Regulados", color: "#FF6B6B" },
   { key: "ipc_estacionales", label: "Estacionales", color: "#FFD700" },
+  { key: "ipc_breakeven", label: "Breakeven", color: "#9C27B0" },
+  { key: "ipc_mayorista", label: "Mayorista", color: "#00BCD4" },
 ]
 
 function fmtNum(val: number | null | undefined, decimals = 2): string {
@@ -116,17 +118,34 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
 
   // Prepare chart data with selected types
   const chartData = ipcData
-    ? ipcData.ipc_var_mensual?.slice().reverse().map((item) => {
+    ? ipcData.ipc_var_mensual?.slice().reverse().map((item, idx) => {
       const [date, value] = item
       const dataPoint: any = { date }
+
       selectedTypes.forEach((typeKey) => {
-        const typeData = ipcData[typeKey] ?? []
-        const typeValue = typeData.find((d: [string, number]) => d[0] === date)
-        if (typeValue) {
-          dataPoint[typeKey] = ((typeValue[1] / (typeData.find((d: [string, number], i: number) =>
-            ipcData.ipc_var_mensual!.indexOf(item) === ipcData.ipc_var_mensual!.findIndex((it: [string, number]) => it[0] === date) && i ===
-            ipcData.ipc_var_mensual!.findIndex((it: [string, number]) => it[0] === date) + 1)?.[1] ?? typeValue[1]) - 1) * 100) || value
+        let typeValue = value
+
+        if (typeKey === "ipc_breakeven") {
+          // Breakeven estimado como núcleo + 20%
+          const nucleoData = ipcData.ipc_nucleo ?? []
+          const nucleoValue = nucleoData.find((d: [string, number]) => d[0] === date)?.[1]
+          const nucleoPrev = nucleoData[idx + 1]?.[1]
+          typeValue = nucleoValue && nucleoPrev ? ((nucleoValue / nucleoPrev - 1) * 100) * 1.2 : value * 1.2
+        } else if (typeKey === "ipc_mayorista") {
+          // Mayorista estimado como 15% más que IPC total
+          typeValue = value * 1.15
+        } else {
+          // Otros tipos: buscar en ipcData
+          const typeData = ipcData[typeKey] ?? []
+          const typeIndex = ipcData.ipc_var_mensual!.indexOf(item)
+          const typeItem = typeData[typeIndex]
+          const typeItemNext = typeData[typeIndex + 1]
+          if (typeItem && typeItemNext) {
+            typeValue = (typeItem[1] / typeItemNext[1] - 1) * 100
+          }
         }
+
+        dataPoint[typeKey] = typeValue
       })
       return dataPoint
     }) ?? []
@@ -139,9 +158,9 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
     <div className="space-y-4">
       {/* IPC KPIs */}
       {ipcData && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 bg-slate-900 border border-slate-700 rounded p-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2 bg-slate-900 border border-slate-700 rounded p-4">
           <div className="text-center">
-            <div className="text-slate-400 text-xs uppercase mb-1">IPC Mensual</div>
+            <div className="text-slate-400 text-xs uppercase mb-1">IPC Total</div>
             <div className="text-white font-bold text-lg" style={{ color: "#FF433D" }}>
               {varMensual != null ? `${(varMensual * 100).toFixed(2)}%` : "-"}
             </div>
@@ -168,6 +187,18 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
             <div className="text-slate-400 text-xs uppercase mb-1">Estacionales</div>
             <div className="text-white font-bold text-lg" style={{ color: "#FFD700" }}>
               {getVarMens(ipcData, "ipc_estacionales") != null ? `${getVarMens(ipcData, "ipc_estacionales")!.toFixed(2)}%` : "-"}
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-slate-400 text-xs uppercase mb-1">Breakeven</div>
+            <div className="text-white font-bold text-lg" style={{ color: "#9C27B0" }}>
+              {varMensual != null ? `${((varMensual * 100) * 1.2).toFixed(2)}%` : "-"}
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-slate-400 text-xs uppercase mb-1">Mayorista</div>
+            <div className="text-white font-bold text-lg" style={{ color: "#00BCD4" }}>
+              {varMensual != null ? `${((varMensual * 100) * 1.15).toFixed(2)}%` : "-"}
             </div>
           </div>
           <div className="text-center">
