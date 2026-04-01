@@ -73,6 +73,13 @@ export function PriceChart({ data, series, title, height = 250, yAxisFormat = "c
               }}
               labelStyle={{ color: "#FFA028" }}
               itemStyle={{ padding: 0 }}
+              formatter={(value) => {
+                const num = value as number
+                if (yAxisFormat === "percentage") {
+                  return `${(num * 100).toFixed(2)}%`
+                }
+                return `$${num.toFixed(2)}`
+              }}
             />
             <Legend
               wrapperStyle={{ fontSize: "10px", paddingTop: "4px" }}

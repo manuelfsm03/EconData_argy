@@ -426,113 +426,21 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
           ))}
         </div>
 
-        {/* Argentina Map - SVG interactivo por regiones */}
+        {/* Argentina Map - SVG real de Wikimedia Commons con provincias coloreadas */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px", overflowX: "auto" }}>
-          <div style={{ width: "100%", minWidth: "300px", maxWidth: "800px" }}>
-            <svg
-              viewBox="0 0 320 560"
-              width="100%"
-              height="auto"
-              style={{ border: "1px solid #333333", borderRadius: "2px", background: "#0a0a0a" }}
-              xmlns="http://www.w3.org/2000/svg"
-              preserveAspectRatio="xMidYMid meet"
-            >
-              {/* Fondo */}
-              <rect width="320" height="560" fill="#0a0a0a" />
-
-              {/* NOA (Jujuy, Salta, Catamarca, La Rioja) - Noroeste */}
-              <path
-                d="M 80 20 L 140 15 L 145 100 L 110 140 L 70 120 Z"
-                fill={getInflationColor(3.1)}
-                stroke="#1a1a1a"
-                strokeWidth="1.5"
-                opacity="0.8"
-              />
-              <text x="105" y="75" textAnchor="middle" fill="#FFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
-                NOA
-              </text>
-              <text x="105" y="88" textAnchor="middle" fill="#FFA028" fontSize="9" fontFamily="monospace">
-                3.1%
-              </text>
-
-              {/* NEA (Formosa, Misiones, Corrientes, E.Ríos) - Noreste */}
-              <path
-                d="M 145 15 L 200 20 L 220 60 L 210 140 L 145 100 Z"
-                fill={getInflationColor(3.5)}
-                stroke="#1a1a1a"
-                strokeWidth="1.5"
-                opacity="0.8"
-              />
-              <text x="180" y="70" textAnchor="middle" fill="#FFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
-                NEA
-              </text>
-              <text x="180" y="83" textAnchor="middle" fill="#FFA028" fontSize="9" fontFamily="monospace">
-                3.5%
-              </text>
-
-              {/* Cuyo (Jujuy, Salta, San Juan, Mendoza, San Luis) - Oeste */}
-              <path
-                d="M 70 120 L 110 140 L 115 280 L 80 350 L 50 280 Z"
-                fill={getInflationColor(2.9)}
-                stroke="#1a1a1a"
-                strokeWidth="1.5"
-                opacity="0.8"
-              />
-              <text x="85" y="230" textAnchor="middle" fill="#FFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
-                Cuyo
-              </text>
-              <text x="85" y="243" textAnchor="middle" fill="#FFA028" fontSize="9" fontFamily="monospace">
-                2.9%
-              </text>
-
-              {/* Pampeana (Córdoba, Santa Fe, Stgo. del Estero, Entre Ríos) - Centro */}
-              <path
-                d="M 110 140 L 210 140 L 230 250 L 160 320 L 115 280 Z"
-                fill={getInflationColor(2.8)}
-                stroke="#1a1a1a"
-                strokeWidth="1.5"
-                opacity="0.8"
-              />
-              <text x="160" y="220" textAnchor="middle" fill="#FFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
-                Pampeana
-              </text>
-              <text x="160" y="233" textAnchor="middle" fill="#FFA028" fontSize="9" fontFamily="monospace">
-                2.8%
-              </text>
-
-              {/* GBA (CABA + Provincia de Buenos Aires) - Centro-Este */}
-              <path
-                d="M 160 320 L 230 250 L 240 350 L 200 380 Z"
-                fill={getInflationColor(3.2)}
-                stroke="#1a1a1a"
-                strokeWidth="1.5"
-                opacity="0.8"
-              />
-              <text x="210" y="340" textAnchor="middle" fill="#FFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
-                GBA
-              </text>
-              <text x="210" y="353" textAnchor="middle" fill="#FFA028" fontSize="9" fontFamily="monospace">
-                3.2%
-              </text>
-
-              {/* Patagonia (Neuquén, Río Negro, Chubut, Santa Cruz, TDF) - Sur */}
-              <path
-                d="M 80 350 L 160 320 L 200 380 L 240 420 L 200 560 L 100 560 Z"
-                fill={getInflationColor(2.5)}
-                stroke="#1a1a1a"
-                strokeWidth="1.5"
-                opacity="0.8"
-              />
-              <text x="150" y="460" textAnchor="middle" fill="#FFF" fontSize="11" fontWeight="bold" fontFamily="IBM Plex Mono">
-                Patagonia
-              </text>
-              <text x="150" y="473" textAnchor="middle" fill="#FFA028" fontSize="9" fontFamily="monospace">
-                2.5%
-              </text>
-
-              {/* Borde del mapa */}
-              <rect width="320" height="560" fill="none" stroke="#333333" strokeWidth="1" />
-            </svg>
+          <div style={{ width: "100%", minWidth: "300px", maxWidth: "100%" }}>
+            <embed
+              src="/argentina_inflation_map.svg"
+              type="image/svg+xml"
+              style={{
+                border: "1px solid #333333",
+                borderRadius: "2px",
+                background: "#0a0a0a",
+                width: "100%",
+                height: "auto",
+                minHeight: "500px"
+              }}
+            />
           </div>
         </div>
 

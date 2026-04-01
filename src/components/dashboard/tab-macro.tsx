@@ -167,47 +167,85 @@ const PONDERACIONES = [
 ]
 
 export function PonderacionesTable() {
+  const chartData = PONDERACIONES.map(p => ({
+    nombre: p.cat,
+    "2004": p.actual,
+    "2022": p.propuesto,
+  }))
+
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr>
-            <th style={{ textAlign: "left", padding: "4px 8px", fontSize: 9, color: "#555", borderBottom: "1px solid #222" }}>
-              División COICOP
-            </th>
-            <th style={{ textAlign: "right", padding: "4px 8px", fontSize: 9, color: "#4FC3F7", borderBottom: "1px solid #222" }}>
-              Base dic 2016 (vigente)
-            </th>
-            <th style={{ textAlign: "right", padding: "4px 8px", fontSize: 9, color: "#FFD54F", borderBottom: "1px solid #222" }}>
-              Base 2022 (propuesto)
-            </th>
-            <th style={{ textAlign: "right", padding: "4px 8px", fontSize: 9, color: "#555", borderBottom: "1px solid #222" }}>
-              Δ p.p.
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {PONDERACIONES.map((p, i) => {
-            const delta = p.propuesto - p.actual
-            return (
-              <tr key={p.cat} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
-                <td style={{ padding: "4px 8px", fontSize: 11, color: "#aaa" }}>{p.cat}</td>
-                <td style={{ padding: "4px 8px", fontSize: 11, color: "#4FC3F7", textAlign: "right", fontFamily: "monospace" }}>
-                  {p.actual.toFixed(1)}%
-                </td>
-                <td style={{ padding: "4px 8px", fontSize: 11, color: "#FFD54F", textAlign: "right", fontFamily: "monospace" }}>
-                  {p.propuesto.toFixed(1)}%
-                </td>
-                <td style={{ padding: "4px 8px", fontSize: 11, textAlign: "right", fontFamily: "monospace", color: delta > 0 ? "#4AF6C3" : delta < 0 ? "#FF433D" : "#555" }}>
-                  {delta > 0 ? "+" : ""}{delta.toFixed(1)}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-      <div style={{ padding: "6px 8px", fontSize: 9, color: "#444", borderTop: "1px solid #111" }}>
-        Fuente INDEC — Base 2016 usa ENGHo 2004/05 · Base 2022 usa ENGHo 2017/18 (no lanzado a feb 2026)
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      {/* Gráfico de barras */}
+      <div style={{ background: "#0a0a0a", border: "1px solid #333333", borderRadius: "2px", padding: "12px" }}>
+        <div style={{ color: "#FFFFFF", fontSize: "11px", fontWeight: "bold", marginBottom: "12px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          Ponderaciones Canasta 2004 vs 2022
+        </div>
+        <div style={{ height: "400px" }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 16, left: 140, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="2 4" stroke="#1a1a1a" />
+              <XAxis type="number" stroke="#555555" fontSize={9} axisLine={{ stroke: "#333333" }} />
+              <YAxis dataKey="nombre" type="category" stroke="#555555" fontSize={9} width={135} axisLine={{ stroke: "#333333" }} tick={{ fill: "#999999", fontSize: 9 }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#0a0a0a",
+                  border: "1px solid #333333",
+                  borderRadius: "0",
+                  fontSize: "10px",
+                  fontFamily: "monospace",
+                }}
+                labelStyle={{ color: "#FFA028" }}
+              />
+              <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }} />
+              <Bar dataKey="2004" fill="#4FC3F7" name="Base 2016 (vigente)" />
+              <Bar dataKey="2022" fill="#FFD54F" name="Base 2022 (propuesto)" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Tabla detallada */}
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: "left", padding: "4px 8px", fontSize: 9, color: "#555", borderBottom: "1px solid #222" }}>
+                División COICOP
+              </th>
+              <th style={{ textAlign: "right", padding: "4px 8px", fontSize: 9, color: "#4FC3F7", borderBottom: "1px solid #222" }}>
+                Base 2004
+              </th>
+              <th style={{ textAlign: "right", padding: "4px 8px", fontSize: 9, color: "#FFD54F", borderBottom: "1px solid #222" }}>
+                Base 2022
+              </th>
+              <th style={{ textAlign: "right", padding: "4px 8px", fontSize: 9, color: "#555", borderBottom: "1px solid #222" }}>
+                Δ p.p.
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {PONDERACIONES.map((p, i) => {
+              const delta = p.propuesto - p.actual
+              return (
+                <tr key={p.cat} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
+                  <td style={{ padding: "4px 8px", fontSize: 11, color: "#aaa" }}>{p.cat}</td>
+                  <td style={{ padding: "4px 8px", fontSize: 11, color: "#4FC3F7", textAlign: "right", fontFamily: "monospace" }}>
+                    {p.actual.toFixed(1)}%
+                  </td>
+                  <td style={{ padding: "4px 8px", fontSize: 11, color: "#FFD54F", textAlign: "right", fontFamily: "monospace" }}>
+                    {p.propuesto.toFixed(1)}%
+                  </td>
+                  <td style={{ padding: "4px 8px", fontSize: 11, textAlign: "right", fontFamily: "monospace", color: delta > 0 ? "#4AF6C3" : delta < 0 ? "#FF433D" : "#555" }}>
+                    {delta > 0 ? "+" : ""}{delta.toFixed(1)}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+        <div style={{ padding: "6px 8px", fontSize: 9, color: "#444", borderTop: "1px solid #111" }}>
+          Fuente INDEC — Base 2016 usa ENGHo 2004/05 (vigente) · Base 2022 usa ENGHo 2017/18 (propuesta, no lanzada a feb 2026)
+        </div>
       </div>
     </div>
   )
@@ -1364,10 +1402,32 @@ function EmaeView() {
 // ── Mi Inflación Component ──────────────────────────────────────────────────────
 
 export function MiInflacionView() {
-  const [modo, setModo] = useState<"formulario" | "resultado">("formulario")
+  const [modo, setModo] = useState<"inicio" | "gasto" | "encuesta" | "ajuste" | "resultado">("inicio")
+  const [gastos, setGastos] = useState<Record<string, number>>(
+    Object.fromEntries(PONDERACIONES.map(p => [p.cat, 0]))
+  )
   const [ponderaciones, setPonderaciones] = useState<Record<string, number>>(
     Object.fromEntries(PONDERACIONES.map(p => [p.cat, p.actual]))
   )
+  const [encuestaRespuestas, setEncuestaRespuestas] = useState<Record<number, number>>({})
+
+  const handleGastoChange = (cat: string, value: number) => {
+    setGastos({ ...gastos, [cat]: Math.max(0, value) })
+  }
+
+  const calcularPonderacionesDesdeGasto = () => {
+    const total = Object.values(gastos).reduce((a, b) => a + b, 0)
+    if (total <= 0) return
+
+    const nuevas = Object.fromEntries(
+      Object.entries(gastos).map(([cat, gasto]) => [
+        cat,
+        parseFloat(((gasto / total) * 100).toFixed(1))
+      ])
+    )
+    setPonderaciones(nuevas)
+    setModo("ajuste")
+  }
 
   const handlePonderacionChange = (cat: string, value: number) => {
     const updated = { ...ponderaciones, [cat]: Math.max(0, Math.min(100, value)) }
@@ -1385,10 +1445,265 @@ export function MiInflacionView() {
 
   return (
     <div style={{ padding: "8px 12px" }}>
-      {modo === "formulario" && (
+      {/* MODO INICIO */}
+      {modo === "inicio" && (
+        <>
+          <div style={{ fontSize: 10, color: "#aaa", marginBottom: 16, lineHeight: 1.5 }}>
+            Calcula tu IPC personalizado. Elige cómo ingresar tus datos:
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+            <button
+              onClick={() => setModo("gasto")}
+              style={{
+                background: "#0a5f4d",
+                color: "#4AF6C3",
+                border: "1px solid #4AF6C3",
+                padding: "12px",
+                fontSize: 10,
+                fontWeight: 600,
+                cursor: "pointer",
+                borderRadius: "2px",
+              }}
+            >
+              Ingresar Montos (ARS)
+            </button>
+            <button
+              onClick={() => setModo("encuesta")}
+              style={{
+                background: "#0a5f4d",
+                color: "#4AF6C3",
+                border: "1px solid #4AF6C3",
+                padding: "12px",
+                fontSize: 10,
+                fontWeight: 600,
+                cursor: "pointer",
+                borderRadius: "2px",
+              }}
+            >
+              Responder Encuesta
+            </button>
+            <button
+              onClick={() => setModo("ajuste")}
+              style={{
+                background: "#1a4d3e",
+                color: "#FFA028",
+                border: "1px solid #FFA028",
+                padding: "12px",
+                fontSize: 10,
+                fontWeight: 600,
+                cursor: "pointer",
+                borderRadius: "2px",
+              }}
+            >
+              Ajustar Manualmente
+            </button>
+            <button
+              onClick={() => setModo("resultado")}
+              style={{
+                background: "#2a3a2a",
+                color: "#999",
+                border: "1px solid #555",
+                padding: "12px",
+                fontSize: 10,
+                fontWeight: 600,
+                cursor: "pointer",
+                borderRadius: "2px",
+              }}
+            >
+              Ver Resultado
+            </button>
+          </div>
+
+          <div style={{ fontSize: 8, color: "#555", padding: "8px", background: "#060606", border: "1px solid #111", lineHeight: 1.5 }}>
+            Basado en datos INDEC. Los valores se normalizan automáticamente a 100%.
+          </div>
+        </>
+      )}
+
+      {/* MODO GASTO */}
+      {modo === "gasto" && (
         <>
           <div style={{ fontSize: 10, color: "#aaa", marginBottom: 12 }}>
-            Ajusta las ponderaciones para cada categoría según tu patrón de gasto personal.
+            Ingresa cuánto gastas al mes en cada categoría (en ARS). Las ponderaciones se calcularán automáticamente.
+          </div>
+
+          <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: 12, marginBottom: 12 }}>
+            {PONDERACIONES.map((p) => (
+              <div key={p.cat} style={{ marginBottom: 10 }}>
+                <label style={{ fontSize: 9, color: "#888", fontWeight: 600, display: "block", marginBottom: 4 }}>
+                  {p.cat}
+                </label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <span style={{ color: "#555", lineHeight: "24px" }}>$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={gastos[p.cat] || 0}
+                    onChange={(e) => handleGastoChange(p.cat, parseFloat(e.target.value) || 0)}
+                    placeholder="0"
+                    style={{
+                      flex: 1,
+                      background: "#1a1a1a",
+                      border: "1px solid #333",
+                      color: "#FFA028",
+                      padding: "4px 8px",
+                      fontSize: 10,
+                      fontFamily: "monospace",
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+            <div style={{ fontSize: 8, color: "#666", paddingTop: 8, borderTop: "1px solid #222" }}>
+              Total: ${Object.values(gastos).reduce((a, b) => a + b, 0).toLocaleString("es-AR")}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={calcularPonderacionesDesdeGasto}
+              style={{
+                background: "#4AF6C3",
+                color: "#000",
+                border: "none",
+                padding: "6px 14px",
+                fontSize: 10,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Calcular Ponderaciones
+            </button>
+            <button
+              onClick={() => setModo("inicio")}
+              style={{
+                background: "#444",
+                color: "#fff",
+                border: "none",
+                padding: "6px 14px",
+                fontSize: 10,
+                cursor: "pointer",
+              }}
+            >
+              Volver
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* MODO ENCUESTA */}
+      {modo === "encuesta" && (
+        <>
+          <div style={{ fontSize: 10, color: "#aaa", marginBottom: 12 }}>
+            Responde 8 preguntas sobre tus gastos mensuales (en ARS). Se calcula automáticamente tu perfil de gasto.
+          </div>
+
+          <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: 12, marginBottom: 12, maxHeight: "400px", overflowY: "auto" }}>
+            {[
+              { q: "¿Cuánto en alimentos y bebidas?", key: 0 },
+              { q: "¿Cuánto en vivienda (alquiler/servicios)?", key: 1 },
+              { q: "¿Cuánto en transporte?", key: 2 },
+              { q: "¿Cuánto en salud?", key: 3 },
+              { q: "¿Cuánto en educación?", key: 4 },
+              { q: "¿Cuánto en ropa/indumentaria?", key: 5 },
+              { q: "¿Cuánto en recreación/cultura?", key: 6 },
+              { q: "¿Cuánto en comunicación (teléfono/internet)?", key: 7 },
+              { q: "¿Cuánto en restaurantes/hoteles?", key: 8 },
+            ].map((item) => (
+              <div key={item.key} style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 9, color: "#888", fontWeight: 600, display: "block", marginBottom: 4 }}>
+                  {item.q}
+                </label>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <span style={{ color: "#555", lineHeight: "24px", minWidth: "16px" }}>$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    onChange={(e) => setEncuestaRespuestas({ ...encuestaRespuestas, [item.key]: parseFloat(e.target.value) || 0 })}
+                    style={{
+                      flex: 1,
+                      background: "#1a1a1a",
+                      border: "1px solid #333",
+                      color: "#4AF6C3",
+                      padding: "4px 6px",
+                      fontSize: 9,
+                      fontFamily: "monospace",
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => {
+                const total = Object.values(encuestaRespuestas).reduce((a, b) => a + b, 0)
+                if (total > 0) {
+                  const temp: Record<string, number> = {}
+                  temp["Alimentos y bebidas"] = encuestaRespuestas[0] || 0
+                  temp["Vivienda y servicios"] = encuestaRespuestas[1] || 0
+                  temp["Transporte"] = encuestaRespuestas[2] || 0
+                  temp["Salud"] = encuestaRespuestas[3] || 0
+                  temp["Educación"] = encuestaRespuestas[4] || 0
+                  temp["Indumentaria"] = encuestaRespuestas[5] || 0
+                  temp["Recreación y cultura"] = encuestaRespuestas[6] || 0
+                  temp["Comunicación"] = encuestaRespuestas[7] || 0
+                  temp["Restaurantes/hoteles"] = encuestaRespuestas[8] || 0
+
+                  // Distribuir resto entre categorías menores
+                  const gastosContemp = Object.entries(temp).reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {})
+                  const totalTemp = Object.values(gastosContemp).reduce((a, b) => a + b, 0)
+
+                  // Categorías sin pregunta directa
+                  const resto = Math.max(0, totalTemp * 0.08) // 8% de gastos menores
+                  const restoPerCat = resto / 3
+
+                  if (!temp["Beb. alcohólicas/tabaco"]) temp["Beb. alcohólicas/tabaco"] = restoPerCat
+                  if (!temp["Equipamiento hogar"]) temp["Equipamiento hogar"] = restoPerCat
+                  if (!temp["Otros bienes/servicios"]) temp["Otros bienes/servicios"] = restoPerCat
+
+                  setGastos(temp)
+                  calcularPonderacionesDesdeGasto()
+                }
+              }}
+              style={{
+                background: "#4AF6C3",
+                color: "#000",
+                border: "none",
+                padding: "6px 14px",
+                fontSize: 10,
+                fontWeight: 600,
+                cursor: "pointer",
+                flex: 1,
+              }}
+            >
+              Calcular mi Perfil
+            </button>
+            <button
+              onClick={() => setModo("inicio")}
+              style={{
+                background: "#444",
+                color: "#fff",
+                border: "none",
+                padding: "6px 14px",
+                fontSize: 10,
+                cursor: "pointer",
+              }}
+            >
+              Volver
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* MODO AJUSTE */}
+      {modo === "ajuste" && (
+        <>
+          <div style={{ fontSize: 10, color: "#aaa", marginBottom: 12 }}>
+            Ajusta las ponderaciones según necesites. Los valores se normalizan automáticamente.
           </div>
 
           <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: 12, marginBottom: 12 }}>
@@ -1397,7 +1712,7 @@ export function MiInflacionView() {
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                   <label style={{ fontSize: 9, color: "#888", fontWeight: 600 }}>{p.cat}</label>
                   <span style={{ fontSize: 9, color: "#FFA028", fontFamily: "monospace" }}>
-                    {ponderaciones[p.cat]?.toFixed(1) ?? p.actual.toFixed(1)}%
+                    {ponderaciones[p.cat]?.toFixed(1)}%
                   </span>
                 </div>
                 <input
@@ -1432,7 +1747,7 @@ export function MiInflacionView() {
               Ver tu IPC
             </button>
             <button
-              onClick={() => setPonderaciones(Object.fromEntries(PONDERACIONES.map(p => [p.cat, p.actual])))}
+              onClick={() => { setPonderaciones(Object.fromEntries(PONDERACIONES.map(p => [p.cat, p.actual]))); setModo("inicio") }}
               style={{
                 background: "#444",
                 color: "#fff",
@@ -1444,10 +1759,24 @@ export function MiInflacionView() {
             >
               Restaurar INDEC
             </button>
+            <button
+              onClick={() => setModo("inicio")}
+              style={{
+                background: "#333",
+                color: "#fff",
+                border: "none",
+                padding: "6px 14px",
+                fontSize: 10,
+                cursor: "pointer",
+              }}
+            >
+              Volver
+            </button>
           </div>
         </>
       )}
 
+      {/* MODO RESULTADO */}
       {modo === "resultado" && (
         <>
           <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, marginBottom: 12, background: "#111" }}>
@@ -1457,7 +1786,7 @@ export function MiInflacionView() {
           </div>
 
           <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: 12, marginBottom: 12 }}>
-            <div style={{ fontSize: 9, color: "#FFA028", fontWeight: 600, marginBottom: 8 }}>Tu Canasta vs INDEC 2016</div>
+            <div style={{ fontSize: 9, color: "#FFA028", fontWeight: 600, marginBottom: 8 }}>Tu Canasta vs INDEC</div>
             <table style={{ width: "100%", fontSize: 9 }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid #222" }}>
@@ -1467,7 +1796,7 @@ export function MiInflacionView() {
                 </tr>
               </thead>
               <tbody>
-                {PONDERACIONES.filter(p => ponderaciones[p.cat] > 0).slice(0, 6).map((p) => (
+                {PONDERACIONES.filter(p => ponderaciones[p.cat] > 0).map((p) => (
                   <tr key={p.cat} style={{ borderBottom: "1px solid #111" }}>
                     <td style={{ padding: "3px 0", color: "#888", fontSize: 8 }}>{p.cat}</td>
                     <td style={{ padding: "3px 0", textAlign: "right", color: "#FFA028", fontFamily: "monospace" }}>
@@ -1483,12 +1812,11 @@ export function MiInflacionView() {
           </div>
 
           <div style={{ fontSize: 9, color: "#666", padding: "8px", background: "#060606", border: "1px solid #111", marginBottom: 12, lineHeight: 1.5 }}>
-            <strong>Nota:</strong> Esta herramienta calcula una estimación de tu IPC personalizado basada en las ponderaciones que ingreses.
-            Los valores mostrados son aproximaciones. Para mayor precisión, consulta datos.gob.ar
+            <strong>Nota:</strong> Esta es una estimación de tu IPC personalizado. Para mayor precisión, consulta datos.gob.ar
           </div>
 
           <button
-            onClick={() => setModo("formulario")}
+            onClick={() => setModo("inicio")}
             style={{
               background: "#444",
               color: "#fff",
@@ -1499,7 +1827,7 @@ export function MiInflacionView() {
               width: "100%",
             }}
           >
-            Volver a Ajustar
+            Editar
           </button>
         </>
       )}
