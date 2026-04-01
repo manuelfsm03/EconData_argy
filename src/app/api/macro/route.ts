@@ -226,7 +226,7 @@ export async function GET(request: NextRequest) {
     if (endpoint === "ipc") {
       const data = await getMultiserie(
         ["ipc_general", "ipc_var_mensual", "ipc_nucleo", "ipc_estacionales", "ipc_regulados", "ipc_alimentos"],
-        60,
+        180,
       )
       // ipc_var_mensual viene en proporción (0.0288) — DEJARlo así para que el frontend lo multiplique
       // Variación interanual calculada desde nivel general

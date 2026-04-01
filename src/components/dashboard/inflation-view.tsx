@@ -86,6 +86,8 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
   const [regionalData, setRegionalData] = useState<RegionalInflation[]>([])
   const [polymarketInflation, setPolymarketInflation] = useState<PolymarketInflation[]>([])
   const [ipcTab, setIpcTab] = useState("series")
+  const [selectedYear, setSelectedYear] = useState<string | null>(null)
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
 
   useEffect(() => {
     // Fetch IPC data
@@ -205,9 +207,12 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
     return 0
   }
 
-  // Prepare chart data para Gráfico 1
+  // Prepare chart data para Gráfico 1 (aplicar filtro de año)
   const chartData1 = ipcData
-    ? ipcData.ipc_var_mensual?.slice().reverse().map((item, idx) => {
+    ? ipcData.ipc_var_mensual?.slice().reverse().filter(([date]) => {
+      if (!selectedYear) return true
+      return date.substring(0, 4) === selectedYear
+    }).map((item, idx) => {
       const [date, value] = item
       const dataPoint: any = { date }
 
@@ -246,8 +251,159 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
   const varMensual = ipcData?.ipc_var_mensual?.[0]?.[1]
   const varInteranual = ipcData?.ipc_var_interanual?.[0]?.[1]
 
+  // Extraer años únicos de los datos
+  const getUniqueYears = (): string[] => {
+    if (!ipcData?.ipc_var_mensual) return []
+    const years = new Set<string>()
+    ipcData.ipc_var_mensual.forEach(([date]) => {
+      const year = date.substring(0, 4)
+      years.add(year)
+    })
+    return Array.from(years).sort().reverse()
+  }
+
+  // Filtrar datos según año y mes
+  const getFilteredData = () => {
+    if (!ipcData?.ipc_var_mensual) return []
+    let filtered = ipcData.ipc_var_mensual
+
+    if (selectedYear) {
+      filtered = filtered.filter(([date]) => date.substring(0, 4) === selectedYear)
+    }
+
+    if (selectedMonth && selectedYear) {
+      const monthNum = String(parseInt(selectedMonth)).padStart(2, '0')
+      filtered = filtered.filter(([date]) => date.substring(5, 7) === monthNum)
+    }
+
+    return filtered
+  }
+
+  // Descargar CSV con las series seleccionadas en Gráfico 1
+  const downloadCSV = () => {
+    if (chartData1.length === 0) return
+
+    // Headers: Fecha + series seleccionadas
+    const headers = ["Fecha", ...selectedTypes1.map(key =>
+      GRAFICO1_TYPES.find(t => t.key === key)?.label || key
+    )]
+
+    let csvContent = headers.join(",") + "\n"
+
+    chartData1.forEach(row => {
+      const values = [row.date, ...selectedTypes1.map(key => {
+        const val = row[key]
+        return val != null ? (val * 100).toFixed(2) : ""
+      })]
+      csvContent += values.join(",") + "\n"
+    })
+
+    const element = document.createElement("a")
+    element.setAttribute("href", "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent))
+    const seriesLabel = selectedTypes1.length === 1 ? GRAFICO1_TYPES.find(t => t.key === selectedTypes1[0])?.label.replace(/\s+/g, '_') : "completo"
+    element.setAttribute("download", `ipc_${seriesLabel}_${selectedYear || "historico"}.csv`)
+    element.style.display = "none"
+    document.body.appendChild(element)
+    element.click()
+    document.body.removeChild(element)
+  }
+
+  // Descargar CSV con las series seleccionadas en Gráfico 2
+  const downloadCSVGrafico2 = () => {
+    if (chartData2.length === 0) return
+
+    // Headers: Fecha + series seleccionadas
+    const headers = ["Fecha", ...selectedTypes2.map(key =>
+      GRAFICO2_TYPES.find(t => t.key === key)?.label || key
+    )]
+
+    let csvContent = headers.join(",") + "\n"
+
+    chartData2.forEach(row => {
+      const values = [row.date, ...selectedTypes2.map(key => {
+        const val = row[key]
+        return val != null ? (val * 100).toFixed(2) : ""
+      })]
+      csvContent += values.join(",") + "\n"
+    })
+
+    const element = document.createElement("a")
+    element.setAttribute("href", "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent))
+    const seriesLabel = selectedTypes2.length === 1 ? GRAFICO2_TYPES.find(t => t.key === selectedTypes2[0])?.label.replace(/\s+/g, '_') : "completo"
+    element.setAttribute("download", `ipc_esperada_${seriesLabel}.csv`)
+    element.style.display = "none"
+    document.body.appendChild(element)
+    element.click()
+    document.body.removeChild(element)
+  }
+
+  const filteredData = getFilteredData()
+  const uniqueYears = getUniqueYears()
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      {/* INFLACIÓN MUNDIAL */}
+      <div style={{ background: "#000000", border: "1px solid #333333", borderRadius: "4px", padding: "16px" }}>
+        <h3 style={{ color: "#FFFFFF", fontWeight: "bold", marginBottom: "16px", fontFamily: "IBM Plex Mono, monospace" }}>
+          INFLACIÓN MUNDIAL — PAÍSES CLAVE
+        </h3>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "8px", marginBottom: "16px" }}>
+          {[
+            { country: "Argentina", inflation: 2.8, color: "#CE93D8" },
+            { country: "Brasil", inflation: 1.2, color: "#FFD54F" },
+            { country: "Chile", inflation: 1.8, color: "#FFA028" },
+            { country: "México", inflation: 2.4, color: "#4FC3F7" },
+            { country: "Colombia", inflation: 1.9, color: "#4AF6C3" },
+            { country: "Perú", inflation: 2.1, color: "#FF433D" },
+            { country: "USA", inflation: 1.4, color: "#81C784" },
+            { country: "Alemania", inflation: 0.9, color: "#64B5F6" },
+            { country: "Japón", inflation: 0.5, color: "#FFB74D" },
+            { country: "China", inflation: 0.2, color: "#E57373" },
+            { country: "Eurozona", inflation: 1.0, color: "#BA68C8" },
+            { country: "Reino Unido", inflation: 1.5, color: "#80DEEA" },
+          ].map((d) => (
+            <div
+              key={d.country}
+              style={{
+                background: "#0a0a0a",
+                border: `1px solid ${d.color}`,
+                borderRadius: "2px",
+                padding: "12px",
+                borderLeft: `3px solid ${d.color}`,
+              }}
+            >
+              <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>
+                {d.country}
+              </div>
+              <div style={{ color: d.inflation > 3 ? "#FF433D" : d.inflation > 2 ? "#FFA028" : "#4AF6C3", fontWeight: "bold", fontSize: "16px", fontFamily: "monospace" }}>
+                {d.inflation.toFixed(1)}%
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <div style={{
+            width: "100%",
+            border: "1px solid #333333",
+            borderRadius: "4px",
+            overflow: "hidden",
+            background: "#0a0a0a"
+          }}>
+            <iframe
+              src="/inflation_map_global.html"
+              style={{
+                width: "100%",
+                height: "600px",
+                border: "none",
+                borderRadius: "4px"
+              }}
+              title="Mapa interactivo global de inflación"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* IPC KPIs */}
       {ipcData && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: "8px", background: "#000000", border: "1px solid #333333", borderRadius: "4px", padding: "16px" }}>
@@ -308,7 +464,7 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
           <h3 style={{ color: "#FFFFFF", fontWeight: "bold", marginBottom: "12px", fontFamily: "IBM Plex Mono, monospace" }}>
             IPC OBSERVADO
           </h3>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
             {GRAFICO1_TYPES.map((type) => (
               <button
                 key={type.key}
@@ -334,6 +490,48 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
                 {type.label}
               </button>
             ))}
+            <div style={{ marginLeft: "auto", display: "flex", gap: "8px", alignItems: "center" }}>
+              <select
+                value={selectedYear || ""}
+                onChange={(e) => {
+                  setSelectedYear(e.target.value || null)
+                  setSelectedMonth(null)
+                }}
+                style={{
+                  background: "#0a0a0a",
+                  color: "#FFFFFF",
+                  border: "1px solid #333333",
+                  padding: "6px 12px",
+                  borderRadius: "2px",
+                  fontSize: "11px",
+                  fontFamily: "IBM Plex Mono, monospace",
+                  cursor: "pointer"
+                }}
+              >
+                <option value="">Todos</option>
+                {uniqueYears.map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+              <button
+                onClick={downloadCSV}
+                disabled={chartData1.length === 0}
+                style={{
+                  background: chartData1.length > 0 ? "#4AF6C3" : "#333333",
+                  color: chartData1.length > 0 ? "#000000" : "#666666",
+                  border: "none",
+                  padding: "6px 16px",
+                  borderRadius: "2px",
+                  fontSize: "11px",
+                  fontWeight: "600",
+                  fontFamily: "IBM Plex Mono, monospace",
+                  cursor: chartData1.length > 0 ? "pointer" : "not-allowed",
+                  textTransform: "uppercase"
+                }}
+              >
+                Descargar CSV
+              </button>
+            </div>
           </div>
         </div>
 
@@ -356,7 +554,7 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
           <h3 style={{ color: "#FFFFFF", fontWeight: "bold", marginBottom: "12px", fontFamily: "IBM Plex Mono, monospace" }}>
             INFLACIÓN ESPERADA
           </h3>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
             {GRAFICO2_TYPES.map((type) => (
               <button
                 key={type.key}
@@ -382,6 +580,26 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
                 {type.label}
               </button>
             ))}
+            <div style={{ marginLeft: "auto" }}>
+              <button
+                onClick={downloadCSVGrafico2}
+                disabled={chartData2.length === 0}
+                style={{
+                  background: chartData2.length > 0 ? "#4AF6C3" : "#333333",
+                  color: chartData2.length > 0 ? "#000000" : "#666666",
+                  border: "none",
+                  padding: "6px 16px",
+                  borderRadius: "2px",
+                  fontSize: "11px",
+                  fontWeight: "600",
+                  fontFamily: "IBM Plex Mono, monospace",
+                  cursor: chartData2.length > 0 ? "pointer" : "not-allowed",
+                  textTransform: "uppercase"
+                }}
+              >
+                Descargar CSV
+              </button>
+            </div>
           </div>
         </div>
 
@@ -495,7 +713,7 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
       {ipcData && (
         <div style={{ background: "#000000", border: "1px solid #333333", borderRadius: "4px", padding: "16px", marginTop: "16px" }}>
           {/* Tab Buttons */}
-          <div style={{ display: "flex", gap: "8px", marginBottom: "16px", borderBottom: "1px solid #333333", paddingBottom: "8px" }}>
+          <div style={{ display: "flex", gap: "8px", marginBottom: "16px", borderBottom: "1px solid #333333", paddingBottom: "8px", flexWrap: "wrap" }}>
             {["series", "canasta", "personal"].map((tab) => (
               <button
                 key={tab}
@@ -522,33 +740,45 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
 
           {/* Tab Content */}
           {ipcTab === "series" && (
-            <DataTable
-              title="HISTÓRICO IPC VAR. MENSUAL — ÚLTIMOS 24 PERÍODOS"
-              data={(ipcData.ipc_var_mensual ?? []).slice(0, 24).map(([d, v]) => ({ date: d, value: v }))}
-              columns={[
-                {
-                  key: "date",
-                  header: "Fecha",
-                  render: (v) => v,
-                },
-                {
-                  key: "value",
-                  header: "IPC %",
-                  numeric: true,
-                  render: (v) => {
-                    const val = (v as number) * 100
-                    return (
-                      <span style={{
-                        color: val > 5 ? "#FF433D" : val > 3 ? "#FFA028" : "#4AF6C3",
-                        fontWeight: "bold"
-                      }}>
-                        {val >= 0 ? "+" : ""}{(val).toFixed(2)}%
-                      </span>
-                    )
+            <div>
+              <DataTable
+                title={`HISTÓRICO IPC — ${selectedYear ? selectedYear : 'COMPLETO'}`}
+                data={chartData1.map((row) => {
+                  const seriesData: any = { date: row.date }
+                  selectedTypes1.forEach((key) => {
+                    const typeLabel = GRAFICO1_TYPES.find(t => t.key === key)?.label || key
+                    seriesData[typeLabel] = row[key]
+                  })
+                  return seriesData
+                })}
+                columns={[
+                  {
+                    key: "date",
+                    header: "Fecha",
+                    render: (v) => v,
                   },
-                },
-              ]}
-            />
+                  ...selectedTypes1.map((key) => {
+                    const type = GRAFICO1_TYPES.find(t => t.key === key)
+                    return {
+                      key: type?.label || key,
+                      header: type?.label || key,
+                      numeric: true,
+                      render: (v: any) => {
+                        const val = v != null ? (v as number) * 100 : null
+                        return val != null ? (
+                          <span style={{
+                            color: val > 5 ? "#FF433D" : val > 3 ? "#FFA028" : "#4AF6C3",
+                            fontWeight: "bold"
+                          }}>
+                            {val >= 0 ? "+" : ""}{(val).toFixed(2)}%
+                          </span>
+                        ) : "-"
+                      },
+                    }
+                  }),
+                ]}
+              />
+            </div>
           )}
 
           {ipcTab === "canasta" && <PonderacionesTable />}
