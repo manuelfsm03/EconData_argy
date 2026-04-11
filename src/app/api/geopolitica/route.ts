@@ -17,14 +17,42 @@
 import { NextRequest, NextResponse } from "next/server"
 
 const RSS_FEEDS: Record<string, string> = {
-  bbc_world: "http://feeds.bbci.co.uk/news/world/rss.xml",
-  bbc_business: "http://feeds.bbci.co.uk/news/business/rss.xml",
-  aljazeera_en: "https://www.aljazeera.com/xml/rss/all.xml",
-  france24_es: "https://www.france24.com/es/rss",
-  bbc_mundo: "https://feeds.bbci.co.uk/mundo/rss.xml",
-  infobae_eco: "https://www.infobae.com/feeds/rss/economia/",
-  ambito_inter: "https://www.ambito.com/rss/internacionales.xml",
-  cronista_mundo: "https://www.cronista.com/rss/mundo/",
+  // Argentina
+  ambito_eco:     "https://www.ambito.com/rss/economia.xml",
+  ambito_fin:     "https://www.ambito.com/rss/finanzas.xml",
+  iprofesional:   "https://www.iprofesional.com/rss/finanzas",
+  bae_negocios:   "https://www.baenegocios.com/feed/",
+  la_nacion:      "https://www.lanacion.com.ar/arc/outboundfeeds/rss/category/economia/",
+  perfil:         "http://www.perfil.com/feed/economia",
+  el_economista:  "https://www.eleconomista.com.ar/feed/",
+  // Existentes
+  bbc_world:      "http://feeds.bbci.co.uk/news/world/rss.xml",
+  bbc_business:   "http://feeds.bbci.co.uk/news/business/rss.xml",
+  aljazeera_en:   "https://www.aljazeera.com/xml/rss/all.xml",
+  france24_es:    "https://www.france24.com/es/rss",
+  bbc_mundo:      "https://feeds.bbci.co.uk/mundo/rss.xml",
+  infobae_eco:    "https://www.infobae.com/arc/outboundfeeds/rss/",
+  ambito_inter:   "https://www.ambito.com/rss/internacionales.xml",
+  cronista_mundo: "https://www.cronista.com/files/rss/news.xml",
+  // EEUU
+  politico:       "https://rss.politico.com/politics-news.xml",
+  wsj:            "https://feeds.a.dj.com/rss/RSSWorldNews.xml",
+  // UK
+  guardian:       "https://www.theguardian.com/world/rss",
+  financial_times:"https://www.ft.com/rss/home",
+  // Alemania
+  dw_espanol:     "https://rss.dw.com/rdf/rss-es-eco",
+  handelsblatt:   "https://www.handelsblatt.com/contentexport/feed/top-themen",
+  // Medio Oriente
+  al_monitor:     "https://www.al-monitor.com/rss.xml",
+  // Rusia
+  meduza:         "https://meduza.io/rss/all",
+  kommersant:     "https://www.kommersant.ru/RSS/main.xml",
+  // China
+  wire_china:     "https://thewirechina.com/feed/",
+  // Brasil
+  folha:          "https://feeds.folha.uol.com.br/emcimadahora/rss091.xml",
+  infomoney:      "https://www.infomoney.com.br/feed/",
 }
 
 const CATEGORIES: Record<string, string[]> = {
@@ -119,7 +147,7 @@ function parseRssItems(xml: string): { title: string; link: string; pub: string;
       items.push({ title, link, pub, summary: summary.replace(/<[^>]+>/g, "").slice(0, 280) })
     }
   }
-  return items.slice(0, 6)
+  return items.slice(0, 10)
 }
 
 // In-memory cache
@@ -141,7 +169,24 @@ interface NewsItem {
   category: string
   color: string
   region: string
+  country: string
   summary: string
+}
+
+const FEED_COUNTRY: Record<string, string> = {
+  ambito_eco: "argentina", ambito_fin: "argentina", iprofesional: "argentina",
+  bae_negocios: "argentina", la_nacion: "argentina", perfil: "argentina",
+  el_economista: "argentina", infobae_eco: "argentina", ambito_inter: "argentina",
+  cronista_mundo: "argentina",
+  bbc_world: "uk", bbc_business: "uk", bbc_mundo: "uk",
+  guardian: "uk", financial_times: "uk",
+  politico: "eeuu", wsj: "eeuu",
+  france24_es: "francia",
+  dw_espanol: "alemania", handelsblatt: "alemania",
+  aljazeera_en: "medio-oriente", al_monitor: "medio-oriente",
+  meduza: "rusia", kommersant: "rusia",
+  wire_china: "china",
+  folha: "brasil", infomoney: "brasil",
 }
 
 async function getFeed(): Promise<{ items: NewsItem[]; count: number; categories: string[] }> {
@@ -172,6 +217,7 @@ async function getFeed(): Promise<{ items: NewsItem[]; count: number; categories
             category: cat,
             color: CAT_COLORS[cat] ?? CAT_COLORS.general,
             region,
+            country: FEED_COUNTRY[sourceName] ?? "otros",
             summary: item.summary,
           })
         }
@@ -190,8 +236,8 @@ async function getFeed(): Promise<{ items: NewsItem[]; count: number; categories
   })
 
   const result = {
-    items: unique.slice(0, 60),
-    count: Math.min(unique.length, 60),
+    items: unique.slice(0, 300),
+    count: Math.min(unique.length, 300),
     categories: Object.keys(CAT_COLORS),
   }
 
