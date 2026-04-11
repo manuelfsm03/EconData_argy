@@ -1,107 +1,74 @@
 "use client"
 
 /**
- * TabTiposCambio — Rediseño completo (rama Pista)
+ * TabTiposCambio — rama Pista
+ * Layout: Precios arriba → Gráficos abajo (single page)
  *
- * Sub-tabs: Precios | Gráficos
- *
- * Precios:
- *   - Cards locales (DolarAPI)
- *   - Bloque internacional (Yahoo Finance vía /api/internacional)
- *   - Tabla futuros ROFEX (/api/rofex)
- *   - Tabla breakevens LECAPs (/api/bonos?tipo=lecap)
- *
- * Gráficos:
- *   - Serie histórica multi-TC (/api/tc-historico)
- *   - Bandas cambiarias (3 fases, calculadas localmente)
- *   - Forecast de bandas (REM / manual, bull/neutral/bear)
- *   - Overlay: futuros ROFEX + breakevens LECAPs (puntos)
+ * Bandas cambiarias — 3 fases:
+ *   Fase 1: crawl 2% mensual  (14/02/2024 – 31/01/2025)
+ *   Fase 2: crawl 1% mensual  (01/02/2025 – 13/04/2025)
+ *   Fase 3: ajuste por IPC[t-2] desde 14/04/2025 (inf $1.000, sup $1.400)
  */
 
 import { useState, useEffect, useMemo, useCallback } from "react"
 import {
   ComposedChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, ReferenceArea,
+  Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface DolarRate {
-  compra: number
-  venta: number
-  nombre: string
-  actualizacion: string
-  variacion: number | null
+  compra: number; venta: number; nombre: string
+  actualizacion: string; variacion: number | null
 }
-
 interface DolarResponse {
   rates: Record<string, DolarRate>
   spreads: {
-    brechaBlueOficial: number | null
-    brechaMepOficial: number | null
-    brechaCclOficial: number | null
-    brechaCclMep: number | null
+    brechaBlueOficial: number | null; brechaMepOficial: number | null
+    brechaCclOficial: number | null;  brechaCclMep: number | null
   }
 }
-
 interface InternacionalData {
   dxy: number | null; eurUsd: number | null; jpyUsd: number | null; brlUsd: number | null
   dxyChg: number | null; eurChg: number | null; jpyChg: number | null; brlChg: number | null
 }
-
 interface RofexFuture {
-  id: string
-  position: string
-  maturity: string
-  maturityLabel: string | null
-  price: number | null
-  devaluation: number | null
-  monthlyDevaluation: number | null
-  tna: number | null
+  id: string; position: string; maturity: string; maturityLabel: string | null
+  price: number | null; devaluation: number | null; monthlyDevaluation: number | null; tna: number | null
 }
-
 interface CapInstrument {
-  ticker: string
-  tipo: string
-  vencimiento: string
-  diasVencimiento: number
-  precio: number | null
-  tem: number | null
-  tir: number | null
-  tea: number | null
-  tcImplicito: number | null
+  ticker: string; tipo: string; vencimiento: string; diasVencimiento: number
+  precio: number | null; tem: number | null; tir: number | null; tea: number | null; tcImplicito: number | null
 }
-
 interface TCEntry {
-  date: string
-  blue?: number
-  mep?: number
-  ccl?: number
-  oficial?: number
-  mayorista?: number
+  date: string; blue?: number; mep?: number; ccl?: number; oficial?: number; mayorista?: number
+}
+interface BandasData {
+  ipcHistorico: Record<string, number>; remMediana: number[]; remTop10: number[]
+  bandaInicial: { date: string; inferior: number; superior: number }
+  fuentes: Record<string, string>
 }
 
 type Period = "1m" | "3m" | "6m" | "1y" | "2y" | "max"
 type ForecastMode = "neutral" | "rem_top10" | "manual"
 
-interface BandasData {
-  ipcHistorico: Record<string, number>
-  remMediana: number[]
-  remTop10: number[]
-  bandaInicial: { date: string; inferior: number; superior: number }
-  fuentes: Record<string, string>
-}
+// ─── Fallbacks ────────────────────────────────────────────────────────────────
 
-// ─── Constants (fallback si la API falla) ─────────────────────────────────────
+const IPC_FB: Record<string, number> = { "2025-01": 2.4, "2025-02": 2.4, "2025-03": 3.7 }
+const BANDA_FB = { date: "2025-04-14", inferior: 1000, superior: 1400 }
+const REM_MED_FB = [2.4, 2.5, 2.5, 2.4, 2.3, 2.2, 2.1, 2.0, 2.0, 1.9, 1.9, 1.8]
+const REM_T10_FB = [2.1, 2.1, 2.0, 1.9, 1.8, 1.7, 1.7, 1.6, 1.6, 1.5, 1.5, 1.4]
 
-const IPC_HISTORICO_FALLBACK: Record<string, number> = {
-  "2025-01": 2.4, "2025-02": 2.4, "2025-03": 3.7,
-}
-const BANDA_INICIAL_FALLBACK = { date: "2025-04-14", inferior: 1000, superior: 1400 }
-const REM_MEDIANA_FALLBACK = [2.4, 2.5, 2.5, 2.4, 2.3, 2.2, 2.1, 2.0, 2.0, 1.9, 1.9, 1.8]
-const REM_TOP10_FALLBACK   = [2.1, 2.1, 2.0, 1.9, 1.8, 1.7, 1.7, 1.6, 1.6, 1.5, 1.5, 1.4]
-const BULL_OFFSET  = 1.0  // +100bps sobre REM mediana
-const BEAR_OFFSET  = -1.0 // -100bps sobre REM mediana
+// ─── Fases de crawling peg ────────────────────────────────────────────────────
+// Fase 1: 2% mensual, 14-feb-2024 → 31-ene-2025
+// startRate ~ 833 ARS/USD (tasa mayorista post-devaluación dic 2023)
+const FASE1_CFG = { startDate: "2024-02-14", startRate: 833, monthlyPct: 2, endDate: "2025-01-31" } as const
+// Fase 2: 1% mensual, 01-feb-2025 → 13-abr-2025
+// startRate ~ fin Fase 1: 833 × 1.02^12 ≈ 1056
+const FASE2_CFG = { startDate: "2025-02-01", startRate: 1056, monthlyPct: 1, endDate: "2025-04-13" } as const
+
+// ─── Períodos y series ────────────────────────────────────────────────────────
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: "1m", label: "1M" }, { value: "3m", label: "3M" }, { value: "6m", label: "6M" },
@@ -113,390 +80,431 @@ const TC_LINES: { key: string; name: string; color: string }[] = [
   { key: "ccl",       name: "CCL",       color: "#FFA028" },
   { key: "mep",       name: "MEP",       color: "#FFD700" },
   { key: "oficial",   name: "Oficial",   color: "#aaaaaa" },
-  { key: "mayorista", name: "Mayorista", color: "#777777" },
+  { key: "mayorista", name: "Mayorista", color: "#666666" },
   { key: "tarjeta",   name: "Tarjeta",   color: "#FB7185" },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmtARS(v: number | null | undefined, decimals = 0): string {
-  if (v == null) return "—"
-  return "$" + v.toLocaleString("es-AR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
-}
+const fmtARS = (v: number | null | undefined, dec = 0) =>
+  v == null ? "—" : "$" + v.toLocaleString("es-AR", { minimumFractionDigits: dec, maximumFractionDigits: dec })
 
-function fmtPct(v: number | null | undefined, decimals = 1): string {
-  if (v == null) return "—"
-  return (v >= 0 ? "+" : "") + v.toFixed(decimals) + "%"
-}
+const fmtPct = (v: number | null | undefined, dec = 1) =>
+  v == null ? "—" : (v >= 0 ? "+" : "") + v.toFixed(dec) + "%"
 
-function fmtDateShort(d: string): string {
-  try { return new Date(d + "T00:00:00").toLocaleDateString("es-AR", { month: "short", year: "2-digit" }) }
+const fmtDateShort = (d: string) => {
+  try { return new Date(d + "T12:00:00").toLocaleDateString("es-AR", { month: "short", year: "2-digit" }) }
   catch { return d }
 }
 
-function fmtDateFull(d: string): string {
-  try { return new Date(d + "T00:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "2-digit" }) }
+const fmtDateFull = (d: string) => {
+  try { return new Date(d + "T12:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "2-digit" }) }
   catch { return d }
 }
 
-function varColor(v: number | null | undefined): string {
-  if (v == null) return "#888"
-  return v > 0 ? "#4AF6C3" : v < 0 ? "#FF433D" : "#888"
+const varColor = (v: number | null | undefined) =>
+  v == null ? "#888" : v > 0 ? "#4AF6C3" : v < 0 ? "#FF433D" : "#888"
+
+// ─── Crawling peg (fases 1 y 2) ──────────────────────────────────────────────
+
+function computeCrawlPhase(
+  cfg: { startDate: string; startRate: number; monthlyPct: number; endDate: string }
+): { date: string; rate: number }[] {
+  const pts: { date: string; rate: number }[] = []
+  const [y0, m0] = cfg.startDate.split("-").map(Number)
+  const endMs = new Date(cfg.endDate + "T23:59:59").getTime()
+
+  pts.push({ date: cfg.startDate, rate: cfg.startRate })
+
+  let rate = cfg.startRate
+  for (let month = 1; month <= 30; month++) {
+    const totalM = (m0 - 1) + month
+    const yr = y0 + Math.floor(totalM / 12)
+    const mo = (totalM % 12) + 1
+    rate = +(rate * (1 + cfg.monthlyPct / 100)).toFixed(2)
+    const lastDay = new Date(yr, mo, 0).getDate()
+    const dateStr = `${yr}-${String(mo).padStart(2, "0")}-${lastDay}`
+    const dateMs = new Date(dateStr + "T00:00:00").getTime()
+
+    if (dateMs <= endMs) {
+      pts.push({ date: dateStr, rate })
+    } else {
+      // añadir punto en fecha de fin de fase
+      pts.push({ date: cfg.endDate, rate })
+      break
+    }
+  }
+
+  return pts
 }
 
-// ─── Band computation ─────────────────────────────────────────────────────────
+// ─── Banda fase 3 ─────────────────────────────────────────────────────────────
 
-// Devuelve el IPC del mes "YYYY-MM" usando datos históricos o REM como fallback
-function getIPC(monthStr: string, ipcHistorico: Record<string, number>, remData: number[]): number {
-  if (ipcHistorico[monthStr] != null) return ipcHistorico[monthStr]
-  const [year, mon] = monthStr.split("-").map(Number)
-  // Offset desde feb 2025 (índice 0 del REM)
-  const offset = (year - 2025) * 12 + (mon - 2)
-  if (offset >= 0 && offset < remData.length) return remData[offset]
-  return remData[remData.length - 1]
+function getIPC(monthStr: string, ipc: Record<string, number>, rem: number[]): number {
+  if (ipc[monthStr] != null) return ipc[monthStr]
+  const [y, m] = monthStr.split("-").map(Number)
+  const offset = (y - 2025) * 12 + (m - 2)
+  if (offset >= 0 && offset < rem.length) return rem[offset]
+  return rem[rem.length - 1]
 }
 
 interface BandPoint { date: string; bandaInf: number; bandaSup: number }
 
-// Calcula las bandas desde la fecha inicial hasta N meses adelante
 function computeBandPoints(
-  monthsAhead: number,
-  remData: number[],
-  ipcHistorico: Record<string, number>,
-  bandaInicial: { date: string; inferior: number; superior: number }
+  monthsAhead: number, rem: number[],
+  ipc: Record<string, number>,
+  banda: { date: string; inferior: number; superior: number }
 ): BandPoint[] {
-  const points: BandPoint[] = []
-  let inf = bandaInicial.inferior
-  let sup = bandaInicial.superior
-
-  points.push({ date: bandaInicial.date, bandaInf: inf, bandaSup: sup })
-
+  const pts: BandPoint[] = [{ date: banda.date, bandaInf: banda.inferior, bandaSup: banda.superior }]
+  let inf = banda.inferior, sup = banda.superior
   for (let i = 0; i < monthsAhead; i++) {
-    const year  = 2025 + Math.floor((3 + i) / 12)
-    const month = ((3 + i) % 12) + 1
-    const ipcYear  = year + Math.floor((month - 3) / 12)
-    const ipcMonth = ((month - 3 + 12) % 12) + 1
-    const ipcStr   = `${ipcYear}-${String(ipcMonth).padStart(2, "0")}`
-    const ipc = getIPC(ipcStr, ipcHistorico, remData)
-
-    inf = inf * (1 + ipc / 100)
-    sup = sup * (1 + ipc / 100)
-
-    const lastDay = new Date(year, month, 0).getDate()
-    points.push({
-      date: `${year}-${String(month).padStart(2, "0")}-${lastDay}`,
-      bandaInf: parseFloat(inf.toFixed(2)),
-      bandaSup: parseFloat(sup.toFixed(2)),
-    })
+    // mes t = Abril + i (Fase 3 arranca en abril 2025 = índice 0)
+    const totalM = 3 + i // 3 = índice de Abril (0-indexed desde Enero=0)
+    const yr = 2025 + Math.floor(totalM / 12)
+    const mo = (totalM % 12) + 1
+    // IPC[t-2]: dos meses antes del mes t
+    const ipcMoRaw = mo - 2
+    const ipcMo = ipcMoRaw <= 0 ? ipcMoRaw + 12 : ipcMoRaw
+    const ipcYr  = ipcMoRaw <= 0 ? yr - 1 : yr
+    const ipcStr = `${ipcYr}-${String(ipcMo).padStart(2, "0")}`
+    const rate = getIPC(ipcStr, ipc, rem)
+    inf = +(inf * (1 + rate / 100)).toFixed(2)
+    sup = +(sup * (1 + rate / 100)).toFixed(2)
+    const lastDay = new Date(yr, mo, 0).getDate()
+    pts.push({ date: `${yr}-${String(mo).padStart(2, "0")}-${lastDay}`, bandaInf: inf, bandaSup: sup })
   }
-
-  return points
+  return pts
 }
 
-interface ForecastPoint {
+// ─── Forecast fase 3 ─────────────────────────────────────────────────────────
+
+interface FcastPoint {
   date: string
-  fcastNeutralInf: number; fcastNeutralSup: number
-  fcastBullInf: number;    fcastBullSup: number
-  fcastBearInf: number;    fcastBearSup: number
-  fcastTop10Inf: number;   fcastTop10Sup: number
-  fcastManualInf: number;  fcastManualSup: number
+  fNeutralInf: number; fNeutralSup: number
+  fBullInf: number;    fBullSup: number
+  fBearInf: number;    fBearSup: number
+  fTop10Inf: number;   fTop10Sup: number
+  fManualInf: number;  fManualSup: number
 }
 
 function computeForecast(
-  monthsAhead: number,
-  manualRate: number,
-  remMediana: number[],
-  remTop10: number[],
-  ipcHistorico: Record<string, number>,
-  bandaInicial: { date: string; inferior: number; superior: number }
-): ForecastPoint[] {
-  const scenarios = [
-    { key: "neutral", data: remMediana },
-    { key: "bull",    data: remMediana.map((v) => v + BULL_OFFSET) },
-    { key: "bear",    data: remMediana.map((v) => Math.max(0, v + BEAR_OFFSET)) },
-    { key: "top10",   data: remTop10 },
-    { key: "manual",  data: Array(36).fill(manualRate) },
-  ] as const
-
+  monthsAhead: number, manualRate: number,
+  remMed: number[], remTop10: number[],
+  ipc: Record<string, number>,
+  banda: { date: string; inferior: number; superior: number }
+): FcastPoint[] {
   const today = new Date()
   const todayStr = today.toISOString().split("T")[0]
+  const elapsed = Math.max(0, (today.getFullYear() - 2025) * 12 + (today.getMonth() - 3))
+  const hist = computeBandPoints(elapsed + 1, remMed, ipc, banda)
+  const last = hist[hist.length - 1]
 
-  const monthsElapsed = Math.max(0,
-    (today.getFullYear() - 2025) * 12 + (today.getMonth() - 3)
-  )
-  const historicoBands = computeBandPoints(monthsElapsed + 1, remMediana, ipcHistorico, bandaInicial)
-  const lastHistoric = historicoBands[historicoBands.length - 1]
+  const SCENARIOS = [
+    { k: "neutral", rem: remMed },
+    { k: "bull",    rem: remMed.map(v => v + 1) },
+    { k: "bear",    rem: remMed.map(v => Math.max(0, v - 1)) },
+    { k: "top10",   rem: remTop10 },
+    { k: "manual",  rem: Array(36).fill(manualRate) },
+  ] as const
 
-  const points: ForecastPoint[] = []
-  const starts = { neutral: lastHistoric.bandaInf, bull: lastHistoric.bandaInf, bear: lastHistoric.bandaInf, top10: lastHistoric.bandaInf, manual: lastHistoric.bandaInf }
-  const startsSup = { neutral: lastHistoric.bandaSup, bull: lastHistoric.bandaSup, bear: lastHistoric.bandaSup, top10: lastHistoric.bandaSup, manual: lastHistoric.bandaSup }
+  type SK = typeof SCENARIOS[number]["k"]
+  const inf: Record<SK, number> = { neutral: last.bandaInf, bull: last.bandaInf, bear: last.bandaInf, top10: last.bandaInf, manual: last.bandaInf }
+  const sup: Record<SK, number> = { neutral: last.bandaSup, bull: last.bandaSup, bear: last.bandaSup, top10: last.bandaSup, manual: last.bandaSup }
 
-  const infLevels = { ...starts }
-  const supLevels = { ...startsSup }
-
-  // Punto de arranque = hoy
-  points.push({
+  const pts: FcastPoint[] = [{
     date: todayStr,
-    fcastNeutralInf: infLevels.neutral, fcastNeutralSup: supLevels.neutral,
-    fcastBullInf: infLevels.bull,       fcastBullSup: supLevels.bull,
-    fcastBearInf: infLevels.bear,       fcastBearSup: supLevels.bear,
-    fcastTop10Inf: infLevels.top10,     fcastTop10Sup: supLevels.top10,
-    fcastManualInf: infLevels.manual,   fcastManualSup: supLevels.manual,
-  })
+    fNeutralInf: inf.neutral, fNeutralSup: sup.neutral,
+    fBullInf: inf.bull, fBullSup: sup.bull,
+    fBearInf: inf.bear, fBearSup: sup.bear,
+    fTop10Inf: inf.top10, fTop10Sup: sup.top10,
+    fManualInf: inf.manual, fManualSup: sup.manual,
+  }]
 
   for (let i = 0; i < monthsAhead; i++) {
-    const futureDate = new Date(today)
-    futureDate.setMonth(today.getMonth() + i + 1, 1)
-    const year  = futureDate.getFullYear()
-    const month = futureDate.getMonth() + 1
-    const lastDay = new Date(year, month, 0).getDate()
-    const dateStr = `${year}-${String(month).padStart(2, "0")}-${lastDay}`
+    const fd = new Date(today); fd.setMonth(today.getMonth() + i + 1, 1)
+    const yr = fd.getFullYear(), mo = fd.getMonth() + 1
+    const ipcMoRaw = mo - 2
+    const ipcMo = ipcMoRaw <= 0 ? ipcMoRaw + 12 : ipcMoRaw
+    const ipcYr  = ipcMoRaw <= 0 ? yr - 1 : yr
+    const ipcStr = `${ipcYr}-${String(ipcMo).padStart(2, "0")}`
+    const lastDay = new Date(yr, mo, 0).getDate()
+    const dateStr = `${yr}-${String(mo).padStart(2, "0")}-${lastDay}`
 
-    for (const sc of scenarios) {
-      const ipcYear  = year + Math.floor((month - 3) / 12)
-      const ipcMonth = ((month - 3 + 12) % 12) + 1
-      const ipcStr   = `${ipcYear}-${String(ipcMonth).padStart(2, "0")}`
-      // Use scenario-specific data (no historical override for forecast)
-      const ipc = IPC_HISTORICO[ipcStr] ?? (sc.data[i] ?? sc.data[sc.data.length - 1])
-      infLevels[sc.key as keyof typeof infLevels] *= (1 + ipc / 100)
-      supLevels[sc.key as keyof typeof supLevels] *= (1 + ipc / 100)
+    for (const sc of SCENARIOS) {
+      const rate = ipc[ipcStr] ?? (sc.rem[i] ?? sc.rem[sc.rem.length - 1])
+      inf[sc.k as SK] = +(inf[sc.k as SK] * (1 + rate / 100)).toFixed(2)
+      sup[sc.k as SK] = +(sup[sc.k as SK] * (1 + rate / 100)).toFixed(2)
     }
 
-    points.push({
+    pts.push({
       date: dateStr,
-      fcastNeutralInf: parseFloat(infLevels.neutral.toFixed(2)), fcastNeutralSup: parseFloat(supLevels.neutral.toFixed(2)),
-      fcastBullInf:    parseFloat(infLevels.bull.toFixed(2)),    fcastBullSup:    parseFloat(supLevels.bull.toFixed(2)),
-      fcastBearInf:    parseFloat(infLevels.bear.toFixed(2)),    fcastBearSup:    parseFloat(supLevels.bear.toFixed(2)),
-      fcastTop10Inf:   parseFloat(infLevels.top10.toFixed(2)),   fcastTop10Sup:   parseFloat(supLevels.top10.toFixed(2)),
-      fcastManualInf:  parseFloat(infLevels.manual.toFixed(2)),  fcastManualSup:  parseFloat(supLevels.manual.toFixed(2)),
+      fNeutralInf: inf.neutral, fNeutralSup: sup.neutral,
+      fBullInf: inf.bull, fBullSup: sup.bull,
+      fBearInf: inf.bear, fBearSup: sup.bear,
+      fTop10Inf: inf.top10, fTop10Sup: sup.top10,
+      fManualInf: inf.manual, fManualSup: sup.manual,
     })
   }
-
-  return points
+  return pts
 }
 
-// ─── Sub-components: Precios ──────────────────────────────────────────────────
+// ─── Section header ───────────────────────────────────────────────────────────
 
-function RateCard({
-  label, venta, compra, variacion, brecha, color, badge,
-}: {
-  label: string; venta: number | null; compra?: number | null
-  variacion?: number | null; brecha?: number | null; color: string; badge?: string
-}) {
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 14px", minWidth: 130 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <span style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>{label}</span>
-        {badge && (
-          <span style={{ fontSize: 8, padding: "1px 5px", background: "#FFA02822", color: "#FFA028", border: "1px solid #FFA02844", borderRadius: 2 }}>
-            {badge}
-          </span>
-        )}
-      </div>
-      <div style={{ fontSize: 22, fontWeight: 700, color, fontFamily: "monospace", lineHeight: 1 }}>
-        {fmtARS(venta)}
-      </div>
-      {compra != null && (
-        <div style={{ fontSize: 10, color: "#555", marginTop: 3, fontFamily: "monospace" }}>
-          C: {fmtARS(compra)}
-        </div>
-      )}
-      <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-        {variacion != null && (
-          <span style={{ fontSize: 9, color: varColor(variacion) }}>{fmtPct(variacion)} 1D</span>
-        )}
-        {brecha != null && (
-          <span style={{ fontSize: 9, color: "#888" }}>brecha {fmtPct(brecha)}</span>
-        )}
-      </div>
+    <div style={{
+      background: "#0d0d0d", borderBottom: "1px solid #1a1a1a", borderTop: "1px solid #1a1a1a",
+      padding: "3px 12px", fontSize: 9, color: "#444",
+      textTransform: "uppercase", letterSpacing: "0.12em",
+    }}>
+      {children}
     </div>
   )
 }
 
-function InternacionalBlock({ data }: { data: InternacionalData | null }) {
-  if (!data) return (
-    <div style={{ padding: "10px 14px", fontSize: 10, color: "#555" }}>Cargando mercados internacionales...</div>
-  )
+// ─── Tabla tipos de cambio locales ────────────────────────────────────────────
 
-  const items = [
-    { label: "DXY", value: data.dxy?.toFixed(2) ?? "—", chg: data.dxyChg, note: "Índice dólar" },
-    { label: "EUR/USD", value: data.eurUsd?.toFixed(4) ?? "—", chg: data.eurChg, note: "Euro" },
-    { label: "JPY/USD", value: data.jpyUsd != null ? data.jpyUsd.toFixed(6) : "—", chg: data.jpyChg, note: "Yen" },
-    { label: "USD/BRL", value: data.brlUsd?.toFixed(4) ?? "—", chg: data.brlChg, note: "Real" },
+function TCRatesTable({ dolares }: { dolares: DolarResponse | null }) {
+  const r = dolares?.rates
+  const s = dolares?.spreads
+  const oficial  = r?.oficial?.venta ?? null
+  const mepVenta = r?.bolsa?.venta   ?? null
+  const canje    = mepVenta ? +(mepVenta * 0.998).toFixed(2) : null
+  const tarjeta  = oficial  ? +(oficial  * 1.60 ).toFixed(2) : null
+
+  const rows: {
+    key: string; label: string; color: string; badge?: string
+    venta: number | null; compra: number | null
+    variacion: number | null; brecha: number | null
+  }[] = [
+    { key: "blue",      label: "Blue",          color: "#4AF6C3", venta: r?.blue?.venta ?? null,              compra: r?.blue?.compra ?? null,              variacion: r?.blue?.variacion           ?? null, brecha: s?.brechaBlueOficial ?? null },
+    { key: "ccl",       label: "CCL",           color: "#FFA028", venta: r?.contadoconliqui?.venta ?? null,   compra: r?.contadoconliqui?.compra ?? null,   variacion: r?.contadoconliqui?.variacion ?? null, brecha: s?.brechaCclOficial  ?? null },
+    { key: "mep",       label: "MEP / Bolsa",   color: "#FFD700", venta: mepVenta,                            compra: r?.bolsa?.compra ?? null,              variacion: r?.bolsa?.variacion          ?? null, brecha: s?.brechaMepOficial  ?? null },
+    { key: "oficial",   label: "Oficial BNA",   color: "#aaaaaa", venta: oficial,                             compra: r?.oficial?.compra ?? null,            variacion: r?.oficial?.variacion        ?? null, brecha: null },
+    { key: "mayorista", label: "Mayorista",     color: "#777777", venta: r?.mayorista?.venta ?? null,         compra: null,                                  variacion: null,                                  brecha: null },
+    { key: "cripto",    label: "Crypto USDT",   color: "#F97316", venta: r?.cripto?.venta ?? null,            compra: r?.cripto?.compra ?? null,             variacion: r?.cripto?.variacion         ?? null, brecha: null },
+    { key: "canje",     label: "Canje",         color: "#A78BFA", badge: "≈MEP×0.998", venta: canje,         compra: null,                                  variacion: null,                                  brecha: null },
+    { key: "tarjeta",   label: "Tarjeta",       color: "#FB7185", badge: "+60%",       venta: tarjeta,        compra: null,                                  variacion: null,                                  brecha: null },
   ]
 
   return (
-    <div style={{ display: "flex", gap: 1 }}>
-      {items.map((item) => (
-        <div key={item.label} style={{ flex: "1 1 100px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "10px 14px" }}>
-          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
-            {item.label} <span style={{ color: "#333" }}>· {item.note}</span>
-          </div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: "#4FC3F7", fontFamily: "monospace" }}>{item.value}</div>
-          {item.chg != null && (
-            <div style={{ fontSize: 9, color: varColor(item.chg), marginTop: 3 }}>{fmtPct(item.chg)}</div>
-          )}
-        </div>
-      ))}
-    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Mercado</th>
+          <th className="num">Venta</th>
+          <th className="num">Compra</th>
+          <th className="num">1D %</th>
+          <th className="num">Brecha</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, i) => (
+          <tr key={row.key} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
+            <td style={{ color: row.color, fontWeight: 700 }}>
+              {row.label}
+              {row.badge && <span style={{ fontSize: 8, color: "#FFA028", marginLeft: 6, border: "1px solid #FFA02833", padding: "0 3px" }}>{row.badge}</span>}
+            </td>
+            <td className="num" style={{ color: "#fff", fontWeight: 600 }}>{fmtARS(row.venta)}</td>
+            <td className="num" style={{ color: "#666" }}>{fmtARS(row.compra)}</td>
+            <td className="num" style={{ color: varColor(row.variacion) }}>{fmtPct(row.variacion)}</td>
+            <td className="num" style={{ color: "#555" }}>{row.brecha != null ? fmtPct(row.brecha) : "—"}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
+
+// ─── Tabla internacional ──────────────────────────────────────────────────────
+
+function InternacionalTable({ data }: { data: InternacionalData | null }) {
+  const rows = [
+    { label: "DXY",     desc: "Índice dólar",   val: data?.dxy,    chg: data?.dxyChg, dec: 2 },
+    { label: "EUR/USD", desc: "Euro",            val: data?.eurUsd, chg: data?.eurChg, dec: 4 },
+    { label: "JPY/USD", desc: "Yen",             val: data?.jpyUsd, chg: data?.jpyChg, dec: 4 },
+    { label: "USD/BRL", desc: "Real brasileño",  val: data?.brlUsd, chg: data?.brlChg, dec: 4 },
+  ]
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>Par</th>
+          <th style={{ color: "#555" }}>Descripción</th>
+          <th className="num">Último</th>
+          <th className="num">1D %</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, i) => (
+          <tr key={row.label} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
+            <td style={{ color: "#4FC3F7", fontWeight: 700 }}>{row.label}</td>
+            <td style={{ color: "#444" }}>{row.desc}</td>
+            <td className="num" style={{ color: "#fff", fontWeight: 600 }}>
+              {row.val != null ? row.val.toFixed(row.dec) : "—"}
+            </td>
+            <td className="num" style={{ color: varColor(row.chg) }}>
+              {fmtPct(row.chg)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+// ─── Tabla ROFEX ──────────────────────────────────────────────────────────────
 
 function RofexTable({ futures }: { futures: RofexFuture[] }) {
-  if (futures.length === 0) return (
-    <div style={{ padding: "10px 14px", fontSize: 10, color: "#555" }}>
-      Sin datos ROFEX. Los futuros se cargan vía cron o POST /api/rofex.
+  if (!futures.length) return (
+    <div style={{ padding: "10px 12px", fontSize: 10, color: "#444" }}>
+      Sin datos ROFEX — los futuros se cargan vía cron o POST /api/rofex
     </div>
   )
-
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr>
-            {["Posición", "Precio", "Devalución acum.", "Dev. mensual", "TNA impl."].map((h, i) => (
-              <th key={h} style={{ padding: "4px 10px", fontSize: 9, color: "#555", textAlign: i === 0 ? "left" : "right", borderBottom: "1px solid #1a1a1a", whiteSpace: "nowrap" }}>
-                {h}
-              </th>
-            ))}
+    <table>
+      <thead>
+        <tr>
+          <th>Posición</th>
+          <th className="num">Precio</th>
+          <th className="num">Dev. acum.</th>
+          <th className="num">Dev. mensual</th>
+          <th className="num">TNA impl.</th>
+        </tr>
+      </thead>
+      <tbody>
+        {futures.map((f, i) => (
+          <tr key={f.id} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
+            <td style={{ color: "#FFA028", fontWeight: 700 }}>{f.maturityLabel ?? f.position}</td>
+            <td className="num bbg-white">{fmtARS(f.price)}</td>
+            <td className="num" style={{ color: varColor(f.devaluation) }}>{fmtPct(f.devaluation)}</td>
+            <td className="num" style={{ color: "#999" }}>{fmtPct(f.monthlyDevaluation)}</td>
+            <td className="num" style={{ color: "#4FC3F7" }}>{f.tna != null ? f.tna.toFixed(1) + "%" : "—"}</td>
           </tr>
-        </thead>
-        <tbody>
-          {futures.map((f, i) => (
-            <tr key={f.id} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
-              <td style={{ padding: "4px 10px", fontSize: 10, color: "#FFA028" }}>
-                {f.maturityLabel ?? f.position}
-              </td>
-              <td style={{ padding: "4px 10px", fontSize: 11, color: "#fff", textAlign: "right", fontFamily: "monospace" }}>
-                {fmtARS(f.price)}
-              </td>
-              <td style={{ padding: "4px 10px", fontSize: 11, color: varColor(f.devaluation), textAlign: "right", fontFamily: "monospace" }}>
-                {fmtPct(f.devaluation)}
-              </td>
-              <td style={{ padding: "4px 10px", fontSize: 11, color: "#aaa", textAlign: "right", fontFamily: "monospace" }}>
-                {fmtPct(f.monthlyDevaluation)}
-              </td>
-              <td style={{ padding: "4px 10px", fontSize: 11, color: "#4FC3F7", textAlign: "right", fontFamily: "monospace" }}>
-                {f.tna != null ? f.tna.toFixed(1) + "%" : "—"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </table>
   )
 }
+
+// ─── Tabla LECAPs ─────────────────────────────────────────────────────────────
 
 function LecapTable({ instruments }: { instruments: CapInstrument[] }) {
-  if (instruments.length === 0) return (
-    <div style={{ padding: "10px 14px", fontSize: 10, color: "#555" }}>
-      Sin datos de LECAPs. Ejecutar seed de instrumentos.
+  if (!instruments.length) return (
+    <div style={{ padding: "10px 12px", fontSize: 10, color: "#444" }}>
+      Sin datos LECAPs — ejecutar seed de instrumentos
     </div>
   )
-
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr>
-            {["Ticker", "Tipo", "Vto.", "Días", "Precio", "TEM", "TEA", "TC implícito"].map((h, i) => (
-              <th key={h} style={{ padding: "4px 10px", fontSize: 9, color: "#555", textAlign: i < 4 ? "left" : "right", borderBottom: "1px solid #1a1a1a", whiteSpace: "nowrap" }}>
-                {h}
-              </th>
-            ))}
+    <table>
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>Tipo</th>
+          <th>Vencimiento</th>
+          <th className="num">Días</th>
+          <th className="num">Precio</th>
+          <th className="num">TEM</th>
+          <th className="num">TEA</th>
+          <th className="num">TC implícito</th>
+        </tr>
+      </thead>
+      <tbody>
+        {instruments.map((inst, i) => (
+          <tr key={inst.ticker} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
+            <td style={{ color: "#FFD700", fontWeight: 700 }}>{inst.ticker}</td>
+            <td style={{ color: "#555" }}>{inst.tipo}</td>
+            <td style={{ color: "#888" }}>{fmtDateFull(inst.vencimiento)}</td>
+            <td className="num" style={{ color: "#666" }}>{inst.diasVencimiento}</td>
+            <td className="num bbg-white">{inst.precio?.toFixed(2) ?? "—"}</td>
+            <td className="num bbg-positive">{inst.tem != null ? inst.tem.toFixed(2) + "%" : "—"}</td>
+            <td className="num" style={{ color: "#999" }}>{inst.tea != null ? inst.tea.toFixed(1) + "%" : "—"}</td>
+            <td className="num" style={{ color: "#A78BFA", fontWeight: 600 }}>{fmtARS(inst.tcImplicito)}</td>
           </tr>
-        </thead>
-        <tbody>
-          {instruments.map((inst, i) => (
-            <tr key={inst.ticker} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
-              <td style={{ padding: "4px 10px", fontSize: 10, color: "#FFD700", fontWeight: 700 }}>{inst.ticker}</td>
-              <td style={{ padding: "4px 10px", fontSize: 9, color: "#555" }}>{inst.tipo}</td>
-              <td style={{ padding: "4px 10px", fontSize: 10, color: "#888" }}>{fmtDateFull(inst.vencimiento)}</td>
-              <td style={{ padding: "4px 10px", fontSize: 10, color: "#666" }}>{inst.diasVencimiento}d</td>
-              <td style={{ padding: "4px 10px", fontSize: 11, color: "#fff", textAlign: "right", fontFamily: "monospace" }}>
-                {inst.precio != null ? inst.precio.toFixed(2) : "—"}
-              </td>
-              <td style={{ padding: "4px 10px", fontSize: 11, color: "#4AF6C3", textAlign: "right", fontFamily: "monospace" }}>
-                {inst.tem != null ? inst.tem.toFixed(2) + "%" : "—"}
-              </td>
-              <td style={{ padding: "4px 10px", fontSize: 11, color: "#aaa", textAlign: "right", fontFamily: "monospace" }}>
-                {inst.tea != null ? inst.tea.toFixed(1) + "%" : "—"}
-              </td>
-              <td style={{ padding: "4px 10px", fontSize: 11, color: "#A78BFA", textAlign: "right", fontFamily: "monospace" }}>
-                {fmtARS(inst.tcImplicito)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </table>
   )
 }
 
-// ─── Sub-component: Gráficos ──────────────────────────────────────────────────
+// ─── Tooltip del gráfico ──────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
+  const entries = payload.filter((p: { value: number }) => p.value != null)
+  if (!entries.length) return null
   return (
-    <div style={{ background: "#0d0d0d", border: "1px solid #333", padding: "8px 12px", fontSize: 10, minWidth: 180, maxWidth: 260 }}>
+    <div style={{ background: "#0a0a0a", border: "1px solid #333", padding: "8px 12px", fontSize: 10 }}>
       <div style={{ color: "#555", marginBottom: 4, fontSize: 9 }}>{fmtDateFull(label)}</div>
-      {payload.map((p: { name: string; value: number; color: string }) => (
-        p.value != null && (
-          <div key={p.name} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-            <span style={{ color: p.color, fontSize: 9 }}>{p.name}</span>
-            <span style={{ color: "#fff", fontFamily: "monospace" }}>{fmtARS(p.value)}</span>
-          </div>
-        )
+      {entries.map((p: { name: string; value: number; color: string }) => (
+        <div key={p.name} style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
+          <span style={{ color: p.color }}>{p.name}</span>
+          <span style={{ color: "#fff" }}>{fmtARS(p.value)}</span>
+        </div>
       ))}
     </div>
   )
 }
 
-function GraficosSection({
-  tcData, rofexData, lecapData, bandasData,
-}: {
-  tcData: TCEntry[]
-  rofexData: RofexFuture[]
-  lecapData: CapInstrument[]
-  bandasData: BandasData | null
+// ─── Toggle button ─────────────────────────────────────────────────────────────
+
+function ToggleBtn({ active, color, onClick, children }: {
+  active: boolean; color: string; onClick: () => void; children: React.ReactNode
 }) {
-  const ipcHistorico = bandasData?.ipcHistorico ?? IPC_HISTORICO_FALLBACK
-  const remMediana   = bandasData?.remMediana   ?? REM_MEDIANA_FALLBACK
-  const remTop10     = bandasData?.remTop10     ?? REM_TOP10_FALLBACK
-  const bandaInicial = bandasData?.bandaInicial ?? BANDA_INICIAL_FALLBACK
-  const [visibles, setVisibles] = useState<Set<string>>(new Set(["blue", "ccl", "mep", "oficial"]))
-  const [showBandas, setShowBandas] = useState(true)
+  return (
+    <button onClick={onClick} style={{
+      fontSize: 9, padding: "2px 8px", cursor: "pointer",
+      background: active ? color + "18" : "transparent",
+      border: `1px solid ${active ? color : "#2a2a2a"}`,
+      color: active ? color : "#444",
+      textTransform: "uppercase", letterSpacing: "0.05em",
+    }}>
+      {children}
+    </button>
+  )
+}
+
+// ─── Gráfico principal ────────────────────────────────────────────────────────
+
+function ChartSection({
+  tcData, rofexData, lecapData, bandasData,
+  period, setPeriod, loading,
+}: {
+  tcData: TCEntry[]; rofexData: RofexFuture[]; lecapData: CapInstrument[]
+  bandasData: BandasData | null; period: Period
+  setPeriod: (p: Period) => void; loading: boolean
+}) {
+  const ipc    = bandasData?.ipcHistorico ?? IPC_FB
+  const remMed = bandasData?.remMediana   ?? REM_MED_FB
+  const remT10 = bandasData?.remTop10     ?? REM_T10_FB
+  const banda  = bandasData?.bandaInicial ?? BANDA_FB
+
+  const [visibles,     setVisibles]     = useState<Set<string>>(new Set(["blue", "ccl", "mep", "oficial"]))
+  const [showFase1,    setShowFase1]    = useState(true)
+  const [showFase2,    setShowFase2]    = useState(true)
+  const [showBandas,   setShowBandas]   = useState(true)
   const [showForecast, setShowForecast] = useState(true)
-  const [forecastMode, setForecastMode] = useState<ForecastMode>("neutral")
-  const [manualRate, setManualRate] = useState(2.5)
-  const [showRofex, setShowRofex] = useState(false)
-  const [showLecap, setShowLecap] = useState(false)
+  const [fcastMode,    setFcastMode]    = useState<ForecastMode>("neutral")
+  const [manualRate,   setManualRate]   = useState(2.5)
+  const [showRofex,    setShowRofex]    = useState(false)
+  const [showLecap,    setShowLecap]    = useState(false)
 
-  const toggleLine = (key: string) => {
-    setVisibles((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) { if (next.size > 1) next.delete(key) } else next.add(key)
-      return next
-    })
-  }
+  const toggleLine = (key: string) => setVisibles(prev => {
+    const next = new Set(prev)
+    if (next.has(key)) { if (next.size > 1) next.delete(key) } else next.add(key)
+    return next
+  })
 
-  // Compute band and forecast data (con datos dinámicos o fallback)
-  const bandPoints = useMemo(
-    () => computeBandPoints(18, remMediana, ipcHistorico, bandaInicial),
-    [remMediana, ipcHistorico, bandaInicial]
-  )
+  // Fases históricas (no cambian salvo por las props que no cambian)
+  const fase1Pts = useMemo(() => computeCrawlPhase(FASE1_CFG), [])
+  const fase2Pts = useMemo(() => computeCrawlPhase(FASE2_CFG), [])
+  const bandPoints  = useMemo(() => computeBandPoints(24, remMed, ipc, banda), [remMed, ipc, banda])
+  const fcastPoints = useMemo(() => computeForecast(12, manualRate, remMed, remT10, ipc, banda), [manualRate, remMed, remT10, ipc, banda])
 
-  const forecastPoints = useMemo(
-    () => computeForecast(12, manualRate, remMediana, remTop10, ipcHistorico, bandaInicial),
-    [manualRate, remMediana, remTop10, ipcHistorico, bandaInicial]
-  )
-
-  // Merge all chart data by date
   const chartData = useMemo(() => {
     const map: Record<string, Record<string, number | undefined>> = {}
 
-    // TC histórico (agrega tarjeta derivada)
     for (const row of tcData) {
       if (!map[row.date]) map[row.date] = {}
       if (row.blue)      map[row.date].blue      = row.blue
@@ -504,306 +512,212 @@ function GraficosSection({
       if (row.ccl)       map[row.date].ccl        = row.ccl
       if (row.oficial)   map[row.date].oficial    = row.oficial
       if (row.mayorista) map[row.date].mayorista  = row.mayorista
-      if (row.oficial)   map[row.date].tarjeta    = parseFloat((row.oficial * 1.60).toFixed(2))
+      if (row.oficial)   map[row.date].tarjeta    = +(row.oficial * 1.60).toFixed(2)
     }
 
-    // Bandas históricas (desde apr 14, 2025)
+    // Fase 1: crawl 2% (línea histórica)
+    for (const pt of fase1Pts) {
+      if (!map[pt.date]) map[pt.date] = {}
+      map[pt.date].fase1 = pt.rate
+    }
+
+    // Fase 2: crawl 1% (línea histórica)
+    for (const pt of fase2Pts) {
+      if (!map[pt.date]) map[pt.date] = {}
+      map[pt.date].fase2 = pt.rate
+    }
+
+    // Fase 3: banda inferior/superior
     for (const bp of bandPoints) {
       if (!map[bp.date]) map[bp.date] = {}
       map[bp.date].bandaInf = bp.bandaInf
       map[bp.date].bandaSup = bp.bandaSup
     }
 
-    // Forecast (fechas futuras)
-    for (const fp of forecastPoints) {
+    // Forecast
+    for (const fp of fcastPoints) {
       if (!map[fp.date]) map[fp.date] = {}
-      map[fp.date].fcastNeutralInf = fp.fcastNeutralInf
-      map[fp.date].fcastNeutralSup = fp.fcastNeutralSup
-      map[fp.date].fcastBullInf    = fp.fcastBullInf
-      map[fp.date].fcastBullSup    = fp.fcastBullSup
-      map[fp.date].fcastBearInf    = fp.fcastBearInf
-      map[fp.date].fcastBearSup    = fp.fcastBearSup
-      map[fp.date].fcastTop10Inf   = fp.fcastTop10Inf
-      map[fp.date].fcastTop10Sup   = fp.fcastTop10Sup
-      map[fp.date].fcastManualInf  = fp.fcastManualInf
-      map[fp.date].fcastManualSup  = fp.fcastManualSup
+      Object.assign(map[fp.date], {
+        fNeutralInf: fp.fNeutralInf, fNeutralSup: fp.fNeutralSup,
+        fBullInf:    fp.fBullInf,    fBullSup:    fp.fBullSup,
+        fBearInf:    fp.fBearInf,    fBearSup:    fp.fBearSup,
+        fTop10Inf:   fp.fTop10Inf,   fTop10Sup:   fp.fTop10Sup,
+        fManualInf:  fp.fManualInf,  fManualSup:  fp.fManualSup,
+      })
     }
 
-    // ROFEX overlay dots — se agregan como key en chartData (Line strokeWidth=0)
+    // Overlay ROFEX
     for (const f of rofexData) {
       if (!f.price) continue
-      const date = (f.maturity ?? "").split("T")[0]
-      if (!date) continue
-      if (!map[date]) map[date] = {}
-      map[date].rofexDot = f.price
+      const d = (f.maturity ?? "").split("T")[0]; if (!d) continue
+      if (!map[d]) map[d] = {}
+      map[d].rofexDot = f.price
     }
 
-    // LECAP breakeven dots
+    // Overlay LECAPs
     for (const l of lecapData) {
       if (!l.tcImplicito) continue
       if (!map[l.vencimiento]) map[l.vencimiento] = {}
       map[l.vencimiento].lecapDot = l.tcImplicito
     }
 
-    return Object.entries(map)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, vals]) => ({ date, ...vals }))
-  }, [tcData, bandPoints, forecastPoints])
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b)).map(([date, vals]) => ({ date, ...vals }))
+  }, [tcData, fase1Pts, fase2Pts, bandPoints, fcastPoints, rofexData, lecapData])
 
-  // Forecast keys to show based on mode
-  const fcastKeys = useMemo(() => {
-    switch (forecastMode) {
-      case "neutral":   return { inf: "fcastNeutralInf", sup: "fcastNeutralSup" }
-      case "rem_top10": return { inf: "fcastTop10Inf",   sup: "fcastTop10Sup" }
-      case "manual":    return { inf: "fcastManualInf",  sup: "fcastManualSup" }
-    }
-  }, [forecastMode])
+  const fcastKeys = useMemo(() => ({
+    neutral:   { inf: "fNeutralInf",  sup: "fNeutralSup" },
+    rem_top10: { inf: "fTop10Inf",    sup: "fTop10Sup" },
+    manual:    { inf: "fManualInf",   sup: "fManualSup" },
+  }[fcastMode]), [fcastMode])
 
   const todayStr = new Date().toISOString().split("T")[0]
 
+  const fuente = bandasData?.fuentes?.ipc?.includes("datos.gob.ar")
+    ? "IPC: INDEC (api automática)"
+    : "IPC: fallback hardcodeado"
+
   return (
     <div>
-      {/* Controls row 1: TC line toggles */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, padding: "8px 10px", borderBottom: "1px solid #111", alignItems: "center" }}>
-        <span style={{ fontSize: 9, color: "#444", textTransform: "uppercase", letterSpacing: 1, marginRight: 4 }}>Series TC</span>
-        {TC_LINES.map((l) => (
-          <button key={l.key} onClick={() => toggleLine(l.key)} style={{
-            fontSize: 9, padding: "2px 7px",
-            background: visibles.has(l.key) ? l.color + "22" : "transparent",
-            border: `1px solid ${visibles.has(l.key) ? l.color : "#2a2a2a"}`,
-            color: visibles.has(l.key) ? l.color : "#444",
-            cursor: "pointer", borderRadius: 2,
-          }}>
+      {/* Controles período */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "5px 12px", borderBottom: "1px solid #1a1a1a", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 1 }}>
+          {PERIODS.map(p => (
+            <button key={p.value} onClick={() => setPeriod(p.value)} style={{
+              fontSize: 9, padding: "2px 8px", cursor: "pointer",
+              background: period === p.value ? "#FFA028" : "transparent",
+              color: period === p.value ? "#000" : "#555",
+              border: `1px solid ${period === p.value ? "#FFA028" : "#2a2a2a"}`,
+              fontWeight: period === p.value ? 700 : 400,
+            }}>{p.label}</button>
+          ))}
+        </div>
+
+        <div style={{ width: 1, height: 14, background: "#222" }} />
+
+        {TC_LINES.map(l => (
+          <ToggleBtn key={l.key} active={visibles.has(l.key)} color={l.color} onClick={() => toggleLine(l.key)}>
             {l.name}
-          </button>
+          </ToggleBtn>
         ))}
       </div>
 
-      {/* Controls row 2: Bandas + Forecast + Overlays */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "6px 10px", borderBottom: "1px solid #111", alignItems: "center" }}>
-        {/* Bandas toggle */}
-        <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", fontSize: 9, color: showBandas ? "#FFA028" : "#444" }}>
-          <input type="checkbox" checked={showBandas} onChange={(e) => setShowBandas(e.target.checked)}
-            style={{ accentColor: "#FFA028", width: 11, height: 11 }} />
-          BANDAS CAMBIARIAS
-        </label>
+      {/* Controles bandas */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "4px 12px", borderBottom: "1px solid #1a1a1a", alignItems: "center" }}>
+        {/* Fases históricas */}
+        <span style={{ fontSize: 8, color: "#333", textTransform: "uppercase", letterSpacing: "0.08em" }}>Bandas:</span>
+        <ToggleBtn active={showFase1} color="#818CF8" onClick={() => setShowFase1(v => !v)}>F1 2%</ToggleBtn>
+        <ToggleBtn active={showFase2} color="#06B6D4" onClick={() => setShowFase2(v => !v)}>F2 1%</ToggleBtn>
+        <ToggleBtn active={showBandas} color="#22C55E" onClick={() => setShowBandas(v => !v)}>F3 IPC</ToggleBtn>
 
-        <div style={{ width: 1, height: 12, background: "#222" }} />
+        <div style={{ width: 1, height: 14, background: "#222" }} />
 
-        {/* Forecast toggle */}
-        <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", fontSize: 9, color: showForecast ? "#A78BFA" : "#444" }}>
-          <input type="checkbox" checked={showForecast} onChange={(e) => setShowForecast(e.target.checked)}
-            style={{ accentColor: "#A78BFA", width: 11, height: 11 }} />
-          FORECAST BANDAS
-        </label>
+        {/* Forecast */}
+        <ToggleBtn active={showForecast} color="#A78BFA" onClick={() => setShowForecast(v => !v)}>Forecast</ToggleBtn>
 
         {showForecast && (
           <>
-            {(["neutral", "rem_top10", "manual"] as ForecastMode[]).map((m) => (
-              <button key={m} onClick={() => setForecastMode(m)} style={{
-                fontSize: 9, padding: "2px 7px",
-                background: forecastMode === m ? "#A78BFA22" : "transparent",
-                border: `1px solid ${forecastMode === m ? "#A78BFA" : "#2a2a2a"}`,
-                color: forecastMode === m ? "#A78BFA" : "#444",
-                cursor: "pointer", borderRadius: 2,
-              }}>
-                {m === "neutral" ? "REM Mediana" : m === "rem_top10" ? "REM Top10" : "Manual"}
-              </button>
-            ))}
-            {forecastMode === "manual" && (
-              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <input
-                  type="number" min={0} max={30} step={0.1}
-                  value={manualRate}
-                  onChange={(e) => setManualRate(parseFloat(e.target.value) || 0)}
-                  style={{
-                    width: 52, padding: "2px 4px", fontSize: 9,
-                    background: "#111", border: "1px solid #333", color: "#fff",
-                    borderRadius: 2, fontFamily: "monospace",
-                  }}
+            <div style={{ display: "flex", gap: 1 }}>
+              {(["neutral", "rem_top10", "manual"] as ForecastMode[]).map(m => (
+                <button key={m} onClick={() => setFcastMode(m)} style={{
+                  fontSize: 9, padding: "2px 7px", cursor: "pointer",
+                  background: fcastMode === m ? "#A78BFA22" : "transparent",
+                  border: `1px solid ${fcastMode === m ? "#A78BFA" : "#2a2a2a"}`,
+                  color: fcastMode === m ? "#A78BFA" : "#444",
+                }}>
+                  {m === "neutral" ? "REM med." : m === "rem_top10" ? "REM top10" : "Manual"}
+                </button>
+              ))}
+              {fcastMode === "manual" && (
+                <input type="number" min={0} max={20} step={0.1} value={manualRate}
+                  onChange={e => setManualRate(parseFloat(e.target.value) || 0)}
+                  style={{ width: 46, padding: "2px 4px", fontSize: 9, background: "#111", border: "1px solid #333", color: "#fff", marginLeft: 4 }}
                 />
-                <span style={{ fontSize: 9, color: "#555" }}>% mensual</span>
-              </div>
-            )}
+              )}
+            </div>
+            <div style={{ fontSize: 8, color: "#333", display: "flex", gap: 8 }}>
+              <span style={{ color: "#4AF6C388" }}>· bull +1pp</span>
+              <span style={{ color: "#A78BFA88" }}>· neutral</span>
+              <span style={{ color: "#FF433D88" }}>· bear −1pp</span>
+            </div>
           </>
         )}
 
-        <div style={{ width: 1, height: 12, background: "#222" }} />
-
-        {/* Overlays */}
-        <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", fontSize: 9, color: showRofex ? "#FFA028" : "#444" }}>
-          <input type="checkbox" checked={showRofex} onChange={(e) => setShowRofex(e.target.checked)}
-            style={{ accentColor: "#FFA028", width: 11, height: 11 }} />
-          ROFEX
-        </label>
-        <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", fontSize: 9, color: showLecap ? "#A78BFA" : "#444" }}>
-          <input type="checkbox" checked={showLecap} onChange={(e) => setShowLecap(e.target.checked)}
-            style={{ accentColor: "#A78BFA", width: 11, height: 11 }} />
-          LECAP breakevens
-        </label>
-
-        {showForecast && (
-          <div style={{ marginLeft: "auto", display: "flex", gap: 8, fontSize: 9, color: "#444", alignItems: "center" }}>
-            <span style={{ color: "#4AF6C3" }}>— Bull (+100bps)</span>
-            <span style={{ color: "#A78BFA" }}>— Neutral</span>
-            <span style={{ color: "#FF433D" }}>— Bear (−100bps)</span>
-          </div>
-        )}
+        <div style={{ width: 1, height: 14, background: "#222", marginLeft: "auto" }} />
+        <ToggleBtn active={showRofex} color="#FFA028" onClick={() => setShowRofex(v => !v)}>ROFEX</ToggleBtn>
+        <ToggleBtn active={showLecap} color="#A78BFA" onClick={() => setShowLecap(v => !v)}>LECAP breaks</ToggleBtn>
       </div>
 
-      {/* Chart */}
-      <div style={{ padding: "8px 4px 4px 0", background: "#040404" }}>
-        <ResponsiveContainer width="100%" height={380}>
-          <ComposedChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-            <CartesianGrid stroke="#111" strokeDasharray="3 3" />
-            <XAxis
-              dataKey="date"
-              tickFormatter={fmtDateShort}
-              tick={{ fill: "#444", fontSize: 9 }}
-              axisLine={{ stroke: "#222" }} tickLine={false}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              tick={{ fill: "#444", fontSize: 9 }}
-              axisLine={{ stroke: "#222" }} tickLine={false}
-              tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v}`}
-              width={46}
-            />
-            <Tooltip content={<ChartTooltip />} />
+      {loading ? (
+        <div style={{ padding: 24, textAlign: "center", color: "#444", fontSize: 10 }}>Cargando histórico...</div>
+      ) : (
+        <div style={{ padding: "6px 4px 0 0" }}>
+          <ResponsiveContainer width="100%" height={380}>
+            <ComposedChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="#111" strokeDasharray="3 3" />
+              <XAxis dataKey="date" tickFormatter={fmtDateShort}
+                tick={{ fill: "#444", fontSize: 9 }} axisLine={{ stroke: "#222" }} tickLine={false}
+                interval="preserveStartEnd" />
+              <YAxis tick={{ fill: "#444", fontSize: 9 }} axisLine={{ stroke: "#222" }} tickLine={false}
+                tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`} width={44} />
+              <Tooltip content={<ChartTooltip />} />
+              <ReferenceLine x={todayStr} stroke="#333" strokeDasharray="4 2" label={{ value: "hoy", fill: "#333", fontSize: 8, position: "top" }} />
 
-            {/* Área de referencia: separación entre histórico y forecast */}
-            <ReferenceArea x1={todayStr} fill="#4FC3F722" fillOpacity={0.04} />
+              {/* Series TC históricas */}
+              {TC_LINES.filter(l => visibles.has(l.key)).map(l => (
+                <Line key={l.key} type="monotone" dataKey={l.key} name={l.name}
+                  stroke={l.color} dot={false} strokeWidth={1.5} connectNulls />
+              ))}
 
-            {/* TC histórico */}
-            {TC_LINES.filter((l) => visibles.has(l.key)).map((l) => (
-              <Line key={l.key} type="monotone" dataKey={l.key} name={l.name}
-                stroke={l.color} dot={false} strokeWidth={1.5} connectNulls />
-            ))}
+              {/* Fase 1: crawl 2% — índigo, no solapa con ningún TC */}
+              {showFase1 && (
+                <Line dataKey="fase1" name="Crawl 2% (F1)" stroke="#818CF8"
+                  dot={false} strokeWidth={1.2} connectNulls strokeDasharray="6 2" />
+              )}
 
-            {/* Bandas cambiarias (inferior y superior) */}
-            {showBandas && (
-              <>
-                <Line dataKey="bandaInf" name="Banda inf." stroke="#FFA028" dot={false}
-                  strokeWidth={1.5} connectNulls strokeDasharray="none" />
-                <Line dataKey="bandaSup" name="Banda sup." stroke="#FF433D" dot={false}
-                  strokeWidth={1.5} connectNulls strokeDasharray="none" />
-              </>
-            )}
+              {/* Fase 2: crawl 1% — cyan, distinto al amarillo de MEP */}
+              {showFase2 && (
+                <Line dataKey="fase2" name="Crawl 1% (F2)" stroke="#06B6D4"
+                  dot={false} strokeWidth={1.2} connectNulls strokeDasharray="6 2" />
+              )}
 
-            {/* Forecast scenarios (líneas punteadas) */}
-            {showForecast && (
-              <>
-                {/* Neutral / REM Top10 / Manual */}
-                <Line dataKey={fcastKeys.inf} name={`Fcst ${forecastMode} inf`}
-                  stroke="#A78BFA" dot={false} strokeWidth={1} strokeDasharray="5 3" connectNulls />
-                <Line dataKey={fcastKeys.sup} name={`Fcst ${forecastMode} sup`}
-                  stroke="#A78BFA" dot={false} strokeWidth={1} strokeDasharray="5 3" connectNulls />
+              {/* Fase 3: verde = piso / rojo = techo  (semántica soporte/resistencia) */}
+              {showBandas && <>
+                <Line dataKey="bandaInf" name="Piso F3" stroke="#22C55E" dot={false} strokeWidth={1.5} connectNulls />
+                <Line dataKey="bandaSup" name="Techo F3" stroke="#EF4444" dot={false} strokeWidth={1.5} connectNulls />
+              </>}
 
-                {/* Bull (+100bps) */}
-                <Line dataKey="fcastBullInf" name="Bull inf" stroke="#4AF6C3"
-                  dot={false} strokeWidth={1} strokeDasharray="3 4" connectNulls />
-                <Line dataKey="fcastBullSup" name="Bull sup" stroke="#4AF6C3"
-                  dot={false} strokeWidth={1} strokeDasharray="3 4" connectNulls />
+              {/* Forecast punteado */}
+              {showForecast && <>
+                <Line dataKey={fcastKeys!.inf} name="Fcst inf" stroke="#A78BFA" dot={false} strokeWidth={1} strokeDasharray="5 3" connectNulls />
+                <Line dataKey={fcastKeys!.sup} name="Fcst sup" stroke="#A78BFA" dot={false} strokeWidth={1} strokeDasharray="5 3" connectNulls />
+                <Line dataKey="fBullInf" name="Bull inf" stroke="#4AF6C3" dot={false} strokeWidth={1} strokeDasharray="3 4" connectNulls />
+                <Line dataKey="fBullSup" name="Bull sup" stroke="#4AF6C3" dot={false} strokeWidth={1} strokeDasharray="3 4" connectNulls />
+                <Line dataKey="fBearInf" name="Bear inf" stroke="#FF433D" dot={false} strokeWidth={1} strokeDasharray="3 4" connectNulls />
+                <Line dataKey="fBearSup" name="Bear sup" stroke="#FF433D" dot={false} strokeWidth={1} strokeDasharray="3 4" connectNulls />
+              </>}
 
-                {/* Bear (−100bps) */}
-                <Line dataKey="fcastBearInf" name="Bear inf" stroke="#FF433D"
-                  dot={false} strokeWidth={1} strokeDasharray="3 4" connectNulls />
-                <Line dataKey="fcastBearSup" name="Bear sup" stroke="#FF433D"
-                  dot={false} strokeWidth={1} strokeDasharray="3 4" connectNulls />
-              </>
-            )}
+              {/* Overlay puntos ROFEX */}
+              {showRofex && (
+                <Line dataKey="rofexDot" name="ROFEX" stroke="#FFA028" strokeWidth={0}
+                  dot={{ fill: "#FFA028", r: 5, stroke: "#000", strokeWidth: 1 }} connectNulls={false} />
+              )}
 
-            {/* Overlay: ROFEX dots — Line con strokeWidth=0, solo puntos */}
-            {showRofex && (
-              <Line dataKey="rofexDot" name="ROFEX" stroke="#FFA028" strokeWidth={0}
-                dot={{ fill: "#FFA028", r: 5, stroke: "#000", strokeWidth: 1 }}
-                activeDot={{ r: 6 }} connectNulls={false} />
-            )}
+              {/* Overlay puntos LECAPs */}
+              {showLecap && (
+                <Line dataKey="lecapDot" name="LECAP" stroke="#A78BFA" strokeWidth={0}
+                  dot={{ fill: "#A78BFA", r: 5, stroke: "#000", strokeWidth: 1 }} connectNulls={false} />
+              )}
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
-            {/* Overlay: LECAP breakeven dots */}
-            {showLecap && (
-              <Line dataKey="lecapDot" name="LECAP breakeven" stroke="#A78BFA" strokeWidth={0}
-                dot={{ fill: "#A78BFA", r: 5, stroke: "#000", strokeWidth: 1 }}
-                activeDot={{ r: 6 }} connectNulls={false} />
-            )}
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div style={{ padding: "4px 10px", fontSize: 8, color: "#2a2a2a", borderTop: "1px solid #111" }}>
-        Bandas Fase 3: vigentes desde 14/04/2025 · Inf $1.000 / Sup $1.400 · actualización mensual por IPC[t-2]
-        · Forecast: {forecastMode === "manual" ? `manual ${manualRate}%/mes` : forecastMode === "rem_top10" ? "REM Top 10 analistas" : "REM mediana"} · Bull +100bps / Bear −100bps
-      </div>
-    </div>
-  )
-}
-
-// ─── Precios Section ──────────────────────────────────────────────────────────
-
-function PreciosSection({
-  dolares, internacional, rofex, lecaps,
-}: {
-  dolares: DolarResponse | null
-  internacional: InternacionalData | null
-  rofex: RofexFuture[]
-  lecaps: CapInstrument[]
-}) {
-  const r = dolares?.rates
-  const s = dolares?.spreads
-
-  const oficial = r?.oficial?.venta ?? null
-  const cclVenta = r?.contadoconliqui?.venta ?? null
-  const mepVenta = r?.bolsa?.venta ?? null
-
-  const canje    = mepVenta != null ? parseFloat((mepVenta * 0.998).toFixed(2)) : null
-  const tarjeta  = oficial   != null ? parseFloat((oficial * 1.60).toFixed(2)) : null
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-
-      {/* Cards TC locales */}
-      <div style={{ padding: "4px 8px", background: "#0d0d0d", fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>
-        Tipos de cambio locales — ARS/USD
-      </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-        <RateCard label="Blue" venta={r?.blue?.venta} compra={r?.blue?.compra}
-          variacion={r?.blue?.variacion} brecha={s?.brechaBlueOficial} color="#4AF6C3" />
-        <RateCard label="CCL" venta={cclVenta} compra={r?.contadoconliqui?.compra}
-          variacion={r?.contadoconliqui?.variacion} brecha={s?.brechaCclOficial} color="#FFA028" />
-        <RateCard label="MEP / Bolsa" venta={mepVenta} compra={r?.bolsa?.compra}
-          variacion={r?.bolsa?.variacion} brecha={s?.brechaMepOficial} color="#FFD700" />
-        <RateCard label="Oficial BNA" venta={oficial}
-          variacion={r?.oficial?.variacion} color="#aaaaaa" />
-        <RateCard label="Mayorista A3500" venta={r?.mayorista?.venta} color="#777777" />
-        <RateCard label="Crypto USDT" venta={r?.cripto?.venta} compra={r?.cripto?.compra}
-          variacion={r?.cripto?.variacion} color="#F97316" />
-        <RateCard label="Canje" venta={canje} color="#A78BFA"
-          badge="~MEP × 0.998" />
-        <RateCard label="Tarjeta" venta={tarjeta} color="#FB7185"
-          badge="+60%" />
-      </div>
-
-      {/* Internacional */}
-      <div style={{ padding: "4px 8px", background: "#0d0d0d", fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>
-        Mercados internacionales
-      </div>
-      <InternacionalBlock data={internacional} />
-
-      {/* ROFEX */}
-      <div style={{ padding: "4px 8px", background: "#0d0d0d", fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>
-        Futuros ROFEX — Dólar implícito
-      </div>
-      <RofexTable futures={rofex} />
-
-      {/* LECAPs */}
-      <div style={{ padding: "4px 8px", background: "#0d0d0d", fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>
-        Breakevens LECAPs — TC implícito vs CCL
-      </div>
-      <LecapTable instruments={lecaps} />
-
-      <div style={{ padding: "4px 8px", fontSize: 8, color: "#2a2a2a", borderTop: "1px solid #111" }}>
-        Fuentes: DolarAPI (TC locales) · Yahoo Finance (internacional) · ROFEX · ByMA (LECAPs)
-        · Tarjeta = Oficial × 1.60 (PAIS 30% + IVA 30%) · Canje ≈ MEP × 0.998
+      {/* Leyenda fases */}
+      <div style={{ padding: "4px 12px", fontSize: 8, color: "#2a2a2a", borderTop: "1px solid #111", display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <span style={{ color: "#818CF855" }}>━ F1 crawl 2% (feb 2024 – ene 2025)</span>
+        <span style={{ color: "#06B6D455" }}>━ F2 crawl 1% (feb – abr 2025)</span>
+        <span style={{ color: "#22C55E55" }}>━ piso F3 · </span><span style={{ color: "#EF444455" }}>━ techo F3 (IPC[t-2], desde 14/abr/2025)</span>
+        <span style={{ color: "#33333388" }}>· {fuente} · REM: {bandasData?.fuentes?.rem ?? "fallback"}</span>
       </div>
     </div>
   )
@@ -812,125 +726,87 @@ function PreciosSection({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function TabTiposCambio() {
-  const [activeTab, setActiveTab] = useState<"precios" | "graficos">("precios")
-  const [period, setPeriod] = useState<Period>("1y")
+  const [period,       setPeriod]       = useState<Period>("1y")
+  const [dolares,      setDolares]      = useState<DolarResponse | null>(null)
+  const [intl,         setIntl]         = useState<InternacionalData | null>(null)
+  const [rofex,        setRofex]        = useState<RofexFuture[]>([])
+  const [lecaps,       setLecaps]       = useState<CapInstrument[]>([])
+  const [tcData,       setTcData]       = useState<TCEntry[]>([])
+  const [bandasData,   setBandasData]   = useState<BandasData | null>(null)
+  const [loadingTC,    setLoadingTC]    = useState(false)
+  const [loadingMain,  setLoadingMain]  = useState(true)
 
-  const [dolares,       setDolares]       = useState<DolarResponse | null>(null)
-  const [internacional, setInternacional] = useState<InternacionalData | null>(null)
-  const [rofexData,     setRofexData]     = useState<RofexFuture[]>([])
-  const [lecapData,     setLecapData]     = useState<CapInstrument[]>([])
-  const [tcData,        setTcData]        = useState<TCEntry[]>([])
-  const [bandasData,    setBandasData]    = useState<BandasData | null>(null)
-
-  const [loadingPrecios,  setLoadingPrecios]  = useState(true)
-  const [loadingGraficos, setLoadingGraficos] = useState(false)
-  const [errorPrecios,    setErrorPrecios]    = useState<string | null>(null)
-  const [errorGraficos,   setErrorGraficos]   = useState<string | null>(null)
-
-  // Fetch precios + bandas al montar
   useEffect(() => {
-    setLoadingPrecios(true)
-    setErrorPrecios(null)
     Promise.all([
-      fetch("/api/dolares").then((r) => r.json()),
-      fetch("/api/internacional").then((r) => r.json()),
-      fetch("/api/rofex").then((r) => r.json()),
-      fetch("/api/bonos?tipo=lecap").then((r) => r.json()),
-      fetch("/api/bandas-cambiarias").then((r) => r.json()),
-    ])
-      .then(([dol, intl, rof, lec, bandas]) => {
-        setDolares(dol)
-        setInternacional(intl.data ?? null)
-        setRofexData(Array.isArray(rof) ? rof : [])
-        setLecapData(lec.data ?? [])
-        setBandasData(bandas.ipcHistorico ? bandas : null)
-        setLoadingPrecios(false)
-      })
-      .catch((e) => { setErrorPrecios(String(e)); setLoadingPrecios(false) })
+      fetch("/api/dolares").then(r => r.json()),
+      fetch("/api/internacional").then(r => r.json()),
+      fetch("/api/rofex").then(r => r.json()),
+      fetch("/api/bonos?tipo=lecap").then(r => r.json()),
+      fetch("/api/bandas-cambiarias").then(r => r.json()),
+    ]).then(([dol, i, rof, lec, bandas]) => {
+      setDolares(dol)
+      setIntl(i?.data ?? null)
+      setRofex(Array.isArray(rof) ? rof : [])
+      setLecaps(lec?.data ?? [])
+      setBandasData(bandas?.ipcHistorico ? bandas : null)
+      setLoadingMain(false)
+    }).catch(() => setLoadingMain(false))
   }, [])
 
-  // Fetch tc-historico cuando cambia período o se activa el tab gráficos
-  const fetchGraficos = useCallback(() => {
-    setLoadingGraficos(true)
-    setErrorGraficos(null)
+  const fetchTC = useCallback(() => {
+    setLoadingTC(true)
     fetch(`/api/tc-historico?period=${period}`)
-      .then((r) => r.json())
-      .then((j) => { setTcData(j.data ?? []); setLoadingGraficos(false) })
-      .catch((e) => { setErrorGraficos(String(e)); setLoadingGraficos(false) })
+      .then(r => r.json())
+      .then(j => { setTcData(j.data ?? []); setLoadingTC(false) })
+      .catch(() => setLoadingTC(false))
   }, [period])
 
-  useEffect(() => {
-    if (activeTab === "graficos") fetchGraficos()
-  }, [activeTab, fetchGraficos])
+  useEffect(() => { fetchTC() }, [fetchTC])
+
+  if (loadingMain) {
+    return (
+      <div className="bbg-panel">
+        <div className="bbg-panel-header">TIPOS DE CAMBIO</div>
+        <div style={{ padding: 32, textAlign: "center", color: "#444", fontSize: 10 }}>Cargando datos...</div>
+      </div>
+    )
+  }
 
   return (
-    <div>
-      {/* Header con sub-tabs */}
-      <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span>TIPOS DE CAMBIO</span>
-        <div style={{ display: "flex", gap: 2 }}>
-          {(["precios", "graficos"] as const).map((t) => (
-            <button key={t} onClick={() => setActiveTab(t)} style={{
-              fontSize: 9, padding: "2px 10px",
-              background: activeTab === t ? "#FFA028" : "transparent",
-              color: activeTab === t ? "#000" : "#666",
-              border: `1px solid ${activeTab === t ? "#FFA028" : "#333"}`,
-              cursor: "pointer", borderRadius: 2, textTransform: "uppercase", letterSpacing: 1,
-            }}>
-              {t === "precios" ? "Precios" : "Gráficos"}
-            </button>
-          ))}
+    <div className="bbg-panel">
+      <div className="bbg-panel-header">TIPOS DE CAMBIO</div>
+
+      {/* ── Layout principal: gráfico izquierda / datos derecha ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "55% 45%", borderBottom: "1px solid #1a1a1a" }}>
+
+        {/* ── COLUMNA IZQUIERDA: Gráfico histórico + bandas ── */}
+        <div style={{ borderRight: "1px solid #1a1a1a" }}>
+          <SectionLabel>Evolución histórica · Bandas (3 fases) · Forecast</SectionLabel>
+          <ChartSection
+            tcData={tcData} rofexData={rofex} lecapData={lecaps}
+            bandasData={bandasData} period={period} setPeriod={setPeriod} loading={loadingTC}
+          />
+        </div>
+
+        {/* ── COLUMNA DERECHA: TC locales + Internacional ── */}
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <SectionLabel>Tipos de cambio locales — ARS/USD venta</SectionLabel>
+          <TCRatesTable dolares={dolares} />
+          <SectionLabel>Mercados internacionales</SectionLabel>
+          <InternacionalTable data={intl} />
         </div>
       </div>
 
-      {/* Sub-tab: Precios */}
-      {activeTab === "precios" && (
-        <>
-          {loadingPrecios && (
-            <div style={{ padding: 32, textAlign: "center", color: "#555", fontSize: 11 }}>
-              Cargando datos de tipos de cambio...
-            </div>
-          )}
-          {errorPrecios && (
-            <div style={{ padding: 16, color: "#FF433D", fontSize: 11 }}>Error: {errorPrecios}</div>
-          )}
-          {!loadingPrecios && !errorPrecios && (
-            <PreciosSection dolares={dolares} internacional={internacional} rofex={rofexData} lecaps={lecapData} />
-          )}
-        </>
-      )}
+      {/* ── ROFEX y LECAPs: ancho completo debajo ── */}
+      <SectionLabel>Futuros ROFEX — dólar implícito</SectionLabel>
+      <RofexTable futures={rofex} />
 
-      {/* Sub-tab: Gráficos */}
-      {activeTab === "graficos" && (
-        <>
-          {/* Period selector */}
-          <div style={{ display: "flex", gap: 2, padding: "6px 8px", borderBottom: "1px solid #111" }}>
-            {PERIODS.map((p) => (
-              <button key={p.value} onClick={() => setPeriod(p.value)} style={{
-                fontSize: 9, padding: "2px 8px",
-                background: period === p.value ? "#FFA028" : "transparent",
-                color: period === p.value ? "#000" : "#666",
-                border: `1px solid ${period === p.value ? "#FFA028" : "#333"}`,
-                cursor: "pointer", borderRadius: 2,
-              }}>
-                {p.label}
-              </button>
-            ))}
-          </div>
+      <SectionLabel>Breakevens LECAPs — TC implícito vs CCL</SectionLabel>
+      <LecapTable instruments={lecaps} />
 
-          {loadingGraficos && (
-            <div style={{ padding: 32, textAlign: "center", color: "#555", fontSize: 11 }}>
-              Cargando histórico de tipos de cambio...
-            </div>
-          )}
-          {errorGraficos && (
-            <div style={{ padding: 16, color: "#FF433D", fontSize: 11 }}>Error: {errorGraficos}</div>
-          )}
-          {!loadingGraficos && (
-            <GraficosSection tcData={tcData} rofexData={rofexData} lecapData={lecapData} bandasData={bandasData} />
-          )}
-        </>
-      )}
+      <div style={{ padding: "3px 12px", fontSize: 8, color: "#2a2a2a", borderTop: "1px solid #111" }}>
+        TC locales: DolarAPI · Histórico: ArgentinaDatos · Internacional: Yahoo Finance · ROFEX: MatbaRofex · LECAPs: ByMA
+      </div>
     </div>
   )
 }

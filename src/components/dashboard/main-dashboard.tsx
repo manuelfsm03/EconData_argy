@@ -17,6 +17,7 @@ import { TabDeuda } from "./tab-deuda"
 import { TabMundo } from "./tab-mundo"
 import { TabGeopolitica } from "./tab-geopolitica"
 import { TabBonos } from "./tab-bonos"
+import { TabRentaFija } from "./tab-renta-fija"
 import { TabTiposCambio } from "./tab-tipos-cambio"
 import { TabAcciones } from "./tab-acciones"
 import { TickerTape } from "./ticker-tape"
@@ -444,9 +445,9 @@ export function Dashboard() {
           <NewsFeed />
         </TabsContent>
 
-        {/* ═══════════ BONOS ═══════════ */}
+        {/* ═══════════ RENTA FIJA ═══════════ */}
         <TabsContent value="bonos">
-          <TabBonos />
+          <TabRentaFija />
         </TabsContent>
 
         {/* ═══════════ ACCIONES AR ═══════════ */}
