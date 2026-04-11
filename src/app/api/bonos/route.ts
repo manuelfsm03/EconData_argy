@@ -172,11 +172,26 @@ export async function GET(request: NextRequest) {
 
   // LECAPs screener
   if (tipoParam === "lecap") {
-    const cacheKey = "lecaps_screener"
+    const cacheKey = "lecaps_screener_v2"
     const cached = getCache<unknown[]>(cacheKey)
     if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString() })
 
     try {
+      // Fetch CCL actual para calcular TC implícito
+      let cclActual: number | null = null
+      try {
+        const dolarRes = await fetch("https://dolarapi.com/v1/dolares", {
+          headers: { "User-Agent": "PanelDeControl/1.0" },
+          signal: AbortSignal.timeout(5000),
+          next: { revalidate: 60 },
+        })
+        if (dolarRes.ok) {
+          const dolarData: { casa: string; venta: number }[] = await dolarRes.json()
+          const ccl = dolarData.find((d) => d.casa === "contadoconliqui")
+          cclActual = ccl?.venta ?? null
+        }
+      } catch { /* ignore — tcImplicito quedará null */ }
+
       const instrumentos = await prisma.capInstrument.findMany({
         where: { vencimiento: { gt: new Date() } },
         orderBy: { vencimiento: "asc" },
@@ -185,6 +200,14 @@ export async function GET(request: NextRequest) {
       const screener = instrumentos.map((inst) => {
         const hoy = new Date()
         const diasVto = Math.round((inst.vencimiento.getTime() - hoy.getTime()) / (24 * 3600 * 1000))
+
+        // TC implícito: nivel de CCL al vencimiento que iguala rendimiento LECAP vs dolarización
+        // tcImplicito = CCL_hoy × (1 + TEM/100)^(diasVto/30)
+        const tcImplicito =
+          cclActual != null && inst.tem != null && diasVto > 0
+            ? parseFloat((cclActual * Math.pow(1 + inst.tem / 100, diasVto / 30)).toFixed(2))
+            : null
+
         return {
           ticker: inst.ticker,
           tipo: inst.tipo,
@@ -194,6 +217,7 @@ export async function GET(request: NextRequest) {
           tir: inst.tir,
           tea: inst.tea,
           tem: inst.tem,
+          tcImplicito,
         }
       })
 
