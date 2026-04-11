@@ -659,20 +659,39 @@ function SojaView() {
   )
 }
 
+// ISO3 → display name mapping
+const ISO3_LABEL: Record<string, string> = {
+  ARG: "Argentina", BRA: "Brazil", USA: "United States", CHN: "China",
+  MEX: "México", CHL: "Chile", COL: "Colombia", DEU: "Alemania",
+  JPN: "Japón", IND: "India",
+}
+
 function MacroComparadaView() {
-  const [data, setData] = useState<Record<string, unknown>[] | null>(null)
+  const [rawData, setRawData] = useState<Record<string, [string, number][]> | null>(null)
   const [loading, setLoading] = useState(true)
   const [indicador, setIndicador] = useState("gdp_growth")
 
   useEffect(() => {
-    fetch("/api/mundo?endpoint=macro_comparada")
+    setLoading(true)
+    fetch(`/api/world-macro?indicator=${indicador}`)
       .then((r) => r.json())
-      .then((j) => { setData(j.data); setLoading(false) })
+      .then((j) => { setRawData(j.data ?? {}); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [])
+  }, [indicador])
 
   if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando macro comparada...</div>
-  if (!data || data.length === 0) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos disponibles.</div>
+  if (!rawData || Object.keys(rawData).length === 0) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos disponibles.</div>
+
+  // Transform { ARG: [["2023", 133.5], ...] } → [{ date: "2023-01-01", Argentina: 133.5, ... }]
+  const yearMap: Record<string, Record<string, unknown>> = {}
+  for (const [iso, series] of Object.entries(rawData)) {
+    const label = ISO3_LABEL[iso] ?? iso
+    for (const [year, value] of series) {
+      if (!yearMap[year]) yearMap[year] = { date: `${year}-01-01` }
+      yearMap[year][label] = value
+    }
+  }
+  const data = Object.values(yearMap).sort((a, b) => (a.date as string).localeCompare(b.date as string))
 
   const indicadores = [
     { key: "gdp_growth", label: "Crecimiento PIB (%)" },
@@ -681,11 +700,14 @@ function MacroComparadaView() {
   ]
 
   const lines = [
-    { key: "Argentina",    name: "Argentina",   color: "#CE93D8" },
-    { key: "Brazil",       name: "Brasil",      color: "#FFD54F" },
-    { key: "Chile",        name: "Chile",       color: "#FFA028" },
-    { key: "Colombia",     name: "Colombia",    color: "#4AF6C3" },
-    { key: "Mexico",       name: "México",      color: "#4FC3F7" },
+    { key: "Argentina",     name: "Argentina",  color: "#CE93D8" },
+    { key: "Brazil",        name: "Brasil",     color: "#FFD54F" },
+    { key: "Chile",         name: "Chile",      color: "#FFA028" },
+    { key: "Colombia",      name: "Colombia",   color: "#4AF6C3" },
+    { key: "México",        name: "México",     color: "#4FC3F7" },
+    { key: "United States", name: "EEUU",       color: "#FF433D" },
+    { key: "Alemania",      name: "Alemania",   color: "#90CAF9" },
+    { key: "China",         name: "China",      color: "#EF9A9A" },
   ]
 
   return (
@@ -710,7 +732,7 @@ function MacroComparadaView() {
       </div>
 
       <BBGLineChart
-        title={`AMÉRICA LATINA — ${indicadores.find(i => i.key === indicador)?.label || "Indicador"}`}
+        title={`MACRO COMPARADA — ${indicadores.find(i => i.key === indicador)?.label || "Indicador"}`}
         data={data}
         lines={lines}
         enableLineToggle
