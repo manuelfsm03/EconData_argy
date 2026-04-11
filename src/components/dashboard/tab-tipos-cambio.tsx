@@ -11,6 +11,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
 } from "recharts"
+import { InfoTooltip } from "@/components/ui/info-tooltip"
+import { GLOSSARY } from "@/lib/glossary"
 
 interface TCEntry {
   date: string
@@ -31,12 +33,12 @@ const PERIODS: { value: Period; label: string }[] = [
   { value: "max", label: "MAX" },
 ]
 
-const LINES: { key: keyof Omit<TCEntry, "date">; name: string; color: string }[] = [
-  { key: "blue", name: "Blue", color: "#4AF6C3" },
-  { key: "ccl", name: "CCL", color: "#FFA028" },
-  { key: "mep", name: "MEP", color: "#FFD700" },
-  { key: "mayorista", name: "Mayorista", color: "#888888" },
-  { key: "oficial", name: "Oficial", color: "#aaaaaa" },
+const LINES: { key: keyof Omit<TCEntry, "date">; name: string; color: string; glossaryKey: string }[] = [
+  { key: "blue",      name: "Blue",      color: "#4AF6C3", glossaryKey: "BLUE" },
+  { key: "ccl",       name: "CCL",       color: "#FFA028", glossaryKey: "CCL" },
+  { key: "mep",       name: "MEP",       color: "#FFD700", glossaryKey: "MEP" },
+  { key: "mayorista", name: "Mayorista", color: "#888888", glossaryKey: "MAYORISTA" },
+  { key: "oficial",   name: "Oficial",   color: "#aaaaaa", glossaryKey: "OFICIAL" },
 ]
 
 function fmtDate(d: string): string {
@@ -223,7 +225,17 @@ function KPIStrip({ data }: { data: TCEntry[] }) {
     <div style={{ display: "flex", gap: 1, background: "#111", padding: 1, flexWrap: "wrap" }}>
       {kpis.map((k) => (
         <div key={k.key} style={{ flex: "1 1 80px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "10px 12px" }}>
-          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 }}>{k.name}</div>
+          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 2, display: "flex", alignItems: "center" }}>
+            {k.name}
+            {GLOSSARY[k.glossaryKey] && (
+              <InfoTooltip
+                text={GLOSSARY[k.glossaryKey].text}
+                source={GLOSSARY[k.glossaryKey].source}
+                url={GLOSSARY[k.glossaryKey].url}
+                position="bottom"
+              />
+            )}
+          </div>
           <div style={{ fontSize: 20, fontWeight: 700, color: k.color, fontFamily: "monospace" }}>
             {k.value ? `$${fmtNum(k.value)}` : "—"}
           </div>

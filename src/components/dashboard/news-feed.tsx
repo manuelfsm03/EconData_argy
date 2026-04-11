@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { LiveSection } from "./live-section"
-
 interface RSSItem {
   id: string
   title: string
@@ -29,6 +28,7 @@ const COUNTRIES = [
 
 const CATEGORIES = [
   { key: "todos",       label: "Todos",       color: "#888888" },
+  { key: "conflicto",   label: "Conflicto",   color: "#ff4444" },
   { key: "economía",    label: "Economía",    color: "#4FC3F7" },
   { key: "finanzas",    label: "Finanzas",    color: "#FFD54F" },
   { key: "política",    label: "Política",    color: "#ce93d8" },
@@ -37,7 +37,63 @@ const CATEGORIES = [
   { key: "commodities", label: "Commodities", color: "#81c784" },
 ]
 
-const INITIAL = 8
+const CAT_COLOR: Record<string, string> = {
+  "conflicto":   "#ff4444",
+  "economía":    "#4FC3F7",
+  "finanzas":    "#FFD54F",
+  "política":    "#ce93d8",
+  "comercio":    "#4488ff",
+  "energía":     "#ffaa00",
+  "commodities": "#81c784",
+  "mercados":    "#00cccc",
+  "general":     "#555555",
+}
+
+const INITIAL = 2
+
+function NewsCard({ item }: { item: RSSItem }) {
+  const color = CAT_COLOR[item.category] ?? CAT_COLOR.general
+  return (
+    <a
+      href={item.link}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: "block",
+        background: "#060606",
+        border: "1px solid #1a1a1a",
+        borderLeft: `3px solid ${color}`,
+        padding: "8px 10px",
+        textDecoration: "none",
+        marginBottom: 1,
+      }}
+    >
+      <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4 }}>
+        <span
+          style={{
+            fontSize: 9,
+            padding: "1px 6px",
+            background: color + "22",
+            color,
+            border: `1px solid ${color}55`,
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+          }}
+        >
+          {item.category || "general"}
+        </span>
+        <span style={{ fontSize: 9, color: "#555" }}>{item.source.toUpperCase().slice(0, 16)}</span>
+        <span style={{ fontSize: 9, color: "#333", marginLeft: "auto" }}>{fmtTime(item.pubDate)}</span>
+      </div>
+      <div style={{ fontSize: 12, color: "#ccc", lineHeight: 1.4 }}>{item.title}</div>
+      {item.description && (
+        <div style={{ fontSize: 10, color: "#555", marginTop: 4, lineHeight: 1.4 }}>
+          {item.description.slice(0, 120)}{item.description.length > 120 ? "…" : ""}
+        </div>
+      )}
+    </a>
+  )
+}
 
 function fmtTime(d: string): string {
   try {
@@ -175,7 +231,7 @@ export function NewsFeed() {
   const activeCat = CATEGORIES.find((c) => c.key === category)
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "calc(100dvh - 68px)" }}>
+    <div style={{ display: "flex", flexDirection: "column" }}>
       {/* Tabs de categoría */}
       <div
         style={{
@@ -222,9 +278,9 @@ export function NewsFeed() {
       </div>
 
       {/* Dos columnas: Argentina | Internacional */}
-      <div style={{ display: "flex", gap: 1, background: "#111111", flex: 1, minHeight: 0 }}>
+      <div style={{ display: "flex", gap: 1, background: "#111111" }}>
         {/* Argentina */}
-        <div style={{ flex: 1, minWidth: 0, background: "#000000", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1, minWidth: 0, background: "#000000", display: "flex", flexDirection: "column" }}>
           <div
             className="bbg-panel-header"
             style={{ display: "flex", alignItems: "center", gap: 6 }}
@@ -235,20 +291,31 @@ export function NewsFeed() {
               {argentina.length}
             </span>
           </div>
-          <div style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
-            <NewsTable
-              rows={argentina}
-              extra={moreAR}
-              loading={loading}
-              expandedId={expandedId}
-              onToggle={onToggle}
-              onMore={() => setMoreAR((n) => n + INITIAL)}
-            />
+          <div style={{ padding: 1, background: "#0a0a0a" }}>
+            {argentina.slice(0, INITIAL + moreAR).length === 0 ? (
+              <div style={{ padding: 20, color: "#555", fontSize: 11, textAlign: "center" }}>
+                {loading ? "CARGANDO..." : "SIN RESULTADOS"}
+              </div>
+            ) : (
+              argentina.slice(0, INITIAL + moreAR).map((item, i) => (
+                <NewsCard key={item.id + i} item={item} />
+              ))
+            )}
+            {argentina.length > INITIAL + moreAR && (
+              <div style={{ padding: "6px 12px" }}>
+                <button
+                  onClick={() => setMoreAR((n) => n + INITIAL)}
+                  style={{ color: "#0068FF", fontSize: 10, background: "none", border: "none", cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.04em" }}
+                >
+                  Ver {argentina.length - INITIAL - moreAR} más ▼
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Internacional */}
-        <div style={{ flex: 1, minWidth: 0, background: "#000000", display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1, minWidth: 0, background: "#000000" }}>
           <div
             className="bbg-panel-header"
             style={{ display: "flex", alignItems: "center", gap: 6 }}
@@ -283,20 +350,32 @@ export function NewsFeed() {
               </button>
             ))}
           </div>
-          <div style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
-            <NewsTable
-              rows={internacional}
-              extra={moreIN}
-              loading={loading}
-              expandedId={expandedId}
-              onToggle={onToggle}
-              onMore={() => setMoreIN((n) => n + INITIAL)}
-            />
+          {/* Cards con colores por categoría */}
+          <div style={{ padding: 1, background: "#0a0a0a" }}>
+            {internacional.slice(0, INITIAL + moreIN).length === 0 ? (
+              <div style={{ padding: 20, color: "#555", fontSize: 11, textAlign: "center" }}>
+                {loading ? "CARGANDO..." : "SIN RESULTADOS"}
+              </div>
+            ) : (
+              internacional.slice(0, INITIAL + moreIN).map((item, i) => (
+                <NewsCard key={item.id + i} item={item} />
+              ))
+            )}
+            {internacional.length > INITIAL + moreIN && (
+              <div style={{ padding: "6px 12px" }}>
+                <button
+                  onClick={() => setMoreIN((n) => n + INITIAL)}
+                  style={{ color: "#0068FF", fontSize: 10, background: "none", border: "none", cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.04em" }}
+                >
+                  Ver {internacional.length - INITIAL - moreIN} más ▼
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* EN VIVO */}
+      {/* EN VIVO — colapsado por defecto */}
       <LiveSection />
     </div>
   )

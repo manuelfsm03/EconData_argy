@@ -29,6 +29,7 @@ export function TabPlazosFijos() {
       <BBGChartPanel title="PLAZOS FIJOS PRIV ARS" loading={plazosFijos.loading} error={plazosFijos.error} source={plazosFijos.source}>
         <BBGAreaChart
           title="PLAZOS FIJOS PRIVADOS ARS — NIVEL"
+          glossaryKey="TASA PLAZO FIJO"
           data={plazosFijos.data}
           areas={[{ key: "plazos_fijos", name: "Plazos Fijos", color: "#4AF6C3" }]}
           yAxisLabel="MM ARS"
@@ -38,6 +39,7 @@ export function TabPlazosFijos() {
       <BBGChartPanel title="BADLAR VS DEP 30D" loading={rates.loading} error={rates.error} source={rates.source}>
         <BBGLineChart
           title="TASA BADLAR VS DEPOSITOS 30D"
+          glossaryKey="BADLAR"
           data={rates.data}
           lines={[
             { key: "badlar", name: "BADLAR", color: "#FFA028" },
@@ -51,6 +53,7 @@ export function TabPlazosFijos() {
       <BBGChartPanel title="TM20 VS BADLAR" loading={rates.loading} error={rates.error} source={rates.source}>
         <BBGLineChart
           title="TASA TM20 VS BADLAR"
+          glossaryKey="TM20"
           data={rates.data}
           lines={[
             { key: "tm20", name: "TM20", color: "#FFD700" },
@@ -65,6 +68,7 @@ export function TabPlazosFijos() {
       <BBGChartPanel title="COMPONENTES DEPOSITOS" loading={deposits.loading} error={deposits.error} source={deposits.source}>
         <BBGLineChart
           title="COMPONENTES DE DEPOSITOS"
+          glossaryKey="COMPONENTES DEPOSITOS"
           data={deposits.data}
           lines={[
             { key: "depositos_cc", name: "Cta Cte", color: "#4AF6C3" },
@@ -78,6 +82,7 @@ export function TabPlazosFijos() {
       <BBGChartPanel title="RATIO BADLAR/DEP30D" loading={rates.loading} error={rates.error}>
         <BBGLineChart
           title="RATIO BADLAR / DEPOSITOS 30D"
+          glossaryKey="RATIO BADLAR"
           data={ratioData}
           lines={[{ key: "ratio", name: "BADLAR/Dep30d", color: "#FF433D" }]}
           yAxisLabel="Ratio"
@@ -88,6 +93,7 @@ export function TabPlazosFijos() {
       <BBGChartPanel title="IPC INTERANUAL" loading={ipc.loading} error={ipc.error} source={ipc.source}>
         <BBGLineChart
           title="IPC — VARIACION INTERANUAL"
+          glossaryKey="IPC INTERANUAL"
           data={ipc.data}
           lines={[{ key: "ipc_interanual", name: "IPC Interanual", color: "#FF433D" }]}
           yAxisLabel="%"

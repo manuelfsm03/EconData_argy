@@ -580,7 +580,7 @@ type IcgData = { data: IcgRow[]; ultimo: IcgRow | null }
 
 // ── EMAE Tab ──────────────────────────────────────────────────────────────────
 
-function EmaeView() {
+export function EmaeView() {
   const [data, setData] = useState<MacroData | null>(null)
   const [loading, setLoading] = useState(true)
   const [laboralData, setLaboralData] = useState<LaboralData | null>(null)
@@ -1947,7 +1947,7 @@ function ComposicionExportView() {
   )
 }
 
-function BalanzaView() {
+export function BalanzaView() {
   const [data, setData] = useState<MacroData | null>(null)
   const [loading, setLoading] = useState(true)
   const [balanzaTab, setBalanzaTab] = useState("flujos")
