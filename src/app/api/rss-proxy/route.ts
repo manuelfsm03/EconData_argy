@@ -81,6 +81,7 @@ const ALLOWED_DOMAINS = [
   "clarin.com",
   "baenegocios.com",
   "eleconomista.com.ar",
+  "perfil.com",
 ]
 
 export async function GET(request: NextRequest) {
