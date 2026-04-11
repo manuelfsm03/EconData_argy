@@ -84,23 +84,22 @@ interface TCEntry {
 type Period = "1m" | "3m" | "6m" | "1y" | "2y" | "max"
 type ForecastMode = "neutral" | "rem_top10" | "manual"
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-// IPC histórico por mes — actualizar mensualmente
-// Clave: "YYYY-MM" → tasa mensual (%)
-const IPC_HISTORICO: Record<string, number> = {
-  "2025-01": 2.4,
-  "2025-02": 2.4,
-  "2025-03": 3.7,
+interface BandasData {
+  ipcHistorico: Record<string, number>
+  remMediana: number[]
+  remTop10: number[]
+  bandaInicial: { date: string; inferior: number; superior: number }
+  fuentes: Record<string, string>
 }
 
-// Valores iniciales de banda cambiaria Fase 3 (14 abr 2025)
-const BANDA_INICIAL = { date: "2025-04-14", inferior: 1000, superior: 1400 }
+// ─── Constants (fallback si la API falla) ─────────────────────────────────────
 
-// REM BCRA — Marzo 2025. Índice 0 = IPC feb 2025 (aplica a banda de abril 2025)
-// Actualizar con cada publicación mensual del BCRA
-const REM_MEDIANA = [2.4, 2.5, 2.5, 2.4, 2.3, 2.2, 2.1, 2.0, 2.0, 1.9, 1.9, 1.8]
-const REM_TOP10   = [2.1, 2.1, 2.0, 1.9, 1.8, 1.7, 1.7, 1.6, 1.6, 1.5, 1.5, 1.4]
+const IPC_HISTORICO_FALLBACK: Record<string, number> = {
+  "2025-01": 2.4, "2025-02": 2.4, "2025-03": 3.7,
+}
+const BANDA_INICIAL_FALLBACK = { date: "2025-04-14", inferior: 1000, superior: 1400 }
+const REM_MEDIANA_FALLBACK = [2.4, 2.5, 2.5, 2.4, 2.3, 2.2, 2.1, 2.0, 2.0, 1.9, 1.9, 1.8]
+const REM_TOP10_FALLBACK   = [2.1, 2.1, 2.0, 1.9, 1.8, 1.7, 1.7, 1.6, 1.6, 1.5, 1.5, 1.4]
 const BULL_OFFSET  = 1.0  // +100bps sobre REM mediana
 const BEAR_OFFSET  = -1.0 // -100bps sobre REM mediana
 
@@ -148,8 +147,8 @@ function varColor(v: number | null | undefined): string {
 // ─── Band computation ─────────────────────────────────────────────────────────
 
 // Devuelve el IPC del mes "YYYY-MM" usando datos históricos o REM como fallback
-function getIPC(monthStr: string, remData: number[]): number {
-  if (IPC_HISTORICO[monthStr] != null) return IPC_HISTORICO[monthStr]
+function getIPC(monthStr: string, ipcHistorico: Record<string, number>, remData: number[]): number {
+  if (ipcHistorico[monthStr] != null) return ipcHistorico[monthStr]
   const [year, mon] = monthStr.split("-").map(Number)
   // Offset desde feb 2025 (índice 0 del REM)
   const offset = (year - 2025) * 12 + (mon - 2)
@@ -159,30 +158,30 @@ function getIPC(monthStr: string, remData: number[]): number {
 
 interface BandPoint { date: string; bandaInf: number; bandaSup: number }
 
-// Calcula las bandas desde la fecha inicial (apr 14, 2025) hasta N meses adelante
-// remData: array de inflaciones mensuales esperadas (índice 0 = IPC feb 2025)
-function computeBandPoints(monthsAhead: number, remData: number[]): BandPoint[] {
+// Calcula las bandas desde la fecha inicial hasta N meses adelante
+function computeBandPoints(
+  monthsAhead: number,
+  remData: number[],
+  ipcHistorico: Record<string, number>,
+  bandaInicial: { date: string; inferior: number; superior: number }
+): BandPoint[] {
   const points: BandPoint[] = []
-  let inf = BANDA_INICIAL.inferior
-  let sup = BANDA_INICIAL.superior
+  let inf = bandaInicial.inferior
+  let sup = bandaInicial.superior
 
-  // Punto inicial (14 abr 2025)
-  points.push({ date: BANDA_INICIAL.date, bandaInf: inf, bandaSup: sup })
+  points.push({ date: bandaInicial.date, bandaInf: inf, bandaSup: sup })
 
-  // Avanzar mes a mes desde abril 2025
   for (let i = 0; i < monthsAhead; i++) {
-    const year  = 2025 + Math.floor((3 + i) / 12)   // 3 = abril (0-indexed)
-    const month = ((3 + i) % 12) + 1                  // 1-12
-    // IPC que aplica a este mes = IPC[mes - 2]
+    const year  = 2025 + Math.floor((3 + i) / 12)
+    const month = ((3 + i) % 12) + 1
     const ipcYear  = year + Math.floor((month - 3) / 12)
     const ipcMonth = ((month - 3 + 12) % 12) + 1
     const ipcStr   = `${ipcYear}-${String(ipcMonth).padStart(2, "0")}`
-    const ipc = getIPC(ipcStr, remData)
+    const ipc = getIPC(ipcStr, ipcHistorico, remData)
 
     inf = inf * (1 + ipc / 100)
     sup = sup * (1 + ipc / 100)
 
-    // Fin de ese mes
     const lastDay = new Date(year, month, 0).getDate()
     points.push({
       date: `${year}-${String(month).padStart(2, "0")}-${lastDay}`,
@@ -194,8 +193,6 @@ function computeBandPoints(monthsAhead: number, remData: number[]): BandPoint[] 
   return points
 }
 
-// Genera puntos de forecast con escenarios bull/neutral/bear
-// neutral = REM_MEDIANA, bull = REM_MEDIANA + 1pp, bear = REM_MEDIANA - 1pp
 interface ForecastPoint {
   date: string
   fcastNeutralInf: number; fcastNeutralSup: number
@@ -205,25 +202,29 @@ interface ForecastPoint {
   fcastManualInf: number;  fcastManualSup: number
 }
 
-function computeForecast(monthsAhead: number, manualRate: number): ForecastPoint[] {
+function computeForecast(
+  monthsAhead: number,
+  manualRate: number,
+  remMediana: number[],
+  remTop10: number[],
+  ipcHistorico: Record<string, number>,
+  bandaInicial: { date: string; inferior: number; superior: number }
+): ForecastPoint[] {
   const scenarios = [
-    { key: "neutral", data: REM_MEDIANA },
-    { key: "bull",    data: REM_MEDIANA.map((v) => v + BULL_OFFSET) },
-    { key: "bear",    data: REM_MEDIANA.map((v) => Math.max(0, v + BEAR_OFFSET)) },
-    { key: "top10",   data: REM_TOP10 },
+    { key: "neutral", data: remMediana },
+    { key: "bull",    data: remMediana.map((v) => v + BULL_OFFSET) },
+    { key: "bear",    data: remMediana.map((v) => Math.max(0, v + BEAR_OFFSET)) },
+    { key: "top10",   data: remTop10 },
     { key: "manual",  data: Array(36).fill(manualRate) },
   ] as const
 
-  // Punto de partida: bandas actuales (el último punto histórico es hoy o la última fecha de datos)
-  // Usamos el BANDA_INICIAL como punto de partida y lo hacemos avanzar
   const today = new Date()
   const todayStr = today.toISOString().split("T")[0]
 
-  // Calcular el nivel actual de la banda (desde apr 14 hasta hoy)
   const monthsElapsed = Math.max(0,
     (today.getFullYear() - 2025) * 12 + (today.getMonth() - 3)
   )
-  const historicoBands = computeBandPoints(monthsElapsed + 1, REM_MEDIANA)
+  const historicoBands = computeBandPoints(monthsElapsed + 1, remMediana, ipcHistorico, bandaInicial)
   const lastHistoric = historicoBands[historicoBands.length - 1]
 
   const points: ForecastPoint[] = []
@@ -453,12 +454,17 @@ function ChartTooltip({ active, payload, label }: any) {
 }
 
 function GraficosSection({
-  tcData, rofexData, lecapData,
+  tcData, rofexData, lecapData, bandasData,
 }: {
   tcData: TCEntry[]
   rofexData: RofexFuture[]
   lecapData: CapInstrument[]
+  bandasData: BandasData | null
 }) {
+  const ipcHistorico = bandasData?.ipcHistorico ?? IPC_HISTORICO_FALLBACK
+  const remMediana   = bandasData?.remMediana   ?? REM_MEDIANA_FALLBACK
+  const remTop10     = bandasData?.remTop10     ?? REM_TOP10_FALLBACK
+  const bandaInicial = bandasData?.bandaInicial ?? BANDA_INICIAL_FALLBACK
   const [visibles, setVisibles] = useState<Set<string>>(new Set(["blue", "ccl", "mep", "oficial"]))
   const [showBandas, setShowBandas] = useState(true)
   const [showForecast, setShowForecast] = useState(true)
@@ -475,10 +481,16 @@ function GraficosSection({
     })
   }
 
-  // Compute band and forecast data
-  const bandPoints = useMemo(() => computeBandPoints(18, REM_MEDIANA), [])
+  // Compute band and forecast data (con datos dinámicos o fallback)
+  const bandPoints = useMemo(
+    () => computeBandPoints(18, remMediana, ipcHistorico, bandaInicial),
+    [remMediana, ipcHistorico, bandaInicial]
+  )
 
-  const forecastPoints = useMemo(() => computeForecast(12, manualRate), [manualRate])
+  const forecastPoints = useMemo(
+    () => computeForecast(12, manualRate, remMediana, remTop10, ipcHistorico, bandaInicial),
+    [manualRate, remMediana, remTop10, ipcHistorico, bandaInicial]
+  )
 
   // Merge all chart data by date
   const chartData = useMemo(() => {
@@ -808,13 +820,14 @@ export function TabTiposCambio() {
   const [rofexData,     setRofexData]     = useState<RofexFuture[]>([])
   const [lecapData,     setLecapData]     = useState<CapInstrument[]>([])
   const [tcData,        setTcData]        = useState<TCEntry[]>([])
+  const [bandasData,    setBandasData]    = useState<BandasData | null>(null)
 
   const [loadingPrecios,  setLoadingPrecios]  = useState(true)
   const [loadingGraficos, setLoadingGraficos] = useState(false)
   const [errorPrecios,    setErrorPrecios]    = useState<string | null>(null)
   const [errorGraficos,   setErrorGraficos]   = useState<string | null>(null)
 
-  // Fetch precios al montar
+  // Fetch precios + bandas al montar
   useEffect(() => {
     setLoadingPrecios(true)
     setErrorPrecios(null)
@@ -823,12 +836,14 @@ export function TabTiposCambio() {
       fetch("/api/internacional").then((r) => r.json()),
       fetch("/api/rofex").then((r) => r.json()),
       fetch("/api/bonos?tipo=lecap").then((r) => r.json()),
+      fetch("/api/bandas-cambiarias").then((r) => r.json()),
     ])
-      .then(([dol, intl, rof, lec]) => {
+      .then(([dol, intl, rof, lec, bandas]) => {
         setDolares(dol)
         setInternacional(intl.data ?? null)
         setRofexData(Array.isArray(rof) ? rof : [])
         setLecapData(lec.data ?? [])
+        setBandasData(bandas.ipcHistorico ? bandas : null)
         setLoadingPrecios(false)
       })
       .catch((e) => { setErrorPrecios(String(e)); setLoadingPrecios(false) })
@@ -912,7 +927,7 @@ export function TabTiposCambio() {
             <div style={{ padding: 16, color: "#FF433D", fontSize: 11 }}>Error: {errorGraficos}</div>
           )}
           {!loadingGraficos && (
-            <GraficosSection tcData={tcData} rofexData={rofexData} lecapData={lecapData} />
+            <GraficosSection tcData={tcData} rofexData={rofexData} lecapData={lecapData} bandasData={bandasData} />
           )}
         </>
       )}
