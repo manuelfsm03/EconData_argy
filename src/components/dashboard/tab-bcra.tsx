@@ -68,14 +68,13 @@ interface SubTabsProps {
 function SubTabs({ active, onChange }: SubTabsProps) {
   return (
     <div style={{
-      background: "#080808",
-      borderBottom: "1px solid #1a1a1a",
+      background: "#050505",
+      borderBottom: "1px solid #111",
       display: "flex",
       alignItems: "center",
-      padding: "0 8px",
-      gap: 2,
-      overflowX: "auto",
-      scrollbarWidth: "none",
+      padding: "10px 14px",
+      gap: 6,
+      flexWrap: "wrap",
     }}>
       {BCRA_TABS.map(t => {
         const isActive = active === t.key
@@ -87,19 +86,19 @@ function SubTabs({ active, onChange }: SubTabsProps) {
               display: "flex",
               alignItems: "center",
               gap: 6,
-              background: isActive ? "#111" : "none",
-              border: "none",
-              borderBottom: isActive ? "2px solid #4AF6C3" : "2px solid transparent",
-              borderRadius: "2px 2px 0 0",
+              background: isActive ? "rgba(255,160,40,0.08)" : "transparent",
+              border: isActive ? "1px solid rgba(255,160,40,0.4)" : "1px solid #2a2a2a",
+              borderRadius: 20,
               cursor: "pointer",
-              padding: "8px 14px",
+              padding: "5px 14px",
               whiteSpace: "nowrap",
-              transition: "background 0.1s",
+              transition: "all 0.15s",
+              fontFamily: "monospace",
             }}
           >
             <span style={{
               fontSize: 11,
-              color: isActive ? "#4AF6C3" : "#444",
+              color: isActive ? "#FFA028" : "#555",
               fontFamily: "monospace",
               fontWeight: 700,
               lineHeight: 1,
@@ -109,7 +108,8 @@ function SubTabs({ active, onChange }: SubTabsProps) {
             <span style={{
               fontSize: 10,
               fontFamily: "monospace",
-              color: isActive ? "#ccc" : "#555",
+              color: isActive ? "#FFA028" : "#888",
+              fontWeight: isActive ? 600 : 400,
               letterSpacing: 0.5,
               textTransform: "uppercase" as const,
             }}>

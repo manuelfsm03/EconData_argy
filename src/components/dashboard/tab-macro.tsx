@@ -128,21 +128,25 @@ function MiniTable({ title, rows }: { title: string; rows: { label: string; valu
 
 function SubTabs({ tabs, active, onChange }: { tabs: { key: string; label: string }[]; active: string; onChange: (k: string) => void }) {
   return (
-    <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #222", marginBottom: 1 }}>
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", padding: "10px 14px", background: "#050505", borderBottom: "1px solid #111" }}>
       {tabs.map((t) => (
         <button
           key={t.key}
           onClick={() => onChange(t.key)}
           style={{
-            background: active === t.key ? "#0d0d0d" : "transparent",
-            color: active === t.key ? "#FFA028" : "#555",
-            border: "none",
-            borderBottom: active === t.key ? "2px solid #FFA028" : "2px solid transparent",
-            padding: "6px 14px",
+            background: active === t.key ? "rgba(255,160,40,0.08)" : "transparent",
+            color: active === t.key ? "#FFA028" : "#888",
+            border: active === t.key ? "1px solid rgba(255,160,40,0.4)" : "1px solid #2a2a2a",
+            borderRadius: 20,
+            padding: "5px 14px",
             fontSize: 10,
+            fontWeight: active === t.key ? 600 : 400,
             textTransform: "uppercase",
             letterSpacing: 1,
             cursor: "pointer",
+            whiteSpace: "nowrap",
+            transition: "all 0.15s",
+            fontFamily: "monospace",
           }}
         >
           {t.label}
