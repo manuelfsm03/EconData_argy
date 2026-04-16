@@ -123,7 +123,7 @@ function TCStrip({ onNavigate }: { onNavigate: NavigateFn }) {
   const brechaBlue = blue && oficial && oficial > 0 ? ((blue - oficial) / oficial * 100) : null
   const brechaCCL  = ccl  && oficial && oficial > 0 ? ((ccl  - oficial) / oficial * 100) : null
 
-  const goTC = () => onNavigate("bcra", null, "plazofijo")
+  const goTC = () => onNavigate("macro", "fx")
 
   return (
     <div>
