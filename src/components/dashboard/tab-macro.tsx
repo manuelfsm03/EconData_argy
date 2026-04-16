@@ -18,6 +18,7 @@ import { BBGLineChart } from "../charts/bbg-line-chart"
 import { FiscalSankeyView } from "./fiscal-sankey"
 import { DownloadCSV } from "../ui/download-csv"
 import { ChartDownload } from "../ui/chart-download"
+import { SectionMeta } from "../ui/help-tooltip"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Legend, AreaChart, Area,
@@ -700,6 +701,7 @@ function EmaeView() {
 
   return (
     <div>
+      <SectionMeta title="EMAE — Actividad Económica" help="El EMAE (Estimador Mensual de Actividad Económica) mide la evolución mensual de la actividad productiva argentina. Elaborado por INDEC. Valor base 2004 = 100. Variaciones positivas indican expansión económica." source="INDEC · datos.gob.ar" />
       {/* KPIs EMAE */}
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
         <KPI
@@ -1869,6 +1871,7 @@ function IpcView() {
 
   return (
     <div>
+      <SectionMeta title="IPC — Inflación" help="El IPC (Índice de Precios al Consumidor) mide la variación mensual e interanual de los precios al consumidor. Elaborado por INDEC. La variación interanual compara con el mismo mes del año anterior." source="INDEC · datos.gob.ar" />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
         <KPI label="IPC Var. Mensual" value={varMensual != null ? fmtNum(varMensual) : null} unit="% mensual" />
         <KPI label="IPC Interanual" value={varInteranual != null ? fmtNum(varInteranual) : null} unit="%" />
@@ -1975,6 +1978,7 @@ function BalanzaView() {
 
   return (
     <div>
+      <SectionMeta title="Balanza Comercial" help="Diferencia entre exportaciones e importaciones de bienes. Saldo positivo = superávit comercial. Datos mensuales en millones de USD. Fuente: INDEC Intercambio Comercial Argentino." source="INDEC · datos.gob.ar" />
       <SubTabs tabs={[{ key: "flujos", label: "Flujos Mensuales" }, { key: "composicion", label: "Composición" }, { key: "socios", label: "Socios Comerciales" }]}
         active={balanzaTab} onChange={setBalanzaTab} />
       {balanzaTab === "flujos" && (<>
@@ -2112,6 +2116,7 @@ function FiscalView() {
 
   return (
     <div>
+      <SectionMeta title="Resultado Fiscal" help="Resultado financiero del Sector Público Nacional: ingresos menos gastos totales. Déficit primario excluye intereses de deuda. Superávit primario = ingresos > gastos primarios." source="Ministerio de Economía · datos.gob.ar" />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
         <KPI
           label="Resultado Primario"
@@ -2543,6 +2548,7 @@ function FXView() {
 
   return (
     <div>
+      <SectionMeta title="FX — Tipo de Cambio" help="Cotizaciones del dólar en los distintos mercados. Las bandas cambiarias son pisos/techos fijados por el BCRA desde abril 2025. Oficial = mercado regulado. Blue = mercado informal. MEP y CCL = operaciones bursátiles." source="argentinadatos.com · BCRA" />
       {/* KPIs */}
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
         {FX_LINES.map(({ key, name, color }) => {
@@ -2683,6 +2689,7 @@ function BigMacView() {
 
   return (
     <div>
+      <SectionMeta title="Big Mac Index" help="Medida de paridad de poder adquisitivo (PPP) calculada por The Economist. Compara el precio de la hamburguesa en distintos países. Si el índice sugiere subvaluación, la moneda local sería más 'barata' que lo que indica el tipo de cambio de mercado." source="The Economist" />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
         <KPI label="Precio BM ARG (USD)"
           value={arg?.dollar_price != null ? `USD ${fmtNum(arg.dollar_price, 2)}` : null}
@@ -2812,6 +2819,7 @@ function RiesgoPaisView() {
 
   return (
     <div>
+      <SectionMeta title="Riesgo País" help="El EMBI+ mide el spread de los bonos soberanos argentinos sobre los Treasuries de EE.UU. A mayor valor, mayor riesgo percibido por los inversores. Por encima de 1000 bps se considera riesgo muy alto." source="argentinadatos.com · BCRA" />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
         <KPI label="EMBI+ Argentina"
           value={bps != null ? String(Math.round(bps)) : null}
@@ -2937,6 +2945,7 @@ function DeudaView() {
 
   return (
     <div>
+      <SectionMeta title="Deuda Pública" help="Stock y estructura de la deuda del Estado Nacional. Incluye deuda con FMI, bonistas externos, organismos multilaterales (BID, CAF, BM) y sector público. Las licitaciones muestran las colocaciones de deuda en el mercado local." source="Ministerio de Economía" />
       <SubTabs tabs={[
         { key: "licitaciones", label: "Licitaciones" },
         { key: "stock",        label: "Stock & Composición" },

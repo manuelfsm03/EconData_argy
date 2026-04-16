@@ -8,6 +8,7 @@ import {
 } from "recharts"
 import { DownloadCSV } from "../ui/download-csv"
 import { ChartDownload } from "../ui/chart-download"
+import { SectionMeta } from "../ui/help-tooltip"
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -166,6 +167,7 @@ function PlazoFijoView() {
 
   return (
     <div>
+      <SectionMeta title="Tasas — Plazo Fijo" help="BADLAR = tasa promedio de depósitos a plazo fijo mayores a $1 millón en bancos privados. Referencia para rendimientos de inversión minorista. TM20 = tasa por depósitos mayores a $20 millones. TPM = Tasa de Política Monetaria del BCRA." source="BCRA API" />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
         <KPI label="BADLAR Bancos Privados" value={badlarUlt != null ? `${fmtNum(badlarUlt, 2)}%` : null}
           unit="TNA · Var 7 BCRA API" valueColor="#FFA028" />
@@ -319,6 +321,7 @@ function AgregadosView() {
 
   return (
     <div>
+      <SectionMeta title="Agregados Monetarios" help="M1 = dinero en circulación + depósitos a la vista. M2 = M1 + cajas de ahorro. M3 = M2 + depósitos a plazo. Base Monetaria = pasivos monetarios del BCRA (billetes + reservas bancarias)." source="BCRA API" />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
         <KPI label="Base Monetaria"
           value={fmt(baseUlt)}
@@ -400,6 +403,7 @@ function ReservasView() {
 
   return (
     <div>
+      <SectionMeta title="Reservas Internacionales" help="Reservas internacionales brutas del BCRA en USD. Las reservas netas excluyen encajes en moneda extranjera, el swap con China y las obligaciones de corto plazo con el FMI y otros acreedores." source="BCRA API" />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
         <KPI label="Reservas Brutas"
           value={ult?.brutas != null ? `USD ${fmtNum(ult.brutas / 1e3, 2)}B` : null}
@@ -475,6 +479,7 @@ function ComprasView() {
 
   return (
     <div>
+      <SectionMeta title="Compras BCRA — MULC" help="Intervenciones del BCRA en el mercado cambiario (Mercado Único y Libre de Cambios). Compras netas (+) aumentan reservas; ventas netas (-) las reducen. El acumulado anual refleja la posición compradora/vendedora del año." source="BCRA · argentinadatos.com" />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
         <KPI label="Posición Mes Actual"
           value={r?.mes_actual != null ? `USD ${fmtNum(Math.abs(r.mes_actual), 0)}M` : null}
