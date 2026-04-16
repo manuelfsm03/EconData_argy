@@ -981,13 +981,12 @@ function PyramidChart({ data, height = 400 }: { data: PiramideRow[]; height?: nu
             cursor={{ fill: "rgba(255,255,255,0.03)" }}
             contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10, borderRadius: 4 }}
             labelStyle={{ color: "#aaa", fontWeight: 700 }}
-            formatter={(value: number | undefined, name: string | undefined, props: { payload?: { varones_abs?: number; mujeres_abs?: number } }) => {
-              if (value == null) return ["—", name]
-              const abs = name === "varones"
-                ? (props.payload?.varones_abs ?? 0)
-                : (props.payload?.mujeres_abs ?? 0)
-              const label = name === "varones" ? "Hombre" : "Mujer"
-              return [`${Math.abs(value).toFixed(2)}%  (${fmtAbs(abs)})`, label]
+            formatter={(value: unknown, name: unknown) => {
+              const v = value as number | undefined
+              const n = name as string | undefined
+              if (v == null) return ["—", n] as [string, string | undefined]
+              const label = n === "varones" ? "Hombre" : "Mujer"
+              return [`${Math.abs(v).toFixed(2)}%`, label] as [string, string]
             }}
           />
           <ReferenceLine x={0} stroke="#333" strokeWidth={1} />
@@ -1047,7 +1046,7 @@ function PoblacionSerieChart({ country, selectedYear }: { country: string; selec
             <Tooltip
               contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10, borderRadius: 4 }}
               labelStyle={{ color: "#aaa", fontWeight: 700 }}
-              formatter={(value: number | undefined) => value ? fmtPop(value) : "—"}
+              formatter={(value: unknown) => { const v = value as number | undefined; return v ? fmtPop(v) : "—" }}
             />
             <Area type="monotone" dataKey="total" fill="#FFA028" stroke="#FFA028" fillOpacity={0.4} />
           </AreaChart>

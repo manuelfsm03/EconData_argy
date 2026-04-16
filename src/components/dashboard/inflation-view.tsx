@@ -755,7 +755,7 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
                   {
                     key: "date",
                     header: "Fecha",
-                    render: (v) => v,
+                    render: (v: unknown) => v as React.ReactNode,
                   },
                   ...selectedTypes1.map((key) => {
                     const type = GRAFICO1_TYPES.find(t => t.key === key)

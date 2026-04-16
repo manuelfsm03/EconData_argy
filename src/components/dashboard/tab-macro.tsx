@@ -466,13 +466,12 @@ function PyramidChart({ data, height = 400 }: { data: PiramideRow[]; height?: nu
             cursor={{ fill: "rgba(255,255,255,0.03)" }}
             contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10, borderRadius: 4 }}
             labelStyle={{ color: "#aaa", fontWeight: 700 }}
-            formatter={(value: number | undefined, name: string | undefined, props: { payload?: { varones_abs?: number; mujeres_abs?: number } }) => {
-              if (value == null) return ["—", name]
-              const abs = name === "varones"
-                ? (props.payload?.varones_abs ?? 0)
-                : (props.payload?.mujeres_abs ?? 0)
-              const label = name === "varones" ? "Hombre" : "Mujer"
-              return [`${Math.abs(value).toFixed(2)}%  (${fmtAbs(abs)})`, label]
+            formatter={(value: unknown, name: unknown) => {
+              const v = value as number | undefined
+              const n = name as string | undefined
+              if (v == null) return ["—", n] as [string, string | undefined]
+              const label = n === "varones" ? "Hombre" : "Mujer"
+              return [`${Math.abs(v).toFixed(2)}%`, label] as [string, string]
             }}
           />
           <ReferenceLine x={0} stroke="#333" strokeWidth={1} />
@@ -535,10 +534,12 @@ function PoblacionSerieChart({ country, selectedYear }: { country: string; selec
             <Tooltip
               contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10, borderRadius: 4 }}
               labelStyle={{ color: "#aaa", fontWeight: 700 }}
-              formatter={(v: number | undefined, name: string | undefined) => {
-                if (v == null) return ["—", name]
-                const label = name === "total_m" ? "Hombre" : "Mujer"
-                return [fmtPop(v), label]
+              formatter={(v: unknown, name: unknown) => {
+                const val = v as number | undefined
+                const n = name as string | undefined
+                if (val == null) return ["—", n] as [string, string | undefined]
+                const label = n === "total_m" ? "Hombre" : "Mujer"
+                return [fmtPop(val), label] as [string, string]
               }}
             />
             <ReferenceLine
@@ -883,7 +884,7 @@ function EmaeView() {
                     />
                     <Tooltip
                       contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10, color: "#FFA028" }}
-                      formatter={(v: number | undefined) => v != null ? fmtNum(v, 1) : "—"}
+                      formatter={(v: unknown) => { const val = v as number | undefined; return val != null ? fmtNum(val, 1) : "—" }}
                       cursor={{ fill: "rgba(255,255,255,0.03)" }}
                     />
                     <Legend wrapperStyle={{ fontSize: 9, color: "#888" }} iconType="rect" iconSize={10} />
@@ -920,7 +921,7 @@ function EmaeView() {
                     />
                     <Tooltip
                       contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10, color: "#FFA028" }}
-                      formatter={(v: number | undefined) => v != null ? [`${fmtNum(v, 1)} años`, "Esperanza de vida"] : ["—", "Esperanza de vida"]}
+                      formatter={(v: unknown) => { const val = v as number | undefined; return val != null ? [`${fmtNum(val, 1)} años`, "Esperanza de vida"] as [string, string] : ["—", "Esperanza de vida"] as [string, string] }}
                       cursor={{ fill: "rgba(255,255,255,0.03)" }}
                     />
                     <Bar dataKey="esperanza" name="Esperanza de vida (años)" fill="#4FC3F7" radius={[2, 2, 0, 0]} maxBarSize={28} />
@@ -1654,7 +1655,7 @@ export function MiInflacionView() {
                   temp["Restaurantes/hoteles"] = encuestaRespuestas[8] || 0
 
                   // Distribuir resto entre categorías menores
-                  const gastosContemp = Object.entries(temp).reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {})
+                  const gastosContemp = Object.entries(temp).reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {} as Record<string, number>)
                   const totalTemp = Object.values(gastosContemp).reduce((a, b) => a + b, 0)
 
                   // Categorías sin pregunta directa

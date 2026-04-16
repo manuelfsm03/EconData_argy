@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ["@prisma/client", "prisma"],
+  serverComponentsExternalPackages: ["@prisma/client", "prisma"],
+  generateBuildId: async () => null,
 };
 
 module.exports = nextConfig;
