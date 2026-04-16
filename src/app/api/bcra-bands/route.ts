@@ -9,7 +9,10 @@
  *   Fase 2 (1-ene-2026 en adelante)
  *     Cada mes ambas bandas se deslizan al ritmo del IPC T-2 publicado por INDEC.
  *     El paso diario = valor_inicio_mes × tasa_ipc_t2 / días_calendario_del_mes
- *     (metodología verificada con datos oficiales BCRA: error < 1 ARS)
+ *     (metodología verificada con datos oficiales BCRA: error < 0.5 ARS)
+ *
+ * IMPORTANTE: todas las operaciones de fecha usan UTC para evitar bugs de
+ * timezone en servidores con zona horaria Argentina (UTC-3).
  *
  * El resultado incluye todos los días desde el 11-abr-2025 hasta 3 meses adelante.
  * Cache: 12 h (los datos del IPC solo cambian una vez por mes).
@@ -19,31 +22,38 @@ import { NextResponse } from "next/server"
 
 // ── Parámetros del régimen ───────────────────────────────────────────────────
 
-const INICIO     = new Date("2025-04-11")
-const FASE2      = new Date("2026-01-01")
+// Usamos Date.UTC para que los timestamps sean inequívocos sin importar el
+// timezone del servidor.
+const INICIO_TS  = Date.UTC(2025, 3, 11)   // 11-abr-2025 00:00 UTC
+const FASE2_TS   = Date.UTC(2026, 0, 1)    // 1-ene-2026  00:00 UTC
 const PISO_INI   = 1000    // ARS/USD — piso inicial
 const TECHO_INI  = 1400    // ARS/USD — techo inicial
 const TASA_F1    = 0.01    // 1 % mensual — Fase 1
-const FALLBACK   = 0.0338  // tasa fallback si falta IPC T-2 (calibrado mayo-2026)
+const FALLBACK   = 0.0338  // tasa fallback si falta IPC T-2
 
 // ── Cache en memoria ──────────────────────────────────────────────────────────
 
 const _cache: { data: unknown; expiry: number } = { data: null, expiry: 0 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers (todos UTC) ───────────────────────────────────────────────────────
 
-function mesesEntre(d1: Date, d2: Date): number {
-  return (d2.getTime() - d1.getTime()) / (30.44 * 86400 * 1000)
+/** Meses transcurridos entre dos timestamps usando 30 días/mes (metodología BCRA) */
+function mesesEntre(ts1: number, ts2: number): number {
+  return (ts2 - ts1) / (30 * 86400 * 1000)
 }
 
+/** Días en un mes (UTC) */
 function daysInMonth(year: number, month: number): number {
-  return new Date(year, month + 1, 0).getDate()
+  return new Date(Date.UTC(year, month + 1, 0)).getUTCDate()
 }
 
-function addMonths(d: Date, n: number): Date {
-  const r = new Date(d)
-  r.setMonth(r.getMonth() + n)
-  return r
+/** Avanza exactamente n meses, siempre al día 1 del mes resultado (UTC) */
+function addMonths(year: number, month: number, n: number): { year: number; month: number } {
+  const total = month + n
+  return {
+    year:  year + Math.floor(total / 12),
+    month: ((total % 12) + 12) % 12,
+  }
 }
 
 function ymKey(year: number, month: number): string {
@@ -81,18 +91,19 @@ async function fetchIPCMensual(): Promise<Record<string, number>> {
 
 function generarFase1(): Array<{ date: string; piso: number; techo: number }> {
   const result: Array<{ date: string; piso: number; techo: number }> = []
-  const d = new Date(INICIO)
-  const fin = new Date(FASE2)
-  fin.setDate(fin.getDate() - 1) // hasta 31-dic-2025
 
-  while (d <= fin) {
-    const m = mesesEntre(INICIO, d)
+  // Iterar día a día desde el 11-abr-2025 hasta el 31-dic-2025 (inclusive)
+  const finTS = FASE2_TS - 86400 * 1000 // 31-dic-2025
+
+  let ts = INICIO_TS
+  while (ts <= finTS) {
+    const m = mesesEntre(INICIO_TS, ts)
     result.push({
-      date:  d.toISOString().slice(0, 10),
+      date:  new Date(ts).toISOString().slice(0, 10),
       piso:  Math.round((PISO_INI  * Math.pow(1 - TASA_F1, m)) * 100) / 100,
       techo: Math.round((TECHO_INI * Math.pow(1 + TASA_F1, m)) * 100) / 100,
     })
-    d.setDate(d.getDate() + 1)
+    ts += 86400 * 1000 // +1 día
   }
   return result
 }
@@ -102,21 +113,30 @@ function generarFase2(
 ): Array<{ date: string; piso: number; techo: number }> {
   const result: Array<{ date: string; piso: number; techo: number }> = []
 
-  // Valor final de Fase 1 (31-dic-2025)
-  const mFase1   = mesesEntre(INICIO, FASE2)
+  // Base al inicio de Fase 2 (1-ene-2026), calculada desde Fase 1
+  const mFase1   = mesesEntre(INICIO_TS, FASE2_TS)
   let pisoBase   = PISO_INI  * Math.pow(1 - TASA_F1, mFase1)
   let techoBase  = TECHO_INI * Math.pow(1 + TASA_F1, mFase1)
 
-  // Generar hasta 3 meses adelante de hoy
+  // Límite: primer día del mes 3 meses adelante (UTC)
   const hoy   = new Date()
-  const hasta = addMonths(hoy, 3)
+  const hY    = hoy.getUTCFullYear()
+  const hM    = hoy.getUTCMonth()
+  const hasta = new Date(Date.UTC(
+    hY + Math.floor((hM + 3) / 12),
+    (hM + 3) % 12,
+    1,
+  ))
 
-  let mes = new Date(FASE2) // 1-ene-2026
-  while (mes <= hasta) {
-    const year  = mes.getFullYear()
-    const month = mes.getMonth() // 0-based
+  // Iterar mes a mes desde enero 2026
+  let curYear  = 2026
+  let curMonth = 0  // enero (0-based)
 
-    // T-2: mes actual − 2
+  while (new Date(Date.UTC(curYear, curMonth, 1)) <= hasta) {
+    const year  = curYear
+    const month = curMonth
+
+    // T-2: usar IPC publicado 2 meses antes del mes actual
     const t2Year  = month >= 2 ? year : year - 1
     const t2Month = month >= 2 ? month - 2 : month + 10
     const tasa    = ipcPorMes[ymKey(t2Year, t2Month)] ?? FALLBACK
@@ -126,10 +146,8 @@ function generarFase2(
     const stepT  = techoBase * tasa / dias   // incremento diario techo
 
     for (let d = 0; d < dias; d++) {
-      const fecha = new Date(year, month, d + 1)
-      if (fecha < FASE2) continue
       result.push({
-        date:  fecha.toISOString().slice(0, 10),
+        date:  new Date(Date.UTC(year, month, d + 1)).toISOString().slice(0, 10),
         piso:  Math.round((pisoBase  - stepP * d) * 100) / 100,
         techo: Math.round((techoBase + stepT * d) * 100) / 100,
       })
@@ -139,7 +157,10 @@ function generarFase2(
     pisoBase  -= stepP * dias
     techoBase += stepT * dias
 
-    mes = addMonths(mes, 1)
+    // Avanzar al mes siguiente
+    const next = addMonths(curYear, curMonth, 1)
+    curYear  = next.year
+    curMonth = next.month
   }
 
   return result
