@@ -16,6 +16,7 @@ import { useState, useEffect, useCallback } from "react"
 import { BBGAreaChart } from "../charts/bbg-area-chart"
 import { BBGLineChart } from "../charts/bbg-line-chart"
 import { FiscalSankeyView } from "./fiscal-sankey"
+import { DownloadCSV } from "../ui/download-csv"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Legend, AreaChart, Area,
@@ -1973,7 +1974,7 @@ function BalanzaView() {
 
   return (
     <div>
-      <SubTabs tabs={[{ key: "flujos", label: "Flujos Mensuales" }, { key: "composicion", label: "Composición Exportaciones" }]}
+      <SubTabs tabs={[{ key: "flujos", label: "Flujos Mensuales" }, { key: "composicion", label: "Composición" }, { key: "socios", label: "Socios Comerciales" }]}
         active={balanzaTab} onChange={setBalanzaTab} />
       {balanzaTab === "flujos" && (<>
         {loading ? (
@@ -1988,6 +1989,9 @@ function BalanzaView() {
               unit="USD millones"
               valueColor={lastSaldo == null ? "#888" : lastSaldo >= 0 ? "#4AF6C3" : "#FF433D"}
             />
+          </div>
+          <div style={{ padding: "4px 8px 0", display: "flex", justifyContent: "flex-end" }}>
+            <DownloadCSV data={rows.map(r => ({ periodo: r.d, exportaciones: r.expo ?? "", importaciones: r.impo ?? "", saldo: r.saldo ?? "" }))} filename="balanza-comercial" />
           </div>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -2024,6 +2028,55 @@ function BalanzaView() {
         </>)}
       </>)}
       {balanzaTab === "composicion" && <ComposicionExportView />}
+      {balanzaTab === "socios"      && <BalanzaSociosView />}
+    </div>
+  )
+}
+
+// ── Balanza Socios Comerciales ──────────────────────────────────────────────────
+
+function BalanzaSociosView() {
+  const [data, setData] = useState<{ pais: string; exportaciones: number; importaciones: number; saldo: number }[] | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/balanza-socios")
+      .then(r => r.json())
+      .then(j => { setData(j.data ?? j); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando socios comerciales...</div>
+  if (!data?.length) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Sin datos de socios</div>
+
+  const maxVal = Math.max(...data.flatMap(d => [d.exportaciones, d.importaciones]))
+
+  return (
+    <div style={{ padding: "12px 16px" }}>
+      <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, marginBottom: 12 }}>PRINCIPALES SOCIOS COMERCIALES — EXPO/IMPO (USD millones)</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {[...data].sort((a, b) => b.exportaciones - a.exportaciones).map(r => (
+          <div key={r.pais} style={{ display: "grid", gridTemplateColumns: "120px 1fr 1fr 80px", gap: 8, alignItems: "center" }}>
+            <div style={{ fontSize: 10, color: "#ccc", textAlign: "right" }}>{r.pais}</div>
+            <div style={{ position: "relative", height: 14, background: "#0d0d0d" }}>
+              <div style={{ position: "absolute", height: "100%", background: "#4AF6C3", opacity: 0.8, width: `${(r.exportaciones / maxVal * 100).toFixed(1)}%` }} />
+              <span style={{ position: "absolute", right: 4, top: 1, fontSize: 8, color: "#4AF6C3", fontFamily: "monospace" }}>{r.exportaciones.toLocaleString("es-AR")}</span>
+            </div>
+            <div style={{ position: "relative", height: 14, background: "#0d0d0d" }}>
+              <div style={{ position: "absolute", height: "100%", background: "#FF433D", opacity: 0.7, width: `${(r.importaciones / maxVal * 100).toFixed(1)}%` }} />
+              <span style={{ position: "absolute", right: 4, top: 1, fontSize: 8, color: "#FF433D", fontFamily: "monospace" }}>{r.importaciones.toLocaleString("es-AR")}</span>
+            </div>
+            <div style={{ fontSize: 9, fontFamily: "monospace", textAlign: "right", color: r.saldo >= 0 ? "#4AF6C3" : "#FF433D", fontWeight: 700 }}>
+              {r.saldo >= 0 ? "+" : ""}{r.saldo.toLocaleString("es-AR")}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
+        <span style={{ fontSize: 8, color: "#4AF6C3" }}>■ Exportaciones</span>
+        <span style={{ fontSize: 8, color: "#FF433D" }}>■ Importaciones</span>
+        <span style={{ fontSize: 8, color: "#555" }}>Saldo = Expo − Impo</span>
+      </div>
     </div>
   )
 }
@@ -2393,87 +2446,201 @@ function DesigualdadView() {
   )
 }
 
-// ── TCR — Tipo de Cambio Real ──────────────────────────────────────────────────
+// ── FX — Tipo de Cambio Histórico + Bandas Cambiarias ─────────────────────────
 
-interface TCRData {
-  serie: Record<string, number | string>[]
-  kpis: {
-    itcrm:         number | null
-    itcrm_var_mes: number | null
-    itcr_usd:      number | null
-    itcr_brl:      number | null
-    fecha:         string | null
-  }
+// Bandas cambiarias — Argentina (desde 14-abr-2025)
+const BANDA_FECHA  = new Date("2025-04-14")
+const BANDA_INF    = 1000   // ARS/USD piso inicial
+const BANDA_SUP    = 1400   // ARS/USD techo inicial
+const BANDA_TASA   = 0.01   // 1 % mensual (crawl)
+
+function calcBanda(dateStr: string, base: number): number | null {
+  const d = new Date(dateStr)
+  if (d < BANDA_FECHA) return null
+  const meses = (d.getTime() - BANDA_FECHA.getTime()) / (30.44 * 86400 * 1000)
+  return base * Math.pow(1 + BANDA_TASA, meses)
 }
 
-function TCRView() {
-  const [data, setData] = useState<TCRData | null>(null)
+interface FXEntry {
+  date: string
+  oficial?:   number
+  blue?:      number
+  mep?:       number
+  ccl?:       number
+  mayorista?: number
+  cripto?:    number
+}
+
+const PERIOD_OPTS = [
+  { label: "1M",  value: "1m"  },
+  { label: "3M",  value: "3m"  },
+  { label: "6M",  value: "6m"  },
+  { label: "1A",  value: "1y"  },
+  { label: "MAX", value: "max" },
+]
+
+const FX_LINES = [
+  { key: "oficial",   name: "Oficial",   color: "#4AF6C3" },
+  { key: "blue",      name: "Blue",      color: "#FFA028" },
+  { key: "mep",       name: "MEP",       color: "#4FC3F7" },
+  { key: "ccl",       name: "CCL",       color: "#CE93D8" },
+  { key: "cripto",    name: "Cripto",    color: "#FFD54F" },
+  { key: "mayorista", name: "Mayorista", color: "#81C784" },
+]
+
+function FXView() {
+  const [raw, setRaw]         = useState<FXEntry[]>([])
+  const [period, setPeriod]   = useState("1y")
   const [loading, setLoading] = useState(true)
+  const [visible, setVisible] = useState<Record<string, boolean>>({
+    oficial: true, blue: true, mep: true, ccl: true, cripto: false, mayorista: false,
+  })
 
   useEffect(() => {
-    fetch("/api/tcr")
+    setLoading(true)
+    fetch(`/api/tc-historico?period=${period}`)
       .then(r => r.json())
-      .then(j => { setData(j.data); setLoading(false) })
+      .then(j => { setRaw(j.data ?? []); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [])
+  }, [period])
 
-  if (loading) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando TCR...</div>
+  // Enriquecer con bandas
+  const data = raw.map(r => ({
+    ...r,
+    banda_inf: calcBanda(r.date, BANDA_INF),
+    banda_sup: calcBanda(r.date, BANDA_SUP),
+  }))
 
-  const k = data?.kpis
-  const itcrmColor = k?.itcrm != null ? (k.itcrm >= 100 ? "#4AF6C3" : "#FF433D") : "#555"
+  const last  = raw.at(-1)
+  const prev5 = raw.at(-5)
+
+  const varPct = (key: keyof FXEntry) => {
+    const curr = last?.[key] as number | undefined
+    const p    = prev5?.[key] as number | undefined
+    if (curr == null || p == null || p === 0) return null
+    return ((curr / p) - 1) * 100
+  }
+
+  if (loading) return (
+    <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>
+      Cargando tipos de cambio...
+    </div>
+  )
 
   return (
     <div>
+      {/* KPIs */}
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
-        <KPI label="ITCRM Multilateral"
-          value={k?.itcrm != null ? fmtNum(k.itcrm, 2) : null}
-          unit={`Base dic-2015=100 · ${k?.fecha ?? "—"}`}
-          valueColor={itcrmColor} />
-        <KPI label="Var. Mensual"
-          value={k?.itcrm_var_mes != null ? `${k.itcrm_var_mes >= 0 ? "+" : ""}${fmtNum(k.itcrm_var_mes, 2)}%` : null}
-          unit="Variación en 1 mes"
-          valueColor={k?.itcrm_var_mes != null ? (k.itcrm_var_mes >= 0 ? "#4AF6C3" : "#FF433D") : "#555"} />
-        <KPI label="ITCR vs USD"
-          value={k?.itcr_usd != null ? fmtNum(k.itcr_usd, 2) : null}
-          unit="Bilateral con Estados Unidos"
-          valueColor="#4FC3F7" />
-        <KPI label="ITCR vs BRL"
-          value={k?.itcr_brl != null ? fmtNum(k.itcr_brl, 2) : null}
-          unit="Bilateral con Brasil"
-          valueColor="#CE93D8" />
+        {FX_LINES.map(({ key, name, color }) => {
+          const val = last?.[key as keyof FXEntry] as number | undefined
+          const v   = varPct(key as keyof FXEntry)
+          return (
+            <div key={key} style={{
+              flex: "1 1 130px", padding: "8px 12px",
+              background: "#080808", border: "1px solid #111",
+            }}>
+              <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace" }}>
+                {name}
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 700, color, fontFamily: "monospace", lineHeight: 1.2 }}>
+                {val != null ? `$${val.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : "—"}
+              </div>
+              {v != null && (
+                <div style={{ fontSize: 8, color: v >= 0 ? "#FF433D" : "#4AF6C3", fontFamily: "monospace" }}>
+                  {v >= 0 ? "+" : ""}{fmtNum(v, 2)}% semana
+                </div>
+              )}
+            </div>
+          )
+        })}
+        {/* Banda actual */}
+        {last && (
+          <div style={{ flex: "1 1 130px", padding: "8px 12px", background: "#080808", border: "1px solid #222" }}>
+            <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace" }}>
+              Banda (1%/mes)
+            </div>
+            <div style={{ fontSize: 10, fontFamily: "monospace", color: "#ccc", lineHeight: 1.8 }}>
+              <span style={{ color: "#4AF6C3" }}>
+                Piso: ${calcBanda(last.date, BANDA_INF)?.toFixed(0) ?? "—"}
+              </span>
+              <br />
+              <span style={{ color: "#FF433D" }}>
+                Techo: ${calcBanda(last.date, BANDA_SUP)?.toFixed(0) ?? "—"}
+              </span>
+            </div>
+            <div style={{ fontSize: 7, color: "#333", fontFamily: "monospace" }}>
+              Desde 14-abr-2025
+            </div>
+          </div>
+        )}
       </div>
 
-      {data?.serie && data.serie.length > 0 && (
-        <div style={{ padding: "8px 12px 0" }}>
-          <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, marginBottom: 4 }}>
-            ÍNDICE DE TIPO DE CAMBIO REAL MULTILATERAL — ÚLTIMOS 3 AÑOS
-          </div>
-          <BBGLineChart
-            title=""
-            data={data.serie.slice(-780)}
-            lines={[
-              { key: "ITCRM",    name: "ITCRM",    color: "#FFA028" },
-              { key: "ITCR-USD", name: "ITCR-USD", color: "#4FC3F7" },
-              { key: "ITCR-BRL", name: "ITCR-BRL", color: "#CE93D8" },
-              { key: "ITCR-EUR", name: "ITCR-EUR", color: "#4AF6C3" },
-            ]}
-            height={260}
-            yAxisLabel="Índice"
-            formatValue={v => fmtNum(v, 2)}
-            defaultRange="all"
-            showZeroLine={false}
-            enableLineToggle
+      {/* Selector de período + toggle de series */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "8px 12px", flexWrap: "wrap", gap: 8,
+      }}>
+        {/* Períodos + CSV */}
+        <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
+          {PERIOD_OPTS.map(o => (
+            <button key={o.value} onClick={() => setPeriod(o.value)} style={{
+              fontSize: 9, padding: "3px 9px", border: "1px solid #1a1a1a",
+              borderRadius: 3, cursor: "pointer", fontFamily: "monospace",
+              background: period === o.value ? "#FFA028" : "#0d0d0d",
+              color:      period === o.value ? "#000"    : "#555",
+            }}>
+              {o.label}
+            </button>
+          ))}
+          <DownloadCSV
+            data={data.map(r => ({ fecha: r.date, oficial: r.oficial ?? "", blue: r.blue ?? "", mep: r.mep ?? "", ccl: r.ccl ?? "", cripto: r.cripto ?? "", mayorista: r.mayorista ?? "", banda_piso: r.banda_inf ?? "", banda_techo: r.banda_sup ?? "" }))}
+            filename={`tipos-de-cambio-${period}`}
           />
-          <div style={{ fontSize: 8, color: "#555", padding: "2px 4px" }}>
-            {k?.itcrm != null && k.itcrm < 100
-              ? "⚠ Tipo de cambio real apreciado (por debajo de la base)"
-              : "✓ Tipo de cambio real competitivo (por encima de la base)"}
-          </div>
-          <div style={{ fontSize: 8, color: "#333", borderTop: "1px solid #111", marginTop: 4, paddingTop: 4 }}>
-            Fuente: BCRA API v4.0 · Base diciembre 2015 = 100 · Positivo = mayor competitividad cambiaria
-          </div>
         </div>
-      )}
+        {/* Toggle series */}
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {FX_LINES.map(({ key, name, color }) => (
+            <button key={key} onClick={() => setVisible(v => ({ ...v, [key]: !v[key] }))} style={{
+              display: "flex", alignItems: "center", gap: 4,
+              fontSize: 8, padding: "3px 8px", border: `1px solid ${visible[key] ? color + "80" : "#1a1a1a"}`,
+              borderRadius: 3, cursor: "pointer", fontFamily: "monospace",
+              background: visible[key] ? color + "15" : "transparent",
+              color:      visible[key] ? color          : "#444",
+            }}>
+              <span style={{
+                display: "inline-block", width: 6, height: 6, borderRadius: "50%",
+                background: visible[key] ? color : "#222",
+              }} />
+              {name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Gráfico */}
+      <div style={{ padding: "0 12px 4px" }}>
+        <BBGLineChart
+          title=""
+          data={data}
+          lines={[
+            ...FX_LINES
+              .filter(l => visible[l.key])
+              .map(l => ({ key: l.key, name: l.name, color: l.color })),
+            { key: "banda_inf", name: "Piso banda",  color: "#4AF6C3", dashed: true },
+            { key: "banda_sup", name: "Techo banda", color: "#FF433D", dashed: true },
+          ]}
+          height={320}
+          yAxisLabel="ARS/USD"
+          formatValue={v => `$${Math.round(v).toLocaleString("es-AR")}`}
+          defaultRange="all"
+          showZeroLine={false}
+          enableLineToggle={false}
+        />
+        <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>
+          Fuente: argentinadatos.com · Bandas: BCRA, vigentes desde 14-abr-2025 · Ajuste 1%/mes ·
+          Inicio: piso $1.000, techo $1.400
+        </div>
+      </div>
     </div>
   )
 }
@@ -2603,14 +2770,16 @@ function BigMacView() {
 
 // ── Riesgo País ────────────────────────────────────────────────────────────────
 
+interface HistoricoEntry { date: string; valor: number; sma30?: number; sma90?: number }
+
 interface RiesgoData {
   actual: {
     riesgoPaisBps: number
     fecha: string
   } | null
-  historico: { fecha: string; valor: number }[]
-  historicoConSMA: { fecha: string; valor: number; sma30?: number; sma90?: number }[]
-  regionales: { pais: string; valor: number }[]
+  historico: HistoricoEntry[]
+  historicoConSMA: HistoricoEntry[]
+  regionales: Record<string, { bps: number | null }>
   alertas: string[]
 }
 
@@ -2629,7 +2798,11 @@ function RiesgoPaisView() {
 
   const bps      = data?.actual?.riesgoPaisBps
   const historico = data?.historicoConSMA ?? data?.historico ?? []
-  const regionales = data?.regionales ?? []
+  const regionales: { pais: string; valor: number }[] = data?.regionales
+    ? Object.entries(data.regionales)
+        .filter(([, d]) => d.bps != null)
+        .map(([pais, d]) => ({ pais: pais.charAt(0).toUpperCase() + pais.slice(1), valor: d.bps as number }))
+    : []
 
   // Variaciones
   const ult    = historico.at(-1)
@@ -2663,12 +2836,15 @@ function RiesgoPaisView() {
 
       {historico.length > 0 && (
         <div style={{ padding: "8px 12px 0" }}>
-          <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, marginBottom: 4 }}>
-            EMBI+ ARGENTINA — HISTÓRICO CON MEDIAS MÓVILES
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5 }}>
+              EMBI+ ARGENTINA — HISTÓRICO CON MEDIAS MÓVILES
+            </div>
+            <DownloadCSV data={historico.map(r => ({ fecha: r.date, embi: r.valor, sma30: r.sma30 ?? "", sma90: r.sma90 ?? "" }))} filename="riesgo-pais" />
           </div>
           <BBGLineChart
             title=""
-            data={historico.slice(-500)}
+            data={historico.slice(-500) as unknown as Record<string, unknown>[]}
             lines={[
               { key: "valor", name: "EMBI+", color: "#FF433D" },
               { key: "sma30", name: "SMA30", color: "#FFA028" },
@@ -2898,7 +3074,7 @@ const MACRO_TABS = [
   { key: "fiscal",      label: "Fiscal"           },
   { key: "desigualdad", label: "Desigualdad"      },
   { key: "piramides",   label: "Pirámides"        },
-  { key: "tcr",         label: "TCR/ITCRM"        },
+  { key: "fx",          label: "FX"               },
   { key: "bigmac",      label: "Big Mac Index"    },
   { key: "riesgo",      label: "Riesgo País"      },
   { key: "deuda",       label: "Deuda Pública"    },
@@ -2909,7 +3085,6 @@ export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
 
   return (
     <div>
-      <div className="bbg-panel-header">MACROECONOMÍA ARGENTINA — DATOS.GOB.AR / INDEC</div>
       <SubTabs tabs={MACRO_TABS} active={activeTab} onChange={setActiveTab} />
       {activeTab === "emae"        && <EmaeView />}
       {activeTab === "ipc"         && <IpcView />}
@@ -2917,7 +3092,7 @@ export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
       {activeTab === "fiscal"      && <FiscalSankeyView />}
       {activeTab === "desigualdad" && <DesigualdadView />}
       {activeTab === "piramides"   && <PiramidesView />}
-      {activeTab === "tcr"         && <TCRView />}
+      {activeTab === "fx"          && <FXView />}
       {activeTab === "bigmac"      && <BigMacView />}
       {activeTab === "riesgo"      && <RiesgoPaisView />}
       {activeTab === "deuda"       && <DeudaView />}

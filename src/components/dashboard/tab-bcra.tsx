@@ -6,6 +6,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
 } from "recharts"
+import { DownloadCSV } from "../ui/download-csv"
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -175,8 +176,11 @@ function PlazoFijoView() {
           unit="TNA · Var 12 BCRA API" valueColor="#CE93D8" />
       </div>
       <div style={{ padding: "8px 12px 0" }}>
-        <div style={{ fontSize: 9, color: "#4AF6C3", letterSpacing: 1.5, marginBottom: 4, fontFamily: "monospace" }}>
-          EVOLUCIÓN TASAS — ÚLTIMOS 96 REGISTROS
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+          <div style={{ fontSize: 9, color: "#4AF6C3", letterSpacing: 1.5, fontFamily: "monospace" }}>
+            EVOLUCIÓN TASAS — ÚLTIMOS 96 REGISTROS
+          </div>
+          <DownloadCSV data={chartData} filename="tasas-bcra" />
         </div>
         <ResponsiveContainer width="100%" height={240}>
           <AreaChart data={chartData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
@@ -310,7 +314,7 @@ function AgregadosView() {
   })()
 
   const fmt = (v: number | null | undefined) =>
-    v != null ? `$${fmtNum(v / 1e9, 1)}B` : "—"
+    v != null ? `$${fmtNum(v / 1e6, 1)}B` : "—"
 
   return (
     <div>
@@ -338,8 +342,11 @@ function AgregadosView() {
       </div>
 
       <div style={{ padding: "8px 12px 0" }}>
-        <div style={{ fontSize: 9, color: "#4AF6C3", letterSpacing: 1.5, marginBottom: 4, fontFamily: "monospace" }}>
-          AGREGADOS MONETARIOS — ÚLTIMOS 36 MESES (BILLONES ARS)
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+          <div style={{ fontSize: 9, color: "#4AF6C3", letterSpacing: 1.5, fontFamily: "monospace" }}>
+            AGREGADOS MONETARIOS — ÚLTIMOS 36 MESES (BILLONES ARS)
+          </div>
+          <DownloadCSV data={chartData} filename="agregados-monetarios-bcra" />
         </div>
         <ResponsiveContainer width="100%" height={260}>
           <AreaChart data={chartData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>

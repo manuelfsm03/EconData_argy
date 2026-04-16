@@ -7,20 +7,29 @@ import { NewsFeed } from "./news-feed"
 import { TickerTape } from "./ticker-tape"
 import { CommandPalette } from "./command-palette"
 import { LiveSection } from "./live-section"
+import {
+  LayoutDashboard,
+  TrendingUp,
+  BarChart2,
+  Landmark,
+  Newspaper,
+  Search,
+} from "lucide-react"
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
 interface NavTab {
   key: string
   label: string
+  Icon: React.ComponentType<{ size?: number; strokeWidth?: number; style?: React.CSSProperties }>
 }
 
 const MAIN_TABS: NavTab[] = [
-  { key: "resumen",   label: "Resumen"  },
-  { key: "finanzas",  label: "Finanzas" },
-  { key: "macro",     label: "Macro"    },
-  { key: "bcra",      label: "BCRA"     },
-  { key: "noticias",  label: "Noticias" },
+  { key: "resumen",  label: "Resumen",  Icon: LayoutDashboard },
+  { key: "finanzas", label: "Finanzas", Icon: TrendingUp       },
+  { key: "macro",    label: "Macro",    Icon: BarChart2        },
+  { key: "bcra",     label: "BCRA",     Icon: Landmark         },
+  { key: "noticias", label: "Noticias", Icon: Newspaper        },
 ]
 
 // ── Placeholders ──────────────────────────────────────────────────────────────
@@ -144,80 +153,129 @@ export function Dashboard() {
 
   return (
     <div style={{ background: "#000", minHeight: "100vh", overflowX: "hidden" }}>
-      {/* ── FILA 1: Logo + Tabs principales + Lupa ─────────────────────────── */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "stretch",
-          background: "#0a0a0a",
-          borderBottom: "1px solid #1a1a1a",
-        }}
-      >
+      {/* ── NAV: Logo + Tabs con iconos ──────────────────────────────────────── */}
+      <div style={{
+        display: "flex",
+        alignItems: "stretch",
+        background: "#080808",
+        borderBottom: "1px solid #161616",
+        height: 44,
+      }}>
+        {/* Centering wrapper */}
+        <div style={{ display: "flex", alignItems: "stretch", width: "100%", maxWidth: 1400, margin: "0 auto" }}>
         {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", padding: "0 16px", borderRight: "1px solid #1a1a1a", gap: 10 }}>
-          <span style={{ color: "#FFA028", fontWeight: 700, fontSize: 11, letterSpacing: 2, fontFamily: "monospace", whiteSpace: "nowrap" }}>
-            ECONDATA AR
+        <div style={{
+          display: "flex", alignItems: "center",
+          padding: "0 18px", borderRight: "1px solid #161616",
+          gap: 8, flexShrink: 0,
+        }}>
+          <span style={{
+            color: "#FFA028", fontWeight: 800, fontSize: 12,
+            letterSpacing: 2.5, fontFamily: "monospace", whiteSpace: "nowrap",
+          }}>
+            LA PIZARRA
           </span>
-          <span style={{ fontSize: 8, color: "#333", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+          <span style={{
+            fontSize: 9, color: "#FFA02860", fontFamily: "monospace",
+            borderLeft: "1px solid #222", paddingLeft: 8,
+          }}>
+            .ar
+          </span>
+        </div>
+
+        {/* Tabs con iconos */}
+        <div style={{
+          display: "flex", flex: 1,
+          overflowX: "auto", scrollbarWidth: "none",
+          alignItems: "stretch",
+        }}>
+          {MAIN_TABS.map(({ key, label, Icon }) => {
+            const active = activeTab === key
+            return (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  background: active ? "#111" : "none",
+                  border: "none",
+                  borderBottom: active ? "2px solid #FFA028" : "2px solid transparent",
+                  borderTop: "2px solid transparent",
+                  cursor: "pointer",
+                  padding: "0 16px",
+                  whiteSpace: "nowrap",
+                  transition: "background 0.12s, color 0.12s",
+                }}
+              >
+                <Icon
+                  size={13}
+                  strokeWidth={active ? 2.2 : 1.6}
+                  style={{ color: active ? "#FFA028" : "#444", flexShrink: 0 }}
+                />
+                <span style={{
+                  fontSize: 11, fontFamily: "monospace",
+                  letterSpacing: 1, textTransform: "uppercase",
+                  color: active ? "#e8e8e8" : "#555",
+                  fontWeight: active ? 600 : 400,
+                }}>
+                  {label}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Fecha + Lupa */}
+        <div style={{
+          display: "flex", alignItems: "center",
+          borderLeft: "1px solid #161616", padding: "0 12px", gap: 10,
+        }}>
+          <span style={{ fontSize: 8, color: "#2a2a2a", fontFamily: "monospace", whiteSpace: "nowrap" }}>
             {dateStr}
           </span>
-        </div>
-
-        {/* Tabs */}
-        <div style={{ display: "flex", flex: 1, overflowX: "auto", scrollbarWidth: "none" }}>
-          {MAIN_TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: "10px 18px",
-                fontSize: 11,
-                fontFamily: "monospace",
-                letterSpacing: 1.5,
-                textTransform: "uppercase",
-                color: activeTab === tab.key ? "#FFA028" : "#555",
-                borderBottom: activeTab === tab.key ? "2px solid #FFA028" : "2px solid transparent",
-                whiteSpace: "nowrap",
-                transition: "color 0.1s",
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Lupa */}
-        <div style={{ display: "flex", alignItems: "center", padding: "0 14px", borderLeft: "1px solid #1a1a1a" }}>
           <button
             onClick={() => setSearchOpen(true)}
             title="Buscar (tecla /)"
             style={{
-              background: "none",
-              border: "1px solid #1a1a1a",
-              cursor: "pointer",
-              color: "#444",
-              padding: "5px 10px",
-              fontSize: 12,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              fontFamily: "monospace",
+              display: "flex", alignItems: "center", gap: 5,
+              background: "#111", border: "1px solid #222",
+              borderRadius: 4, cursor: "pointer",
+              padding: "4px 9px",
             }}
           >
-            🔍
-            <span style={{ fontSize: 8, color: "#333", letterSpacing: 1 }}>/</span>
+            <Search size={11} strokeWidth={2} style={{ color: "#555" }} />
+            <span style={{ fontSize: 8, color: "#333", fontFamily: "monospace", letterSpacing: 1 }}>/</span>
           </button>
         </div>
+        </div>{/* end centering wrapper */}
       </div>
 
       {/* ── FILA 2: Ticker de noticias scrolling ───────────────────────────── */}
       <TickerTape />
 
+      {/* ── BARRA DE BÚSQUEDA ────────────────────────────────────────────────── */}
+      <div style={{ background: "#050505", borderBottom: "1px solid #111", padding: "8px 16px", display: "flex", justifyContent: "center" }}>
+        <button
+          onClick={() => setSearchOpen(true)}
+          title="Buscar indicador (tecla /)"
+          style={{
+            display: "flex", alignItems: "center", gap: 8,
+            width: "100%", maxWidth: 420,
+            background: "#0a0a0a", border: "1px solid #1e1e1e",
+            borderRadius: 6, cursor: "text",
+            padding: "7px 12px", textAlign: "left",
+          }}
+        >
+          <Search size={13} strokeWidth={1.8} style={{ color: "#444", flexShrink: 0 }} />
+          <span style={{ fontSize: 10, color: "#333", fontFamily: "monospace", flex: 1 }}>
+            Buscar indicador, sección...
+          </span>
+          <span style={{ fontSize: 9, color: "#222", fontFamily: "monospace", background: "#111", padding: "1px 5px", borderRadius: 3 }}>/</span>
+        </button>
+      </div>
+
       {/* ── CONTENIDO ───────────────────────────────────────────────────────── */}
-      <div>
+      <div style={{ maxWidth: 1400, margin: "0 auto" }}>
         {activeTab === "resumen"   && <ResumenPlaceholder />}
         {activeTab === "finanzas"  && <FinanzasPlaceholder />}
         {activeTab === "macro"     && <TabMacro initialSubtab={macroSubtab} />}
