@@ -5,7 +5,6 @@ import { TabMacro } from "./tab-macro"
 import { TabGeopolitica } from "./tab-geopolitica"
 import { NewsFeed } from "./news-feed"
 import { TickerTape } from "./ticker-tape"
-import { PriceTicker } from "./price-ticker"
 import { CommandPalette } from "./command-palette"
 import { LiveSection } from "./live-section"
 
@@ -214,10 +213,7 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* ── FILA 2: Ticker de precios clave ────────────────────────────────── */}
-      <PriceTicker />
-
-      {/* ── FILA 3: Ticker de noticias scrolling ───────────────────────────── */}
+      {/* ── FILA 2: Ticker de noticias scrolling ───────────────────────────── */}
       <TickerTape />
 
       {/* ── CONTENIDO ───────────────────────────────────────────────────────── */}

@@ -58,14 +58,27 @@ async function getAgregados() {
   if (cached) return cached
 
   const from = dateYearsAgo(3)
-  const [base, circulacion, m1, m2] = await Promise.all([
-    fetchVar(15, from),  // Base Monetaria
-    fetchVar(16, from),  // Circulación Monetaria
-    fetchVar(17, from),  // M1 (Circulación + depósitos vista)
-    fetchVar(18, from),  // M2 (M1 + cajas de ahorro)
+  // Variables BCRA API v4.0:
+  // 15 = Base Monetaria (millones ARS)
+  // 16 = Circulación Monetaria (sin encajes)
+  // 17 = Billetes y monedas en poder del público
+  // 21 = Depósitos en cta cte sector privado (vista)
+  // 22 = Cajas de ahorro
+  // 23 = Depósitos a plazo (incl. plazos fijos)
+  const [base, circulacion, billetes, dep_cc, cajas_ahorro, dep_plazo] = await Promise.all([
+    fetchVar(15, from),
+    fetchVar(16, from),
+    fetchVar(17, from),
+    fetchVar(21, from),
+    fetchVar(22, from),
+    fetchVar(23, from),
   ])
 
-  const result = { data: { base, circulacion, m1, m2 }, updated_at: new Date().toISOString() }
+  const result = {
+    data: { base, circulacion, billetes, dep_cc, cajas_ahorro, dep_plazo },
+    updated_at: new Date().toISOString(),
+    source: "BCRA API v4.0 · Variables 15,16,17,21,22,23",
+  }
   setCache(cacheKey, result, 3600)
   return result
 }
