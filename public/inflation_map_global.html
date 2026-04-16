@@ -1,0 +1,1804 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_8b4dde57817cdbad66d90e7d55f72946 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+</head>
+<body>
+    
+    
+<div style="position: fixed;
+     bottom: 50px; right: 50px; width: 240px; height: auto;
+     background-color: white; border:2px solid grey; z-index:9999;
+     font-size:14px; padding: 10px; border-radius: 4px;
+     font-family: monospace;">
+
+     <p style="margin: 0 0 10px 0; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
+         ESCALA DE INFLACIÓN
+     </p>
+
+     <div style="margin: 5px 0;">
+         <span style="background-color: #8B0000; width: 20px; height: 20px; display: inline-block; border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
+         <span>&gt; 3.0%</span>
+     </div>
+
+     <div style="margin: 5px 0;">
+         <span style="background-color: #FF0000; width: 20px; height: 20px; display: inline-block; border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
+         <span>2.5 - 3.0%</span>
+     </div>
+
+     <div style="margin: 5px 0;">
+         <span style="background-color: #FF433D; width: 20px; height: 20px; display: inline-block; border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
+         <span>2.0 - 2.5%</span>
+     </div>
+
+     <div style="margin: 5px 0;">
+         <span style="background-color: #FFA028; width: 20px; height: 20px; display: inline-block; border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
+         <span>1.5 - 2.0%</span>
+     </div>
+
+     <div style="margin: 5px 0;">
+         <span style="background-color: #FFD700; width: 20px; height: 20px; display: inline-block; border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
+         <span>1.0 - 1.5%</span>
+     </div>
+
+     <div style="margin: 5px 0;">
+         <span style="background-color: #4AF6C3; width: 20px; height: 20px; display: inline-block; border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
+         <span>&lt; 1.0%</span>
+     </div>
+
+     <p style="margin: 10px 0 0 0; font-size: 11px; color: #666; border-top: 1px solid #ccc; padding-top: 5px;">
+         Datos: Últimas 4 semanas<br>
+         Fuente: IMF, Central Banks
+     </p>
+</div>
+    
+            <div class="folium-map" id="map_8b4dde57817cdbad66d90e7d55f72946" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_8b4dde57817cdbad66d90e7d55f72946 = L.map(
+                "map_8b4dde57817cdbad66d90e7d55f72946",
+                {
+                    center: [20.0, 0.0],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "maxBounds": [
+[
+-90,
+-180,
+],
+[
+90,
+180,
+],
+],
+  "zoom": 2,
+  "zoomControl": true,
+  "preferCanvas": true,
+}
+
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_9a0c132ad87fe5b5d6de4809e66749f7 = L.tileLayer(
+                "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 20,
+  "maxNativeZoom": 20,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors \u0026copy; \u003ca href=\"https://carto.com/attributions\"\u003eCARTO\u003c/a\u003e",
+  "subdomains": "abcd",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_9a0c132ad87fe5b5d6de4809e66749f7.addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var circle_5b39ccd7cb198e1e72741341015174c5 = L.circle(
+                [-34.6037, -58.3816],
+                {"bubblingMouseEvents": true, "color": "#FF0000", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FF0000", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 184000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_992463d94b37c9ef6b1653750e92ee03 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_e78996c2b77cbff421260c3258ca5ac7 = $(`<div id="html_e78996c2b77cbff421260c3258ca5ac7" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #FF0000">Argentina</b><br>         Inflación: <b>2.8%</b>     </div>     </div>`)[0];
+                popup_992463d94b37c9ef6b1653750e92ee03.setContent(html_e78996c2b77cbff421260c3258ca5ac7);
+            
+        
+
+        circle_5b39ccd7cb198e1e72741341015174c5.bindPopup(popup_992463d94b37c9ef6b1653750e92ee03)
+        ;
+
+        
+    
+    
+            var marker_8041ff95a5c72c5cdbe791bbbd366265 = L.marker(
+                [-34.6037, -58.3816],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_c16ad86d0b6c30eb40ca1a402ea9054d = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#FF0000",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_63ed681c192f3b00eaaf8e64861a4819 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_c9f6e327a0b60608fbda376abae72a08 = $(`<div id="html_c9f6e327a0b60608fbda376abae72a08" style="width: 100.0%; height: 100.0%;">Argentina</div>`)[0];
+                popup_63ed681c192f3b00eaaf8e64861a4819.setContent(html_c9f6e327a0b60608fbda376abae72a08);
+            
+        
+
+        marker_8041ff95a5c72c5cdbe791bbbd366265.bindPopup(popup_63ed681c192f3b00eaaf8e64861a4819)
+        ;
+
+        
+    
+    
+                marker_8041ff95a5c72c5cdbe791bbbd366265.setIcon(icon_c16ad86d0b6c30eb40ca1a402ea9054d);
+            
+    
+            var circle_b31804ebe48438b9847668c1bb7794e3 = L.circle(
+                [-15.7975, -47.8919],
+                {"bubblingMouseEvents": true, "color": "#FFD700", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FFD700", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 136000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_24d1e4a9934687961c1e1aee2649eb4a = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_d47abdfa6cd0d6ef1708dc7907522918 = $(`<div id="html_d47abdfa6cd0d6ef1708dc7907522918" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #FFD700">Brasil</b><br>         Inflación: <b>1.2%</b>     </div>     </div>`)[0];
+                popup_24d1e4a9934687961c1e1aee2649eb4a.setContent(html_d47abdfa6cd0d6ef1708dc7907522918);
+            
+        
+
+        circle_b31804ebe48438b9847668c1bb7794e3.bindPopup(popup_24d1e4a9934687961c1e1aee2649eb4a)
+        ;
+
+        
+    
+    
+            var marker_8aed4b88c46c539d83b0ca439dcfcf78 = L.marker(
+                [-15.7975, -47.8919],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_2a8fd0169052cea570510aaaec1679e8 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#FFD700",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_525bde47fe39f5ef23f55b8976176dae = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_4ddc1c2b6ad34b7d1b7fab3c84eb4c33 = $(`<div id="html_4ddc1c2b6ad34b7d1b7fab3c84eb4c33" style="width: 100.0%; height: 100.0%;">Brasil</div>`)[0];
+                popup_525bde47fe39f5ef23f55b8976176dae.setContent(html_4ddc1c2b6ad34b7d1b7fab3c84eb4c33);
+            
+        
+
+        marker_8aed4b88c46c539d83b0ca439dcfcf78.bindPopup(popup_525bde47fe39f5ef23f55b8976176dae)
+        ;
+
+        
+    
+    
+                marker_8aed4b88c46c539d83b0ca439dcfcf78.setIcon(icon_2a8fd0169052cea570510aaaec1679e8);
+            
+    
+            var circle_5073e6ed66c84c537ab6e23e9f753d4c = L.circle(
+                [-33.8688, -151.2093],
+                {"bubblingMouseEvents": true, "color": "#FFA028", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FFA028", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 154000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_916d6ea4675e3f0784ee8095576608c5 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_00e5626fd5432e4057cd06c113cdbcdf = $(`<div id="html_00e5626fd5432e4057cd06c113cdbcdf" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #FFA028">Chile</b><br>         Inflación: <b>1.8%</b>     </div>     </div>`)[0];
+                popup_916d6ea4675e3f0784ee8095576608c5.setContent(html_00e5626fd5432e4057cd06c113cdbcdf);
+            
+        
+
+        circle_5073e6ed66c84c537ab6e23e9f753d4c.bindPopup(popup_916d6ea4675e3f0784ee8095576608c5)
+        ;
+
+        
+    
+    
+            var marker_1ed982c7f93ec58227a6f06a3a142517 = L.marker(
+                [-33.8688, -151.2093],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_da38e5e92aa26289cfc04dd21c0bff34 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#FFA028",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_b37223800564846094921ad0c805cf28 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_4ecf7ebb09b33616be731901d63fb711 = $(`<div id="html_4ecf7ebb09b33616be731901d63fb711" style="width: 100.0%; height: 100.0%;">Chile</div>`)[0];
+                popup_b37223800564846094921ad0c805cf28.setContent(html_4ecf7ebb09b33616be731901d63fb711);
+            
+        
+
+        marker_1ed982c7f93ec58227a6f06a3a142517.bindPopup(popup_b37223800564846094921ad0c805cf28)
+        ;
+
+        
+    
+    
+                marker_1ed982c7f93ec58227a6f06a3a142517.setIcon(icon_da38e5e92aa26289cfc04dd21c0bff34);
+            
+    
+            var circle_20eb380f61d9a2712b78715fc556b5f3 = L.circle(
+                [19.4326, -99.1332],
+                {"bubblingMouseEvents": true, "color": "#FF433D", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FF433D", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 172000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_e25edd86a37bd5255b13714819d40fd3 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_9ed4c8c0f0176b4e366e68fa961e9290 = $(`<div id="html_9ed4c8c0f0176b4e366e68fa961e9290" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #FF433D">México</b><br>         Inflación: <b>2.4%</b>     </div>     </div>`)[0];
+                popup_e25edd86a37bd5255b13714819d40fd3.setContent(html_9ed4c8c0f0176b4e366e68fa961e9290);
+            
+        
+
+        circle_20eb380f61d9a2712b78715fc556b5f3.bindPopup(popup_e25edd86a37bd5255b13714819d40fd3)
+        ;
+
+        
+    
+    
+            var marker_ebc4ffd35173801d5023d8566b6892b8 = L.marker(
+                [19.4326, -99.1332],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_31378ab3a929ae185c85854859ef449e = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#FF433D",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_19c80f437f8712c9940809418064b447 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_6e18135d957aa0992faf637c2a549eee = $(`<div id="html_6e18135d957aa0992faf637c2a549eee" style="width: 100.0%; height: 100.0%;">México</div>`)[0];
+                popup_19c80f437f8712c9940809418064b447.setContent(html_6e18135d957aa0992faf637c2a549eee);
+            
+        
+
+        marker_ebc4ffd35173801d5023d8566b6892b8.bindPopup(popup_19c80f437f8712c9940809418064b447)
+        ;
+
+        
+    
+    
+                marker_ebc4ffd35173801d5023d8566b6892b8.setIcon(icon_31378ab3a929ae185c85854859ef449e);
+            
+    
+            var circle_82dd179f8a778cbd1882e9e55c8df617 = L.circle(
+                [4.5709, -74.2973],
+                {"bubblingMouseEvents": true, "color": "#FFA028", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FFA028", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 157000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_7e857f7b4c212657a6270376f320b74b = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_7f80d0aa4b5bb74a92869419e97238b6 = $(`<div id="html_7f80d0aa4b5bb74a92869419e97238b6" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #FFA028">Colombia</b><br>         Inflación: <b>1.9%</b>     </div>     </div>`)[0];
+                popup_7e857f7b4c212657a6270376f320b74b.setContent(html_7f80d0aa4b5bb74a92869419e97238b6);
+            
+        
+
+        circle_82dd179f8a778cbd1882e9e55c8df617.bindPopup(popup_7e857f7b4c212657a6270376f320b74b)
+        ;
+
+        
+    
+    
+            var marker_65095ac360a410521e2d7dee85d23289 = L.marker(
+                [4.5709, -74.2973],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_81c5c2970c34f2b7a5432333b937e134 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#FFA028",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_199850898f5d4d2dbba93174992236b1 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_3ad717cdd4b2db9d34e88a4040abe2c5 = $(`<div id="html_3ad717cdd4b2db9d34e88a4040abe2c5" style="width: 100.0%; height: 100.0%;">Colombia</div>`)[0];
+                popup_199850898f5d4d2dbba93174992236b1.setContent(html_3ad717cdd4b2db9d34e88a4040abe2c5);
+            
+        
+
+        marker_65095ac360a410521e2d7dee85d23289.bindPopup(popup_199850898f5d4d2dbba93174992236b1)
+        ;
+
+        
+    
+    
+                marker_65095ac360a410521e2d7dee85d23289.setIcon(icon_81c5c2970c34f2b7a5432333b937e134);
+            
+    
+            var circle_a97f076489b12f5d3047d587ff0e7728 = L.circle(
+                [-9.19, -77.8467],
+                {"bubblingMouseEvents": true, "color": "#FF433D", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FF433D", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 163000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_6437cb90cea81378b54cef41d806526c = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_ba46dfc4c0508ac848bb4dc4a68c28db = $(`<div id="html_ba46dfc4c0508ac848bb4dc4a68c28db" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #FF433D">Perú</b><br>         Inflación: <b>2.1%</b>     </div>     </div>`)[0];
+                popup_6437cb90cea81378b54cef41d806526c.setContent(html_ba46dfc4c0508ac848bb4dc4a68c28db);
+            
+        
+
+        circle_a97f076489b12f5d3047d587ff0e7728.bindPopup(popup_6437cb90cea81378b54cef41d806526c)
+        ;
+
+        
+    
+    
+            var marker_72e26d40229c112df36e8167e7a59086 = L.marker(
+                [-9.19, -77.8467],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_43e78d6b9ca04c5f4cee322f9fb9c7f4 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#FF433D",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_162acc191d7d7210e3c9cae64e898121 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_ebc824ef4a9826fab530cb9d3f096bb5 = $(`<div id="html_ebc824ef4a9826fab530cb9d3f096bb5" style="width: 100.0%; height: 100.0%;">Perú</div>`)[0];
+                popup_162acc191d7d7210e3c9cae64e898121.setContent(html_ebc824ef4a9826fab530cb9d3f096bb5);
+            
+        
+
+        marker_72e26d40229c112df36e8167e7a59086.bindPopup(popup_162acc191d7d7210e3c9cae64e898121)
+        ;
+
+        
+    
+    
+                marker_72e26d40229c112df36e8167e7a59086.setIcon(icon_43e78d6b9ca04c5f4cee322f9fb9c7f4);
+            
+    
+            var circle_def0ce24b350e8ea508a449514cfc8c9 = L.circle(
+                [37.0902, -95.7129],
+                {"bubblingMouseEvents": true, "color": "#FFD700", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FFD700", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 142000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_3716db55f697a0e96f9477ce592c5385 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_3d54b28d0674b942d79dc3ce295eac5b = $(`<div id="html_3d54b28d0674b942d79dc3ce295eac5b" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #FFD700">Estados Unidos</b><br>         Inflación: <b>1.4%</b>     </div>     </div>`)[0];
+                popup_3716db55f697a0e96f9477ce592c5385.setContent(html_3d54b28d0674b942d79dc3ce295eac5b);
+            
+        
+
+        circle_def0ce24b350e8ea508a449514cfc8c9.bindPopup(popup_3716db55f697a0e96f9477ce592c5385)
+        ;
+
+        
+    
+    
+            var marker_2ab39aeb772a49c512f863f2ab4f9553 = L.marker(
+                [37.0902, -95.7129],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_3dce76237a180f586e9d334949348b76 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#FFD700",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_574b28d3c70b0145354e8d3822488bd5 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_92ffc62959a020218d32070b0ebf790d = $(`<div id="html_92ffc62959a020218d32070b0ebf790d" style="width: 100.0%; height: 100.0%;">Estados Unidos</div>`)[0];
+                popup_574b28d3c70b0145354e8d3822488bd5.setContent(html_92ffc62959a020218d32070b0ebf790d);
+            
+        
+
+        marker_2ab39aeb772a49c512f863f2ab4f9553.bindPopup(popup_574b28d3c70b0145354e8d3822488bd5)
+        ;
+
+        
+    
+    
+                marker_2ab39aeb772a49c512f863f2ab4f9553.setIcon(icon_3dce76237a180f586e9d334949348b76);
+            
+    
+            var circle_33db02522b5a1c651b17b011e53819b4 = L.circle(
+                [51.1657, 10.4515],
+                {"bubblingMouseEvents": true, "color": "#4AF6C3", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#4AF6C3", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 127000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_0b4592d25b7eeed38a4c63157bac1994 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_858894c3dfc15df8f38c6100fec06d0e = $(`<div id="html_858894c3dfc15df8f38c6100fec06d0e" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #4AF6C3">Alemania</b><br>         Inflación: <b>0.9%</b>     </div>     </div>`)[0];
+                popup_0b4592d25b7eeed38a4c63157bac1994.setContent(html_858894c3dfc15df8f38c6100fec06d0e);
+            
+        
+
+        circle_33db02522b5a1c651b17b011e53819b4.bindPopup(popup_0b4592d25b7eeed38a4c63157bac1994)
+        ;
+
+        
+    
+    
+            var marker_f8fe1cfd52d8301760f02110201c168a = L.marker(
+                [51.1657, 10.4515],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_5cf6611f5019e7da08fd6cb72d88936b = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#4AF6C3",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_b82e1b58cd73d2fa879c4d0024b81943 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_1625ef5e99bf3050b11b143d9c437d72 = $(`<div id="html_1625ef5e99bf3050b11b143d9c437d72" style="width: 100.0%; height: 100.0%;">Alemania</div>`)[0];
+                popup_b82e1b58cd73d2fa879c4d0024b81943.setContent(html_1625ef5e99bf3050b11b143d9c437d72);
+            
+        
+
+        marker_f8fe1cfd52d8301760f02110201c168a.bindPopup(popup_b82e1b58cd73d2fa879c4d0024b81943)
+        ;
+
+        
+    
+    
+                marker_f8fe1cfd52d8301760f02110201c168a.setIcon(icon_5cf6611f5019e7da08fd6cb72d88936b);
+            
+    
+            var circle_23bff1a06a09cdc781e7cf5cfbf85bd0 = L.circle(
+                [36.2048, 138.2529],
+                {"bubblingMouseEvents": true, "color": "#4AF6C3", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#4AF6C3", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 115000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_d8a1a02c29c242591dde394c9ab13cbd = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_009e85704bee9da9ee022e01736fc893 = $(`<div id="html_009e85704bee9da9ee022e01736fc893" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #4AF6C3">Japón</b><br>         Inflación: <b>0.5%</b>     </div>     </div>`)[0];
+                popup_d8a1a02c29c242591dde394c9ab13cbd.setContent(html_009e85704bee9da9ee022e01736fc893);
+            
+        
+
+        circle_23bff1a06a09cdc781e7cf5cfbf85bd0.bindPopup(popup_d8a1a02c29c242591dde394c9ab13cbd)
+        ;
+
+        
+    
+    
+            var marker_1f0c84762d71d4cf48d459477009b9bf = L.marker(
+                [36.2048, 138.2529],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_3e7b87ff047ae501da1a77375964bee6 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#4AF6C3",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_686000acda3cfc09697492cbb5c74dfd = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_2e3258bea7a58c849737ef6e26c0af19 = $(`<div id="html_2e3258bea7a58c849737ef6e26c0af19" style="width: 100.0%; height: 100.0%;">Japón</div>`)[0];
+                popup_686000acda3cfc09697492cbb5c74dfd.setContent(html_2e3258bea7a58c849737ef6e26c0af19);
+            
+        
+
+        marker_1f0c84762d71d4cf48d459477009b9bf.bindPopup(popup_686000acda3cfc09697492cbb5c74dfd)
+        ;
+
+        
+    
+    
+                marker_1f0c84762d71d4cf48d459477009b9bf.setIcon(icon_3e7b87ff047ae501da1a77375964bee6);
+            
+    
+            var circle_548e7473aa674b12bcb5bd72a55ac8dc = L.circle(
+                [35.8617, 104.1954],
+                {"bubblingMouseEvents": true, "color": "#4AF6C3", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#4AF6C3", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 106000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_995967998c02bf0b1d1dda657195335c = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_515c28778e94523ac901ba38a818f571 = $(`<div id="html_515c28778e94523ac901ba38a818f571" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #4AF6C3">China</b><br>         Inflación: <b>0.2%</b>     </div>     </div>`)[0];
+                popup_995967998c02bf0b1d1dda657195335c.setContent(html_515c28778e94523ac901ba38a818f571);
+            
+        
+
+        circle_548e7473aa674b12bcb5bd72a55ac8dc.bindPopup(popup_995967998c02bf0b1d1dda657195335c)
+        ;
+
+        
+    
+    
+            var marker_43509e99f27b785b0045929876e4e44c = L.marker(
+                [35.8617, 104.1954],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_a6d7a74af00084fb208ac512c8055c6f = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#4AF6C3",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_b109932f9816b34292e3341024830a9f = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_30a7b478bd792d22d30e53afe3b6aeab = $(`<div id="html_30a7b478bd792d22d30e53afe3b6aeab" style="width: 100.0%; height: 100.0%;">China</div>`)[0];
+                popup_b109932f9816b34292e3341024830a9f.setContent(html_30a7b478bd792d22d30e53afe3b6aeab);
+            
+        
+
+        marker_43509e99f27b785b0045929876e4e44c.bindPopup(popup_b109932f9816b34292e3341024830a9f)
+        ;
+
+        
+    
+    
+                marker_43509e99f27b785b0045929876e4e44c.setIcon(icon_a6d7a74af00084fb208ac512c8055c6f);
+            
+    
+            var circle_daa5fcab377d40682ac93c182d7c818c = L.circle(
+                [46.8182, 8.2275],
+                {"bubblingMouseEvents": true, "color": "#4AF6C3", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#4AF6C3", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 130000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_5a2844d77b731eec811a491a7aef0210 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_c0f4b909080b9840b344871aca98005c = $(`<div id="html_c0f4b909080b9840b344871aca98005c" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #4AF6C3">Eurozona</b><br>         Inflación: <b>1.0%</b>     </div>     </div>`)[0];
+                popup_5a2844d77b731eec811a491a7aef0210.setContent(html_c0f4b909080b9840b344871aca98005c);
+            
+        
+
+        circle_daa5fcab377d40682ac93c182d7c818c.bindPopup(popup_5a2844d77b731eec811a491a7aef0210)
+        ;
+
+        
+    
+    
+            var marker_9bd1f0431fd10bc5ba09b36a30ec6970 = L.marker(
+                [46.8182, 8.2275],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_94726d81068ca7e84008e7cb26727e18 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#4AF6C3",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_f1f0796c98075b9ee8adab9025e26396 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_62fe955a2133ef436de0ee2b0b24c377 = $(`<div id="html_62fe955a2133ef436de0ee2b0b24c377" style="width: 100.0%; height: 100.0%;">Eurozona</div>`)[0];
+                popup_f1f0796c98075b9ee8adab9025e26396.setContent(html_62fe955a2133ef436de0ee2b0b24c377);
+            
+        
+
+        marker_9bd1f0431fd10bc5ba09b36a30ec6970.bindPopup(popup_f1f0796c98075b9ee8adab9025e26396)
+        ;
+
+        
+    
+    
+                marker_9bd1f0431fd10bc5ba09b36a30ec6970.setIcon(icon_94726d81068ca7e84008e7cb26727e18);
+            
+    
+            var circle_2d0204660222e42d331f3934b348c2fc = L.circle(
+                [55.3781, -3.436],
+                {"bubblingMouseEvents": true, "color": "#FFD700", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FFD700", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 145000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_aeb5134f9ffbedf6fb65ebd9cdd1bfa1 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_83b59b33491f55cd178d86995fe8440d = $(`<div id="html_83b59b33491f55cd178d86995fe8440d" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #FFD700">Reino Unido</b><br>         Inflación: <b>1.5%</b>     </div>     </div>`)[0];
+                popup_aeb5134f9ffbedf6fb65ebd9cdd1bfa1.setContent(html_83b59b33491f55cd178d86995fe8440d);
+            
+        
+
+        circle_2d0204660222e42d331f3934b348c2fc.bindPopup(popup_aeb5134f9ffbedf6fb65ebd9cdd1bfa1)
+        ;
+
+        
+    
+    
+            var marker_8850658855acc36a14f8ed670470c6d7 = L.marker(
+                [55.3781, -3.436],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_0d903a16dda9b1974cb3c72917a2a1c1 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#FFD700",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_60752baaf862905db5994f4ebc804b0e = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_d2bf6b562296dbdd7f014aca46ec4645 = $(`<div id="html_d2bf6b562296dbdd7f014aca46ec4645" style="width: 100.0%; height: 100.0%;">Reino Unido</div>`)[0];
+                popup_60752baaf862905db5994f4ebc804b0e.setContent(html_d2bf6b562296dbdd7f014aca46ec4645);
+            
+        
+
+        marker_8850658855acc36a14f8ed670470c6d7.bindPopup(popup_60752baaf862905db5994f4ebc804b0e)
+        ;
+
+        
+    
+    
+                marker_8850658855acc36a14f8ed670470c6d7.setIcon(icon_0d903a16dda9b1974cb3c72917a2a1c1);
+            
+    
+            var circle_ef66eeeb1e3fb408072a57cec010b7f7 = L.circle(
+                [40.4637, -3.7492],
+                {"bubblingMouseEvents": true, "color": "#FFD700", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FFD700", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 133000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_f58f611296ef49ac245fcf39977efc1f = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_e5c33c4c785bdb48cdc7261db9dc9e6a = $(`<div id="html_e5c33c4c785bdb48cdc7261db9dc9e6a" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #FFD700">España</b><br>         Inflación: <b>1.1%</b>     </div>     </div>`)[0];
+                popup_f58f611296ef49ac245fcf39977efc1f.setContent(html_e5c33c4c785bdb48cdc7261db9dc9e6a);
+            
+        
+
+        circle_ef66eeeb1e3fb408072a57cec010b7f7.bindPopup(popup_f58f611296ef49ac245fcf39977efc1f)
+        ;
+
+        
+    
+    
+            var marker_a155e593fea7150be30d62b93298c900 = L.marker(
+                [40.4637, -3.7492],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_8f8cb9bee7f43e15784c9f5c90c86c53 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#FFD700",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_bf7398b96fc80555e019e609c222f781 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_a606421f0088d9f5fc16f48793a1d99a = $(`<div id="html_a606421f0088d9f5fc16f48793a1d99a" style="width: 100.0%; height: 100.0%;">España</div>`)[0];
+                popup_bf7398b96fc80555e019e609c222f781.setContent(html_a606421f0088d9f5fc16f48793a1d99a);
+            
+        
+
+        marker_a155e593fea7150be30d62b93298c900.bindPopup(popup_bf7398b96fc80555e019e609c222f781)
+        ;
+
+        
+    
+    
+                marker_a155e593fea7150be30d62b93298c900.setIcon(icon_8f8cb9bee7f43e15784c9f5c90c86c53);
+            
+    
+            var circle_39535c958da978b1defc662bae08ca85 = L.circle(
+                [48.8566, 2.3522],
+                {"bubblingMouseEvents": true, "color": "#4AF6C3", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#4AF6C3", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 124000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_7f0801f39e1ae34364f561ae3dc5c1c5 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_9d585830c120570cd53cb2de49ca982a = $(`<div id="html_9d585830c120570cd53cb2de49ca982a" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #4AF6C3">Francia</b><br>         Inflación: <b>0.8%</b>     </div>     </div>`)[0];
+                popup_7f0801f39e1ae34364f561ae3dc5c1c5.setContent(html_9d585830c120570cd53cb2de49ca982a);
+            
+        
+
+        circle_39535c958da978b1defc662bae08ca85.bindPopup(popup_7f0801f39e1ae34364f561ae3dc5c1c5)
+        ;
+
+        
+    
+    
+            var marker_2c08168939477dfb944bf89a27af0ffa = L.marker(
+                [48.8566, 2.3522],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_33872333a54111e3c37ad8cf9c5d71cd = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#4AF6C3",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_8adc5813076e4527f2b1d5fcd40a3e1e = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_12fbca226518054c15b4476510e95dc7 = $(`<div id="html_12fbca226518054c15b4476510e95dc7" style="width: 100.0%; height: 100.0%;">Francia</div>`)[0];
+                popup_8adc5813076e4527f2b1d5fcd40a3e1e.setContent(html_12fbca226518054c15b4476510e95dc7);
+            
+        
+
+        marker_2c08168939477dfb944bf89a27af0ffa.bindPopup(popup_8adc5813076e4527f2b1d5fcd40a3e1e)
+        ;
+
+        
+    
+    
+                marker_2c08168939477dfb944bf89a27af0ffa.setIcon(icon_33872333a54111e3c37ad8cf9c5d71cd);
+            
+    
+            var circle_a58245dc6c31a37eda2c8b8a3395eba7 = L.circle(
+                [41.8719, 12.5674],
+                {"bubblingMouseEvents": true, "color": "#4AF6C3", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#4AF6C3", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 121000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_32667e4838bc62a2489ebcbc31544a13 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_9ca446fd3e99b1e23763283ad9706eb8 = $(`<div id="html_9ca446fd3e99b1e23763283ad9706eb8" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #4AF6C3">Italia</b><br>         Inflación: <b>0.7%</b>     </div>     </div>`)[0];
+                popup_32667e4838bc62a2489ebcbc31544a13.setContent(html_9ca446fd3e99b1e23763283ad9706eb8);
+            
+        
+
+        circle_a58245dc6c31a37eda2c8b8a3395eba7.bindPopup(popup_32667e4838bc62a2489ebcbc31544a13)
+        ;
+
+        
+    
+    
+            var marker_7d619646babf2f2d5ccd19e1e1a5df9b = L.marker(
+                [41.8719, 12.5674],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_1f24f2b1054ef37a64d0212627d1ada6 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#4AF6C3",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_c1e89eadb6ba0bf9550728f7c3d48156 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_2c0e8a25478dcbf5dbad8b72ff28ddbf = $(`<div id="html_2c0e8a25478dcbf5dbad8b72ff28ddbf" style="width: 100.0%; height: 100.0%;">Italia</div>`)[0];
+                popup_c1e89eadb6ba0bf9550728f7c3d48156.setContent(html_2c0e8a25478dcbf5dbad8b72ff28ddbf);
+            
+        
+
+        marker_7d619646babf2f2d5ccd19e1e1a5df9b.bindPopup(popup_c1e89eadb6ba0bf9550728f7c3d48156)
+        ;
+
+        
+    
+    
+                marker_7d619646babf2f2d5ccd19e1e1a5df9b.setIcon(icon_1f24f2b1054ef37a64d0212627d1ada6);
+            
+    
+            var circle_772d0b1f544c5bdbcea41aa9aaf755d0 = L.circle(
+                [60.472, 8.4689],
+                {"bubblingMouseEvents": true, "color": "#FFD700", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FFD700", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 139000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_2cfa062b74c3fc5e66425c630c5b8db5 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_89313804fc8e9f860aa447fa0d4d28d9 = $(`<div id="html_89313804fc8e9f860aa447fa0d4d28d9" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #FFD700">Noruega</b><br>         Inflación: <b>1.3%</b>     </div>     </div>`)[0];
+                popup_2cfa062b74c3fc5e66425c630c5b8db5.setContent(html_89313804fc8e9f860aa447fa0d4d28d9);
+            
+        
+
+        circle_772d0b1f544c5bdbcea41aa9aaf755d0.bindPopup(popup_2cfa062b74c3fc5e66425c630c5b8db5)
+        ;
+
+        
+    
+    
+            var marker_a438c87913f1fae38814ed4b5e0b2942 = L.marker(
+                [60.472, 8.4689],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_6334a21a2613cac3c0548e01dfcc8ce2 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#FFD700",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_3a2e21d6e3bb14a6344c5d9b0774acb0 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_64bbf61d8121a1496ac6d7c8f112a5ef = $(`<div id="html_64bbf61d8121a1496ac6d7c8f112a5ef" style="width: 100.0%; height: 100.0%;">Noruega</div>`)[0];
+                popup_3a2e21d6e3bb14a6344c5d9b0774acb0.setContent(html_64bbf61d8121a1496ac6d7c8f112a5ef);
+            
+        
+
+        marker_a438c87913f1fae38814ed4b5e0b2942.bindPopup(popup_3a2e21d6e3bb14a6344c5d9b0774acb0)
+        ;
+
+        
+    
+    
+                marker_a438c87913f1fae38814ed4b5e0b2942.setIcon(icon_6334a21a2613cac3c0548e01dfcc8ce2);
+            
+    
+            var circle_01cc75bd6b8491010df77bce26693b5e = L.circle(
+                [59.3293, 18.0686],
+                {"bubblingMouseEvents": true, "color": "#FFD700", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FFD700", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 136000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_db69412e41ed6ab8595099e9e3646d53 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_481bab8241cad6409845664a537e033d = $(`<div id="html_481bab8241cad6409845664a537e033d" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #FFD700">Suecia</b><br>         Inflación: <b>1.2%</b>     </div>     </div>`)[0];
+                popup_db69412e41ed6ab8595099e9e3646d53.setContent(html_481bab8241cad6409845664a537e033d);
+            
+        
+
+        circle_01cc75bd6b8491010df77bce26693b5e.bindPopup(popup_db69412e41ed6ab8595099e9e3646d53)
+        ;
+
+        
+    
+    
+            var marker_0e989beec19cd6ac7c5883a5171898b7 = L.marker(
+                [59.3293, 18.0686],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_73c3ff74e061956f7de7b85888fa9e98 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#FFD700",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_7842a7020d7a7e277a225f781d3988bc = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_bb99d7f4210e5c93391363aaabf0288a = $(`<div id="html_bb99d7f4210e5c93391363aaabf0288a" style="width: 100.0%; height: 100.0%;">Suecia</div>`)[0];
+                popup_7842a7020d7a7e277a225f781d3988bc.setContent(html_bb99d7f4210e5c93391363aaabf0288a);
+            
+        
+
+        marker_0e989beec19cd6ac7c5883a5171898b7.bindPopup(popup_7842a7020d7a7e277a225f781d3988bc)
+        ;
+
+        
+    
+    
+                marker_0e989beec19cd6ac7c5883a5171898b7.setIcon(icon_73c3ff74e061956f7de7b85888fa9e98);
+            
+    
+            var circle_9a4e28f0517e1019c8fa812e63f8d1da = L.circle(
+                [52.52, 13.405],
+                {"bubblingMouseEvents": true, "color": "#4AF6C3", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#4AF6C3", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 127000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_030ff82485900ea8667879da3de169de = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_7d7c37f270b10dd2ab42e4a87541ee3a = $(`<div id="html_7d7c37f270b10dd2ab42e4a87541ee3a" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #4AF6C3">Berlín</b><br>         Inflación: <b>0.9%</b>     </div>     </div>`)[0];
+                popup_030ff82485900ea8667879da3de169de.setContent(html_7d7c37f270b10dd2ab42e4a87541ee3a);
+            
+        
+
+        circle_9a4e28f0517e1019c8fa812e63f8d1da.bindPopup(popup_030ff82485900ea8667879da3de169de)
+        ;
+
+        
+    
+    
+            var marker_f0b3a8d06834229569e8948565219d9b = L.marker(
+                [52.52, 13.405],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_4273af4f5e07f8c5ca2a5b74745e43d7 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#4AF6C3",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_5be1a62391d16d1d36e07c73f5fd4b34 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_6f087c07700a0521c32d460b6138d57b = $(`<div id="html_6f087c07700a0521c32d460b6138d57b" style="width: 100.0%; height: 100.0%;">Berlín</div>`)[0];
+                popup_5be1a62391d16d1d36e07c73f5fd4b34.setContent(html_6f087c07700a0521c32d460b6138d57b);
+            
+        
+
+        marker_f0b3a8d06834229569e8948565219d9b.bindPopup(popup_5be1a62391d16d1d36e07c73f5fd4b34)
+        ;
+
+        
+    
+    
+                marker_f0b3a8d06834229569e8948565219d9b.setIcon(icon_4273af4f5e07f8c5ca2a5b74745e43d7);
+            
+    
+            var circle_f87e99abb4b17915c4cb5255748b8990 = L.circle(
+                [-25.2744, 133.7751],
+                {"bubblingMouseEvents": true, "color": "#4AF6C3", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#4AF6C3", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 118000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_01882a64432e4a570ba6c774a5de6b16 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_266a1d954d42c888494f566a68364516 = $(`<div id="html_266a1d954d42c888494f566a68364516" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #4AF6C3">Australia</b><br>         Inflación: <b>0.6%</b>     </div>     </div>`)[0];
+                popup_01882a64432e4a570ba6c774a5de6b16.setContent(html_266a1d954d42c888494f566a68364516);
+            
+        
+
+        circle_f87e99abb4b17915c4cb5255748b8990.bindPopup(popup_01882a64432e4a570ba6c774a5de6b16)
+        ;
+
+        
+    
+    
+            var marker_3db73c1b99770028612c8b84dbe3afd0 = L.marker(
+                [-25.2744, 133.7751],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_c63eafa5bebbf842e8d8f91819571105 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#4AF6C3",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_e7740ffc367d6ddd3ea2d18d00d63732 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_f714d0b46e0f96a03abcca8539bca281 = $(`<div id="html_f714d0b46e0f96a03abcca8539bca281" style="width: 100.0%; height: 100.0%;">Australia</div>`)[0];
+                popup_e7740ffc367d6ddd3ea2d18d00d63732.setContent(html_f714d0b46e0f96a03abcca8539bca281);
+            
+        
+
+        marker_3db73c1b99770028612c8b84dbe3afd0.bindPopup(popup_e7740ffc367d6ddd3ea2d18d00d63732)
+        ;
+
+        
+    
+    
+                marker_3db73c1b99770028612c8b84dbe3afd0.setIcon(icon_c63eafa5bebbf842e8d8f91819571105);
+            
+    
+            var circle_94a9c3311e7b9640d771b96deaae76e9 = L.circle(
+                [1.3521, 103.8198],
+                {"bubblingMouseEvents": true, "color": "#4AF6C3", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#4AF6C3", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 112000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_1787223a0d51329595fe7e03c4cc01ea = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_e0059844cdfa54d47dcf7f01ae0c429b = $(`<div id="html_e0059844cdfa54d47dcf7f01ae0c429b" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #4AF6C3">Singapur</b><br>         Inflación: <b>0.4%</b>     </div>     </div>`)[0];
+                popup_1787223a0d51329595fe7e03c4cc01ea.setContent(html_e0059844cdfa54d47dcf7f01ae0c429b);
+            
+        
+
+        circle_94a9c3311e7b9640d771b96deaae76e9.bindPopup(popup_1787223a0d51329595fe7e03c4cc01ea)
+        ;
+
+        
+    
+    
+            var marker_0fc05d4025a6856724fc0aca7305f304 = L.marker(
+                [1.3521, 103.8198],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_78786f795c3371983d21f0064f59de63 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#4AF6C3",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_ef7694cd848c92bc00852c1dbfe61525 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_ae64d3afb026effc9554a5170704efcf = $(`<div id="html_ae64d3afb026effc9554a5170704efcf" style="width: 100.0%; height: 100.0%;">Singapur</div>`)[0];
+                popup_ef7694cd848c92bc00852c1dbfe61525.setContent(html_ae64d3afb026effc9554a5170704efcf);
+            
+        
+
+        marker_0fc05d4025a6856724fc0aca7305f304.bindPopup(popup_ef7694cd848c92bc00852c1dbfe61525)
+        ;
+
+        
+    
+    
+                marker_0fc05d4025a6856724fc0aca7305f304.setIcon(icon_78786f795c3371983d21f0064f59de63);
+            
+    
+            var circle_706e9ee88ec2e09f058eafb31740f6e6 = L.circle(
+                [22.3193, 114.1694],
+                {"bubblingMouseEvents": true, "color": "#4AF6C3", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#4AF6C3", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 115000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_22a8289cc0e3775a69fc62ec0ef86a97 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_95da20a1683f49391a5ea0f4d004de0e = $(`<div id="html_95da20a1683f49391a5ea0f4d004de0e" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #4AF6C3">Hong Kong</b><br>         Inflación: <b>0.5%</b>     </div>     </div>`)[0];
+                popup_22a8289cc0e3775a69fc62ec0ef86a97.setContent(html_95da20a1683f49391a5ea0f4d004de0e);
+            
+        
+
+        circle_706e9ee88ec2e09f058eafb31740f6e6.bindPopup(popup_22a8289cc0e3775a69fc62ec0ef86a97)
+        ;
+
+        
+    
+    
+            var marker_0e162eab5a5788557ee8c5b59e2cc006 = L.marker(
+                [22.3193, 114.1694],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_42c0a9a43eed8a085a90c86735432ab6 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#4AF6C3",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_177eac91ad82368a777a2ad0c8963c02 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_e04a1f9aefe30ebd4d0a8327461878ef = $(`<div id="html_e04a1f9aefe30ebd4d0a8327461878ef" style="width: 100.0%; height: 100.0%;">Hong Kong</div>`)[0];
+                popup_177eac91ad82368a777a2ad0c8963c02.setContent(html_e04a1f9aefe30ebd4d0a8327461878ef);
+            
+        
+
+        marker_0e162eab5a5788557ee8c5b59e2cc006.bindPopup(popup_177eac91ad82368a777a2ad0c8963c02)
+        ;
+
+        
+    
+    
+                marker_0e162eab5a5788557ee8c5b59e2cc006.setIcon(icon_42c0a9a43eed8a085a90c86735432ab6);
+            
+    
+            var circle_94ec110776c097751526f0fa9a76ee3a = L.circle(
+                [34.0522, -118.2437],
+                {"bubblingMouseEvents": true, "color": "#FFD700", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FFD700", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 142000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_51fe7dddc322d204af0eb4d3bff4bb77 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_45241be8c363d88b01e97f8f68f45560 = $(`<div id="html_45241be8c363d88b01e97f8f68f45560" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #FFD700">Los Ángeles</b><br>         Inflación: <b>1.4%</b>     </div>     </div>`)[0];
+                popup_51fe7dddc322d204af0eb4d3bff4bb77.setContent(html_45241be8c363d88b01e97f8f68f45560);
+            
+        
+
+        circle_94ec110776c097751526f0fa9a76ee3a.bindPopup(popup_51fe7dddc322d204af0eb4d3bff4bb77)
+        ;
+
+        
+    
+    
+            var marker_b29ce8a065c55beb959aa9f3c8252aa4 = L.marker(
+                [34.0522, -118.2437],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_93a9df786d50a6b4e51d105d1caba19e = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#FFD700",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_ab37d0769dd29b38649a54a6b2dbff74 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_a5da65b4bfba9b6c4a9f332827e795d7 = $(`<div id="html_a5da65b4bfba9b6c4a9f332827e795d7" style="width: 100.0%; height: 100.0%;">Los Ángeles</div>`)[0];
+                popup_ab37d0769dd29b38649a54a6b2dbff74.setContent(html_a5da65b4bfba9b6c4a9f332827e795d7);
+            
+        
+
+        marker_b29ce8a065c55beb959aa9f3c8252aa4.bindPopup(popup_ab37d0769dd29b38649a54a6b2dbff74)
+        ;
+
+        
+    
+    
+                marker_b29ce8a065c55beb959aa9f3c8252aa4.setIcon(icon_93a9df786d50a6b4e51d105d1caba19e);
+            
+    
+            var circle_57734612349c89d7afa31459d942aec0 = L.circle(
+                [40.7128, -74.006],
+                {"bubblingMouseEvents": true, "color": "#FFD700", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FFD700", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 142000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_4ee0d356222f5a44e6cfa01b3ada9167 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_19ccedf3954adc7e566daf6cc512df5e = $(`<div id="html_19ccedf3954adc7e566daf6cc512df5e" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #FFD700">Nueva York</b><br>         Inflación: <b>1.4%</b>     </div>     </div>`)[0];
+                popup_4ee0d356222f5a44e6cfa01b3ada9167.setContent(html_19ccedf3954adc7e566daf6cc512df5e);
+            
+        
+
+        circle_57734612349c89d7afa31459d942aec0.bindPopup(popup_4ee0d356222f5a44e6cfa01b3ada9167)
+        ;
+
+        
+    
+    
+            var marker_fdff69527bd9f648fef300122dbd61ac = L.marker(
+                [40.7128, -74.006],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_52f20b189099f0f3dc60adf9b2b9555b = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#FFD700",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_891656df70240907dba234f9051f9d63 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_9eceb2a79d16e90f1d297f04171374b1 = $(`<div id="html_9eceb2a79d16e90f1d297f04171374b1" style="width: 100.0%; height: 100.0%;">Nueva York</div>`)[0];
+                popup_891656df70240907dba234f9051f9d63.setContent(html_9eceb2a79d16e90f1d297f04171374b1);
+            
+        
+
+        marker_fdff69527bd9f648fef300122dbd61ac.bindPopup(popup_891656df70240907dba234f9051f9d63)
+        ;
+
+        
+    
+    
+                marker_fdff69527bd9f648fef300122dbd61ac.setIcon(icon_52f20b189099f0f3dc60adf9b2b9555b);
+            
+    
+            var circle_86f1d8dd7d304266a5aec8af16661b5e = L.circle(
+                [31.2304, 30.0505],
+                {"bubblingMouseEvents": true, "color": "#8B0000", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#8B0000", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 196000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_4a927c567b904d46c3e03458aeb109f0 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_c98ff200f44b5b02175bec9150c0a7c2 = $(`<div id="html_c98ff200f44b5b02175bec9150c0a7c2" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #8B0000">Egipto</b><br>         Inflación: <b>3.2%</b>     </div>     </div>`)[0];
+                popup_4a927c567b904d46c3e03458aeb109f0.setContent(html_c98ff200f44b5b02175bec9150c0a7c2);
+            
+        
+
+        circle_86f1d8dd7d304266a5aec8af16661b5e.bindPopup(popup_4a927c567b904d46c3e03458aeb109f0)
+        ;
+
+        
+    
+    
+            var marker_b32e77f9f1a3456d7306be082a48193f = L.marker(
+                [31.2304, 30.0505],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_1f36f2d7460a14faade7de6d9774bab0 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#8B0000",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_9deed04f73bae9c89afa3be152f332c9 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_42ba5a5249b676caf48437a9757375fd = $(`<div id="html_42ba5a5249b676caf48437a9757375fd" style="width: 100.0%; height: 100.0%;">Egipto</div>`)[0];
+                popup_9deed04f73bae9c89afa3be152f332c9.setContent(html_42ba5a5249b676caf48437a9757375fd);
+            
+        
+
+        marker_b32e77f9f1a3456d7306be082a48193f.bindPopup(popup_9deed04f73bae9c89afa3be152f332c9)
+        ;
+
+        
+    
+    
+                marker_b32e77f9f1a3456d7306be082a48193f.setIcon(icon_1f36f2d7460a14faade7de6d9774bab0);
+            
+    
+            var circle_2c279a2c9385d5c2bcd39d699f6f1202 = L.circle(
+                [-33.9249, 18.4241],
+                {"bubblingMouseEvents": true, "color": "#FF433D", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FF433D", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 175000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_8322928c1eb5f7ea39b3b922431ba913 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_da817b54e661f61abfb7e88806f6c6ef = $(`<div id="html_da817b54e661f61abfb7e88806f6c6ef" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #FF433D">Sudáfrica</b><br>         Inflación: <b>2.5%</b>     </div>     </div>`)[0];
+                popup_8322928c1eb5f7ea39b3b922431ba913.setContent(html_da817b54e661f61abfb7e88806f6c6ef);
+            
+        
+
+        circle_2c279a2c9385d5c2bcd39d699f6f1202.bindPopup(popup_8322928c1eb5f7ea39b3b922431ba913)
+        ;
+
+        
+    
+    
+            var marker_b188e1fd4d66fd47cf07d15e9edec262 = L.marker(
+                [-33.9249, 18.4241],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_af211b1e03ea3360a6d0b9c027605bb8 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#FF433D",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_c72b9a026aebde165c00a9e6c2b1c7a8 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_f699d1b7bd1608e5572bd4c21a09dc61 = $(`<div id="html_f699d1b7bd1608e5572bd4c21a09dc61" style="width: 100.0%; height: 100.0%;">Sudáfrica</div>`)[0];
+                popup_c72b9a026aebde165c00a9e6c2b1c7a8.setContent(html_f699d1b7bd1608e5572bd4c21a09dc61);
+            
+        
+
+        marker_b188e1fd4d66fd47cf07d15e9edec262.bindPopup(popup_c72b9a026aebde165c00a9e6c2b1c7a8)
+        ;
+
+        
+    
+    
+                marker_b188e1fd4d66fd47cf07d15e9edec262.setIcon(icon_af211b1e03ea3360a6d0b9c027605bb8);
+            
+    
+            var circle_9726065f86c3fbfb53c00a87d978c44e = L.circle(
+                [28.6139, 77.209],
+                {"bubblingMouseEvents": true, "color": "#FF433D", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FF433D", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 169000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_ee7cd1a31ec63b7aee923a03c9a846f2 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_45d930bc04aa802f6f85851682d2d100 = $(`<div id="html_45d930bc04aa802f6f85851682d2d100" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #FF433D">India</b><br>         Inflación: <b>2.3%</b>     </div>     </div>`)[0];
+                popup_ee7cd1a31ec63b7aee923a03c9a846f2.setContent(html_45d930bc04aa802f6f85851682d2d100);
+            
+        
+
+        circle_9726065f86c3fbfb53c00a87d978c44e.bindPopup(popup_ee7cd1a31ec63b7aee923a03c9a846f2)
+        ;
+
+        
+    
+    
+            var marker_59bf941b613ced28159a58253fbbdfa3 = L.marker(
+                [28.6139, 77.209],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_9b1a65e3ebb83d572b5a34438a7e9bc1 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#FF433D",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_6a77e30eadc95f2eb5908078aadeed07 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_8a31e6abb9b8fe56f10c3c114deb8b4c = $(`<div id="html_8a31e6abb9b8fe56f10c3c114deb8b4c" style="width: 100.0%; height: 100.0%;">India</div>`)[0];
+                popup_6a77e30eadc95f2eb5908078aadeed07.setContent(html_8a31e6abb9b8fe56f10c3c114deb8b4c);
+            
+        
+
+        marker_59bf941b613ced28159a58253fbbdfa3.bindPopup(popup_6a77e30eadc95f2eb5908078aadeed07)
+        ;
+
+        
+    
+    
+                marker_59bf941b613ced28159a58253fbbdfa3.setIcon(icon_9b1a65e3ebb83d572b5a34438a7e9bc1);
+            
+    
+            var circle_e3734a01bf2ce6746bfb87041b9bf208 = L.circle(
+                [19.076, 72.8777],
+                {"bubblingMouseEvents": true, "color": "#FF433D", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#FF433D", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 0.8, "radius": 169000.0, "stroke": true, "weight": 2}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+        var popup_c9036f881e554647fcd733f3d25243fb = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_4f1e72d1f859c206b4a67ebea1b3c5ee = $(`<div id="html_4f1e72d1f859c206b4a67ebea1b3c5ee" style="width: 100.0%; height: 100.0%;">     <div style="font-family: monospace; font-size: 12px; color: white;">         <b style="color: #FF433D">Bombay</b><br>         Inflación: <b>2.3%</b>     </div>     </div>`)[0];
+                popup_c9036f881e554647fcd733f3d25243fb.setContent(html_4f1e72d1f859c206b4a67ebea1b3c5ee);
+            
+        
+
+        circle_e3734a01bf2ce6746bfb87041b9bf208.bindPopup(popup_c9036f881e554647fcd733f3d25243fb)
+        ;
+
+        
+    
+    
+            var marker_412bcb816a3037b9dfb8c42ad72ee03c = L.marker(
+                [19.076, 72.8777],
+                {
+}
+            ).addTo(map_8b4dde57817cdbad66d90e7d55f72946);
+        
+    
+            var icon_98344cc66e1e7608b317d9a3108daec8 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "gray",
+  "iconColor": "#FF433D",
+  "icon": "info",
+  "prefix": "fa",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_1665070853268907a0e0e769a47e5d14 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_3fe6af82d55d7d0023d592c51245998b = $(`<div id="html_3fe6af82d55d7d0023d592c51245998b" style="width: 100.0%; height: 100.0%;">Bombay</div>`)[0];
+                popup_1665070853268907a0e0e769a47e5d14.setContent(html_3fe6af82d55d7d0023d592c51245998b);
+            
+        
+
+        marker_412bcb816a3037b9dfb8c42ad72ee03c.bindPopup(popup_1665070853268907a0e0e769a47e5d14)
+        ;
+
+        
+    
+    
+                marker_412bcb816a3037b9dfb8c42ad72ee03c.setIcon(icon_98344cc66e1e7608b317d9a3108daec8);
+            
+</script>
+</html>

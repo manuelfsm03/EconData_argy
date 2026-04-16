@@ -1890,6 +1890,7 @@ function IpcView() {
           { key: "serie", label: "Serie histórica mensual" },
           { key: "canasta", label: "Canasta 2016 vs 2022" },
           { key: "personal", label: "Mi Inflación" },
+          { key: "mundo", label: "Inflación Mundial" },
         ]}
         active={ipcTab}
         onChange={setIpcTab}
@@ -1909,6 +1910,20 @@ function IpcView() {
       {ipcTab === "canasta" && <PonderacionesTable />}
 
       {ipcTab === "personal" && <MiInflacionView />}
+
+      {ipcTab === "mundo" && (
+        <div style={{ padding: "0 0 4px" }}>
+          <iframe
+            src="/api/inflation-map?type=global"
+            style={{ width: "100%", height: 480, border: "none", background: "#060606", display: "block" }}
+            title="Mapa de inflación mundial"
+            loading="lazy"
+          />
+          <div style={{ padding: "4px 12px", fontSize: 8, color: "#333", fontFamily: "monospace", borderTop: "1px solid #0e0e0e" }}>
+            Mapa generado con datos de inflación global · lapizarra.ar
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -2041,47 +2056,105 @@ function BalanzaView() {
 // ── Balanza Socios Comerciales ──────────────────────────────────────────────────
 
 function BalanzaSociosView() {
-  const [data, setData] = useState<{ pais: string; exportaciones: number; importaciones: number; saldo: number }[] | null>(null)
+  const [data, setData] = useState<{ nombre: string; expo: number; impo: number; saldo: number; total: number }[] | null>(null)
   const [loading, setLoading] = useState(true)
+  const [vista, setVista] = useState<"mapa" | "tabla">("mapa")
 
   useEffect(() => {
     fetch("/api/balanza-socios")
       .then(r => r.json())
-      .then(j => { setData(j.data ?? j); setLoading(false) })
+      .then(j => {
+        const socios = j.data?.socios ?? j.data ?? j
+        if (Array.isArray(socios)) {
+          setData(socios.map((s: Record<string, unknown>) => ({
+            nombre: String(s.nombre ?? s.pais ?? ""),
+            expo:   Number(s.expo ?? s.exportaciones ?? 0),
+            impo:   Number(s.impo ?? s.importaciones ?? 0),
+            saldo:  Number(s.saldo ?? 0),
+            total:  Number(s.total ?? 0),
+          })))
+        }
+        setLoading(false)
+      })
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando socios comerciales...</div>
-  if (!data?.length) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Sin datos de socios</div>
-
-  const maxVal = Math.max(...data.flatMap(d => [d.exportaciones, d.importaciones]))
+  const btnStyle = (active: boolean): React.CSSProperties => ({
+    background: "none", border: "none",
+    borderBottom: active ? "2px solid #FFA028" : "2px solid transparent",
+    cursor: "pointer", padding: "5px 14px",
+    fontSize: 9, fontFamily: "monospace", color: active ? "#FFA028" : "#444",
+    letterSpacing: 1, textTransform: "uppercase",
+  })
 
   return (
-    <div style={{ padding: "12px 16px" }}>
-      <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, marginBottom: 12 }}>PRINCIPALES SOCIOS COMERCIALES — EXPO/IMPO (USD millones)</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {[...data].sort((a, b) => b.exportaciones - a.exportaciones).map(r => (
-          <div key={r.pais} style={{ display: "grid", gridTemplateColumns: "120px 1fr 1fr 80px", gap: 8, alignItems: "center" }}>
-            <div style={{ fontSize: 10, color: "#ccc", textAlign: "right" }}>{r.pais}</div>
-            <div style={{ position: "relative", height: 14, background: "#0d0d0d" }}>
-              <div style={{ position: "absolute", height: "100%", background: "#4AF6C3", opacity: 0.8, width: `${(r.exportaciones / maxVal * 100).toFixed(1)}%` }} />
-              <span style={{ position: "absolute", right: 4, top: 1, fontSize: 8, color: "#4AF6C3", fontFamily: "monospace" }}>{r.exportaciones.toLocaleString("es-AR")}</span>
-            </div>
-            <div style={{ position: "relative", height: 14, background: "#0d0d0d" }}>
-              <div style={{ position: "absolute", height: "100%", background: "#FF433D", opacity: 0.7, width: `${(r.importaciones / maxVal * 100).toFixed(1)}%` }} />
-              <span style={{ position: "absolute", right: 4, top: 1, fontSize: 8, color: "#FF433D", fontFamily: "monospace" }}>{r.importaciones.toLocaleString("es-AR")}</span>
-            </div>
-            <div style={{ fontSize: 9, fontFamily: "monospace", textAlign: "right", color: r.saldo >= 0 ? "#4AF6C3" : "#FF433D", fontWeight: 700 }}>
-              {r.saldo >= 0 ? "+" : ""}{r.saldo.toLocaleString("es-AR")}
-            </div>
+    <div>
+      <div style={{ background: "#060606", borderBottom: "1px solid #111", display: "flex", paddingLeft: 8 }}>
+        <button style={btnStyle(vista === "mapa")}  onClick={() => setVista("mapa")}>Mapa</button>
+        <button style={btnStyle(vista === "tabla")} onClick={() => setVista("tabla")}>Tabla</button>
+      </div>
+
+      {vista === "mapa" && (
+        <div>
+          <iframe
+            src="/api/balanza-map"
+            style={{ width: "100%", height: 500, border: "none", background: "#060606", display: "block" }}
+            title="Mapa socios comerciales Argentina"
+            loading="lazy"
+          />
+          <div style={{ padding: "4px 12px", fontSize: 8, color: "#333", fontFamily: "monospace", borderTop: "1px solid #0e0e0e" }}>
+            Fuente: INDEC · Comtrade · datos estimados 2023/2024 · lapizarra.ar
           </div>
-        ))}
-      </div>
-      <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
-        <span style={{ fontSize: 8, color: "#4AF6C3" }}>■ Exportaciones</span>
-        <span style={{ fontSize: 8, color: "#FF433D" }}>■ Importaciones</span>
-        <span style={{ fontSize: 8, color: "#555" }}>Saldo = Expo − Impo</span>
-      </div>
+        </div>
+      )}
+
+      {vista === "tabla" && (
+        loading
+          ? <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando...</div>
+          : !data?.length
+            ? <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Sin datos</div>
+            : (
+              <div style={{ padding: "12px 16px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5 }}>PRINCIPALES SOCIOS (USD millones · 2023/2024)</div>
+                  <DownloadCSV
+                    data={data.map(r => ({ pais: r.nombre, exportaciones_usd_m: r.expo, importaciones_usd_m: r.impo, saldo_usd_m: r.saldo }))}
+                    filename="balanza_socios"
+                  />
+                </div>
+                {/* Header */}
+                <div style={{ display: "grid", gridTemplateColumns: "120px 1fr 1fr 80px", gap: 8, marginBottom: 6 }}>
+                  <div style={{ fontSize: 8, color: "#333", textAlign: "right", fontFamily: "monospace" }}>PAÍS</div>
+                  <div style={{ fontSize: 8, color: "#4AF6C3", fontFamily: "monospace" }}>EXPO →</div>
+                  <div style={{ fontSize: 8, color: "#FF433D", fontFamily: "monospace" }}>IMPO ←</div>
+                  <div style={{ fontSize: 8, color: "#555", textAlign: "right", fontFamily: "monospace" }}>SALDO</div>
+                </div>
+                {[...data].sort((a, b) => b.total - a.total).map(r => {
+                  const maxVal = Math.max(...data.flatMap(d => [d.expo, d.impo]))
+                  return (
+                    <div key={r.nombre} style={{ display: "grid", gridTemplateColumns: "120px 1fr 1fr 80px", gap: 8, alignItems: "center", marginBottom: 4 }}>
+                      <div style={{ fontSize: 9, color: "#ccc", textAlign: "right", fontFamily: "monospace" }}>{r.nombre}</div>
+                      <div style={{ position: "relative", height: 14, background: "#0d0d0d" }}>
+                        <div style={{ position: "absolute", height: "100%", background: "#4AF6C3", opacity: 0.7, width: `${(r.expo / maxVal * 100).toFixed(1)}%` }} />
+                        <span style={{ position: "absolute", right: 4, top: 1, fontSize: 8, color: "#4AF6C3", fontFamily: "monospace" }}>{r.expo.toLocaleString("es-AR")}</span>
+                      </div>
+                      <div style={{ position: "relative", height: 14, background: "#0d0d0d" }}>
+                        <div style={{ position: "absolute", height: "100%", background: "#FF433D", opacity: 0.6, width: `${(r.impo / maxVal * 100).toFixed(1)}%` }} />
+                        <span style={{ position: "absolute", right: 4, top: 1, fontSize: 8, color: "#FF433D", fontFamily: "monospace" }}>{r.impo.toLocaleString("es-AR")}</span>
+                      </div>
+                      <div style={{ fontSize: 9, fontFamily: "monospace", textAlign: "right", color: r.saldo >= 0 ? "#4AF6C3" : "#FF433D", fontWeight: 700 }}>
+                        {r.saldo >= 0 ? "+" : ""}{r.saldo.toLocaleString("es-AR")}
+                      </div>
+                    </div>
+                  )
+                })}
+                <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
+                  <span style={{ fontSize: 8, color: "#4AF6C3" }}>■ Exportaciones</span>
+                  <span style={{ fontSize: 8, color: "#FF433D" }}>■ Importaciones</span>
+                </div>
+              </div>
+            )
+      )}
     </div>
   )
 }
