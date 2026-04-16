@@ -2892,18 +2892,10 @@ function DesigualdadView() {
 
 // ── FX — Tipo de Cambio Histórico + Bandas Cambiarias ─────────────────────────
 
-// Bandas cambiarias — Argentina (desde 14-abr-2025)
-const BANDA_FECHA  = new Date("2025-04-14")
-const BANDA_INF    = 1000   // ARS/USD piso inicial
-const BANDA_SUP    = 1400   // ARS/USD techo inicial
-const BANDA_TASA   = 0.01   // 1 % mensual (crawl)
-
-function calcBanda(dateStr: string, base: number): number | null {
-  const d = new Date(dateStr)
-  if (d < BANDA_FECHA) return null
-  const meses = (d.getTime() - BANDA_FECHA.getTime()) / (30.44 * 86400 * 1000)
-  return base * Math.pow(1 + BANDA_TASA, meses)
-}
+// ── Bandas cambiarias — cargadas desde /api/bcra-bands ───────────────────────
+// Fase 1 (11-abr-2025 → 31-dic-2025): Piso −1%/mes · Techo +1%/mes
+// Fase 2 (desde 1-ene-2026): IPC T-2 real de INDEC vía datos.gob.ar
+// Ver: src/app/api/bcra-bands/route.ts
 
 interface FXEntry {
   date: string
@@ -3196,6 +3188,7 @@ function FXView() {
   const [visible, setVisible] = useState<Record<string, boolean>>({
     oficial: true, blue: true, mep: true, ccl: true, cripto: false, mayorista: false,
   })
+  const [bands, setBands] = useState<Record<string, { piso: number; techo: number }>>({})
   const chartRef = useRef<HTMLDivElement>(null)
 
   // Siempre traemos el máximo histórico — BBGLineChart filtra por rango en el cliente
@@ -3207,12 +3200,40 @@ function FXView() {
       .catch(() => setLoading(false))
   }, [])
 
-  // Enriquecer con bandas cambiarias
-  const data = raw.map(r => ({
+  // Bandas cambiarias — máxima precisión con IPC T-2 real (datos.gob.ar)
+  useEffect(() => {
+    fetch("/api/bcra-bands")
+      .then(r => r.json())
+      .then(j => {
+        const map: Record<string, { piso: number; techo: number }> = {}
+        for (const d of (j.data ?? []) as { date: string; piso: number; techo: number }[]) {
+          map[d.date] = { piso: d.piso, techo: d.techo }
+        }
+        setBands(map)
+      })
+      .catch(() => {})
+  }, [])
+
+  // Datos históricos enriquecidos con bandas
+  const historical = raw.map(r => ({
     ...r,
-    banda_inf: calcBanda(r.date, BANDA_INF),
-    banda_sup: calcBanda(r.date, BANDA_SUP),
+    banda_inf: bands[r.date]?.piso  ?? null,
+    banda_sup: bands[r.date]?.techo ?? null,
   }))
+
+  // Fechas futuras: sólo bandas (sin cotizaciones aún)
+  const lastDate = raw.at(-1)?.date ?? ""
+  const futureBands = Object.entries(bands)
+    .filter(([date]) => date > lastDate)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, { piso, techo }]) => ({
+      date,
+      oficial: null, blue: null, mep: null, ccl: null, cripto: null, mayorista: null,
+      banda_inf: piso,
+      banda_sup: techo,
+    }))
+
+  const data = [...historical, ...futureBands]
 
   const last  = raw.at(-1)
   const prev5 = raw.at(-5)
@@ -3294,10 +3315,10 @@ function FXView() {
               Banda BCRA
             </div>
             <div style={{ fontSize: 11, fontFamily: "monospace", color: "#ccc", lineHeight: 1.9 }}>
-              <span style={{ color: "#4AF6C3" }}>↑ Piso:   ${calcBanda(last.date, BANDA_INF)?.toFixed(0) ?? "—"}</span><br />
-              <span style={{ color: "#FF433D" }}>↓ Techo: ${calcBanda(last.date, BANDA_SUP)?.toFixed(0) ?? "—"}</span>
+              <span style={{ color: "#4AF6C3" }}>↑ Piso:   ${bands[last.date]?.piso?.toFixed(0)  ?? "—"}</span><br />
+              <span style={{ color: "#FF433D" }}>↓ Techo: ${bands[last.date]?.techo?.toFixed(0) ?? "—"}</span>
             </div>
-            <div style={{ fontSize: 8, color: "#333", fontFamily: "monospace", marginTop: 2 }}>1%/mes · desde 14-abr-2025</div>
+            <div style={{ fontSize: 8, color: "#333", fontFamily: "monospace", marginTop: 2 }}>Piso −1%/mes · Techo +1%/mes · Fase 2 desde ene-2026 IPC T-2</div>
           </div>
         )}
       </div>
@@ -3350,7 +3371,7 @@ function FXView() {
           enableDateRange={true}
         />
         <div style={{ fontSize: 8, color: "#333", marginTop: 4, padding: "0 4px" }}>
-          Fuente: argentinadatos.com · Bandas BCRA vigentes desde 14-abr-2025 · Crawl 1%/mes · Piso $1.000 → Techo $1.400
+          Fuente: argentinadatos.com · Bandas BCRA desde 11-abr-2025 · F1 (hasta dic-2025): Piso −1%/mes · Techo +1%/mes · F2 (ene-2026+): IPC T-2 real vía INDEC/datos.gob.ar · proyección 3 meses
         </div>
       </div>
       </>}

@@ -216,6 +216,30 @@ async function getCompras() {
   return result
 }
 
+// ── Endpoint Tasas de Referencia ──────────────────────────────────────────────
+async function getTasas() {
+  const cacheKey = "bcra_tasas"
+  const cached = getCache(cacheKey)
+  if (cached) return cached
+
+  const from = dateYearsAgo(2)
+  const [tamar, badlar, dep30, adelantos, prestamos] = await Promise.all([
+    fetchVar(44, from),  // TAMAR bancos privados TNA
+    fetchVar(7,  from),  // BADLAR bancos privados TNA
+    fetchVar(12, from),  // Tasa depósitos 30d
+    fetchVar(13, from),  // Adelantos en cta. cte.
+    fetchVar(14, from),  // Préstamos personales
+  ])
+
+  const result = {
+    data: { tamar, badlar, dep30, adelantos, prestamos },
+    updated_at: new Date().toISOString(),
+    source: "BCRA API v4.0 · Variables 44, 7, 12, 13, 14",
+  }
+  setCache(cacheKey, result, 3600)
+  return result
+}
+
 // ── Handler principal ─────────────────────────────────────────────────────────
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
@@ -228,6 +252,7 @@ export async function GET(req: Request) {
       case "agregados": data = await getAgregados(); break
       case "reservas":  data = await getReservas();  break
       case "compras":   data = await getCompras();   break
+      case "tasas":     data = await getTasas();     break
       default:
         return NextResponse.json({ error: `Unknown endpoint: ${endpoint}` }, { status: 400 })
     }
