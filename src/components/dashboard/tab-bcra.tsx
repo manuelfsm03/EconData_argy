@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   AreaChart, Area, BarChart, Bar, Line, LineChart,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -55,11 +55,12 @@ function KPI({ label, value, unit, valueColor = "#fff" }: KPIProps) {
 // ── Sub-tabs estilo rendimientos.co ──────────────────────────────────────────
 
 const BCRA_TABS = [
-  { key: "plazofijo", label: "Plazo Fijo",   icon: "%" },
-  { key: "agregados", label: "Agregados",    icon: "Σ" },
-  { key: "reservas",  label: "Reservas",     icon: "⬡" },
-  { key: "compras",   label: "Compras BCRA", icon: "⇄" },
-  { key: "rem",       label: "REM",          icon: "◎" },
+  { key: "plazofijo", label: "Plazo Fijo",     icon: "%" },
+  { key: "tasas",     label: "Tasas de Ref.",  icon: "§" },
+  { key: "agregados", label: "Agregados",      icon: "Σ" },
+  { key: "reservas",  label: "Reservas",       icon: "⬡" },
+  { key: "compras",   label: "Compras BCRA",   icon: "⇄" },
+  { key: "rem",       label: "REM",            icon: "◎" },
 ]
 
 interface SubTabsProps {
@@ -781,6 +782,289 @@ function REMView() {
   )
 }
 
+// ── Tasas de Referencia ────────────────────────────────────────────────────────
+
+const TASAS_CFG = [
+  { key: "tamar",     label: "TAMAR",        sub: "Tasa mayorista bancos privados",    color: "#CE93D8" },
+  { key: "badlar",    label: "BADLAR",        sub: "Dep. >$1M, 30-35 días",            color: "#FFA028" },
+  { key: "dep30",     label: "Dep. 30d",      sub: "Promedio todas las entidades",      color: "#4FC3F7" },
+  { key: "adelantos", label: "Adelantos CC",  sub: "Descubierto cta. cte.",             color: "#FF433D" },
+  { key: "prestamos", label: "Prést. Pers.",  sub: "Créditos al consumo",               color: "#4AF6C3" },
+] as const
+
+type TasaKey = typeof TASAS_CFG[number]["key"]
+
+interface TasasData {
+  tamar:     BCRAVar[]
+  badlar:    BCRAVar[]
+  dep30:     BCRAVar[]
+  adelantos: BCRAVar[]
+  prestamos: BCRAVar[]
+}
+
+function TasasView() {
+  const [data, setData]       = useState<TasasData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [showRows, setShowRows] = useState(30)
+  const chartRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    fetch("/api/bcra?endpoint=tasas")
+      .then(r => r.json())
+      .then(j => { setData(j.data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return (
+    <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>
+      Cargando tasas de referencia...
+    </div>
+  )
+
+  if (!data) return (
+    <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>
+      Error al cargar datos.
+    </div>
+  )
+
+  // Último valor y delta vs ~22 registros atrás (~1 mes hábil)
+  const getStats = (key: TasaKey) => {
+    const serie = data[key] ?? []
+    const last = serie.at(-1)?.valor ?? null
+    const prev = serie.at(-22)?.valor ?? null
+    const delta = last != null && prev != null ? last - prev : null
+    const year = serie.slice(-250)
+    const vals = year.map(r => r.valor)
+    return {
+      last,
+      delta,
+      max:  vals.length ? Math.max(...vals) : null,
+      min:  vals.length ? Math.min(...vals) : null,
+      var1y: vals.length >= 2 ? (serie.at(-1)!.valor - year[0].valor) : null,
+    }
+  }
+
+  const stats = Object.fromEntries(TASAS_CFG.map(t => [t.key, getStats(t.key)])) as
+    Record<TasaKey, ReturnType<typeof getStats>>
+
+  // Datos para el gráfico comparativo
+  const chartData = (() => {
+    const m = new Map<string, Record<string, number>>()
+    for (const t of TASAS_CFG) {
+      for (const r of data[t.key] ?? []) {
+        const e = m.get(r.fecha) ?? {}
+        m.set(r.fecha, { ...e, [t.key]: r.valor })
+      }
+    }
+    return Array.from(m.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([fecha, vals]) => ({ date: fecha, ...vals }))
+  })()
+
+  // Tabla de datos unificada (desc)
+  const tableDates = Array.from(
+    new Set([...TASAS_CFG.flatMap(t => (data[t.key] ?? []).map(r => r.fecha))])
+  ).sort((a, b) => b.localeCompare(a))
+
+  const csvData = tableDates.map(f => ({
+    fecha: f,
+    ...Object.fromEntries(TASAS_CFG.map(t => [
+      t.label, data[t.key]?.find(r => r.fecha === f)?.valor?.toFixed(2) ?? "",
+    ])),
+  }))
+
+  // TNA → TEA y rendimientos
+  const CAPITAL = 1_000_000
+  const tea = (tna: number) => (Math.pow(1 + tna / 100 / 12, 12) - 1) * 100
+  const rend30 = (tna: number) => CAPITAL * (tna / 100) * (30 / 365)
+  const rend365 = (tna: number) => CAPITAL * (tea(tna) / 100)
+
+  return (
+    <div>
+      <SectionMeta
+        title="Tasas de Interés del BCRA"
+        help="TAMAR, BADLAR y tasas activas del sistema financiero. Fuente: BCRA API v4.0, variables 44, 7, 12, 13, 14."
+        source="BCRA API v4.0"
+      />
+
+      {/* ── KPI cards ── */}
+      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+        {TASAS_CFG.map(t => {
+          const s = stats[t.key]
+          return (
+            <div key={t.key} style={{
+              flex: "1 1 160px", padding: "10px 14px",
+              background: "#080808", border: "1px solid #111",
+            }}>
+              <div style={{ fontSize: 9, color: t.color, fontFamily: "monospace", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" as const }}>
+                {t.label}
+              </div>
+              <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", marginBottom: 6 }}>
+                {t.sub}
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: "#fff", fontFamily: "monospace", lineHeight: 1 }}>
+                {s.last != null ? `${fmtNum(s.last)}%` : "—"}
+              </div>
+              {s.delta != null && (
+                <div style={{ fontSize: 9, color: s.delta >= 0 ? "#FF433D" : "#4AF6C3", fontFamily: "monospace", marginTop: 4 }}>
+                  {s.delta >= 0 ? "+" : ""}{fmtNum(s.delta)} pp vs mes ant.
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ── Gráfico comparativo ── */}
+      <div style={{ padding: "10px 12px 0", borderTop: "1px solid #111" }}>
+        <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", letterSpacing: 1.5, marginBottom: 6, textTransform: "uppercase" as const }}>
+          Evolución comparativa
+        </div>
+        <div ref={chartRef}>
+          <BBGLineChart
+            title=""
+            data={chartData as unknown as Record<string, unknown>[]}
+            lines={TASAS_CFG.map(t => ({ key: t.key, name: t.label, color: t.color }))}
+            height={280}
+            formatValue={v => `${v.toFixed(2)}%`}
+            defaultRange="1y"
+            enableLineToggle={true}
+            enableDateRange={true}
+            showZeroLine={false}
+          />
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", padding: "4px 4px 0" }}>
+          <ChartDownload csvData={csvData} filename="tasas-bcra" chartRef={chartRef} />
+        </div>
+      </div>
+
+      {/* ── TNA vs TEA ── */}
+      <div style={{ padding: "10px 12px", borderTop: "1px solid #111" }}>
+        <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", letterSpacing: 1.5, marginBottom: 8, textTransform: "uppercase" as const }}>
+          TNA vs TEA · Simulación $1.000.000
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 9 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid #222" }}>
+                {["Tasa", "TNA", "TEA", "Rend. 30 días", "Rend. 365 días"].map(h => (
+                  <th key={h} style={{ padding: "5px 10px", color: "#555", textAlign: "right", fontWeight: 400, whiteSpace: "nowrap" as const }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {TASAS_CFG.map(t => {
+                const tna = stats[t.key].last
+                if (tna == null) return null
+                return (
+                  <tr key={t.key} style={{ borderBottom: "1px solid #0d0d0d" }}>
+                    <td style={{ padding: "5px 10px", color: t.color, fontWeight: 700 }}>{t.label}</td>
+                    <td style={{ padding: "5px 10px", color: "#ccc", textAlign: "right" }}>{fmtNum(tna)}%</td>
+                    <td style={{ padding: "5px 10px", color: "#FFA028", textAlign: "right" }}>{fmtNum(tea(tna))}%</td>
+                    <td style={{ padding: "5px 10px", color: "#4AF6C3", textAlign: "right" }}>
+                      ${rend30(tna).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </td>
+                    <td style={{ padding: "5px 10px", color: "#4AF6C3", textAlign: "right" }}>
+                      ${rend365(tna).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+          <div style={{ fontSize: 8, color: "#333", fontFamily: "monospace", marginTop: 4 }}>
+            Simulación teórica sobre $1.000.000. TEA = (1 + TNA/12)^12 − 1. Rend. 30d = Capital × TNA × 30/365.
+          </div>
+        </div>
+      </div>
+
+      {/* ── Estadísticas por tasa ── */}
+      <div style={{ padding: "10px 12px", borderTop: "1px solid #111" }}>
+        <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", letterSpacing: 1.5, marginBottom: 8, textTransform: "uppercase" as const }}>
+          Estadísticas — Últimos 12 meses
+        </div>
+        <div style={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+          {TASAS_CFG.map(t => {
+            const s = stats[t.key]
+            return (
+              <div key={t.key} style={{ flex: "1 1 140px", padding: "8px 12px", background: "#070707", border: "1px solid #111" }}>
+                <div style={{ fontSize: 9, color: t.color, fontWeight: 700, fontFamily: "monospace", marginBottom: 6 }}>{t.label}</div>
+                {([
+                  ["Actual",        s.last   != null ? `${fmtNum(s.last)}%`   : "—"],
+                  ["Máximo",        s.max    != null ? `${fmtNum(s.max)}%`    : "—"],
+                  ["Mínimo",        s.min    != null ? `${fmtNum(s.min)}%`    : "—"],
+                  ["Var. (pp)",     s.var1y  != null ? `${fmtNum(s.var1y)} pp` : "—"],
+                ] as [string, string][]).map(([lbl, val]) => (
+                  <div key={lbl} style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                    <span style={{ fontSize: 8, color: "#555", fontFamily: "monospace" }}>{lbl}</span>
+                    <span style={{ fontSize: 8, color: lbl === "Actual" ? "#fff" : "#888", fontFamily: "monospace" }}>{val}</span>
+                  </div>
+                ))}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ── Tabla de datos ── */}
+      <div style={{ padding: "10px 12px", borderTop: "1px solid #111" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", letterSpacing: 1.5, textTransform: "uppercase" as const }}>
+            Tabla de datos
+          </div>
+          <DownloadCSV data={csvData} filename="tasas-referencia-bcra" />
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 9 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid #222" }}>
+                <th style={{ padding: "4px 10px", color: "#555", textAlign: "left", fontWeight: 400 }}>Fecha</th>
+                {TASAS_CFG.map(t => (
+                  <th key={t.key} style={{ padding: "4px 10px", color: t.color, textAlign: "right", fontWeight: 600 }}>
+                    {t.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {tableDates.slice(0, showRows).map(f => (
+                <tr key={f} style={{ borderBottom: "1px solid #0a0a0a" }}>
+                  <td style={{ padding: "3px 10px", color: "#666" }}>{fmtDate(f)}</td>
+                  {TASAS_CFG.map(t => {
+                    const val = data[t.key]?.find(r => r.fecha === f)?.valor
+                    return (
+                      <td key={t.key} style={{ padding: "3px 10px", color: t.color, textAlign: "right" }}>
+                        {val != null ? `${fmtNum(val)}%` : "—"}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {tableDates.length > showRows && (
+          <button
+            onClick={() => setShowRows(n => n + 30)}
+            style={{
+              marginTop: 8, width: "100%", padding: "6px", background: "none",
+              border: "1px solid #1a1a1a", borderRadius: 3, color: "#555",
+              fontFamily: "monospace", fontSize: 9, cursor: "pointer",
+            }}
+          >
+            Mostrar más ({tableDates.length - showRows} restantes)
+          </button>
+        )}
+        <div style={{ fontSize: 8, color: "#333", fontFamily: "monospace", marginTop: 6 }}>
+          Fuente: BCRA API v4.0 · Variables 44 (TAMAR), 7 (BADLAR), 12 (Dep. 30d), 13 (Adelantos CC), 14 (Prést. Pers.)
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export function TabBCRA({ initialSubtab }: { initialSubtab?: string | null }) {
@@ -804,6 +1088,7 @@ export function TabBCRA({ initialSubtab }: { initialSubtab?: string | null }) {
 
       {/* Contenido */}
       {activeTab === "plazofijo" && <PlazoFijoView />}
+      {activeTab === "tasas"     && <TasasView     />}
       {activeTab === "agregados" && <AgregadosView />}
       {activeTab === "reservas"  && <ReservasView  />}
       {activeTab === "compras"   && <ComprasView   />}
