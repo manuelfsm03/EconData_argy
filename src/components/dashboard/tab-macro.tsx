@@ -2705,26 +2705,33 @@ function DesigualdadView() {
 // ── Régimen de bandas cambiarias Argentina ────────────────────────────────────
 //
 // Fase 1 (11-abr-2025 → 31-dic-2025)
-//   Piso  $1.000 → baja -1 %/mes  (band widens — floor falls)
-//   Techo $1.400 → sube +1 %/mes  (band widens — ceiling rises)
+//   Piso  $1.000 → baja -1 %/mes  (banda se ensancha hacia abajo)
+//   Techo $1.400 → sube +1 %/mes  (banda se ensancha hacia arriba)
 //
 // Fase 2 (desde 1-ene-2026)
-//   Ambas bandas se deslizan al ritmo del IPC T-2 (INDEC)
-//   Se usa una estimación hasta disponer de datos reales mes a mes.
+//   Ambas bandas se deslizan al IPC T-2 (INDEC), mismo sentido:
+//   piso baja y techo sube al mismo porcentaje mensual.
+//   Calibración: datos oficiales BCRA 4/5/2026 → Piso 815,07 · Techo 1.710,59
+//   Tasa media resultante Fase 2: ~2,85 %/mes
+//   (Mayo 2026 específicamente usa ~3,28 %/mes = IPC T-2 marzo 2026)
+//
+// El BCRA no expone las bandas vía API — se calculan desde los parámetros
+// de la comunicación oficial del 11-abr-2025.
 //
 const BANDA_INICIO    = new Date("2025-04-11T00:00:00")
 const BANDA_FASE2     = new Date("2026-01-01T00:00:00")
 const BANDA_PISO_INI  = 1000    // ARS/USD piso 11-abr-2025
 const BANDA_TECHO_INI = 1400    // ARS/USD techo 11-abr-2025
 const BANDA_TASA_F1   = 0.01    // 1 % mensual — Fase 1
-// Fase 2: IPC T-2. Usar promedio estimado hasta tener datos reales por mes.
-const BANDA_TASA_F2   = 0.025   // ~2,5 % mensual (estimación IPC T-2)
+// Fase 2: IPC T-2. Calibrado con datos BCRA 4/5/2026 → 2,85 % promedio
+// (el valor real cambia cada mes con el IPC T-2 publicado por INDEC)
+const BANDA_TASA_F2   = 0.0285  // 2,85 % mensual (calibrado ene-may 2026)
 
 function mesesEntre(d1: Date, d2: Date): number {
   return (d2.getTime() - d1.getTime()) / (30.44 * 86400 * 1000)
 }
 
-// Piso: baja -1 %/mes en Fase 1 · luego sube al IPC T-2 en Fase 2
+// Piso: baja -1%/mes en Fase 1 · luego baja al IPC T-2 en Fase 2
 function calcPiso(dateStr: string): number | null {
   const d = new Date(dateStr + "T00:00:00")
   if (d < BANDA_INICIO) return null
@@ -2732,10 +2739,10 @@ function calcPiso(dateStr: string): number | null {
     return BANDA_PISO_INI * Math.pow(1 - BANDA_TASA_F1, mesesEntre(BANDA_INICIO, d))
   }
   const pisoFin1 = BANDA_PISO_INI * Math.pow(1 - BANDA_TASA_F1, mesesEntre(BANDA_INICIO, BANDA_FASE2))
-  return pisoFin1 * Math.pow(1 + BANDA_TASA_F2, mesesEntre(BANDA_FASE2, d))
+  return pisoFin1 * Math.pow(1 - BANDA_TASA_F2, mesesEntre(BANDA_FASE2, d))
 }
 
-// Techo: sube +1 %/mes en Fase 1 · luego sube al IPC T-2 en Fase 2
+// Techo: sube +1%/mes en Fase 1 · luego sube al IPC T-2 en Fase 2
 function calcTecho(dateStr: string): number | null {
   const d = new Date(dateStr + "T00:00:00")
   if (d < BANDA_INICIO) return null
@@ -3191,7 +3198,7 @@ function FXView() {
           enableDateRange={true}
         />
         <div style={{ fontSize: 8, color: "#333", marginTop: 4, padding: "0 4px" }}>
-          Fuente: argentinadatos.com · Bandas BCRA desde 11-abr-2025 · Fase 1 (hasta dic-2025): Piso −1%/mes · Techo +1%/mes · Fase 2 (ene-2026+): IPC T-2 est. 2,5%/mes
+          Fuente: argentinadatos.com · Bandas BCRA desde 11-abr-2025 · F1 (hasta dic-2025): Piso −1%/mes · Techo +1%/mes · F2 (ene-2026+): IPC T-2 ~2,85%/mes promedio · calibrado con datos BCRA 4/5/2026
         </div>
       </div>
       </>}
