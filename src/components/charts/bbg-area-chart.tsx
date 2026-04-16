@@ -5,6 +5,8 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
 } from "recharts"
+import { InfoTooltip } from "@/components/ui/info-tooltip"
+import { GLOSSARY } from "@/lib/glossary"
 
 export type DateRange = "1w" | "1m" | "3m" | "6m" | "1y" | "ytd" | "all"
 
@@ -19,6 +21,7 @@ interface BBGAreaChartProps {
   data: Record<string, unknown>[]
   areas: AreaConfig[]
   title: string
+  glossaryKey?: string
   yAxisLabel?: string
   height?: number
   stacked?: boolean
@@ -85,7 +88,7 @@ const RANGE_OPTIONS: { value: DateRange; label: string }[] = [
 ]
 
 export function BBGAreaChart({
-  data, areas, title, yAxisLabel, height = 180, stacked, formatValue,
+  data, areas, title, glossaryKey, yAxisLabel, height = 180, stacked, formatValue,
   enableDateRange = true, defaultRange = "1m"
 }: BBGAreaChartProps) {
   const [range, setRange] = useState<DateRange>(defaultRange)
@@ -98,7 +101,17 @@ export function BBGAreaChart({
   return (
     <div className="bbg-panel">
       <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span>{title}</span>
+        <span style={{ display: "flex", alignItems: "center" }}>
+          {title}
+          {glossaryKey && GLOSSARY[glossaryKey] && (
+            <InfoTooltip
+              text={GLOSSARY[glossaryKey].text}
+              source={GLOSSARY[glossaryKey].source}
+              url={GLOSSARY[glossaryKey].url}
+              position="bottom"
+            />
+          )}
+        </span>
         {enableDateRange && (
           <div style={{ display: "flex", gap: "2px" }}>
             {RANGE_OPTIONS.map((opt) => (

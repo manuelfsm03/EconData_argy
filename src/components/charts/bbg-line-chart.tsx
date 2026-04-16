@@ -5,6 +5,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Legend,
 } from "recharts"
+import { InfoTooltip } from "@/components/ui/info-tooltip"
+import { GLOSSARY } from "@/lib/glossary"
 
 export type DateRange = "1w" | "1m" | "3m" | "6m" | "1y" | "ytd" | "all"
 
@@ -20,6 +22,7 @@ interface BBGLineChartProps {
   data: Record<string, unknown>[]
   lines: LineConfig[]
   title: string
+  glossaryKey?: string
   yAxisLabel?: string
   yAxisRight?: { label: string; format?: (v: number) => string }
   height?: number
@@ -106,7 +109,7 @@ const RANGE_OPTIONS: { value: DateRange; label: string }[] = [
 ]
 
 export function BBGLineChart({
-  data, lines, title, yAxisLabel, yAxisRight, height = 180,
+  data, lines, title, glossaryKey, yAxisLabel, yAxisRight, height = 180,
   showZeroLine, formatValue, enableDateRange = true, defaultRange = "1m",
   enableLineToggle = false,
 }: BBGLineChartProps) {
@@ -127,7 +130,17 @@ export function BBGLineChart({
   return (
     <div className="bbg-panel">
       <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
-        <span>{title}</span>
+        <span style={{ display: "flex", alignItems: "center" }}>
+          {title}
+          {glossaryKey && GLOSSARY[glossaryKey] && (
+            <InfoTooltip
+              text={GLOSSARY[glossaryKey].text}
+              source={GLOSSARY[glossaryKey].source}
+              url={GLOSSARY[glossaryKey].url}
+              position="bottom"
+            />
+          )}
+        </span>
         <div style={{ display: "flex", gap: "2px", flexWrap: "wrap", alignItems: "center" }}>
           {enableLineToggle && lines.map(l => (
             <button

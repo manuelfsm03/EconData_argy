@@ -31,6 +31,7 @@ export function TabReservas() {
       <BBGChartPanel title="RESERVAS BCRA" loading={reservas.loading} error={reservas.error} source={reservas.source}>
         <BBGAreaChart
           title="RESERVAS BCRA — NIVEL"
+          glossaryKey="RESERVAS"
           data={reservas.data}
           areas={[{ key: "reservas", name: "Reservas", color: "#4AF6C3" }]}
           yAxisLabel="MM USD"
@@ -40,6 +41,7 @@ export function TabReservas() {
       <BBGChartPanel title="BASE MONETARIA" loading={baseMon.loading} error={baseMon.error} source={baseMon.source}>
         <BBGAreaChart
           title="BASE MONETARIA — NIVEL"
+          glossaryKey="BASE MONETARIA"
           data={baseMon.data}
           areas={[{ key: "base_monetaria", name: "Base Monetaria", color: "#FFA028" }]}
           yAxisLabel="MM ARS"
@@ -49,6 +51,7 @@ export function TabReservas() {
       <BBGChartPanel title="CIRCULACION MONETARIA" loading={circulacion.loading} error={circulacion.error} source={circulacion.source}>
         <BBGAreaChart
           title="CIRCULACION MONETARIA — NIVEL"
+          glossaryKey="CIRCULACION MONETARIA"
           data={circulacion.data}
           areas={[{ key: "circulacion", name: "Circulación", color: "#FFD700" }]}
           yAxisLabel="MM ARS"
@@ -59,6 +62,7 @@ export function TabReservas() {
       <BBGChartPanel title="PRESTAMOS PRIV" loading={prestamos.loading} error={prestamos.error} source={prestamos.source}>
         <BBGAreaChart
           title="PRESTAMOS AL SECTOR PRIVADO"
+          glossaryKey="PRESTAMOS PRIVADO"
           data={prestamos.data}
           areas={[{ key: "prestamos_privado", name: "Préstamos", color: "#0068FF" }]}
           yAxisLabel="MM ARS"

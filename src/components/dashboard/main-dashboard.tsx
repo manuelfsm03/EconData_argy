@@ -189,7 +189,7 @@ export function Dashboard() {
       <div style={{
         background: "#050505",
         borderBottom: "1px solid #111",
-        padding: "10px 16px 0",
+        padding: "10px 16px",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -217,8 +217,8 @@ export function Dashboard() {
           }}>/</span>
         </button>
 
-        {/* Tabs centrados */}
-        <div style={{ display: "flex", gap: 0, alignItems: "stretch" }}>
+        {/* Tabs centrados — pill style */}
+        <div style={{ display: "flex", gap: 6, alignItems: "center", paddingBottom: 10 }}>
           {MAIN_TABS.map(({ key, label, Icon }) => {
             const active = activeTab === key
             return (
@@ -227,29 +227,25 @@ export function Dashboard() {
                 onClick={() => setActiveTab(key)}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
-                  background: active ? "#111" : "none",
-                  border: "none",
-                  borderBottom: active ? "2px solid #FFA028" : "2px solid transparent",
-                  borderTop: "2px solid transparent",
+                  padding: "5px 14px",
+                  fontSize: 12,
+                  fontWeight: active ? 600 : 400,
+                  color: active ? "#FFA028" : "#888",
+                  background: active ? "rgba(255,160,40,0.08)" : "transparent",
+                  border: active ? "1px solid rgba(255,160,40,0.4)" : "1px solid #2a2a2a",
+                  borderRadius: 20,
                   cursor: "pointer",
-                  padding: "8px 18px",
                   whiteSpace: "nowrap",
-                  transition: "background 0.12s, color 0.12s",
+                  transition: "all 0.15s",
+                  fontFamily: "monospace",
                 }}
               >
                 <Icon
                   size={13}
                   strokeWidth={active ? 2.2 : 1.6}
-                  style={{ color: active ? "#FFA028" : "#444" }}
+                  style={{ color: active ? "#FFA028" : "#555" }}
                 />
-                <span style={{
-                  fontSize: 11, fontFamily: "monospace",
-                  letterSpacing: 1, textTransform: "uppercase",
-                  color: active ? "#e8e8e8" : "#555",
-                  fontWeight: active ? 600 : 400,
-                }}>
-                  {label}
-                </span>
+                {label}
               </button>
             )
           })}
