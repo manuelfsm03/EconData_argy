@@ -1959,8 +1959,9 @@ function IpcView() {
                   tickFormatter={(v: number) => `${v.toFixed(1)}%`}
                 />
                 <Tooltip
-                  contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10, color: "#FFA028" }}
-                  labelStyle={{ color: "#aaa" }}
+                  contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10 }}
+                  labelStyle={{ color: "#FFA028" }}
+                  itemStyle={{ color: "#fff" }}
                   formatter={(v: unknown) => [`${Number(v).toFixed(2)}%`, "Var. mensual IPC"]}
                   labelFormatter={(l) => `Período: ${String(l)}`}
                 />
