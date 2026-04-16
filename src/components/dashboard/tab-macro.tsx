@@ -3009,10 +3009,7 @@ function FXView() {
   const [visible, setVisible] = useState<Record<string, boolean>>({
     oficial: true, blue: true, mep: true, ccl: true, cripto: false, mayorista: false,
   })
-  const [bands, setBands]     = useState<Record<string, { piso: number; techo: number }>>({})
-  const [viewMode, setViewMode] = useState<"tc" | "bandas">("tc")
-  const [yMin, setYMin]       = useState("")
-  const [yMax, setYMax]       = useState("")
+  const [bands, setBands] = useState<Record<string, { piso: number; techo: number }>>({})
   const chartRef = useRef<HTMLDivElement>(null)
 
   // Siempre traemos el máximo histórico — BBGLineChart filtra por rango en el cliente
@@ -3057,24 +3054,7 @@ function FXView() {
       banda_sup: techo,
     }))
 
-  const allData = [...historical, ...futureBands]
-
-  // En modo TC: excluimos puntos futuros (sólo bandas) para que el eje Y no se distorsione
-  const chartData = viewMode === "tc" ? historical : allData
-
-  // Líneas del gráfico según modo
-  const tcLines = FX_LINES.filter(l => visible[l.key]).map(l => ({ key: l.key, name: l.name, color: l.color }))
-  const bandLines = [
-    { key: "banda_inf", name: "Piso banda",  color: "#4AF6C3", dashed: true },
-    { key: "banda_sup", name: "Techo banda", color: "#FF433D", dashed: true },
-  ]
-  const chartLines = viewMode === "tc" ? tcLines : [...tcLines, ...bandLines]
-
-  // Dominio Y manual
-  const yDomain: [number | string, number | string] = [
-    yMin !== "" ? Number(yMin) : "auto",
-    yMax !== "" ? Number(yMax) : "auto",
-  ]
+  const data = [...historical, ...futureBands]
 
   const last  = raw.at(-1)
   const prev5 = raw.at(-5)
@@ -3092,7 +3072,7 @@ function FXView() {
     </div>
   )
 
-  const csvData = allData.map(r => ({
+  const csvData = data.map(r => ({
     fecha: r.date,
     oficial:   r.oficial   ?? "",
     blue:      r.blue      ?? "",
@@ -3164,35 +3144,14 @@ function FXView() {
         )}
       </div>
 
-      {/* Barra de controles del gráfico */}
+      {/* Toggle de series + descarga */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "8px 12px", flexWrap: "wrap", gap: 8,
         borderBottom: "1px solid #0d0d0d",
       }}>
-        {/* Izquierda: modo vista + series */}
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-          {/* Toggle modo */}
-          <div style={{ display: "flex", gap: 2, background: "#0d0d0d", border: "1px solid #1a1a1a", borderRadius: 4, padding: 2 }}>
-            {([
-              { key: "tc",     label: "TC" },
-              { key: "bandas", label: "+ Bandas" },
-            ] as const).map(m => (
-              <button key={m.key} onClick={() => setViewMode(m.key)} style={{
-                fontSize: 8, padding: "3px 10px", border: "none", borderRadius: 3, cursor: "pointer",
-                fontFamily: "monospace", letterSpacing: 0.5,
-                background: viewMode === m.key ? "#FFA028" : "transparent",
-                color:      viewMode === m.key ? "#000"    : "#555",
-                fontWeight: viewMode === m.key ? 700       : 400,
-              }}>{m.label}</button>
-            ))}
-          </div>
-
-          {/* Separador */}
-          <span style={{ width: 1, height: 14, background: "#222" }} />
-
-          {/* Series toggle */}
-          <span style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>SERIES:</span>
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 8, color: "#444", fontFamily: "monospace", marginRight: 4 }}>SERIES:</span>
           {FX_LINES.map(({ key, name, color }) => (
             <button key={key} onClick={() => setVisible(v => ({ ...v, [key]: !v[key] }))} style={{
               display: "flex", alignItems: "center", gap: 4,
@@ -3201,51 +3160,29 @@ function FXView() {
               background: visible[key] ? color + "15" : "transparent",
               color:      visible[key] ? color         : "#444",
             }}>
-              <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: visible[key] ? color : "#222" }} />
+              <span style={{
+                display: "inline-block", width: 6, height: 6, borderRadius: "50%",
+                background: visible[key] ? color : "#222",
+              }} />
               {name}
             </button>
           ))}
         </div>
-
-        {/* Derecha: escala Y manual + descarga */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>ESCALA Y:</span>
-          {([
-            { label: "Mín", val: yMin, set: setYMin },
-            { label: "Máx", val: yMax, set: setYMax },
-          ] as const).map(({ label, val, set }) => (
-            <div key={label} style={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <span style={{ fontSize: 7, color: "#444", fontFamily: "monospace" }}>{label}</span>
-              <input
-                type="number"
-                value={val}
-                onChange={e => set(e.target.value)}
-                placeholder="auto"
-                style={{
-                  width: 60, padding: "2px 4px", background: "#0d0d0d",
-                  border: `1px solid ${val !== "" ? "#FFA02880" : "#1a1a1a"}`,
-                  borderRadius: 3, color: val !== "" ? "#FFA028" : "#555",
-                  fontFamily: "monospace", fontSize: 9, outline: "none",
-                }}
-              />
-            </div>
-          ))}
-          {(yMin !== "" || yMax !== "") && (
-            <button
-              onClick={() => { setYMin(""); setYMax("") }}
-              style={{ fontSize: 8, padding: "2px 6px", background: "none", border: "1px solid #1a1a1a", borderRadius: 3, color: "#555", cursor: "pointer", fontFamily: "monospace" }}
-            >✕</button>
-          )}
-          <ChartDownload csvData={csvData} filename="tipos-de-cambio" chartRef={chartRef} />
-        </div>
+        <ChartDownload csvData={csvData} filename="tipos-de-cambio" chartRef={chartRef} />
       </div>
 
-      {/* Gráfico */}
+      {/* Gráfico — BBGLineChart tiene su propio selector de rango (1S/1M/3M/6M/1A/YTD/MAX) */}
       <div style={{ padding: "0 12px 4px" }} ref={chartRef}>
         <BBGLineChart
           title="TIPOS DE CAMBIO ARS/USD"
-          data={chartData as unknown as Record<string, unknown>[]}
-          lines={chartLines}
+          data={data as unknown as Record<string, unknown>[]}
+          lines={[
+            ...FX_LINES
+              .filter(l => visible[l.key])
+              .map(l => ({ key: l.key, name: l.name, color: l.color })),
+            { key: "banda_inf", name: "Piso banda",  color: "#4AF6C3", dashed: true },
+            { key: "banda_sup", name: "Techo banda", color: "#FF433D", dashed: true },
+          ]}
           height={340}
           yAxisLabel="ARS/USD"
           formatValue={v => `$${Math.round(v).toLocaleString("es-AR")}`}
@@ -3253,7 +3190,6 @@ function FXView() {
           showZeroLine={false}
           enableLineToggle={false}
           enableDateRange={true}
-          yDomain={yDomain}
         />
         <div style={{ fontSize: 8, color: "#333", marginTop: 4, padding: "0 4px" }}>
           Fuente: argentinadatos.com · Bandas BCRA desde 11-abr-2025 · F1 (hasta dic-2025): Piso −1%/mes · Techo +1%/mes · F2 (ene-2026+): IPC T-2 real vía INDEC/datos.gob.ar · proyección 3 meses
