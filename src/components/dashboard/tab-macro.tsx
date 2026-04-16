@@ -2702,56 +2702,10 @@ function DesigualdadView() {
 
 // ── FX — Tipo de Cambio Histórico + Bandas Cambiarias ─────────────────────────
 
-// ── Régimen de bandas cambiarias Argentina ────────────────────────────────────
-//
-// Fase 1 (11-abr-2025 → 31-dic-2025)
-//   Piso  $1.000 → baja -1 %/mes  (banda se ensancha hacia abajo)
-//   Techo $1.400 → sube +1 %/mes  (banda se ensancha hacia arriba)
-//
-// Fase 2 (desde 1-ene-2026)
-//   Ambas bandas se deslizan al IPC T-2 (INDEC), mismo sentido:
-//   piso baja y techo sube al mismo porcentaje mensual.
-//   Calibración: datos oficiales BCRA 4/5/2026 → Piso 815,07 · Techo 1.710,59
-//   Tasa media resultante Fase 2: ~2,85 %/mes
-//   (Mayo 2026 específicamente usa ~3,28 %/mes = IPC T-2 marzo 2026)
-//
-// El BCRA no expone las bandas vía API — se calculan desde los parámetros
-// de la comunicación oficial del 11-abr-2025.
-//
-const BANDA_INICIO    = new Date("2025-04-11T00:00:00")
-const BANDA_FASE2     = new Date("2026-01-01T00:00:00")
-const BANDA_PISO_INI  = 1000    // ARS/USD piso 11-abr-2025
-const BANDA_TECHO_INI = 1400    // ARS/USD techo 11-abr-2025
-const BANDA_TASA_F1   = 0.01    // 1 % mensual — Fase 1
-// Fase 2: IPC T-2. Calibrado con datos BCRA 4/5/2026 → 2,85 % promedio
-// (el valor real cambia cada mes con el IPC T-2 publicado por INDEC)
-const BANDA_TASA_F2   = 0.0285  // 2,85 % mensual (calibrado ene-may 2026)
-
-function mesesEntre(d1: Date, d2: Date): number {
-  return (d2.getTime() - d1.getTime()) / (30.44 * 86400 * 1000)
-}
-
-// Piso: baja -1%/mes en Fase 1 · luego baja al IPC T-2 en Fase 2
-function calcPiso(dateStr: string): number | null {
-  const d = new Date(dateStr + "T00:00:00")
-  if (d < BANDA_INICIO) return null
-  if (d <= BANDA_FASE2) {
-    return BANDA_PISO_INI * Math.pow(1 - BANDA_TASA_F1, mesesEntre(BANDA_INICIO, d))
-  }
-  const pisoFin1 = BANDA_PISO_INI * Math.pow(1 - BANDA_TASA_F1, mesesEntre(BANDA_INICIO, BANDA_FASE2))
-  return pisoFin1 * Math.pow(1 - BANDA_TASA_F2, mesesEntre(BANDA_FASE2, d))
-}
-
-// Techo: sube +1%/mes en Fase 1 · luego sube al IPC T-2 en Fase 2
-function calcTecho(dateStr: string): number | null {
-  const d = new Date(dateStr + "T00:00:00")
-  if (d < BANDA_INICIO) return null
-  if (d <= BANDA_FASE2) {
-    return BANDA_TECHO_INI * Math.pow(1 + BANDA_TASA_F1, mesesEntre(BANDA_INICIO, d))
-  }
-  const techoFin1 = BANDA_TECHO_INI * Math.pow(1 + BANDA_TASA_F1, mesesEntre(BANDA_INICIO, BANDA_FASE2))
-  return techoFin1 * Math.pow(1 + BANDA_TASA_F2, mesesEntre(BANDA_FASE2, d))
-}
+// ── Bandas cambiarias — cargadas desde /api/bcra-bands ───────────────────────
+// Fase 1 (11-abr-2025 → 31-dic-2025): Piso −1%/mes · Techo +1%/mes
+// Fase 2 (desde 1-ene-2026): IPC T-2 real de INDEC vía datos.gob.ar
+// Ver: src/app/api/bcra-bands/route.ts
 
 interface FXEntry {
   date: string
@@ -3044,6 +2998,7 @@ function FXView() {
   const [visible, setVisible] = useState<Record<string, boolean>>({
     oficial: true, blue: true, mep: true, ccl: true, cripto: false, mayorista: false,
   })
+  const [bands, setBands] = useState<Record<string, { piso: number; techo: number }>>({})
   const chartRef = useRef<HTMLDivElement>(null)
 
   // Siempre traemos el máximo histórico — BBGLineChart filtra por rango en el cliente
@@ -3055,12 +3010,40 @@ function FXView() {
       .catch(() => setLoading(false))
   }, [])
 
-  // Enriquecer con bandas cambiarias
-  const data = raw.map(r => ({
+  // Bandas cambiarias — máxima precisión con IPC T-2 real (datos.gob.ar)
+  useEffect(() => {
+    fetch("/api/bcra-bands")
+      .then(r => r.json())
+      .then(j => {
+        const map: Record<string, { piso: number; techo: number }> = {}
+        for (const d of (j.data ?? []) as { date: string; piso: number; techo: number }[]) {
+          map[d.date] = { piso: d.piso, techo: d.techo }
+        }
+        setBands(map)
+      })
+      .catch(() => {})
+  }, [])
+
+  // Datos históricos enriquecidos con bandas
+  const historical = raw.map(r => ({
     ...r,
-    banda_inf: calcPiso(r.date),
-    banda_sup: calcTecho(r.date),
+    banda_inf: bands[r.date]?.piso  ?? null,
+    banda_sup: bands[r.date]?.techo ?? null,
   }))
+
+  // Fechas futuras: sólo bandas (sin cotizaciones aún)
+  const lastDate = raw.at(-1)?.date ?? ""
+  const futureBands = Object.entries(bands)
+    .filter(([date]) => date > lastDate)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, { piso, techo }]) => ({
+      date,
+      oficial: null, blue: null, mep: null, ccl: null, cripto: null, mayorista: null,
+      banda_inf: piso,
+      banda_sup: techo,
+    }))
+
+  const data = [...historical, ...futureBands]
 
   const last  = raw.at(-1)
   const prev5 = raw.at(-5)
@@ -3142,8 +3125,8 @@ function FXView() {
               Banda BCRA
             </div>
             <div style={{ fontSize: 11, fontFamily: "monospace", color: "#ccc", lineHeight: 1.9 }}>
-              <span style={{ color: "#4AF6C3" }}>↑ Piso:   ${calcPiso(last.date)?.toFixed(0)  ?? "—"}</span><br />
-              <span style={{ color: "#FF433D" }}>↓ Techo: ${calcTecho(last.date)?.toFixed(0) ?? "—"}</span>
+              <span style={{ color: "#4AF6C3" }}>↑ Piso:   ${bands[last.date]?.piso?.toFixed(0)  ?? "—"}</span><br />
+              <span style={{ color: "#FF433D" }}>↓ Techo: ${bands[last.date]?.techo?.toFixed(0) ?? "—"}</span>
             </div>
             <div style={{ fontSize: 8, color: "#333", fontFamily: "monospace", marginTop: 2 }}>Piso −1%/mes · Techo +1%/mes · Fase 2 desde ene-2026 IPC T-2</div>
           </div>
@@ -3198,7 +3181,7 @@ function FXView() {
           enableDateRange={true}
         />
         <div style={{ fontSize: 8, color: "#333", marginTop: 4, padding: "0 4px" }}>
-          Fuente: argentinadatos.com · Bandas BCRA desde 11-abr-2025 · F1 (hasta dic-2025): Piso −1%/mes · Techo +1%/mes · F2 (ene-2026+): IPC T-2 ~2,85%/mes promedio · calibrado con datos BCRA 4/5/2026
+          Fuente: argentinadatos.com · Bandas BCRA desde 11-abr-2025 · F1 (hasta dic-2025): Piso −1%/mes · Techo +1%/mes · F2 (ene-2026+): IPC T-2 real vía INDEC/datos.gob.ar · proyección 3 meses
         </div>
       </div>
       </>}
