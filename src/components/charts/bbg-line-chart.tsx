@@ -41,24 +41,33 @@ function compactNum(v: number): string {
 
 function fmtDateShort(dateStr: string): string {
   try {
-    const d = new Date(dateStr + "T00:00:00")
+    const d = parseDate(String(dateStr))
+    if (isNaN(d.getTime())) return String(dateStr)
     return d.toLocaleDateString("es-AR", { month: "short", year: "2-digit" })
-  } catch { return dateStr }
+  } catch { return String(dateStr) }
 }
 
 function fmtDateFull(dateStr: string): string {
   try {
-    const d = new Date(dateStr + "T00:00:00")
+    const d = parseDate(String(dateStr))
+    if (isNaN(d.getTime())) return String(dateStr)
     return d.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })
-  } catch { return dateStr }
+  } catch { return String(dateStr) }
+}
+
+function parseDate(dateStr: string): Date {
+  if (!dateStr) return new Date(NaN)
+  // Normalizar YYYY-MM → YYYY-MM-01 para evitar Invalid Date
+  const normalized = /^\d{4}-\d{2}$/.test(dateStr) ? dateStr + "-01" : dateStr
+  return new Date(normalized + (normalized.includes("T") ? "" : "T00:00:00"))
 }
 
 function filterDataByRange(data: Record<string, unknown>[], range: DateRange): Record<string, unknown>[] {
   if (range === "all" || data.length === 0) return data
-  
+
   const now = new Date()
   const cutoff = new Date()
-  
+
   switch (range) {
     case "1w": cutoff.setDate(now.getDate() - 7); break
     case "1m": cutoff.setMonth(now.getMonth() - 1); break
@@ -68,13 +77,22 @@ function filterDataByRange(data: Record<string, unknown>[], range: DateRange): R
     case "ytd": cutoff.setMonth(0); cutoff.setDate(1); break
     default: return data
   }
-  
-  return data.filter(d => {
-    const dateStr = d.date as string
-    if (!dateStr) return false
-    const date = new Date(dateStr + "T00:00:00")
+
+  const filtered = data.filter(d => {
+    const date = parseDate(d.date as string)
+    if (isNaN(date.getTime())) return true // si no parsea, incluir igual
     return date >= cutoff
   })
+
+  // Si el filtro dejó < 2 puntos, usar los últimos N según el rango
+  if (filtered.length < 2) {
+    const fallback: Record<number, number> = { 0: 7, 1: 1, 3: 3, 6: 6 }
+    const months = range === "1w" ? 0 : range === "1m" ? 1 : range === "3m" ? 3 : range === "6m" ? 6 : range === "1y" ? 12 : range === "ytd" ? 6 : 0
+    void fallback
+    return data.slice(-Math.max(months * 4, 12))
+  }
+
+  return filtered
 }
 
 const RANGE_OPTIONS: { value: DateRange; label: string }[] = [
@@ -102,6 +120,7 @@ export function BBGLineChart({
   const visibleLines = enableLineToggle ? lines.filter(l => !hidden.has(l.key)) : lines
 
   const filteredData = useMemo(() => {
+    if (!data || data.length === 0) return []
     return filterDataByRange(data, range)
   }, [data, range])
 

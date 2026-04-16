@@ -1931,33 +1931,57 @@ function IpcView() {
 // ── Balanza Tab ────────────────────────────────────────────────────────────────
 
 function ComposicionExportView() {
-  const [data, setData] = useState<Record<string, unknown>[] | null>(null)
+  const [raw, setRaw] = useState<{ expo: Record<string, unknown>[]; impo: Record<string, unknown>[] } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [modo, setModo] = useState<"expo" | "impo">("expo")
 
   useEffect(() => {
     fetch("/api/macro?endpoint=argendata_comext")
       .then((r) => r.json())
-      .then((j) => { setData(j.data); setLoading(false) })
+      .then((j) => {
+        setRaw({
+          expo: j.data?.expo?.series ?? [],
+          impo: j.data?.impo?.series ?? [],
+        })
+        setLoading(false)
+      })
       .catch(() => setLoading(false))
   }, [])
 
   if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando composición...</div>
-  if (!data || data.length === 0) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos de composición.</div>
+  if (!raw || (!raw.expo.length && !raw.impo.length)) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos de composición.</div>
 
-  // Extract product columns (all except "date")
+  const data = modo === "expo" ? raw.expo : raw.impo
   const products = Object.keys(data[0] ?? {}).filter((k) => k !== "date")
   const COLORS = ["#4AF6C3", "#FFA028", "#4FC3F7", "#FF433D", "#FFD54F", "#CE93D8", "#F48FB1", "#80CBC4", "#A5D6A7", "#BCAAA4", "#EF9A9A", "#7C83FD"]
-
   const lines = products.map((p, i) => ({ key: p, name: p, color: COLORS[i % COLORS.length] }))
+
+  const btnStyle = (active: boolean): React.CSSProperties => ({
+    background: active ? "#1a1200" : "none",
+    border: `1px solid ${active ? "#FFA028" : "#222"}`,
+    borderRadius: 3, cursor: "pointer",
+    padding: "3px 10px", fontSize: 9,
+    fontFamily: "monospace", letterSpacing: 0.5,
+    color: active ? "#FFA028" : "#555",
+  })
 
   return (
     <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px 0" }}>
+        <div style={{ fontSize: 9, color: "#555", fontFamily: "monospace", letterSpacing: 1 }}>
+          COMPOSICIÓN POR RUBRO (USD MILLONES ANUALES)
+        </div>
+        <div style={{ display: "flex", gap: 4 }}>
+          <button style={btnStyle(modo === "expo")} onClick={() => setModo("expo")}>Exportaciones</button>
+          <button style={btnStyle(modo === "impo")} onClick={() => setModo("impo")}>Importaciones</button>
+        </div>
+      </div>
       <BBGLineChart
-        title="COMPOSICIÓN DE EXPORTACIONES ARGENTINAS (USD MILLONES)"
-        data={data as Record<string, unknown>[]}
+        title={modo === "expo" ? "EXPORTACIONES POR RUBRO" : "IMPORTACIONES POR RUBRO"}
+        data={data}
         lines={lines}
         enableLineToggle
-        height={300}
+        height={320}
         yAxisLabel="USD millones"
         defaultRange="all"
       />
