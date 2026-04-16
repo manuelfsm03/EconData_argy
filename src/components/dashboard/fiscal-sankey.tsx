@@ -857,7 +857,7 @@ export function FiscalSankeyView() {
                   <RechartTooltip
                     contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10, fontFamily: "inherit", borderRadius: 4 }}
                     labelStyle={{ color: "#888", marginBottom: 4 }}
-                    formatter={(value: number | undefined) => [fmtM(value ?? 0), "Resultado Primario"]}
+                    formatter={(value: any) => [fmtM(value ?? 0), "Resultado Primario"]}
                     cursor={{ fill: "#ffffff08" }}
                   />
                   <Bar dataKey="primario" radius={[2, 2, 0, 0]} maxBarSize={48}>
