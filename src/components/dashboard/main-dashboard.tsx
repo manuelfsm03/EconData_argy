@@ -63,7 +63,7 @@ function FinanzasPlaceholder() {
   )
 }
 
-// ── Tab BCRA — lazy import para no aumentar el bundle inicial ─────────────────
+// ── Tab BCRA — lazy import ─────────────────────────────────────────────────
 
 function TabBCRALazy() {
   const [Component, setComponent] = useState<React.ComponentType | null>(null)
@@ -73,7 +73,7 @@ function TabBCRALazy() {
       .then((m) => setComponent(() => m.TabBCRA))
       .catch(() => setComponent(() => () => (
         <div style={{ padding: 40, textAlign: "center", fontFamily: "monospace", color: "#333", fontSize: 9 }}>
-          BCRA — CARGANDO...
+          BCRA — ERROR AL CARGAR
         </div>
       )))
   }, [])
@@ -86,12 +86,12 @@ function TabBCRALazy() {
   return <Component />
 }
 
-// ── Tab Noticias (combina NewsFeed + Geopolítica + EN VIVO) ─────────────────
+// ── Tab Noticias ─────────────────────────────────────────────────────────────
 
 function TabNoticias() {
   const [vista, setVista] = useState<"locales" | "internacional" | "vivo">("locales")
 
-  const btnStyle = (active: boolean) => ({
+  const btnStyle = (active: boolean): React.CSSProperties => ({
     background: "none",
     border: "none",
     borderBottom: active ? "2px solid #FFA028" : "2px solid transparent",
@@ -101,18 +101,16 @@ function TabNoticias() {
     fontFamily: "monospace",
     color: active ? "#FFA028" : "#555",
     letterSpacing: 1,
-    textTransform: "uppercase" as const,
+    textTransform: "uppercase",
   })
 
   return (
     <div>
-      {/* Sub-nav noticias */}
       <div style={{ background: "#060606", borderBottom: "1px solid #111", display: "flex", paddingLeft: 8 }}>
-        <button style={btnStyle(vista === "locales")}       onClick={() => setVista("locales")}>       Argentina      </button>
-        <button style={btnStyle(vista === "internacional")} onClick={() => setVista("internacional")}> Internacional  </button>
-        <button style={btnStyle(vista === "vivo")}          onClick={() => setVista("vivo")}>          EN VIVO        </button>
+        <button style={btnStyle(vista === "locales")}       onClick={() => setVista("locales")}>Argentina</button>
+        <button style={btnStyle(vista === "internacional")} onClick={() => setVista("internacional")}>Internacional</button>
+        <button style={btnStyle(vista === "vivo")}          onClick={() => setVista("vivo")}>EN VIVO</button>
       </div>
-
       {vista === "locales"       && <NewsFeed />}
       {vista === "internacional" && <TabGeopolitica />}
       {vista === "vivo"          && <LiveSection />}
@@ -128,7 +126,6 @@ export function Dashboard() {
   const [searchOpen, setSearchOpen] = useState(false)
   const macroRef = useRef<{ setSubtab?: (s: string) => void }>({})
 
-  // Atajo "/" para abrir la búsqueda
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName
@@ -153,25 +150,22 @@ export function Dashboard() {
 
   return (
     <div style={{ background: "#000", minHeight: "100vh", overflowX: "hidden" }}>
-      {/* ── NAV: Logo + Tabs con iconos ──────────────────────────────────────── */}
+
+      {/* ── FILA 1: Barra superior — solo Logo + Fecha ────────────────────────── */}
       <div style={{
-        display: "flex",
-        alignItems: "stretch",
         background: "#080808",
         borderBottom: "1px solid #161616",
-        height: 44,
+        height: 40,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "0 20px",
       }}>
-        {/* Centering wrapper */}
-        <div style={{ display: "flex", alignItems: "stretch", width: "100%", maxWidth: 1400, margin: "0 auto" }}>
         {/* Logo */}
-        <div style={{
-          display: "flex", alignItems: "center",
-          padding: "0 18px", borderRight: "1px solid #161616",
-          gap: 8, flexShrink: 0,
-        }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{
-            color: "#FFA028", fontWeight: 800, fontSize: 12,
-            letterSpacing: 2.5, fontFamily: "monospace", whiteSpace: "nowrap",
+            color: "#FFA028", fontWeight: 800, fontSize: 13,
+            letterSpacing: 2.5, fontFamily: "monospace",
           }}>
             LA PIZARRA
           </span>
@@ -182,13 +176,49 @@ export function Dashboard() {
             .ar
           </span>
         </div>
+        {/* Fecha */}
+        <span style={{ fontSize: 8, color: "#2a2a2a", fontFamily: "monospace" }}>
+          {dateStr}
+        </span>
+      </div>
 
-        {/* Tabs con iconos */}
-        <div style={{
-          display: "flex", flex: 1,
-          overflowX: "auto", scrollbarWidth: "none",
-          alignItems: "stretch",
-        }}>
+      {/* ── FILA 2: TickerTape full-width ────────────────────────────────────── */}
+      <TickerTape />
+
+      {/* ── FILA 3: Área centrada — Buscador + Tabs ──────────────────────────── */}
+      <div style={{
+        background: "#050505",
+        borderBottom: "1px solid #111",
+        padding: "10px 16px 0",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}>
+        {/* Buscador */}
+        <button
+          onClick={() => setSearchOpen(true)}
+          title="Buscar indicador (tecla /)"
+          style={{
+            display: "flex", alignItems: "center", gap: 8,
+            width: "100%", maxWidth: 440,
+            background: "#0a0a0a", border: "1px solid #1e1e1e",
+            borderRadius: 6, cursor: "text",
+            padding: "7px 12px", textAlign: "left",
+            marginBottom: 10,
+          }}
+        >
+          <Search size={13} strokeWidth={1.8} style={{ color: "#444", flexShrink: 0 }} />
+          <span style={{ fontSize: 10, color: "#333", fontFamily: "monospace", flex: 1 }}>
+            Buscar indicador, sección...
+          </span>
+          <span style={{
+            fontSize: 9, color: "#222", fontFamily: "monospace",
+            background: "#111", padding: "1px 5px", borderRadius: 3,
+          }}>/</span>
+        </button>
+
+        {/* Tabs centrados */}
+        <div style={{ display: "flex", gap: 0, alignItems: "stretch" }}>
           {MAIN_TABS.map(({ key, label, Icon }) => {
             const active = activeTab === key
             return (
@@ -202,7 +232,7 @@ export function Dashboard() {
                   borderBottom: active ? "2px solid #FFA028" : "2px solid transparent",
                   borderTop: "2px solid transparent",
                   cursor: "pointer",
-                  padding: "0 16px",
+                  padding: "8px 18px",
                   whiteSpace: "nowrap",
                   transition: "background 0.12s, color 0.12s",
                 }}
@@ -210,7 +240,7 @@ export function Dashboard() {
                 <Icon
                   size={13}
                   strokeWidth={active ? 2.2 : 1.6}
-                  style={{ color: active ? "#FFA028" : "#444", flexShrink: 0 }}
+                  style={{ color: active ? "#FFA028" : "#444" }}
                 />
                 <span style={{
                   fontSize: 11, fontFamily: "monospace",
@@ -224,54 +254,6 @@ export function Dashboard() {
             )
           })}
         </div>
-
-        {/* Fecha + Lupa */}
-        <div style={{
-          display: "flex", alignItems: "center",
-          borderLeft: "1px solid #161616", padding: "0 12px", gap: 10,
-        }}>
-          <span style={{ fontSize: 8, color: "#2a2a2a", fontFamily: "monospace", whiteSpace: "nowrap" }}>
-            {dateStr}
-          </span>
-          <button
-            onClick={() => setSearchOpen(true)}
-            title="Buscar (tecla /)"
-            style={{
-              display: "flex", alignItems: "center", gap: 5,
-              background: "#111", border: "1px solid #222",
-              borderRadius: 4, cursor: "pointer",
-              padding: "4px 9px",
-            }}
-          >
-            <Search size={11} strokeWidth={2} style={{ color: "#555" }} />
-            <span style={{ fontSize: 8, color: "#333", fontFamily: "monospace", letterSpacing: 1 }}>/</span>
-          </button>
-        </div>
-        </div>{/* end centering wrapper */}
-      </div>
-
-      {/* ── FILA 2: Ticker de noticias scrolling ───────────────────────────── */}
-      <TickerTape />
-
-      {/* ── BARRA DE BÚSQUEDA ────────────────────────────────────────────────── */}
-      <div style={{ background: "#050505", borderBottom: "1px solid #111", padding: "8px 16px", display: "flex", justifyContent: "center" }}>
-        <button
-          onClick={() => setSearchOpen(true)}
-          title="Buscar indicador (tecla /)"
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            width: "100%", maxWidth: 420,
-            background: "#0a0a0a", border: "1px solid #1e1e1e",
-            borderRadius: 6, cursor: "text",
-            padding: "7px 12px", textAlign: "left",
-          }}
-        >
-          <Search size={13} strokeWidth={1.8} style={{ color: "#444", flexShrink: 0 }} />
-          <span style={{ fontSize: 10, color: "#333", fontFamily: "monospace", flex: 1 }}>
-            Buscar indicador, sección...
-          </span>
-          <span style={{ fontSize: 9, color: "#222", fontFamily: "monospace", background: "#111", padding: "1px 5px", borderRadius: 3 }}>/</span>
-        </button>
       </div>
 
       {/* ── CONTENIDO ───────────────────────────────────────────────────────── */}

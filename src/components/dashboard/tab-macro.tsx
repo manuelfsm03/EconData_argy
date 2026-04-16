@@ -12,11 +12,12 @@
 
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { BBGAreaChart } from "../charts/bbg-area-chart"
 import { BBGLineChart } from "../charts/bbg-line-chart"
 import { FiscalSankeyView } from "./fiscal-sankey"
 import { DownloadCSV } from "../ui/download-csv"
+import { ChartDownload } from "../ui/chart-download"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Legend, AreaChart, Area,
@@ -2490,21 +2491,22 @@ const FX_LINES = [
 
 function FXView() {
   const [raw, setRaw]         = useState<FXEntry[]>([])
-  const [period, setPeriod]   = useState("1y")
   const [loading, setLoading] = useState(true)
   const [visible, setVisible] = useState<Record<string, boolean>>({
     oficial: true, blue: true, mep: true, ccl: true, cripto: false, mayorista: false,
   })
+  const chartRef = useRef<HTMLDivElement>(null)
 
+  // Siempre traemos el máximo histórico — BBGLineChart filtra por rango en el cliente
   useEffect(() => {
     setLoading(true)
-    fetch(`/api/tc-historico?period=${period}`)
+    fetch("/api/tc-historico?period=max")
       .then(r => r.json())
       .then(j => { setRaw(j.data ?? []); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [period])
+  }, [])
 
-  // Enriquecer con bandas
+  // Enriquecer con bandas cambiarias
   const data = raw.map(r => ({
     ...r,
     banda_inf: calcBanda(r.date, BANDA_INF),
@@ -2527,6 +2529,18 @@ function FXView() {
     </div>
   )
 
+  const csvData = data.map(r => ({
+    fecha: r.date,
+    oficial:   r.oficial   ?? "",
+    blue:      r.blue      ?? "",
+    mep:       r.mep       ?? "",
+    ccl:       r.ccl       ?? "",
+    cripto:    r.cripto    ?? "",
+    mayorista: r.mayorista ?? "",
+    banda_piso:  r.banda_inf ?? "",
+    banda_techo: r.banda_sup ?? "",
+  }))
+
   return (
     <div>
       {/* KPIs */}
@@ -2536,76 +2550,53 @@ function FXView() {
           const v   = varPct(key as keyof FXEntry)
           return (
             <div key={key} style={{
-              flex: "1 1 130px", padding: "8px 12px",
+              flex: "1 1 130px", padding: "10px 14px",
               background: "#080808", border: "1px solid #111",
             }}>
-              <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace" }}>
+              <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace", marginBottom: 2 }}>
                 {name}
               </div>
-              <div style={{ fontSize: 20, fontWeight: 700, color, fontFamily: "monospace", lineHeight: 1.2 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color, fontFamily: "monospace", lineHeight: 1.2 }}>
                 {val != null ? `$${val.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : "—"}
               </div>
               {v != null && (
-                <div style={{ fontSize: 8, color: v >= 0 ? "#FF433D" : "#4AF6C3", fontFamily: "monospace" }}>
-                  {v >= 0 ? "+" : ""}{fmtNum(v, 2)}% semana
+                <div style={{ fontSize: 9, color: v >= 0 ? "#FF433D" : "#4AF6C3", fontFamily: "monospace", marginTop: 2 }}>
+                  {v >= 0 ? "+" : ""}{fmtNum(v, 2)}% semanal
                 </div>
               )}
             </div>
           )
         })}
-        {/* Banda actual */}
+        {/* Banda cambiaria actual */}
         {last && (
-          <div style={{ flex: "1 1 130px", padding: "8px 12px", background: "#080808", border: "1px solid #222" }}>
-            <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace" }}>
-              Banda (1%/mes)
+          <div style={{ flex: "1 1 130px", padding: "10px 14px", background: "#080808", border: "1px solid #222" }}>
+            <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace", marginBottom: 4 }}>
+              Banda BCRA
             </div>
-            <div style={{ fontSize: 10, fontFamily: "monospace", color: "#ccc", lineHeight: 1.8 }}>
-              <span style={{ color: "#4AF6C3" }}>
-                Piso: ${calcBanda(last.date, BANDA_INF)?.toFixed(0) ?? "—"}
-              </span>
-              <br />
-              <span style={{ color: "#FF433D" }}>
-                Techo: ${calcBanda(last.date, BANDA_SUP)?.toFixed(0) ?? "—"}
-              </span>
+            <div style={{ fontSize: 11, fontFamily: "monospace", color: "#ccc", lineHeight: 1.9 }}>
+              <span style={{ color: "#4AF6C3" }}>↑ Piso:   ${calcBanda(last.date, BANDA_INF)?.toFixed(0) ?? "—"}</span><br />
+              <span style={{ color: "#FF433D" }}>↓ Techo: ${calcBanda(last.date, BANDA_SUP)?.toFixed(0) ?? "—"}</span>
             </div>
-            <div style={{ fontSize: 7, color: "#333", fontFamily: "monospace" }}>
-              Desde 14-abr-2025
-            </div>
+            <div style={{ fontSize: 8, color: "#333", fontFamily: "monospace", marginTop: 2 }}>1%/mes · desde 14-abr-2025</div>
           </div>
         )}
       </div>
 
-      {/* Selector de período + toggle de series */}
+      {/* Toggle de series + descarga */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "8px 12px", flexWrap: "wrap", gap: 8,
+        borderBottom: "1px solid #0d0d0d",
       }}>
-        {/* Períodos + CSV */}
-        <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
-          {PERIOD_OPTS.map(o => (
-            <button key={o.value} onClick={() => setPeriod(o.value)} style={{
-              fontSize: 9, padding: "3px 9px", border: "1px solid #1a1a1a",
-              borderRadius: 3, cursor: "pointer", fontFamily: "monospace",
-              background: period === o.value ? "#FFA028" : "#0d0d0d",
-              color:      period === o.value ? "#000"    : "#555",
-            }}>
-              {o.label}
-            </button>
-          ))}
-          <DownloadCSV
-            data={data.map(r => ({ fecha: r.date, oficial: r.oficial ?? "", blue: r.blue ?? "", mep: r.mep ?? "", ccl: r.ccl ?? "", cripto: r.cripto ?? "", mayorista: r.mayorista ?? "", banda_piso: r.banda_inf ?? "", banda_techo: r.banda_sup ?? "" }))}
-            filename={`tipos-de-cambio-${period}`}
-          />
-        </div>
-        {/* Toggle series */}
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 8, color: "#444", fontFamily: "monospace", marginRight: 4 }}>SERIES:</span>
           {FX_LINES.map(({ key, name, color }) => (
             <button key={key} onClick={() => setVisible(v => ({ ...v, [key]: !v[key] }))} style={{
               display: "flex", alignItems: "center", gap: 4,
               fontSize: 8, padding: "3px 8px", border: `1px solid ${visible[key] ? color + "80" : "#1a1a1a"}`,
               borderRadius: 3, cursor: "pointer", fontFamily: "monospace",
               background: visible[key] ? color + "15" : "transparent",
-              color:      visible[key] ? color          : "#444",
+              color:      visible[key] ? color         : "#444",
             }}>
               <span style={{
                 display: "inline-block", width: 6, height: 6, borderRadius: "50%",
@@ -2615,13 +2606,14 @@ function FXView() {
             </button>
           ))}
         </div>
+        <ChartDownload csvData={csvData} filename="tipos-de-cambio" chartRef={chartRef} />
       </div>
 
-      {/* Gráfico */}
-      <div style={{ padding: "0 12px 4px" }}>
+      {/* Gráfico — BBGLineChart tiene su propio selector de rango (1S/1M/3M/6M/1A/YTD/MAX) */}
+      <div style={{ padding: "0 12px 4px" }} ref={chartRef}>
         <BBGLineChart
-          title=""
-          data={data}
+          title="TIPOS DE CAMBIO ARS/USD"
+          data={data as unknown as Record<string, unknown>[]}
           lines={[
             ...FX_LINES
               .filter(l => visible[l.key])
@@ -2629,16 +2621,16 @@ function FXView() {
             { key: "banda_inf", name: "Piso banda",  color: "#4AF6C3", dashed: true },
             { key: "banda_sup", name: "Techo banda", color: "#FF433D", dashed: true },
           ]}
-          height={320}
+          height={340}
           yAxisLabel="ARS/USD"
           formatValue={v => `$${Math.round(v).toLocaleString("es-AR")}`}
-          defaultRange="all"
+          defaultRange="1y"
           showZeroLine={false}
           enableLineToggle={false}
+          enableDateRange={true}
         />
-        <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>
-          Fuente: argentinadatos.com · Bandas: BCRA, vigentes desde 14-abr-2025 · Ajuste 1%/mes ·
-          Inicio: piso $1.000, techo $1.400
+        <div style={{ fontSize: 8, color: "#333", marginTop: 4, padding: "0 4px" }}>
+          Fuente: argentinadatos.com · Bandas BCRA vigentes desde 14-abr-2025 · Crawl 1%/mes · Piso $1.000 → Techo $1.400
         </div>
       </div>
     </div>
@@ -2786,6 +2778,7 @@ interface RiesgoData {
 function RiesgoPaisView() {
   const [data, setData] = useState<RiesgoData | null>(null)
   const [loading, setLoading] = useState(true)
+  const chartRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetch("/api/riesgo-pais")
@@ -2840,8 +2833,13 @@ function RiesgoPaisView() {
             <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5 }}>
               EMBI+ ARGENTINA — HISTÓRICO CON MEDIAS MÓVILES
             </div>
-            <DownloadCSV data={historico.map(r => ({ fecha: r.date, embi: r.valor, sma30: r.sma30 ?? "", sma90: r.sma90 ?? "" }))} filename="riesgo-pais" />
+            <ChartDownload
+              csvData={historico.map(r => ({ fecha: r.date, embi: r.valor, sma30: r.sma30 ?? "", sma90: r.sma90 ?? "" }))}
+              filename="riesgo-pais"
+              chartRef={chartRef}
+            />
           </div>
+          <div ref={chartRef}>
           <BBGLineChart
             title=""
             data={historico.slice(-500) as unknown as Record<string, unknown>[]}
@@ -2857,6 +2855,7 @@ function RiesgoPaisView() {
             showZeroLine={false}
             enableLineToggle
           />
+          </div>{/* end chartRef */}
         </div>
       )}
 

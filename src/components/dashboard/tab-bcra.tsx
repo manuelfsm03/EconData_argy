@@ -7,6 +7,7 @@ import {
   ResponsiveContainer, Legend,
 } from "recharts"
 import { DownloadCSV } from "../ui/download-csv"
+import { ChartDownload } from "../ui/chart-download"
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
