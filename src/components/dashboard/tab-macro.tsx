@@ -2168,24 +2168,255 @@ function PibHistoricoView() {
 }
 
 
+// ── Pirámides Poblacionales ────────────────────────────────────────────────────
+
+function PiramidesView() {
+  const [country, setCountry] = useState("32")
+  const [year, setYear] = useState(2025)
+  const [data, setData] = useState<PiramideRow[]>([])
+  const [meta, setMeta] = useState<PiramideMeta | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    fetch(`/api/macro?endpoint=piramide&year=${year}&country=${country}`)
+      .then(r => r.json())
+      .then(j => { setData(j.data ?? []); setMeta(j); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [country, year])
+
+  const paisName = PAISES.find(p => p.code === country)?.name ?? country
+
+  return (
+    <div>
+      <div className="bbg-panel" style={{ marginBottom: 8 }}>
+        <div className="bbg-panel-header">EXPLORADOR DE PIRÁMIDES POBLACIONALES</div>
+        <div style={{ padding: "10px 12px", display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div>
+            <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>País</div>
+            <select
+              value={country}
+              onChange={e => setCountry(e.target.value)}
+              style={{ background: "#0a0a0a", color: "#ccc", border: "1px solid #333", padding: "5px 10px", fontSize: 11, borderRadius: 2, cursor: "pointer" }}
+            >
+              {PAISES.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
+            </select>
+          </div>
+          <div style={{ flex: "1 1 200px" }}>
+            <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+              Año:&nbsp;
+              <span style={{ color: year > 2025 ? "#FFA028" : "#4AF6C3", fontWeight: 700, fontFamily: "monospace" }}>{year}</span>
+              {year > 2025 && <span style={{ color: "#FFA028", marginLeft: 6 }}>· PROYECCIÓN ONU</span>}
+            </div>
+            <input
+              type="range" min={1950} max={2100} step={1} value={year}
+              onChange={e => setYear(Number(e.target.value))}
+              style={{ width: "100%", accentColor: "#FFA028", cursor: "pointer" }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#444", marginTop: 2 }}>
+              <span>1950</span><span>2025</span><span>2100</span>
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Acceso rápido</div>
+            <div style={{ display: "flex", gap: 2 }}>
+              {[1950, 1975, 2000, 2025, 2050, 2075, 2100].map(y => (
+                <button key={y} onClick={() => setYear(y)} style={{
+                  fontSize: 8, padding: "3px 6px", border: "none", borderRadius: 2, cursor: "pointer",
+                  background: year === y ? "#FFA028" : "#1a1a1a",
+                  color: year === y ? "#000" : "#555",
+                }}>{y}</button>
+              ))}
+            </div>
+          </div>
+          {meta && (
+            <div style={{ display: "flex", gap: 16, marginLeft: "auto" }}>
+              {[
+                { label: "Total",   value: `${(meta.total   / 1e6).toFixed(1)}M`, color: "#fff"     },
+                { label: "Varones", value: `${(meta.total_m / 1e6).toFixed(1)}M`, color: "#4FC3F7"  },
+                { label: "Mujeres", value: `${(meta.total_f / 1e6).toFixed(1)}M`, color: "#F48FB1"  },
+              ].map(s => (
+                <div key={s.label} style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase" }}>{s.label}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: s.color, fontFamily: "monospace" }}>{s.value}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="bbg-panel">
+        <div className="bbg-panel-header">
+          {paisName.toUpperCase()} · {year}
+          {meta?.proyeccion && <span style={{ fontSize: 8, fontWeight: 400, color: "#FFA028", marginLeft: 8 }}>· PROYECCIÓN ONU</span>}
+        </div>
+        {loading ? (
+          <div style={{ padding: 40, color: "#555", textAlign: "center", fontSize: 11 }}>Cargando pirámide de {paisName}...</div>
+        ) : data.length > 0 ? (
+          <>
+            <PyramidChart data={data} height={480} />
+            <div style={{ padding: "4px 12px 8px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+              Fuente: populationpyramid.net · UN World Population Prospects 2024 · Años &gt;2025 = proyecciones ONU · Código de país: {country}
+            </div>
+          </>
+        ) : (
+          <div style={{ padding: 40, color: "#444", textAlign: "center", fontSize: 11 }}>Sin datos disponibles para {paisName} {year}</div>
+        )}
+      </div>
+      <PoblacionSerieChart country={country} selectedYear={year} />
+    </div>
+  )
+}
+
+// ── Desigualdad e Informalidad (Argendata) ─────────────────────────────────────
+
+type DesigualdadData = {
+  gini_arg: [string, number][]
+  gini_mundo: { pais: string; gini: number }[]
+  informalidad: { productiva: [string, number][]; legal: [string, number][] }
+  desempleo_mundial: Record<string, unknown>[]
+}
+
+function DesigualdadView() {
+  const [data, setData] = useState<DesigualdadData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [subTab, setSubTab] = useState("gini_arg")
+
+  useEffect(() => {
+    fetch("/api/macro?endpoint=argendata_desigualdad")
+      .then(r => r.json())
+      .then(j => { setData(j.data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando indicadores de desigualdad...</div>
+  if (!data) return <div style={{ padding: 12, color: "#444", fontSize: 11 }}>Sin datos disponibles</div>
+
+  const giniUltimo    = data.gini_arg[data.gini_arg.length - 1]
+  const giniMin       = data.gini_arg.reduce((a, b) => b[1] < a[1] ? b : a, data.gini_arg[0])
+  const giniMax       = data.gini_arg.reduce((a, b) => b[1] > a[1] ? b : a, data.gini_arg[0])
+  const prodUlt       = data.informalidad.productiva[data.informalidad.productiva.length - 1]
+  const legalUlt      = data.informalidad.legal[data.informalidad.legal.length - 1]
+  const giniMundoRank = [...data.gini_mundo].sort((a, b) => b.gini - a.gini).slice(0, 20)
+  const giniArgRank   = giniMundoRank.findIndex(r => r.pais === "Argentina") + 1
+  const maxGini       = giniMundoRank[0]?.gini ?? 60
+  const giniArgData   = data.gini_arg.map(([date, gini]) => ({ date, gini }))
+  const infData = (() => {
+    const m = new Map<string, { date: string; productiva: number | null; legal: number | null }>()
+    for (const [d, v] of data.informalidad.productiva) m.set(d, { date: d, productiva: v, legal: m.get(d)?.legal ?? null })
+    for (const [d, v] of data.informalidad.legal) { const r = m.get(d) ?? { date: d, productiva: null, legal: null }; m.set(d, { ...r, legal: v }) }
+    return Array.from(m.values()).sort((a, b) => a.date.localeCompare(b.date))
+  })()
+
+  return (
+    <div>
+      <SubTabs tabs={[
+        { key: "gini_arg",     label: "Gini ARG" },
+        { key: "gini_mundo",   label: "Gini Mundial" },
+        { key: "informalidad", label: "Informalidad" },
+      ]} active={subTab} onChange={setSubTab} />
+
+      {subTab === "gini_arg" && (<>
+        <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+          <KPI label="Gini Actual"       value={giniUltimo ? fmtNum(giniUltimo[1], 1) : null}
+            unit={`Escala 0-100 · ${giniUltimo?.[0]?.slice(0, 4) ?? ""}`} valueColor="#FFA028" />
+          <KPI label="Mínimo histórico" value={giniMin ? fmtNum(giniMin[1], 1) : null}
+            unit={`Mayor igualdad · ${giniMin?.[0]?.slice(0, 4) ?? ""}`} valueColor="#4AF6C3" />
+          <KPI label="Máximo histórico" value={giniMax ? fmtNum(giniMax[1], 1) : null}
+            unit={`Mayor desigualdad · ${giniMax?.[0]?.slice(0, 4) ?? ""}`} valueColor="#FF433D" />
+        </div>
+        <div style={{ padding: "8px 0" }}>
+          <BBGLineChart title="COEFICIENTE DE GINI — ARGENTINA 1974-2024" data={giniArgData}
+            lines={[{ key: "gini", name: "Gini", color: "#FFA028" }]}
+            height={240} yAxisLabel="Índice Gini" formatValue={v => fmtNum(v, 1)} defaultRange="all" showZeroLine={false} />
+        </div>
+        <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+          CEDLAS con base en EPH/INDEC · Empalme metodológico entre encuestas · Cobertura urbana · vía Argendata/Fundar (CC BY-NC-ND 4.0)
+        </div>
+      </>)}
+
+      {subTab === "gini_mundo" && (<>
+        <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+          <KPI label="Gini ARG"                  value={giniUltimo ? fmtNum(giniUltimo[1], 1) : null} unit="Escala 0-100" valueColor="#FFA028" />
+          <KPI label="Ranking (más desiguales)" value={giniArgRank > 0 ? `#${giniArgRank}` : null}
+            unit={`de ${data.gini_mundo.length} países`} valueColor="#FFA028" />
+        </div>
+        <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px", marginTop: 8 }}>
+          <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, fontWeight: 700, marginBottom: 12 }}>
+            GINI MUNDIAL — TOP 20 PAÍSES MÁS DESIGUALES
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {giniMundoRank.map(r => {
+              const isArg = r.pais === "Argentina"
+              const barPct = r.gini / maxGini * 78
+              return (
+                <div key={r.pais} style={{ display: "grid", gridTemplateColumns: "130px 1fr 44px", alignItems: "center", gap: 8 }}>
+                  <div style={{ fontSize: 9, color: isArg ? "#FFA028" : "#888", textAlign: "right",
+                    fontWeight: isArg ? 700 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.pais}</div>
+                  <div style={{ position: "relative", height: 12, background: "#111", borderRadius: 2 }}>
+                    <div style={{ position: "absolute", height: "100%", borderRadius: 2,
+                      background: isArg ? "#FFA028" : "#4FC3F7", opacity: 0.8, width: `${barPct}%` }} />
+                  </div>
+                  <div style={{ fontSize: 9, fontWeight: 700, fontFamily: "monospace",
+                    color: isArg ? "#FFA028" : "#4FC3F7", textAlign: "right" }}>{r.gini.toFixed(1)}</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+        <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111", marginTop: 4 }}>
+          SEDLAC/Banco Mundial · Snapshot de último año disponible por país · vía Argendata/Fundar (CC BY-NC-ND 4.0)
+        </div>
+      </>)}
+
+      {subTab === "informalidad" && (<>
+        <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+          <KPI label="Informalidad Productiva" value={prodUlt ? `${fmtNum(prodUlt[1], 1)}%` : null}
+            unit={`Baja productividad · ${prodUlt?.[0]?.slice(0, 4) ?? ""}`} valueColor="#4AF6C3" />
+          <KPI label="Informalidad Legal"       value={legalUlt ? `${fmtNum(legalUlt[1], 1)}%` : null}
+            unit={`Sin aportes previsionales · ${legalUlt?.[0]?.slice(0, 4) ?? ""}`} valueColor="#4FC3F7" />
+        </div>
+        <div style={{ padding: "8px 0" }}>
+          <BBGLineChart title="TASA DE INFORMALIDAD — ARGENTINA 1988-2022" data={infData}
+            lines={[
+              { key: "productiva", name: "Def. Productiva", color: "#4AF6C3" },
+              { key: "legal",      name: "Def. Legal",      color: "#4FC3F7" },
+            ]}
+            height={240} yAxisLabel="%" formatValue={v => `${fmtNum(v, 1)}%`} defaultRange="all" />
+        </div>
+        <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+          Def. productiva: empleo en unidades de baja productividad · Def. legal: sin aportes al sistema previsional ·
+          SEDLAC/Banco Mundial con base en EPH · vía Argendata/Fundar (CC BY-NC-ND 4.0)
+        </div>
+      </>)}
+    </div>
+  )
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 const MACRO_TABS = [
-  { key: "emae",        label: "EMAE" },
+  { key: "emae",        label: "EMAE"             },
+  { key: "ipc",         label: "IPC"              },
   { key: "balanza",     label: "Balanza Comercial" },
-  { key: "fiscal",      label: "Fiscal" },
+  { key: "fiscal",      label: "Fiscal"           },
+  { key: "desigualdad", label: "Desigualdad"      },
+  { key: "piramides",   label: "Pirámides"        },
 ]
 
-export function TabMacro() {
-  const [activeTab, setActiveTab] = useState("emae")
+export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
+  const [activeTab, setActiveTab] = useState(initialSubtab ?? "emae")
 
   return (
     <div>
       <div className="bbg-panel-header">MACROECONOMÍA ARGENTINA — DATOS.GOB.AR / INDEC</div>
       <SubTabs tabs={MACRO_TABS} active={activeTab} onChange={setActiveTab} />
       {activeTab === "emae"        && <EmaeView />}
+      {activeTab === "ipc"         && <IpcView />}
       {activeTab === "balanza"     && <BalanzaView />}
       {activeTab === "fiscal"      && <FiscalSankeyView />}
+      {activeTab === "desigualdad" && <DesigualdadView />}
+      {activeTab === "piramides"   && <PiramidesView />}
     </div>
   )
 }
