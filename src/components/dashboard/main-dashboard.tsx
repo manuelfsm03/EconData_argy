@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { TabMacro } from "./tab-macro"
+import { TabResumen } from "./tab-resumen"
 import { NewsFeed } from "./news-feed"
 import { TickerTape } from "./ticker-tape"
 import { CommandPalette } from "./command-palette"
@@ -30,20 +31,6 @@ const MAIN_TABS: NavTab[] = [
   { key: "noticias", label: "Noticias", Icon: Newspaper        },
 ]
 
-// ── Placeholders ──────────────────────────────────────────────────────────────
-
-function ResumenPlaceholder() {
-  return (
-    <div style={{ padding: 60, textAlign: "center", fontFamily: "monospace" }}>
-      <div style={{ fontSize: 9, color: "#333", letterSpacing: 3, textTransform: "uppercase" }}>
-        RESUMEN — PRÓXIMAMENTE
-      </div>
-      <div style={{ fontSize: 8, color: "#222", marginTop: 12 }}>
-        Aquí se mostrarán los KPIs más importantes de todas las secciones en una sola vista.
-      </div>
-    </div>
-  )
-}
 
 function FinanzasPlaceholder() {
   return (
@@ -226,7 +213,7 @@ export function Dashboard() {
 
       {/* ── CONTENIDO ───────────────────────────────────────────────────────── */}
       <div style={{ maxWidth: 1400, margin: "0 auto" }}>
-        {activeTab === "resumen"   && <ResumenPlaceholder />}
+        {activeTab === "resumen"   && <TabResumen />}
         {activeTab === "finanzas"  && <FinanzasPlaceholder />}
         {activeTab === "macro"     && <TabMacro initialSubtab={macroSubtab} />}
         {activeTab === "bcra"      && <TabBCRALazy />}
