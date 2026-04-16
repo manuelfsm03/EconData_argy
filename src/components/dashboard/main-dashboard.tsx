@@ -2,11 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { TabMacro } from "./tab-macro"
-import { TabGeopolitica } from "./tab-geopolitica"
 import { NewsFeed } from "./news-feed"
 import { TickerTape } from "./ticker-tape"
 import { CommandPalette } from "./command-palette"
-import { LiveSection } from "./live-section"
 import {
   LayoutDashboard,
   TrendingUp,
@@ -89,36 +87,7 @@ function TabBCRALazy() {
 // ── Tab Noticias ─────────────────────────────────────────────────────────────
 
 function TabNoticias() {
-  const [vista, setVista] = useState<"locales" | "internacional" | "vivo">("locales")
-
-  const btnStyle = (active: boolean): React.CSSProperties => ({
-    background: active ? "rgba(255,160,40,0.08)" : "transparent",
-    border: active ? "1px solid rgba(255,160,40,0.4)" : "1px solid #2a2a2a",
-    borderRadius: 20,
-    cursor: "pointer",
-    padding: "5px 14px",
-    fontSize: 10,
-    fontFamily: "monospace",
-    fontWeight: active ? 600 : 400,
-    color: active ? "#FFA028" : "#888",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    whiteSpace: "nowrap",
-    transition: "all 0.15s",
-  })
-
-  return (
-    <div>
-      <div style={{ background: "#050505", borderBottom: "1px solid #111", display: "flex", gap: 6, padding: "10px 14px" }}>
-        <button style={btnStyle(vista === "locales")}       onClick={() => setVista("locales")}>Argentina</button>
-        <button style={btnStyle(vista === "internacional")} onClick={() => setVista("internacional")}>Internacional</button>
-        <button style={btnStyle(vista === "vivo")}          onClick={() => setVista("vivo")}>EN VIVO</button>
-      </div>
-      {vista === "locales"       && <NewsFeed />}
-      {vista === "internacional" && <TabGeopolitica />}
-      {vista === "vivo"          && <LiveSection />}
-    </div>
-  )
+  return <NewsFeed />
 }
 
 // ── Dashboard principal ───────────────────────────────────────────────────────
