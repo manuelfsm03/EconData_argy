@@ -783,8 +783,8 @@ function REMView() {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
-export function TabBCRA() {
-  const [activeTab, setActiveTab] = useState("plazofijo")
+export function TabBCRA({ initialSubtab }: { initialSubtab?: string | null }) {
+  const [activeTab, setActiveTab] = useState(initialSubtab ?? "plazofijo")
 
   return (
     <div>

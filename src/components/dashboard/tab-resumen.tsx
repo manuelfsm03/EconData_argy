@@ -96,7 +96,9 @@ const TC_LINES = [
   { key: "oficial"   as keyof Omit<TCEntry,"date">, label: "Oficial",   color: "#aaaaaa" },
 ]
 
-function TCStrip() {
+type NavigateFn = (tab: string, subtab?: string | null, bcra?: string | null) => void
+
+function TCStrip({ onNavigate }: { onNavigate: NavigateFn }) {
   const [data, setData] = useState<TCEntry[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -121,6 +123,8 @@ function TCStrip() {
   const brechaBlue = blue && oficial && oficial > 0 ? ((blue - oficial) / oficial * 100) : null
   const brechaCCL  = ccl  && oficial && oficial > 0 ? ((ccl  - oficial) / oficial * 100) : null
 
+  const goTC = () => onNavigate("bcra", null, "plazofijo")
+
   return (
     <div>
       {/* TC KPIs */}
@@ -130,12 +134,21 @@ function TCStrip() {
           const prv = prev?.[l.key]
           const delta = cur != null && prv != null && prv > 0 ? ((cur - prv) / prv * 100) : null
           return (
-            <div key={l.key} style={{
-              flex: "1 1 0",
-              background: "#0a0a0a",
-              border: "1px solid #1a1a1a",
-              padding: "12px 16px",
-            }}>
+            <div
+              key={l.key}
+              onClick={goTC}
+              title="Ver en BCRA"
+              style={{
+                flex: "1 1 0",
+                background: "#0a0a0a",
+                border: "1px solid #1a1a1a",
+                padding: "12px 16px",
+                cursor: "pointer",
+                transition: "border-color 0.15s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#333")}
+              onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1a1a1a")}
+            >
               <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
                 {l.label}
               </div>
@@ -158,15 +171,24 @@ function TCStrip() {
           { label: "Brecha Blue / Oficial", value: brechaBlue },
           { label: "Brecha CCL / Oficial",  value: brechaCCL  },
         ].map((b) => (
-          <div key={b.label} style={{
-            flex: "1 1 0",
-            background: "#0a0a0a",
-            border: "1px solid #1a1a1a",
-            padding: "10px 16px",
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-          }}>
+          <div
+            key={b.label}
+            onClick={goTC}
+            title="Ver en BCRA"
+            style={{
+              flex: "1 1 0",
+              background: "#0a0a0a",
+              border: "1px solid #1a1a1a",
+              padding: "10px 16px",
+              display: "flex",
+              alignItems: "center",
+              gap: 16,
+              cursor: "pointer",
+              transition: "border-color 0.15s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#333")}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1a1a1a")}
+          >
             <div>
               <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
                 {b.label}
@@ -198,7 +220,7 @@ function TCStrip() {
 
 // ── IPC Block ─────────────────────────────────────────────────────────────────
 
-function IPCBlock() {
+function IPCBlock({ onNavigate }: { onNavigate: NavigateFn }) {
   const [mensual, setMensual]       = useState<number | null>(null)
   const [interanual, setInteranual] = useState<number | null>(null)
   const [periodo, setPeriodo]       = useState<string>("")
@@ -223,6 +245,10 @@ function IPCBlock() {
       .catch(() => setLoading(false))
   }, [])
 
+  const hoverStyle = (e: React.MouseEvent<HTMLDivElement>, enter: boolean) => {
+    e.currentTarget.style.borderColor = enter ? "#333" : "#1a1a1a"
+  }
+
   if (loading) return (
     <div style={{ flex: "1 1 0", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px" }}>
       <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>INFLACIÓN</div>
@@ -231,7 +257,13 @@ function IPCBlock() {
   )
 
   return (
-    <div style={{ flex: "1 1 0", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px" }}>
+    <div
+      onClick={() => onNavigate("macro", "ipc")}
+      title="Ver IPC en Macro"
+      onMouseEnter={(e) => hoverStyle(e, true)}
+      onMouseLeave={(e) => hoverStyle(e, false)}
+      style={{ flex: "1 1 0", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px", cursor: "pointer", transition: "border-color 0.15s" }}
+    >
       <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
         IPC — {periodo || "inflación"}
       </div>
@@ -253,7 +285,7 @@ function IPCBlock() {
 
 // ── Riesgo País Block ─────────────────────────────────────────────────────────
 
-function RiesgoPaisBlock() {
+function RiesgoPaisBlock({ onNavigate }: { onNavigate: NavigateFn }) {
   const [bps, setBps]       = useState<number | null>(null)
   const [var1w, setVar1w]   = useState<number | null>(null)
   const [var1m, setVar1m]   = useState<number | null>(null)
@@ -286,7 +318,13 @@ function RiesgoPaisBlock() {
   )
 
   return (
-    <div style={{ flex: "1 1 0", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px" }}>
+    <div
+      onClick={() => onNavigate("macro", "riesgo")}
+      title="Ver Riesgo País en Macro"
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#333")}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1a1a1a")}
+      style={{ flex: "1 1 0", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px", cursor: "pointer", transition: "border-color 0.15s" }}
+    >
       <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
         Riesgo País — EMBI+
       </div>
@@ -326,7 +364,7 @@ function RiesgoPaisBlock() {
 
 // ── Reservas + Badlar Block ───────────────────────────────────────────────────
 
-function ReservasBadlarBlock() {
+function ReservasBadlarBlock({ onNavigate }: { onNavigate: NavigateFn }) {
   const { data, loading } = useBCRAData(["reservas", "badlar"], "1m")
 
   const latest = data[data.length - 1]
@@ -347,7 +385,13 @@ function ReservasBadlarBlock() {
   return (
     <div style={{ flex: "1 1 0", display: "flex", flexDirection: "column", gap: 1 }}>
       {/* Reservas */}
-      <div style={{ flex: 1, background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px" }}>
+      <div
+        onClick={() => onNavigate("bcra", null, "reservas")}
+        title="Ver Reservas en BCRA"
+        onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#333")}
+        onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1a1a1a")}
+        style={{ flex: 1, background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px", cursor: "pointer", transition: "border-color 0.15s" }}
+      >
         <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
           Reservas BCRA
         </div>
@@ -361,7 +405,13 @@ function ReservasBadlarBlock() {
         )}
       </div>
       {/* Badlar */}
-      <div style={{ flex: 1, background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px" }}>
+      <div
+        onClick={() => onNavigate("bcra", null, "plazofijo")}
+        title="Ver Tasas en BCRA"
+        onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#333")}
+        onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1a1a1a")}
+        style={{ flex: 1, background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px", cursor: "pointer", transition: "border-color 0.15s" }}
+      >
         <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
           Tasa BADLAR
         </div>
@@ -394,7 +444,7 @@ const CAT_COLORS: Record<string, string> = {
   commodities: "#81c784",
 }
 
-function HeadlinesBlock() {
+function HeadlinesBlock({ onNavigate }: { onNavigate: NavigateFn }) {
   const [items, setItems]   = useState<RSSItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -407,8 +457,13 @@ function HeadlinesBlock() {
 
   return (
     <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a" }}>
-      <div style={{ padding: "8px 16px", borderBottom: "1px solid #1a1a1a", fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>
-        Últimas noticias
+      <div
+        onClick={() => onNavigate("noticias", null)}
+        title="Ver todas las noticias"
+        style={{ padding: "8px 16px", borderBottom: "1px solid #1a1a1a", fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+      >
+        <span>Últimas noticias</span>
+        <span style={{ color: "#333", fontSize: 9 }}>Ver todas →</span>
       </div>
       {loading && (
         <div style={{ padding: "16px", color: "#333", fontSize: 11 }}>Cargando...</div>
@@ -452,7 +507,7 @@ function HeadlinesBlock() {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-export function TabResumen() {
+export function TabResumen({ onNavigate }: { onNavigate: NavigateFn }) {
   return (
     <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 12, maxWidth: 1400 }}>
 
@@ -461,19 +516,19 @@ export function TabResumen() {
         <div style={{ fontSize: 9, color: "#333", textTransform: "uppercase", letterSpacing: 2, marginBottom: 6 }}>
           Tipos de cambio
         </div>
-        <TCStrip />
+        <TCStrip onNavigate={onNavigate} />
       </section>
 
       {/* Fila 2: IPC + Riesgo País + Reservas/Badlar */}
       <section style={{ display: "flex", gap: 1, background: "#111", padding: 1 }}>
-        <IPCBlock />
-        <RiesgoPaisBlock />
-        <ReservasBadlarBlock />
+        <IPCBlock onNavigate={onNavigate} />
+        <RiesgoPaisBlock onNavigate={onNavigate} />
+        <ReservasBadlarBlock onNavigate={onNavigate} />
       </section>
 
       {/* Fila 3: Headlines */}
       <section>
-        <HeadlinesBlock />
+        <HeadlinesBlock onNavigate={onNavigate} />
       </section>
 
     </div>

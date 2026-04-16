@@ -50,8 +50,8 @@ function FinanzasPlaceholder() {
 
 // ── Tab BCRA — lazy import ─────────────────────────────────────────────────
 
-function TabBCRALazy() {
-  const [Component, setComponent] = useState<React.ComponentType | null>(null)
+function TabBCRALazy({ initialSubtab }: { initialSubtab?: string | null }) {
+  const [Component, setComponent] = useState<React.ComponentType<{ initialSubtab?: string | null }> | null>(null)
 
   useEffect(() => {
     import("./tab-bcra")
@@ -68,7 +68,7 @@ function TabBCRALazy() {
       BCRA — CARGANDO...
     </div>
   )
-  return <Component />
+  return <Component initialSubtab={initialSubtab} />
 }
 
 // ── Tab Noticias ─────────────────────────────────────────────────────────────
@@ -82,6 +82,7 @@ function TabNoticias() {
 export function Dashboard() {
   const [activeTab, setActiveTab] = useState("macro")
   const [macroSubtab, setMacroSubtab] = useState<string | null>(null)
+  const [bcraSubtab, setBcraSubtab]   = useState<string | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const macroRef = useRef<{ setSubtab?: (s: string) => void }>({})
 
@@ -97,9 +98,10 @@ export function Dashboard() {
     return () => window.removeEventListener("keydown", handler)
   }, [])
 
-  const handleNavigate = useCallback((tab: string, subtab: string | null) => {
+  const handleNavigate = useCallback((tab: string, subtab: string | null, bcra?: string | null) => {
     setActiveTab(tab)
-    setMacroSubtab(subtab)
+    setMacroSubtab(subtab ?? null)
+    if (bcra !== undefined) setBcraSubtab(bcra)
   }, [])
 
   const now = new Date()
@@ -213,10 +215,10 @@ export function Dashboard() {
 
       {/* ── CONTENIDO ───────────────────────────────────────────────────────── */}
       <div style={{ maxWidth: 1400, margin: "0 auto" }}>
-        {activeTab === "resumen"   && <TabResumen />}
+        {activeTab === "resumen"   && <TabResumen onNavigate={handleNavigate} />}
         {activeTab === "finanzas"  && <FinanzasPlaceholder />}
         {activeTab === "macro"     && <TabMacro initialSubtab={macroSubtab} />}
-        {activeTab === "bcra"      && <TabBCRALazy />}
+        {activeTab === "bcra"      && <TabBCRALazy initialSubtab={bcraSubtab} />}
         {activeTab === "noticias"  && <TabNoticias />}
       </div>
 
