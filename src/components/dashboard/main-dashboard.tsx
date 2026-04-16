@@ -92,21 +92,24 @@ function TabNoticias() {
   const [vista, setVista] = useState<"locales" | "internacional" | "vivo">("locales")
 
   const btnStyle = (active: boolean): React.CSSProperties => ({
-    background: "none",
-    border: "none",
-    borderBottom: active ? "2px solid #FFA028" : "2px solid transparent",
+    background: active ? "rgba(255,160,40,0.08)" : "transparent",
+    border: active ? "1px solid rgba(255,160,40,0.4)" : "1px solid #2a2a2a",
+    borderRadius: 20,
     cursor: "pointer",
-    padding: "6px 14px",
+    padding: "5px 14px",
     fontSize: 10,
     fontFamily: "monospace",
-    color: active ? "#FFA028" : "#555",
+    fontWeight: active ? 600 : 400,
+    color: active ? "#FFA028" : "#888",
     letterSpacing: 1,
     textTransform: "uppercase",
+    whiteSpace: "nowrap",
+    transition: "all 0.15s",
   })
 
   return (
     <div>
-      <div style={{ background: "#060606", borderBottom: "1px solid #111", display: "flex", paddingLeft: 8 }}>
+      <div style={{ background: "#050505", borderBottom: "1px solid #111", display: "flex", gap: 6, padding: "10px 14px" }}>
         <button style={btnStyle(vista === "locales")}       onClick={() => setVista("locales")}>Argentina</button>
         <button style={btnStyle(vista === "internacional")} onClick={() => setVista("internacional")}>Internacional</button>
         <button style={btnStyle(vista === "vivo")}          onClick={() => setVista("vivo")}>EN VIVO</button>
