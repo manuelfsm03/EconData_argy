@@ -21,6 +21,7 @@ import { ChartDownload } from "../ui/chart-download"
 import { SectionMeta } from "../ui/help-tooltip"
 import {
   BarChart, Bar, Cell, LineChart, Line,
+  ComposedChart,
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Legend, AreaChart, Area,
   PieChart, Pie,
@@ -1970,9 +1971,8 @@ function IpcHistoricaView() {
             tick={{ fill: "#555", fontSize: 8 }}
             axisLine={{ stroke: "#222" }}
             tickLine={false}
-            tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k%` : `${v.toFixed(0)}%`}
-            scale="log"
-            domain={[0.1, "auto"]}
+            tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}k%` : `${v.toFixed(0)}%`}
+            domain={["auto", "auto"]}
           />
           <Tooltip
             contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 9, fontFamily: "monospace" }}
@@ -2511,12 +2511,12 @@ function BalanzaView() {
           <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando balanza...</div>
         ) : (<>
           <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
-            <KPI label="Exportaciones" value={lastExpo != null ? lastExpo.toLocaleString("es-AR") : null} unit="USD millones · último dato" />
-            <KPI label="Importaciones" value={lastImpo != null ? lastImpo.toLocaleString("es-AR") : null} unit="USD millones · último dato" />
+            <KPI label="Exportaciones" value={lastExpo != null ? `USD ${fmtNum(lastExpo, 0)}M` : null} unit="último dato disponible" />
+            <KPI label="Importaciones" value={lastImpo != null ? `USD ${fmtNum(lastImpo, 0)}M` : null} unit="último dato disponible" />
             <KPI
               label="Saldo Comercial"
-              value={lastSaldo != null ? lastSaldo.toLocaleString("es-AR") : null}
-              unit="USD millones · último dato"
+              value={lastSaldo != null ? `USD ${lastSaldo >= 0 ? "+" : ""}${fmtNum(lastSaldo, 0)}M` : null}
+              unit="último dato disponible"
               valueColor={lastSaldo == null ? "#888" : lastSaldo >= 0 ? "#4AF6C3" : "#FF433D"}
             />
           </div>
@@ -2537,10 +2537,10 @@ function BalanzaView() {
             <DownloadCSV data={rows.map(r => ({ periodo: r.d, exportaciones: r.expo ?? "", importaciones: r.impo ?? "", saldo: r.saldo ?? "" }))} filename="balanza-comercial" />
           </div>
 
-          {/* Gráfico de líneas — Expo / Impo / Saldo */}
+          {/* ComposedChart: líneas Expo/Impo + barras Saldo */}
           <div style={{ padding: "0 8px 8px" }}>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={320}>
+              <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="#1a1a1a" strokeDasharray="3 3" />
                 <XAxis
                   dataKey="label"
@@ -2549,8 +2549,7 @@ function BalanzaView() {
                   tickLine={false}
                   tickFormatter={(d: string) => {
                     const parts = d.split("-")
-                    if (parts.length >= 2) return parts[1] + "/" + parts[0].slice(2)
-                    return d
+                    return parts.length >= 2 ? parts[1] + "/" + parts[0].slice(2) : d
                   }}
                   interval="preserveStartEnd"
                 />
@@ -2558,24 +2557,25 @@ function BalanzaView() {
                   tick={{ fill: "#555", fontSize: 8 }}
                   axisLine={{ stroke: "#333" }}
                   tickLine={false}
-                  tickFormatter={(v: number) => `${Math.round(v).toLocaleString("es-AR")}`}
+                  tickFormatter={(v: number) => `${fmtNum(Math.abs(v), 0)}`}
                 />
                 <Tooltip
-                  contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10, color: "#FFA028" }}
-                  formatter={(value: unknown, name: unknown) => [`${Number(value).toLocaleString("es-AR")} M USD`, String(name)]}
+                  contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10, color: "#ccc" }}
+                  formatter={(value: unknown, name: unknown) => [`USD ${fmtNum(Number(value), 0)}M`, String(name)]}
                   labelFormatter={(l: unknown) => { const s = String(l); const p = s.split("-"); return p.length >= 2 ? `${p[1]}/${p[0]}` : s }}
                 />
                 <Legend wrapperStyle={{ fontSize: 9, color: "#888" }} />
-                <ReferenceLine y={0} stroke="#333" />
+                <ReferenceLine y={0} stroke="#555" strokeDasharray="2 2" />
                 <Line type="monotone" dataKey="Exportaciones" stroke="#4AF6C3" strokeWidth={2} dot={false} connectNulls />
                 <Line type="monotone" dataKey="Importaciones" stroke="#FF433D" strokeWidth={2} dot={false} connectNulls />
-                <Line type="monotone" dataKey="Saldo" stroke="#FFA028" strokeWidth={1.5} dot={false} connectNulls strokeDasharray="4 2" />
-              </LineChart>
+                <Bar dataKey="Saldo" barSize={6}>
+                  {rows.map((r) => (
+                    <Cell key={r.d} fill={r.saldo != null && r.saldo >= 0 ? "#4AF6C3" : "#FF433D"} opacity={0.6} />
+                  ))}
+                </Bar>
+              </ComposedChart>
             </ResponsiveContainer>
-            <div style={{ display: "none" }}>{/* saldo chart merged above */}
-              <div style={{ fontSize: 8, color: "#333", textAlign: "center", marginTop: 2 }}>SALDO COMERCIAL (USD millones)</div>
-            </div>
-            <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>Fuente: INDEC · Intercambio Comercial Argentino · datos.gob.ar</div>
+            <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>Fuente: INDEC · Intercambio Comercial Argentino · datos.gob.ar — valores en USD millones</div>
           </div>
         </>)}
       </>)}
@@ -2628,14 +2628,23 @@ function BalanzaSociosView() {
 
       {vista === "mapa" && (
         <div>
+          <div style={{ padding: "6px 12px 4px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#070707" }}>
+            <div style={{ fontSize: 9, color: "#FFA028", fontFamily: "monospace", letterSpacing: 1 }}>
+              SOCIOS COMERCIALES — AÑO DE REFERENCIA: 2023
+            </div>
+            <div style={{ display: "flex", gap: 10, fontSize: 8, color: "#555", fontFamily: "monospace" }}>
+              <span style={{ color: "#4AF6C3" }}>■</span> Superávit (ARG exporta más)
+              <span style={{ color: "#FF433D" }}>■</span> Déficit (ARG importa más)
+            </div>
+          </div>
           <iframe
             src="/api/balanza-map"
-            style={{ width: "100%", height: 500, border: "none", background: "#060606", display: "block" }}
-            title="Mapa socios comerciales Argentina"
+            style={{ width: "100%", height: 480, border: "none", background: "#060606", display: "block" }}
+            title="Mapa socios comerciales Argentina 2023"
             loading="lazy"
           />
           <div style={{ padding: "4px 12px", fontSize: 8, color: "#333", fontFamily: "monospace", borderTop: "1px solid #0e0e0e" }}>
-            Fuente: INDEC · Comtrade · datos estimados 2023/2024 · lapizarra.ar
+            Fuente: INDEC · Comtrade · datos 2023 · lapizarra.ar
           </div>
         </div>
       )}
@@ -3995,7 +4004,7 @@ function DeudaView() {
                   <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, marginBottom: 4 }}>DEUDA / PIB — EVOLUCIÓN</div>
                   <BBGAreaChart
                     title=""
-                    data={stock.data.historico_pib.map(r => ({ fecha: r.anio + "-01-01", valor: r.deuda_pib }))}
+                    data={stock.data.historico_pib.map(r => ({ date: r.anio + "-01-01", valor: r.deuda_pib }))}
                     areas={[{ key: "valor", name: "Deuda/PIB", color: "#FFA028" }]}
                     height={220}
                     yAxisLabel="%"
