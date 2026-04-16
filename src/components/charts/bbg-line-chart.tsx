@@ -31,6 +31,7 @@ interface BBGLineChartProps {
   enableDateRange?: boolean
   defaultRange?: DateRange
   enableLineToggle?: boolean
+  yDomain?: [number | string, number | string]
 }
 
 function compactNum(v: number): string {
@@ -111,7 +112,7 @@ const RANGE_OPTIONS: { value: DateRange; label: string }[] = [
 export function BBGLineChart({
   data, lines, title, glossaryKey, yAxisLabel, yAxisRight, height = 180,
   showZeroLine, formatValue, enableDateRange = true, defaultRange = "1m",
-  enableLineToggle = false,
+  enableLineToggle = false, yDomain,
 }: BBGLineChartProps) {
   const [range, setRange] = useState<DateRange>(defaultRange)
   const [hidden, setHidden] = useState<Set<string>>(new Set())
@@ -191,6 +192,7 @@ export function BBGLineChart({
               axisLine={{ stroke: "#333333" }}
               tickLine={false}
               tickFormatter={fmt}
+              domain={yDomain ?? ["auto", "auto"]}
               label={yAxisLabel ? { value: yAxisLabel, angle: -90, position: "insideLeft", fill: "#555555", fontSize: 9 } : undefined}
             />
             {yAxisRight && (
