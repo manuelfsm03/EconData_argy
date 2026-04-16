@@ -23,6 +23,22 @@ import { TickerTape } from "./ticker-tape"
 import { InflationView } from "./inflation-view"
 import { formatPercent, formatDate } from "@/lib/utils"
 
+// Stock quote for top movers
+interface StockMover {
+  ticker: string
+  lastPrice: number | null
+  change1D: number | null
+}
+
+// RSS news item
+interface RSSHeadline {
+  id: string
+  title: string
+  source: string
+  pubDate: string
+  link: string
+}
+
 // Types
 interface ExchangeRate {
   id: string
@@ -114,13 +130,16 @@ export function Dashboard() {
   const [rofex, setRofex] = useState<RofexFuture[]>([])
   const [news, setNews] = useState<NewsItemData[]>([])
   const [scraperStatus, setScraperStatus] = useState<ScraperStatus[]>([])
+  const [topGainers, setTopGainers] = useState<StockMover[]>([])
+  const [topLosers, setTopLosers] = useState<StockMover[]>([])
+  const [headlines, setHeadlines] = useState<RSSHeadline[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
 
   const fetchData = useCallback(async () => {
     setIsLoading(true)
     try {
-      const [ratesRes, histRes, liveRes, inflRes, rofexRes, newsRes, statusRes] = await Promise.all([
+      const [ratesRes, histRes, liveRes, inflRes, rofexRes, newsRes, statusRes, accionesRes, rssRes] = await Promise.all([
         fetch("/api/exchange-rates?limit=2"),
         fetch("/api/exchange-rates?limit=30"),
         fetch("/api/dolares"),
@@ -128,6 +147,8 @@ export function Dashboard() {
         fetch("/api/rofex"),
         fetch("/api/news?limit=50"),
         fetch("/api/status"),
+        fetch("/api/acciones").catch(() => null),
+        fetch("/api/rss-news").catch(() => null),
       ])
 
       if (ratesRes.ok) setExchangeRates(await ratesRes.json())
@@ -137,6 +158,26 @@ export function Dashboard() {
       if (rofexRes.ok) setRofex(await rofexRes.json())
       if (newsRes.ok) setNews(await newsRes.json())
       if (statusRes.ok) setScraperStatus(await statusRes.json())
+
+      // Top movers from acciones
+      if (accionesRes?.ok) {
+        try {
+          const stocks: StockMover[] = await accionesRes.json()
+          const withChange = stocks.filter((s) => s.change1D != null && s.lastPrice != null)
+          const sorted = withChange.sort((a, b) => (b.change1D ?? 0) - (a.change1D ?? 0))
+          setTopGainers(sorted.slice(0, 5))
+          setTopLosers(sorted.slice(-5).reverse())
+        } catch { /* ignore */ }
+      }
+
+      // Headlines from RSS
+      if (rssRes?.ok) {
+        try {
+          const rss: RSSHeadline[] = await rssRes.json()
+          setHeadlines(rss.slice(0, 8))
+        } catch { /* ignore */ }
+      }
+
       setLastUpdate(new Date())
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -227,8 +268,8 @@ export function Dashboard() {
       <TickerTape />
 
       {/* Main content */}
-      <Tabs defaultValue="resumen">
-        <TabsList style={{ overflowX: "auto", overflowY: "hidden", whiteSpace: "nowrap", display: "flex", flexWrap: "nowrap", maxWidth: "100vw", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+      <Tabs defaultValue="resumen" style={{ maxWidth: "100vw", overflow: "hidden" }}>
+        <TabsList style={{ overflowX: "auto", overflowY: "hidden", whiteSpace: "nowrap", display: "flex", flexWrap: "nowrap", maxWidth: "100vw", width: "100%", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="tipos-cambio">Tipos de Cambio</TabsTrigger>
           <TabsTrigger value="rofex">Rofex</TabsTrigger>
@@ -250,7 +291,7 @@ export function Dashboard() {
 
         {/* ═══════════ RESUMEN ═══════════ */}
         <TabsContent value="resumen">
-          <div className="flex flex-col md:flex-row gap-px" style={{ background: "#222222" }}>
+          <div className="flex flex-col md:flex-row gap-px" style={{ background: "#222222", maxWidth: "100%", overflow: "hidden" }}>
             {/* Left: Cotizaciones */}
             <div className="flex-1 min-w-0" style={{ background: "#000000" }}>
               <div className="bbg-panel-header">Cotizaciones del Dia</div>
@@ -357,6 +398,99 @@ export function Dashboard() {
               </table>
             </div>
           </div>
+
+          {/* Top Movers */}
+          {(topGainers.length > 0 || topLosers.length > 0) && (
+            <div className="flex flex-col md:flex-row gap-px mt-px" style={{ background: "#222222" }}>
+              {/* Gainers */}
+              <div className="flex-1 min-w-0" style={{ background: "#000000" }}>
+                <div className="bbg-panel-header" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ color: "#4AF6C3" }}>▲</span> Top Ganadores
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Ticker</th>
+                      <th className="text-right">Precio</th>
+                      <th className="text-right">Var %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topGainers.map((s, i) => (
+                      <tr key={s.ticker} style={{ background: i % 2 === 0 ? "#000000" : "#060606" }}>
+                        <td style={{ color: "#FFA028", fontWeight: 600 }}>{s.ticker}</td>
+                        <td className="text-right" style={{ color: "#FFFFFF" }}>{s.lastPrice ? fmtNum(s.lastPrice) : "-"}</td>
+                        <td className="text-right bbg-positive">{s.change1D != null ? "+" + s.change1D.toFixed(2) + "%" : "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Losers */}
+              <div className="flex-1 min-w-0" style={{ background: "#000000" }}>
+                <div className="bbg-panel-header" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ color: "#FF433D" }}>▼</span> Top Perdedores
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Ticker</th>
+                      <th className="text-right">Precio</th>
+                      <th className="text-right">Var %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topLosers.map((s, i) => (
+                      <tr key={s.ticker} style={{ background: i % 2 === 0 ? "#000000" : "#060606" }}>
+                        <td style={{ color: "#FFA028", fontWeight: 600 }}>{s.ticker}</td>
+                        <td className="text-right" style={{ color: "#FFFFFF" }}>{s.lastPrice ? fmtNum(s.lastPrice) : "-"}</td>
+                        <td className="text-right bbg-negative">{s.change1D != null ? s.change1D.toFixed(2) + "%" : "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Headlines / Noticias */}
+          {headlines.length > 0 && (
+            <div className="mt-px" style={{ background: "#000000" }}>
+              <div className="bbg-panel-header" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ color: "#0068FF" }}>●</span> Últimas Noticias
+              </div>
+              <div style={{ padding: "4px 0" }}>
+                {headlines.map((h, i) => {
+                  const time = (() => { try { return new Date(h.pubDate).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) } catch { return "" } })()
+                  return (
+                    <div
+                      key={h.id}
+                      style={{
+                        padding: "5px 12px",
+                        borderBottom: "1px solid #111111",
+                        background: i % 2 === 0 ? "#000000" : "#060606",
+                        display: "flex",
+                        gap: 10,
+                        alignItems: "baseline",
+                      }}
+                    >
+                      <span style={{ color: "#555555", fontSize: 10, flexShrink: 0, minWidth: 40 }}>{time}</span>
+                      <a
+                        href={h.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: "#FFFFFF", textDecoration: "none", fontSize: 11, lineHeight: 1.4 }}
+                      >
+                        {h.title}
+                      </a>
+                      <span style={{ color: "#888888", fontSize: 9, flexShrink: 0, textTransform: "uppercase" }}>{h.source}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Chart below panels */}
           <div className="mt-px">

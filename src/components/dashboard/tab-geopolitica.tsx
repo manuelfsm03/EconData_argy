@@ -21,6 +21,7 @@ interface NewsItem {
   category: string
   color: string
   region: string
+  country: string
   summary: string
 }
 
@@ -172,14 +173,24 @@ function NewsCard({ item }: { item: NewsItem }) {
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 const CATS = ["conflicto", "comercio", "energia", "politica", "commodities", "mercados"]
-const REGS = ["global", "latam", "argentina"]
+const COUNTRIES = [
+  { key: "argentina",    label: "Argentina"   },
+  { key: "eeuu",         label: "EEUU"        },
+  { key: "uk",           label: "UK"          },
+  { key: "francia",      label: "Francia"     },
+  { key: "alemania",     label: "Alemania"    },
+  { key: "medio-oriente",label: "M. Oriente"  },
+  { key: "rusia",        label: "Rusia"       },
+  { key: "china",        label: "China"       },
+  { key: "brasil",       label: "Brasil"      },
+]
 
 export function TabGeopolitica() {
   const [feed, setFeed] = useState<GeoFeed | null>(null)
   const [mundo, setMundo] = useState<Record<string, QuoteResult | null> | null>(null)
   const [loading, setLoading] = useState(true)
   const [catFilter, setCatFilter] = useState<string | null>(null)
-  const [regFilter, setRegFilter] = useState<string | null>(null)
+  const [countryFilter, setCountryFilter] = useState<string | null>(null)
   const [lastUpdate, setLastUpdate] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
@@ -222,7 +233,7 @@ export function TabGeopolitica() {
   const items = feed?.items ?? []
   const filtered = items.filter((n) => {
     if (catFilter && n.category !== catFilter) return false
-    if (regFilter && n.region !== regFilter) return false
+    if (countryFilter && n.country !== countryFilter) return false
     return true
   })
   const impacts = IMPACT_RULES.filter((r) => r.check(snap))
@@ -281,13 +292,13 @@ export function TabGeopolitica() {
               </FilterBtn>
             ))}
           </div>
-          {/* Region filters */}
-          <div style={{ padding: "4px 8px", display: "flex", gap: 4, background: "#0a0a0a", borderBottom: "1px solid #111" }}>
-            <span style={{ fontSize: 9, color: "#444", alignSelf: "center" }}>REGIÓN:</span>
-            <FilterBtn active={regFilter === null} onClick={() => setRegFilter(null)}>Todo</FilterBtn>
-            {REGS.map((r) => (
-              <FilterBtn key={r} active={regFilter === r} onClick={() => setRegFilter(regFilter === r ? null : r)}>
-                {r}
+          {/* Country filters */}
+          <div style={{ padding: "4px 8px", display: "flex", gap: 4, flexWrap: "wrap", background: "#0a0a0a", borderBottom: "1px solid #111" }}>
+            <span style={{ fontSize: 9, color: "#444", alignSelf: "center" }}>PAÍS:</span>
+            <FilterBtn active={countryFilter === null} onClick={() => setCountryFilter(null)}>Todos</FilterBtn>
+            {COUNTRIES.map((c) => (
+              <FilterBtn key={c.key} active={countryFilter === c.key} onClick={() => setCountryFilter(countryFilter === c.key ? null : c.key)}>
+                {c.label}
               </FilterBtn>
             ))}
           </div>

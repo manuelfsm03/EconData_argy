@@ -34,6 +34,21 @@ const RSS_FEEDS: RSSFeed[] = [
     url: "https://www.lanacion.com.ar/arc/outboundfeeds/rss/",
     category: "economia",
   },
+  {
+    name: "Perfil",
+    url: "http://www.perfil.com/feed/economia",
+    category: "economia",
+  },
+  {
+    name: "El Economista",
+    url: "https://www.eleconomista.com.ar/feed/",
+    category: "economia",
+  },
+  {
+    name: "BAE Negocios",
+    url: "https://www.baenegocios.com/feed/",
+    category: "mercados",
+  },
 ]
 
 export class RSSScraper extends BaseScraper {
