@@ -104,25 +104,25 @@ function NewsTable({ rows, extra, loading, expandedId, onToggle, onMore }: NewsT
               }}
               onClick={() => item.description && onToggle(item.id)}
             >
-              <td style={{ color: "#FFA028", fontSize: 10, verticalAlign: "top" }}>
+              <td style={{ color: "#FFA028", fontSize: 12, verticalAlign: "top", paddingTop: 10, paddingBottom: 10 }}>
                 {fmtTime(item.pubDate)}
               </td>
-              <td style={{ color: "#0068FF", fontSize: 10, verticalAlign: "top", fontWeight: 500 }}>
+              <td style={{ color: "#0068FF", fontSize: 12, verticalAlign: "top", fontWeight: 500, paddingTop: 10, paddingBottom: 10 }}>
                 {item.source.toUpperCase().slice(0, 14)}
               </td>
-              <td style={{ whiteSpace: "normal" }}>
+              <td style={{ whiteSpace: "normal", paddingTop: 10, paddingBottom: 10 }}>
                 <CategoryBadge category={item.category} />
                 <a
                   href={item.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ color: "#FFFFFF", fontSize: 11 }}
+                  style={{ color: "#FFFFFF", fontSize: 13, lineHeight: 1.5 }}
                   onClick={(e) => e.stopPropagation()}
                 >
                   {item.title}
                 </a>
                 {expandedId === item.id && item.description && (
-                  <div style={{ color: "#888888", fontSize: 10, marginTop: 4, lineHeight: 1.4 }}>
+                  <div style={{ color: "#888888", fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
                     {item.description}
                   </div>
                 )}
