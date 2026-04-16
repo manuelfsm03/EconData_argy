@@ -2702,17 +2702,48 @@ function DesigualdadView() {
 
 // ── FX — Tipo de Cambio Histórico + Bandas Cambiarias ─────────────────────────
 
-// Bandas cambiarias — Argentina (desde 14-abr-2025)
-const BANDA_FECHA  = new Date("2025-04-14")
-const BANDA_INF    = 1000   // ARS/USD piso inicial
-const BANDA_SUP    = 1400   // ARS/USD techo inicial
-const BANDA_TASA   = 0.01   // 1 % mensual (crawl)
+// ── Régimen de bandas cambiarias Argentina ────────────────────────────────────
+//
+// Fase 1 (11-abr-2025 → 31-dic-2025)
+//   Piso  $1.000 → baja -1 %/mes  (band widens — floor falls)
+//   Techo $1.400 → sube +1 %/mes  (band widens — ceiling rises)
+//
+// Fase 2 (desde 1-ene-2026)
+//   Ambas bandas se deslizan al ritmo del IPC T-2 (INDEC)
+//   Se usa una estimación hasta disponer de datos reales mes a mes.
+//
+const BANDA_INICIO    = new Date("2025-04-11T00:00:00")
+const BANDA_FASE2     = new Date("2026-01-01T00:00:00")
+const BANDA_PISO_INI  = 1000    // ARS/USD piso 11-abr-2025
+const BANDA_TECHO_INI = 1400    // ARS/USD techo 11-abr-2025
+const BANDA_TASA_F1   = 0.01    // 1 % mensual — Fase 1
+// Fase 2: IPC T-2. Usar promedio estimado hasta tener datos reales por mes.
+const BANDA_TASA_F2   = 0.025   // ~2,5 % mensual (estimación IPC T-2)
 
-function calcBanda(dateStr: string, base: number): number | null {
-  const d = new Date(dateStr)
-  if (d < BANDA_FECHA) return null
-  const meses = (d.getTime() - BANDA_FECHA.getTime()) / (30.44 * 86400 * 1000)
-  return base * Math.pow(1 + BANDA_TASA, meses)
+function mesesEntre(d1: Date, d2: Date): number {
+  return (d2.getTime() - d1.getTime()) / (30.44 * 86400 * 1000)
+}
+
+// Piso: baja -1 %/mes en Fase 1 · luego sube al IPC T-2 en Fase 2
+function calcPiso(dateStr: string): number | null {
+  const d = new Date(dateStr + "T00:00:00")
+  if (d < BANDA_INICIO) return null
+  if (d <= BANDA_FASE2) {
+    return BANDA_PISO_INI * Math.pow(1 - BANDA_TASA_F1, mesesEntre(BANDA_INICIO, d))
+  }
+  const pisoFin1 = BANDA_PISO_INI * Math.pow(1 - BANDA_TASA_F1, mesesEntre(BANDA_INICIO, BANDA_FASE2))
+  return pisoFin1 * Math.pow(1 + BANDA_TASA_F2, mesesEntre(BANDA_FASE2, d))
+}
+
+// Techo: sube +1 %/mes en Fase 1 · luego sube al IPC T-2 en Fase 2
+function calcTecho(dateStr: string): number | null {
+  const d = new Date(dateStr + "T00:00:00")
+  if (d < BANDA_INICIO) return null
+  if (d <= BANDA_FASE2) {
+    return BANDA_TECHO_INI * Math.pow(1 + BANDA_TASA_F1, mesesEntre(BANDA_INICIO, d))
+  }
+  const techoFin1 = BANDA_TECHO_INI * Math.pow(1 + BANDA_TASA_F1, mesesEntre(BANDA_INICIO, BANDA_FASE2))
+  return techoFin1 * Math.pow(1 + BANDA_TASA_F2, mesesEntre(BANDA_FASE2, d))
 }
 
 interface FXEntry {
@@ -3020,8 +3051,8 @@ function FXView() {
   // Enriquecer con bandas cambiarias
   const data = raw.map(r => ({
     ...r,
-    banda_inf: calcBanda(r.date, BANDA_INF),
-    banda_sup: calcBanda(r.date, BANDA_SUP),
+    banda_inf: calcPiso(r.date),
+    banda_sup: calcTecho(r.date),
   }))
 
   const last  = raw.at(-1)
@@ -3104,10 +3135,10 @@ function FXView() {
               Banda BCRA
             </div>
             <div style={{ fontSize: 11, fontFamily: "monospace", color: "#ccc", lineHeight: 1.9 }}>
-              <span style={{ color: "#4AF6C3" }}>↑ Piso:   ${calcBanda(last.date, BANDA_INF)?.toFixed(0) ?? "—"}</span><br />
-              <span style={{ color: "#FF433D" }}>↓ Techo: ${calcBanda(last.date, BANDA_SUP)?.toFixed(0) ?? "—"}</span>
+              <span style={{ color: "#4AF6C3" }}>↑ Piso:   ${calcPiso(last.date)?.toFixed(0)  ?? "—"}</span><br />
+              <span style={{ color: "#FF433D" }}>↓ Techo: ${calcTecho(last.date)?.toFixed(0) ?? "—"}</span>
             </div>
-            <div style={{ fontSize: 8, color: "#333", fontFamily: "monospace", marginTop: 2 }}>1%/mes · desde 14-abr-2025</div>
+            <div style={{ fontSize: 8, color: "#333", fontFamily: "monospace", marginTop: 2 }}>Piso −1%/mes · Techo +1%/mes · Fase 2 desde ene-2026 IPC T-2</div>
           </div>
         )}
       </div>
@@ -3160,7 +3191,7 @@ function FXView() {
           enableDateRange={true}
         />
         <div style={{ fontSize: 8, color: "#333", marginTop: 4, padding: "0 4px" }}>
-          Fuente: argentinadatos.com · Bandas BCRA vigentes desde 14-abr-2025 · Crawl 1%/mes · Piso $1.000 → Techo $1.400
+          Fuente: argentinadatos.com · Bandas BCRA desde 11-abr-2025 · Fase 1 (hasta dic-2025): Piso −1%/mes · Techo +1%/mes · Fase 2 (ene-2026+): IPC T-2 est. 2,5%/mes
         </div>
       </div>
       </>}
