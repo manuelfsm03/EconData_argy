@@ -20,7 +20,7 @@ import { DownloadCSV } from "../ui/download-csv"
 import { ChartDownload } from "../ui/chart-download"
 import { SectionMeta } from "../ui/help-tooltip"
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Legend, AreaChart, Area,
 } from "recharts"
 
@@ -1846,6 +1846,7 @@ function IpcView() {
   const [data, setData] = useState<MacroData | null>(null)
   const [loading, setLoading] = useState(true)
   const [ipcTab, setIpcTab] = useState("serie")
+  const [ipcYear, setIpcYear] = useState<string>("all")
 
   useEffect(() => {
     fetch("/api/macro?endpoint=ipc")
@@ -1869,17 +1870,28 @@ function IpcView() {
     return s.length >= 2 ? ((s[0][1] / s[1][1] - 1) * 100) : null
   }
 
+  // Serie histórica mensual: ordenada cronológicamente
+  const serieCompleta = (data?.ipc_var_mensual ?? []).slice().sort((a, b) => a[0].localeCompare(b[0]))
+  const years = Array.from(new Set(serieCompleta.map(([d]) => d.slice(0, 4)))).sort()
+  const serieFiltrada = ipcYear === "all" ? serieCompleta : serieCompleta.filter(([d]) => d.startsWith(ipcYear))
+
+  // Acumulado anual por año para el panel de resumen
+  const acumPorAnio: Record<string, number> = {}
+  years.forEach(y => {
+    const meses = serieCompleta.filter(([d]) => d.startsWith(y))
+    if (meses.length > 0) {
+      const acum = meses.reduce((acc, [, v]) => (1 + acc) * (1 + v / 100) - 1, 0) * 100
+      acumPorAnio[y] = acum
+    }
+  })
+
   return (
     <div>
       <SectionMeta title="IPC — Inflación" help="El IPC (Índice de Precios al Consumidor) mide la variación mensual e interanual de los precios al consumidor. Elaborado por INDEC. La variación interanual compara con el mismo mes del año anterior." source="INDEC · datos.gob.ar" />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
-        <KPI label="IPC Var. Mensual" value={varMensual != null ? fmtNum(varMensual) : null} unit="% mensual" />
-        <KPI label="IPC Interanual" value={varInteranual != null ? fmtNum(varInteranual) : null} unit="%" />
-        <KPI
-          label="IPC Núcleo"
-          value={nucleoMensual != null ? fmtNum(nucleoMensual) : null}
-          unit="% mensual · excl. estac. y reg."
-        />
+        <KPI label="IPC Var. Mensual" value={varMensual != null ? fmtNum(varMensual) : null} unit="% mensual · último dato" />
+        <KPI label="IPC Interanual" value={varInteranual != null ? fmtNum(varInteranual) : null} unit="% interanual · último dato" />
+        <KPI label="IPC Núcleo" value={nucleoMensual != null ? fmtNum(nucleoMensual) : null} unit="% mensual · excl. estac. y reg." />
         <KPI label="Alimentos" value={getVarMens("ipc_alimentos") != null ? fmtNum(getVarMens("ipc_alimentos")) : null} unit="% mensual" />
         <KPI label="Regulados" value={getVarMens("ipc_regulados") != null ? fmtNum(getVarMens("ipc_regulados")) : null} unit="% mensual" />
         <KPI label="Estacionales" value={getVarMens("ipc_estacionales") != null ? fmtNum(getVarMens("ipc_estacionales")) : null} unit="% mensual" />
@@ -1887,24 +1899,98 @@ function IpcView() {
 
       <SubTabs
         tabs={[
-          { key: "serie", label: "Serie histórica mensual" },
-          { key: "canasta", label: "Canasta 2016 vs 2022" },
+          { key: "serie",    label: "Serie Mensual" },
+          { key: "canasta",  label: "Canasta 2016 vs 2022" },
           { key: "personal", label: "Mi Inflación" },
-          { key: "mundo", label: "Inflación Mundial" },
+          { key: "mundo",    label: "Inflación Mundial" },
         ]}
         active={ipcTab}
         onChange={setIpcTab}
       />
 
       {ipcTab === "serie" && (
-        <MiniTable
-          title="IPC Var. Mensual — Últimos 24 períodos"
-          rows={(data?.ipc_var_mensual ?? []).slice(0, 24).map(([d, v]) => ({
-            label: d,
-            value: `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`,
-            color: v > 5 ? "#FF433D" : v > 3 ? "#FFA028" : "#4AF6C3",
-          }))}
-        />
+        <div>
+          {/* Selector de año + descarga */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 12px", flexWrap: "wrap", gap: 6 }}>
+            <div style={{ display: "flex", gap: 3, flexWrap: "wrap", alignItems: "center" }}>
+              <span style={{ fontSize: 8, color: "#444", fontFamily: "monospace", marginRight: 2 }}>AÑO:</span>
+              {["all", ...years].map(y => (
+                <button key={y} onClick={() => setIpcYear(y)} style={{
+                  fontSize: 9, padding: "3px 8px", border: "none", borderRadius: 2, cursor: "pointer",
+                  background: ipcYear === y ? "#FFA028" : "transparent",
+                  color:      ipcYear === y ? "#000"    : "#666",
+                  fontFamily: "monospace",
+                }}>{y === "all" ? "TODO" : y}</button>
+              ))}
+            </div>
+            <DownloadCSV
+              data={serieFiltrada.map(([d, v]) => ({ periodo: d, variacion_mensual_pct: v.toFixed(2) }))}
+              filename="ipc-mensual"
+            />
+          </div>
+
+          {/* Gráfico de barras mensual */}
+          <div style={{ padding: "0 8px 8px" }}>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart
+                data={serieFiltrada.map(([d, v]) => ({ label: d, valor: v }))}
+                margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid stroke="#1a1a1a" strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fill: "#555", fontSize: 8 }}
+                  axisLine={{ stroke: "#333" }}
+                  tickLine={false}
+                  tickFormatter={(d: string) => {
+                    const p = d.split("-")
+                    return p.length >= 2 ? p[1] + "/" + p[0].slice(2) : d
+                  }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fill: "#555", fontSize: 8 }}
+                  axisLine={{ stroke: "#333" }}
+                  tickLine={false}
+                  tickFormatter={(v: number) => `${v.toFixed(1)}%`}
+                />
+                <Tooltip
+                  contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10, color: "#FFA028" }}
+                  formatter={(v: unknown) => [`${Number(v).toFixed(2)}%`, "Var. mensual IPC"]}
+                  labelFormatter={(l) => `Período: ${String(l)}`}
+                />
+                <ReferenceLine y={0} stroke="#333" />
+                <Bar dataKey="valor" radius={[2, 2, 0, 0]}>
+                  {serieFiltrada.map(([d, v]) => (
+                    <Cell key={d} fill={v > 6 ? "#FF433D" : v > 3 ? "#FFA028" : "#4AF6C3"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+
+            {/* Panel acumulado por año */}
+            {ipcYear === "all" && years.length > 0 && (
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 12, padding: "8px 4px 0", borderTop: "1px solid #111" }}>
+                {years.slice(-8).map(y => (
+                  <div key={y} style={{
+                    flex: "1 1 80px", padding: "6px 10px",
+                    background: "#080808", border: "1px solid #1a1a1a", borderRadius: 3, textAlign: "center",
+                  }}>
+                    <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", marginBottom: 2 }}>{y}</div>
+                    <div style={{
+                      fontSize: 16, fontWeight: 700, fontFamily: "monospace",
+                      color: (acumPorAnio[y] ?? 0) > 50 ? "#FF433D" : (acumPorAnio[y] ?? 0) > 20 ? "#FFA028" : "#4AF6C3",
+                    }}>
+                      {acumPorAnio[y] != null ? `${acumPorAnio[y].toFixed(1)}%` : "—"}
+                    </div>
+                    <div style={{ fontSize: 7, color: "#333", fontFamily: "monospace" }}>acum.</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>Fuente: INDEC · IPC Nacional · datos.gob.ar</div>
+          </div>
+        </div>
       )}
 
       {ipcTab === "canasta" && <PonderacionesTable />}
@@ -1996,6 +2082,7 @@ function BalanzaView() {
   const [data, setData] = useState<MacroData | null>(null)
   const [loading, setLoading] = useState(true)
   const [balanzaTab, setBalanzaTab] = useState("flujos")
+  const [balanzaYear, setBalanzaYear] = useState<string>("all")
 
   useEffect(() => {
     fetch("/api/macro?endpoint=balanza")
@@ -2008,12 +2095,29 @@ function BalanzaView() {
   const lastImpo = data?.importaciones?.[0]?.[1]
   const lastSaldo = data?.saldo_comercial?.[0]?.[1]
 
-  const rows = (data?.exportaciones ?? []).slice(0, 12).map(([d]) => ({
+  // Construir serie completa unificando expo/impo/saldo
+  const allRows = (data?.exportaciones ?? []).map(([d]) => ({
     d,
-    expo: data?.exportaciones?.find((r) => r[0] === d)?.[1] ?? null,
-    impo: data?.importaciones?.find((r) => r[0] === d)?.[1] ?? null,
+    expo:  data?.exportaciones?.find((r)  => r[0] === d)?.[1] ?? null,
+    impo:  data?.importaciones?.find((r)  => r[0] === d)?.[1] ?? null,
     saldo: data?.saldo_comercial?.find((r) => r[0] === d)?.[1] ?? null,
+  })).sort((a, b) => a.d.localeCompare(b.d))
+
+  // Años disponibles
+  const years = Array.from(new Set(allRows.map(r => r.d.slice(0, 4)))).sort()
+
+  // Filtrar por año seleccionado
+  const rows = balanzaYear === "all" ? allRows : allRows.filter(r => r.d.startsWith(balanzaYear))
+
+  // Para el gráfico: formato con label corto mes-año
+  const chartData = rows.map(r => ({
+    label: r.d,
+    Exportaciones: r.expo,
+    Importaciones: r.impo != null ? -r.impo : null,   // impo negativa para visual
+    Saldo: r.saldo,
   }))
+
+  const fmtMillones = (v: number) => `$${Math.round(v).toLocaleString("es-AR")}M`
 
   return (
     <div>
@@ -2025,49 +2129,92 @@ function BalanzaView() {
           <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando balanza...</div>
         ) : (<>
           <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
-            <KPI label="Exportaciones" value={lastExpo != null ? lastExpo.toLocaleString("es-AR") : null} unit="USD millones" />
-            <KPI label="Importaciones" value={lastImpo != null ? lastImpo.toLocaleString("es-AR") : null} unit="USD millones" />
+            <KPI label="Exportaciones" value={lastExpo != null ? lastExpo.toLocaleString("es-AR") : null} unit="USD millones · último dato" />
+            <KPI label="Importaciones" value={lastImpo != null ? lastImpo.toLocaleString("es-AR") : null} unit="USD millones · último dato" />
             <KPI
               label="Saldo Comercial"
               value={lastSaldo != null ? lastSaldo.toLocaleString("es-AR") : null}
-              unit="USD millones"
+              unit="USD millones · último dato"
               valueColor={lastSaldo == null ? "#888" : lastSaldo >= 0 ? "#4AF6C3" : "#FF433D"}
             />
           </div>
-          <div style={{ padding: "4px 8px 0", display: "flex", justifyContent: "flex-end" }}>
+
+          {/* Selector de año + descarga */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 12px", flexWrap: "wrap", gap: 6 }}>
+            <div style={{ display: "flex", gap: 3, flexWrap: "wrap", alignItems: "center" }}>
+              <span style={{ fontSize: 8, color: "#444", fontFamily: "monospace", marginRight: 2 }}>AÑO:</span>
+              {["all", ...years].map(y => (
+                <button key={y} onClick={() => setBalanzaYear(y)} style={{
+                  fontSize: 9, padding: "3px 8px", border: "none", borderRadius: 2, cursor: "pointer",
+                  background: balanzaYear === y ? "#FFA028" : "transparent",
+                  color:      balanzaYear === y ? "#000"    : "#666",
+                  fontFamily: "monospace",
+                }}>{y === "all" ? "TODO" : y}</button>
+              ))}
+            </div>
             <DownloadCSV data={rows.map(r => ({ periodo: r.d, exportaciones: r.expo ?? "", importaciones: r.impo ?? "", saldo: r.saldo ?? "" }))} filename="balanza-comercial" />
           </div>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  {["Período", "Exportaciones", "Importaciones", "Saldo"].map((h) => (
-                    <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "#555", textAlign: h === "Período" ? "left" : "right", borderBottom: "1px solid #1a1a1a" }}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, i) => (
-                  <tr key={r.d} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
-                    <td style={{ padding: "4px 8px", fontSize: 11, color: "#FFA028" }}>{r.d}</td>
-                    <td style={{ padding: "4px 8px", fontSize: 11, color: "#4AF6C3", textAlign: "right", fontFamily: "monospace" }}>
-                      {r.expo?.toLocaleString("es-AR") ?? "—"}
-                    </td>
-                    <td style={{ padding: "4px 8px", fontSize: 11, color: "#FF433D", textAlign: "right", fontFamily: "monospace" }}>
-                      {r.impo?.toLocaleString("es-AR") ?? "—"}
-                    </td>
-                    <td style={{
-                      padding: "4px 8px", fontSize: 11, textAlign: "right", fontFamily: "monospace",
-                      color: r.saldo == null ? "#555" : r.saldo >= 0 ? "#4AF6C3" : "#FF433D",
-                    }}>
-                      {r.saldo?.toLocaleString("es-AR") ?? "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+          {/* Gráfico de barras */}
+          <div style={{ padding: "0 8px 8px" }}>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }} barCategoryGap="20%">
+                <CartesianGrid stroke="#1a1a1a" strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fill: "#555", fontSize: 8 }}
+                  axisLine={{ stroke: "#333" }}
+                  tickLine={false}
+                  tickFormatter={(d: string) => {
+                    const parts = d.split("-")
+                    if (parts.length >= 2) return parts[1] + "/" + parts[0].slice(2)
+                    return d
+                  }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fill: "#555", fontSize: 8 }}
+                  axisLine={{ stroke: "#333" }}
+                  tickLine={false}
+                  tickFormatter={(v: number) => `${Math.round(Math.abs(v)).toLocaleString("es-AR")}`}
+                />
+                <Tooltip
+                  contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10, color: "#FFA028" }}
+                  formatter={(value: unknown, name: unknown) => {
+                    const v = Number(value)
+                    const absV = Math.abs(v)
+                    return [`${absV.toLocaleString("es-AR")} M USD`, String(name)]
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: 9, color: "#888" }} />
+                <ReferenceLine y={0} stroke="#333" />
+                <Bar dataKey="Exportaciones" fill="#4AF6C3" opacity={0.85} radius={[2, 2, 0, 0]} />
+                <Bar dataKey="Importaciones" fill="#FF433D" opacity={0.85} radius={[0, 0, 2, 2]} />
+              </BarChart>
+            </ResponsiveContainer>
+            {/* Saldo como línea separada */}
+            <div style={{ marginTop: 8 }}>
+              <ResponsiveContainer width="100%" height={100}>
+                <BarChart data={rows.map(r => ({ label: r.d, Saldo: r.saldo }))} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid stroke="#1a1a1a" strokeDasharray="3 3" />
+                  <XAxis dataKey="label" tick={{ fill: "#555", fontSize: 8 }} axisLine={{ stroke: "#333" }} tickLine={false}
+                    tickFormatter={(d: string) => { const p = d.split("-"); return p.length >= 2 ? p[1] + "/" + p[0].slice(2) : d }}
+                    interval="preserveStartEnd" />
+                  <YAxis tick={{ fill: "#555", fontSize: 8 }} axisLine={{ stroke: "#333" }} tickLine={false}
+                    tickFormatter={(v: number) => `${Math.round(v).toLocaleString("es-AR")}`} />
+                  <Tooltip contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10, color: "#FFA028" }}
+                    formatter={(v: unknown) => [`${Number(v).toLocaleString("es-AR")} M USD`, "Saldo"]} />
+                  <ReferenceLine y={0} stroke="#555" strokeDasharray="3 3" />
+                  <Bar dataKey="Saldo" radius={[2, 2, 0, 0]}>
+                    {rows.map((r) => (
+                      <Cell key={r.d} fill={r.saldo != null && r.saldo >= 0 ? "#4AF6C3" : "#FF433D"} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <div style={{ fontSize: 8, color: "#333", textAlign: "center", marginTop: 2 }}>SALDO COMERCIAL (USD millones)</div>
+            </div>
+            <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>Fuente: INDEC · Intercambio Comercial Argentino · datos.gob.ar</div>
           </div>
         </>)}
       </>)}
@@ -2591,9 +2738,194 @@ const FX_LINES = [
   { key: "mayorista", name: "Mayorista", color: "#81C784" },
 ]
 
+// ── TCR sub-view ───────────────────────────────────────────────────────────────
+
+interface TCRKpis {
+  itcrm: number | null
+  itcrm_var_mes: number | null
+  itcr_brl: number | null
+  itcr_eur: number | null
+  fecha: string
+}
+
+interface TCRBigMacRow {
+  iso: string
+  name: string
+  subval_pct: number
+  adj_subval_pct: number
+  dollar_price: number
+}
+
+function TCRSubView() {
+  const [kpis, setKpis]       = useState<TCRKpis | null>(null)
+  const [serie, setSerie]     = useState<Record<string, unknown>[]>([])
+  const [ranking, setRanking] = useState<TCRBigMacRow[]>([])
+  const [modo, setModo]       = useState<"simple" | "ajustado">("ajustado")
+  const [loading, setLoading] = useState(true)
+  const chartRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/tcr").then(r => r.json()),
+      fetch("/api/big-mac").then(r => r.json()),
+    ]).then(([tcr, bm]) => {
+      setKpis(tcr.data?.kpis ?? null)
+      // Mapear fecha → date para BBGLineChart
+      setSerie((tcr.data?.serie ?? []).map((r: Record<string, unknown>) => ({
+        date:       r.fecha,
+        itcrm:      r.ITCRM,
+        itcr_brl:   r["ITCR-BRL"],
+        itcr_eur:   r["ITCR-EUR"],
+      })))
+      setRanking(bm.data?.ranking ?? [])
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando TCR...</div>
+
+  const subvalKey = modo === "ajustado" ? "adj_subval_pct" : "subval_pct"
+  const sorted = [...ranking].sort((a, b) => a[subvalKey] - b[subvalKey])
+  const maxAbs = Math.max(...sorted.map(r => Math.abs(r[subvalKey])), 1)
+
+  const itcrmColor = kpis?.itcrm != null
+    ? kpis.itcrm > 120 ? "#4AF6C3" : kpis.itcrm > 90 ? "#FFA028" : "#FF433D"
+    : "#555"
+
+  const csvTCR = serie.map(r => ({
+    fecha: r.date, itcrm: r.itcrm ?? "", itcr_brl: r.itcr_brl ?? "", itcr_eur: r.itcr_eur ?? ""
+  })) as Record<string, unknown>[]
+
+  return (
+    <div>
+      {/* KPIs */}
+      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+        <KPI label="ITCRM Multilateral"
+          value={kpis?.itcrm != null ? fmtNum(kpis.itcrm, 1) : null}
+          unit={`Base dic-2010=100 · ${kpis?.fecha ?? "—"}`}
+          valueColor={itcrmColor} />
+        <KPI label="Var. Mensual ITCRM"
+          value={kpis?.itcrm_var_mes != null ? `${kpis.itcrm_var_mes >= 0 ? "+" : ""}${fmtNum(kpis.itcrm_var_mes, 2)}%` : null}
+          unit="respecto al mes anterior"
+          valueColor={kpis?.itcrm_var_mes != null ? (kpis.itcrm_var_mes >= 0 ? "#4AF6C3" : "#FF433D") : "#555"} />
+        <KPI label="ITCR Bilateral BRL"
+          value={kpis?.itcr_brl != null ? fmtNum(kpis.itcr_brl, 2) : null}
+          unit="ARG vs Brasil · Base 2010=100"
+          valueColor="#4FC3F7" />
+        <KPI label="ITCR Bilateral EUR"
+          value={kpis?.itcr_eur != null ? fmtNum(kpis.itcr_eur, 2) : null}
+          unit="ARG vs Eurozona · Base 2010=100"
+          valueColor="#CE93D8" />
+      </div>
+
+      {/* Gráfico ITCRM */}
+      {serie.length > 0 && (
+        <div ref={chartRef} style={{ padding: "8px 12px 4px" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
+            <ChartDownload csvData={csvTCR} filename="itcrm-historico" chartRef={chartRef} />
+          </div>
+          <BBGLineChart
+            title="ITCRM — ÍNDICE DE TIPO DE CAMBIO REAL MULTILATERAL"
+            data={serie}
+            lines={[
+              { key: "itcrm",    name: "ITCRM Multilateral", color: "#FFA028" },
+              { key: "itcr_brl", name: "ITCR-BRL",           color: "#4FC3F7" },
+              { key: "itcr_eur", name: "ITCR-EUR",           color: "#CE93D8" },
+            ]}
+            height={260}
+            yAxisLabel="Índice (base 2010=100)"
+            showZeroLine={false}
+            defaultRange="1y"
+            enableDateRange={true}
+            enableLineToggle={true}
+          />
+          <div style={{ fontSize: 8, color: "#333", padding: "2px 4px" }}>
+            Fuente: BCRA · Base diciembre 2010 = 100 · Índice ponderado por comercio bilateral
+          </div>
+        </div>
+      )}
+
+      {/* Ranking competitividad mundial — Big Mac Index */}
+      {sorted.length > 0 && (
+        <div style={{ padding: "8px 12px 12px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, fontFamily: "monospace" }}>
+              COMPETITIVIDAD CAMBIARIA MUNDIAL — BIG MAC INDEX
+            </div>
+            <div style={{ display: "flex", gap: 4 }}>
+              <button onClick={() => setModo("ajustado")} style={{
+                background: modo === "ajustado" ? "#1a1200" : "none",
+                border: `1px solid ${modo === "ajustado" ? "#FFA028" : "#222"}`,
+                borderRadius: 3, cursor: "pointer", padding: "3px 8px",
+                fontSize: 8, fontFamily: "monospace",
+                color: modo === "ajustado" ? "#FFA028" : "#555",
+              }}>PPP ajustado</button>
+              <button onClick={() => setModo("simple")} style={{
+                background: modo === "simple" ? "#1a1200" : "none",
+                border: `1px solid ${modo === "simple" ? "#FFA028" : "#222"}`,
+                borderRadius: 3, cursor: "pointer", padding: "3px 8px",
+                fontSize: 8, fontFamily: "monospace",
+                color: modo === "simple" ? "#FFA028" : "#555",
+              }}>Simple</button>
+            </div>
+          </div>
+          <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace", marginBottom: 8 }}>
+            Verde = moneda subvaluada (más competitiva) · Rojo = sobrevaluada (menos competitiva)
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {sorted.map(r => {
+              const val = r[subvalKey]
+              const isArg = r.iso === "ARG"
+              const color = val < -15 ? "#4AF6C3" : val < 0 ? "#81C784" : val < 15 ? "#FFA028" : "#FF433D"
+              const barPct = Math.abs(val) / maxAbs * 100
+              const barLeft = val < 0  // negativo = barra va a la izquierda (depreciado)
+              return (
+                <div key={r.iso} style={{
+                  display: "grid", gridTemplateColumns: "100px 1fr 60px",
+                  gap: 8, alignItems: "center",
+                  background: isArg ? "#0d0900" : "transparent",
+                  borderRadius: isArg ? 3 : 0,
+                  padding: isArg ? "3px 6px" : "1px 0",
+                  border: isArg ? "1px solid #2a1800" : "none",
+                }}>
+                  <div style={{ fontSize: 9, color: isArg ? "#FFA028" : "#aaa", fontFamily: "monospace", textAlign: "right" }}>
+                    {r.name}
+                  </div>
+                  <div style={{ position: "relative", height: 12, background: "#0d0d0d", borderRadius: 2 }}>
+                    <div style={{
+                      position: "absolute", height: "100%", borderRadius: 2,
+                      background: color, opacity: 0.7,
+                      width: `${barPct / 2}%`,
+                      ...(barLeft
+                        ? { right: "50%", left: "auto" }
+                        : { left: "50%", right: "auto" }
+                      ),
+                    }} />
+                    {/* Centro line */}
+                    <div style={{ position: "absolute", left: "50%", top: 0, width: 1, height: "100%", background: "#222" }} />
+                  </div>
+                  <div style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, color, textAlign: "right" }}>
+                    {val >= 0 ? "+" : ""}{val.toFixed(1)}%
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div style={{ fontSize: 8, color: "#333", fontFamily: "monospace", marginTop: 8, borderTop: "1px solid #111", paddingTop: 6 }}>
+            Fuente: The Economist · Big Mac Index · PPP ajustado controla por nivel de ingreso per cápita
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── FX View principal ─────────────────────────────────────────────────────────
+
 function FXView() {
   const [raw, setRaw]         = useState<FXEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const [fxTab, setFxTab]     = useState<"cotizaciones" | "tcr">("cotizaciones")
   const [visible, setVisible] = useState<Record<string, boolean>>({
     oficial: true, blue: true, mep: true, ccl: true, cripto: false, mayorista: false,
   })
@@ -2646,6 +2978,24 @@ function FXView() {
   return (
     <div>
       <SectionMeta title="FX — Tipo de Cambio" help="Cotizaciones del dólar en los distintos mercados. Las bandas cambiarias son pisos/techos fijados por el BCRA desde abril 2025. Oficial = mercado regulado. Blue = mercado informal. MEP y CCL = operaciones bursátiles." source="argentinadatos.com · BCRA" />
+      {/* Sub-tabs */}
+      <div style={{ display: "flex", gap: 2, padding: "6px 12px", borderBottom: "1px solid #1a1a1a", background: "#080808" }}>
+        {([
+          { key: "cotizaciones", label: "Cotizaciones" },
+          { key: "tcr",          label: "TCR / Competitividad" },
+        ] as const).map(t => (
+          <button key={t.key} onClick={() => setFxTab(t.key)} style={{
+            fontSize: 9, padding: "4px 12px", border: "none", borderRadius: 2, cursor: "pointer",
+            background: fxTab === t.key ? "#FFA028" : "transparent",
+            color:      fxTab === t.key ? "#000"    : "#666",
+            fontWeight: fxTab === t.key ? 700       : 400,
+            fontFamily: "monospace", letterSpacing: 0.5,
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      {fxTab === "tcr" && <TCRSubView />}
+      {fxTab === "cotizaciones" && <>
       {/* KPIs */}
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
         {FX_LINES.map(({ key, name, color }) => {
@@ -2736,6 +3086,7 @@ function FXView() {
           Fuente: argentinadatos.com · Bandas BCRA vigentes desde 14-abr-2025 · Crawl 1%/mes · Piso $1.000 → Techo $1.400
         </div>
       </div>
+      </>}
     </div>
   )
 }
