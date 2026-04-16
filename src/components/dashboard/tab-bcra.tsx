@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react"
 import {
-  AreaChart, Area, BarChart, Bar,
+  AreaChart, Area, BarChart, Bar, Line, LineChart,
   XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend,
+  ResponsiveContainer, Legend, ReferenceLine,
 } from "recharts"
+import { BBGLineChart } from "../charts/bbg-line-chart"
 import { DownloadCSV } from "../ui/download-csv"
 import { ChartDownload } from "../ui/chart-download"
 import { SectionMeta } from "../ui/help-tooltip"
@@ -58,6 +59,7 @@ const BCRA_TABS = [
   { key: "agregados", label: "Agregados",    icon: "Σ" },
   { key: "reservas",  label: "Reservas",     icon: "⬡" },
   { key: "compras",   label: "Compras BCRA", icon: "⇄" },
+  { key: "rem",       label: "REM",          icon: "◎" },
 ]
 
 interface SubTabsProps {
@@ -548,6 +550,237 @@ function ComprasView() {
   )
 }
 
+// ── REM — Relevamiento de Expectativas de Mercado ─────────────────────────────
+
+interface RemRow {
+  fecha: string
+  inflacion_12m: number | null
+  inflacion_24m: number | null
+  nucleo_12m: number | null
+  dolar_12m: number | null
+  tasa_12m: number | null
+  tasa_real_12m: number | null
+}
+
+interface RemKpis {
+  inflacion_12m: number | null
+  inflacion_24m: number | null
+  nucleo_12m: number | null
+  dolar_12m: number | null
+  tasa_12m: number | null
+  tasa_real_12m: number | null
+  fecha: string | null
+}
+
+function REMView() {
+  const [serie, setSerie] = useState<RemRow[]>([])
+  const [kpis, setKpis]   = useState<RemKpis | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/rem")
+      .then(r => r.json())
+      .then(j => {
+        setSerie(j.data?.serie ?? [])
+        setKpis(j.data?.kpis ?? null)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando REM...</div>
+
+  // Datos para el gráfico histórico (inflación 12M y dólar proyectado)
+  const chartData = serie.map(r => ({
+    date: r.fecha,
+    inf12:  r.inflacion_12m,
+    inf24:  r.inflacion_24m,
+    nuc12:  r.nucleo_12m,
+    tasa12: r.tasa_12m,
+    real12: r.tasa_real_12m,
+  })) as Record<string, unknown>[]
+
+  const chartDolar = serie.map(r => ({
+    date:  r.fecha,
+    usd12: r.dolar_12m,
+  })) as Record<string, unknown>[]
+
+  const fechaLabel = kpis?.fecha ? `Relevamiento ${kpis.fecha}` : ""
+
+  return (
+    <div>
+      <SectionMeta
+        title="REM — Expectativas de Mercado"
+        help="El REM (Relevamiento de Expectativas de Mercado) consolida mensualmente las proyecciones de analistas privados sobre inflación, tipo de cambio, tasas e indicadores reales. Publicado por el BCRA. Los valores son medianas del consenso."
+        source="BCRA — Relevamiento de Expectativas de Mercado"
+      />
+
+      {/* KPIs del último relevamiento */}
+      {kpis && (
+        <>
+          <div style={{ padding: "4px 12px 2px", fontSize: 8, color: "#444", fontFamily: "monospace", letterSpacing: 1.5 }}>
+            PROYECCIONES A 12 MESES — {fechaLabel.toUpperCase()}
+          </div>
+          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+            <KPI
+              label="Inflación 12M"
+              value={kpis.inflacion_12m != null ? `${fmtNum(kpis.inflacion_12m, 1)}%` : null}
+              unit="% acum. próx. 12 meses · mediana analistas"
+              valueColor={kpis.inflacion_12m != null ? (kpis.inflacion_12m > 50 ? "#FF433D" : kpis.inflacion_12m > 25 ? "#FFA028" : "#4AF6C3") : "#555"}
+            />
+            <KPI
+              label="Inflación 24M"
+              value={kpis.inflacion_24m != null ? `${fmtNum(kpis.inflacion_24m, 1)}%` : null}
+              unit="% acum. próx. 24 meses · mediana"
+              valueColor="#FFA028"
+            />
+            <KPI
+              label="IPC Núcleo 12M"
+              value={kpis.nucleo_12m != null ? `${fmtNum(kpis.nucleo_12m, 1)}%` : null}
+              unit="% núcleo próx. 12 meses"
+              valueColor="#CE93D8"
+            />
+            <KPI
+              label="Dólar proyectado"
+              value={kpis.dolar_12m != null ? `$${Math.round(kpis.dolar_12m).toLocaleString("es-AR")}` : null}
+              unit="ARS/USD en 12 meses · mediana"
+              valueColor="#4FC3F7"
+            />
+            <KPI
+              label="Tasa interés 12M"
+              value={kpis.tasa_12m != null ? `${fmtNum(kpis.tasa_12m, 1)}%` : null}
+              unit="TNA % próx. 12 meses"
+              valueColor="#FFD700"
+            />
+            <KPI
+              label="Tasa real 12M"
+              value={kpis.tasa_real_12m != null ? `${kpis.tasa_real_12m >= 0 ? "+" : ""}${fmtNum(kpis.tasa_real_12m, 2)}%` : null}
+              unit="Fisher: ((1+tasa)/(1+inflac)-1)×100"
+              valueColor={kpis.tasa_real_12m != null ? (kpis.tasa_real_12m > 0 ? "#4AF6C3" : "#FF433D") : "#555"}
+            />
+          </div>
+        </>
+      )}
+
+      {/* Gráfico histórico de inflación proyectada */}
+      {chartData.length > 0 && (
+        <div style={{ padding: "8px 12px 4px" }}>
+          <BBGLineChart
+            title="INFLACIÓN PROYECTADA — EVOLUCIÓN DEL CONSENSO"
+            data={chartData}
+            lines={[
+              { key: "inf12",  name: "Inflación 12M",    color: "#FF433D" },
+              { key: "inf24",  name: "Inflación 24M",    color: "#FFA028", dashed: true },
+              { key: "nuc12",  name: "Núcleo 12M",       color: "#CE93D8" },
+              { key: "tasa12", name: "Tasa interés 12M", color: "#FFD700", dashed: true },
+            ]}
+            height={220}
+            yAxisLabel="%"
+            showZeroLine={false}
+            defaultRange="1y"
+            enableDateRange={true}
+            enableLineToggle={true}
+            formatValue={(v) => `${v.toFixed(1)}%`}
+          />
+          <div style={{ fontSize: 8, color: "#333", padding: "2px 4px" }}>
+            Fuente: BCRA · REM · Medianas del consenso de analistas privados
+          </div>
+        </div>
+      )}
+
+      {/* Gráfico dólar proyectado */}
+      {chartDolar.length > 0 && (
+        <div style={{ padding: "4px 12px 8px" }}>
+          <BBGLineChart
+            title="TIPO DE CAMBIO PROYECTADO A 12 MESES (ARS/USD)"
+            data={chartDolar}
+            lines={[{ key: "usd12", name: "Dólar 12M", color: "#4FC3F7" }]}
+            height={160}
+            yAxisLabel="ARS/USD"
+            showZeroLine={false}
+            defaultRange="1y"
+            enableDateRange={true}
+            formatValue={(v) => `$${Math.round(v).toLocaleString("es-AR")}`}
+          />
+          <div style={{ fontSize: 8, color: "#333", padding: "2px 4px" }}>
+            Mediana de analistas del REM. No es una predicción oficial del BCRA.
+          </div>
+        </div>
+      )}
+
+      {/* Tabla resumen últimos 12 meses */}
+      {serie.length > 0 && (
+        <div style={{ padding: "4px 12px 12px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, fontFamily: "monospace" }}>
+              HISTORIAL — ÚLTIMOS 12 RELEVAMIENTOS
+            </div>
+            <DownloadCSV
+              data={serie.map(r => ({
+                fecha: r.fecha,
+                inflacion_12m: r.inflacion_12m ?? "",
+                inflacion_24m: r.inflacion_24m ?? "",
+                nucleo_12m: r.nucleo_12m ?? "",
+                dolar_12m: r.dolar_12m ?? "",
+                tasa_12m: r.tasa_12m ?? "",
+                tasa_real_12m: r.tasa_real_12m ?? "",
+              }))}
+              filename="rem-bcra"
+            />
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
+              <thead>
+                <tr>
+                  {["Relevamiento", "Inflac. 12M", "Inflac. 24M", "Núcleo 12M", "USD 12M", "Tasa 12M", "Tasa Real"].map(h => (
+                    <th key={h} style={{ padding: "4px 8px", fontSize: 8, color: "#555", textAlign: h === "Relevamiento" ? "left" : "right", borderBottom: "1px solid #1a1a1a", whiteSpace: "nowrap" }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {serie.slice(-12).reverse().map((r, i) => (
+                  <tr key={r.fecha} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
+                    <td style={{ padding: "4px 8px", color: "#FFA028", fontFamily: "monospace", fontSize: 10 }}>{r.fecha}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace", color: r.inflacion_12m != null && r.inflacion_12m > 50 ? "#FF433D" : "#FFA028" }}>
+                      {r.inflacion_12m != null ? `${r.inflacion_12m.toFixed(1)}%` : "—"}
+                    </td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace", color: "#888" }}>
+                      {r.inflacion_24m != null ? `${r.inflacion_24m.toFixed(1)}%` : "—"}
+                    </td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace", color: "#CE93D8" }}>
+                      {r.nucleo_12m != null ? `${r.nucleo_12m.toFixed(1)}%` : "—"}
+                    </td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace", color: "#4FC3F7" }}>
+                      {r.dolar_12m != null ? `$${Math.round(r.dolar_12m).toLocaleString("es-AR")}` : "—"}
+                    </td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace", color: "#FFD700" }}>
+                      {r.tasa_12m != null ? `${r.tasa_12m.toFixed(1)}%` : "—"}
+                    </td>
+                    <td style={{
+                      padding: "4px 8px", textAlign: "right", fontFamily: "monospace",
+                      color: r.tasa_real_12m != null ? (r.tasa_real_12m > 0 ? "#4AF6C3" : "#FF433D") : "#555",
+                    }}>
+                      {r.tasa_real_12m != null ? `${r.tasa_real_12m >= 0 ? "+" : ""}${r.tasa_real_12m.toFixed(2)}%` : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {!kpis && serie.length === 0 && (
+        <div style={{ padding: 24, color: "#555", fontSize: 11, textAlign: "center", fontFamily: "monospace" }}>
+          Sin datos disponibles. El Excel del BCRA puede estar temporalmente inaccesible.
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export function TabBCRA() {
@@ -574,6 +807,7 @@ export function TabBCRA() {
       {activeTab === "agregados" && <AgregadosView />}
       {activeTab === "reservas"  && <ReservasView  />}
       {activeTab === "compras"   && <ComprasView   />}
+      {activeTab === "rem"       && <REMView       />}
     </div>
   )
 }

@@ -2792,8 +2792,30 @@ function TCRSubView() {
   const sorted = [...ranking].sort((a, b) => a[subvalKey] - b[subvalKey])
   const maxAbs = Math.max(...sorted.map(r => Math.abs(r[subvalKey])), 1)
 
-  const itcrmColor = kpis?.itcrm != null
-    ? kpis.itcrm > 120 ? "#4AF6C3" : kpis.itcrm > 90 ? "#FFA028" : "#FF433D"
+  // Termómetro ITCRM: percentiles históricos
+  const itcrmValues = serie.map(r => Number(r.itcrm)).filter(v => !isNaN(v) && v > 0)
+  const q25 = itcrmValues.length > 4 ? (() => {
+    const sorted2 = [...itcrmValues].sort((a, b) => a - b)
+    return sorted2[Math.floor(sorted2.length * 0.25)]
+  })() : null
+  const q75 = itcrmValues.length > 4 ? (() => {
+    const sorted2 = [...itcrmValues].sort((a, b) => a - b)
+    return sorted2[Math.floor(sorted2.length * 0.75)]
+  })() : null
+  const itcrmActual = kpis?.itcrm ?? null
+  const zonaItcrm = itcrmActual == null || q25 == null || q75 == null
+    ? "neutral"
+    : itcrmActual < q25 ? "atraso"
+    : itcrmActual > q75 ? "competitivo"
+    : "neutral"
+  const zonaConfig = {
+    atraso:      { color: "#FF433D", label: "ZONA ROJA — ATRASO CAMBIARIO", desc: "El TCR está por debajo del cuartil histórico bajo. El productor tiende a retener grano esperando una corrección." },
+    neutral:     { color: "#FFA028", label: "ZONA NEUTRAL",                  desc: "El TCR se encuentra en el rango histórico normal (Q25–Q75). Las decisiones dependen de necesidades de caja." },
+    competitivo: { color: "#4AF6C3", label: "ZONA VERDE — TIPO DE CAMBIO COMPETITIVO", desc: "El TCR supera el cuartil histórico alto. Incentivo fuerte para fijar precios y liquidar exportaciones." },
+  }
+
+  const itcrmColor = itcrmActual != null
+    ? kpis!.itcrm! > 120 ? "#4AF6C3" : kpis!.itcrm! > 90 ? "#FFA028" : "#FF433D"
     : "#555"
 
   const csvTCR = serie.map(r => ({
@@ -2821,6 +2843,57 @@ function TCRSubView() {
           unit="ARG vs Eurozona · Base 2010=100"
           valueColor="#CE93D8" />
       </div>
+
+      {/* Termómetro ITCRM */}
+      {itcrmActual != null && q25 != null && q75 != null && (
+        <div style={{
+          margin: "1px 0", padding: "10px 14px",
+          background: zonaConfig[zonaItcrm].color + "0d",
+          border: `1px solid ${zonaConfig[zonaItcrm].color}33`,
+          borderLeft: `4px solid ${zonaConfig[zonaItcrm].color}`,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: zonaConfig[zonaItcrm].color, fontFamily: "monospace", letterSpacing: 1.5 }}>
+                {zonaConfig[zonaItcrm].label}
+              </div>
+              <div style={{ fontSize: 9, color: "#888", fontFamily: "monospace", marginTop: 3, maxWidth: 500 }}>
+                {zonaConfig[zonaItcrm].desc}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 12, fontSize: 8, color: "#555", fontFamily: "monospace" }}>
+              <span>Q25 hist: <strong style={{ color: "#FF433D" }}>{q25.toFixed(1)}</strong></span>
+              <span>Actual: <strong style={{ color: zonaConfig[zonaItcrm].color }}>{itcrmActual.toFixed(1)}</strong></span>
+              <span>Q75 hist: <strong style={{ color: "#4AF6C3" }}>{q75.toFixed(1)}</strong></span>
+            </div>
+          </div>
+          {/* Barra de posición */}
+          <div style={{ marginTop: 8, position: "relative" }}>
+            <div style={{ height: 6, background: "linear-gradient(to right, #FF433D 0%, #FFA028 33%, #4AF6C3 100%)", borderRadius: 3, opacity: 0.4 }} />
+            {(() => {
+              const allVals = itcrmValues
+              const minV = Math.min(...allVals)
+              const maxV = Math.max(...allVals)
+              const pct = Math.max(0, Math.min(100, ((itcrmActual - minV) / (maxV - minV)) * 100))
+              return (
+                <div style={{
+                  position: "absolute", top: -3, left: `${pct}%`,
+                  transform: "translateX(-50%)",
+                  width: 12, height: 12,
+                  borderRadius: "50%",
+                  background: zonaConfig[zonaItcrm].color,
+                  border: "2px solid #000",
+                  boxShadow: `0 0 6px ${zonaConfig[zonaItcrm].color}`,
+                }} />
+              )
+            })()}
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 7, color: "#333", fontFamily: "monospace", marginTop: 8 }}>
+            <span>Mín hist. {Math.min(...itcrmValues).toFixed(0)}</span>
+            <span>Máx hist. {Math.max(...itcrmValues).toFixed(0)}</span>
+          </div>
+        </div>
+      )}
 
       {/* Gráfico ITCRM */}
       {serie.length > 0 && (
