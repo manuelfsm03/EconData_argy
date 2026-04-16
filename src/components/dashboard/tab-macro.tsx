@@ -2393,6 +2393,502 @@ function DesigualdadView() {
   )
 }
 
+// ── TCR — Tipo de Cambio Real ──────────────────────────────────────────────────
+
+interface TCRData {
+  serie: Record<string, number | string>[]
+  kpis: {
+    itcrm:         number | null
+    itcrm_var_mes: number | null
+    itcr_usd:      number | null
+    itcr_brl:      number | null
+    fecha:         string | null
+  }
+}
+
+function TCRView() {
+  const [data, setData] = useState<TCRData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/tcr")
+      .then(r => r.json())
+      .then(j => { setData(j.data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando TCR...</div>
+
+  const k = data?.kpis
+  const itcrmColor = k?.itcrm != null ? (k.itcrm >= 100 ? "#4AF6C3" : "#FF433D") : "#555"
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+        <KPI label="ITCRM Multilateral"
+          value={k?.itcrm != null ? fmtNum(k.itcrm, 2) : null}
+          unit={`Base dic-2015=100 · ${k?.fecha ?? "—"}`}
+          valueColor={itcrmColor} />
+        <KPI label="Var. Mensual"
+          value={k?.itcrm_var_mes != null ? `${k.itcrm_var_mes >= 0 ? "+" : ""}${fmtNum(k.itcrm_var_mes, 2)}%` : null}
+          unit="Variación en 1 mes"
+          valueColor={k?.itcrm_var_mes != null ? (k.itcrm_var_mes >= 0 ? "#4AF6C3" : "#FF433D") : "#555"} />
+        <KPI label="ITCR vs USD"
+          value={k?.itcr_usd != null ? fmtNum(k.itcr_usd, 2) : null}
+          unit="Bilateral con Estados Unidos"
+          valueColor="#4FC3F7" />
+        <KPI label="ITCR vs BRL"
+          value={k?.itcr_brl != null ? fmtNum(k.itcr_brl, 2) : null}
+          unit="Bilateral con Brasil"
+          valueColor="#CE93D8" />
+      </div>
+
+      {data?.serie && data.serie.length > 0 && (
+        <div style={{ padding: "8px 12px 0" }}>
+          <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, marginBottom: 4 }}>
+            ÍNDICE DE TIPO DE CAMBIO REAL MULTILATERAL — ÚLTIMOS 3 AÑOS
+          </div>
+          <BBGLineChart
+            title=""
+            data={data.serie.slice(-780)}
+            lines={[
+              { key: "ITCRM",    name: "ITCRM",    color: "#FFA028" },
+              { key: "ITCR-USD", name: "ITCR-USD", color: "#4FC3F7" },
+              { key: "ITCR-BRL", name: "ITCR-BRL", color: "#CE93D8" },
+              { key: "ITCR-EUR", name: "ITCR-EUR", color: "#4AF6C3" },
+            ]}
+            height={260}
+            yAxisLabel="Índice"
+            formatValue={v => fmtNum(v, 2)}
+            defaultRange="all"
+            showZeroLine={false}
+            enableLineToggle
+          />
+          <div style={{ fontSize: 8, color: "#555", padding: "2px 4px" }}>
+            {k?.itcrm != null && k.itcrm < 100
+              ? "⚠ Tipo de cambio real apreciado (por debajo de la base)"
+              : "✓ Tipo de cambio real competitivo (por encima de la base)"}
+          </div>
+          <div style={{ fontSize: 8, color: "#333", borderTop: "1px solid #111", marginTop: 4, paddingTop: 4 }}>
+            Fuente: BCRA API v4.0 · Base diciembre 2015 = 100 · Positivo = mayor competitividad cambiaria
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Big Mac Index ──────────────────────────────────────────────────────────────
+
+interface BigMacCountry {
+  iso: string
+  nombre: string
+  dollar_price: number
+  subval_pct: number
+  adj_subval_pct: number
+}
+
+interface BigMacData {
+  argentina: {
+    local_price: number
+    dollar_price: number
+    tc_bigmac: number
+    subval_pct: number
+    adj_subval_pct: number | null
+    date: string
+  } | null
+  usa_precio: number
+  ranking: BigMacCountry[]
+  historico_arg: { date: string; dollar_price: number; subval_pct: number }[]
+  ultima_fecha: string
+}
+
+function BigMacView() {
+  const [data, setData] = useState<BigMacData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [modo, setModo] = useState<"simple" | "ajustado">("simple")
+
+  useEffect(() => {
+    fetch("/api/big-mac")
+      .then(r => r.json())
+      .then(j => { setData(j.data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando Big Mac Index...</div>
+
+  const arg = data?.argentina
+  const subvalKey = modo === "ajustado" ? "adj_subval_pct" : "subval_pct"
+  const ranking = data?.ranking?.slice().sort((a, b) => a[subvalKey] - b[subvalKey]) ?? []
+  const maxAbs = Math.max(...ranking.map(r => Math.abs(r[subvalKey])), 1)
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+        <KPI label="Precio BM ARG (USD)"
+          value={arg?.dollar_price != null ? `USD ${fmtNum(arg.dollar_price, 2)}` : null}
+          unit={`Fecha: ${arg?.date ?? "—"}`}
+          valueColor="#FFA028" />
+        <KPI label="TC Big Mac implícito"
+          value={arg?.tc_bigmac != null ? `$${fmtNum(arg.tc_bigmac, 0)}` : null}
+          unit="Precio ARG / Precio USA"
+          valueColor="#4FC3F7" />
+        <KPI label="Subvaluación vs USD"
+          value={arg?.subval_pct != null ? `${arg.subval_pct >= 0 ? "+" : ""}${fmtNum(arg.subval_pct, 1)}%` : null}
+          unit="Negativo = barato vs USA"
+          valueColor={arg?.subval_pct != null ? (arg.subval_pct >= 0 ? "#FF433D" : "#4AF6C3") : "#555"} />
+      </div>
+
+      {/* Selector modo */}
+      <div style={{ padding: "8px 12px 4px", display: "flex", gap: 8, alignItems: "center" }}>
+        <span style={{ fontSize: 9, color: "#555", fontFamily: "monospace" }}>Vista:</span>
+        {(["simple", "ajustado"] as const).map(m => (
+          <button key={m} onClick={() => setModo(m)} style={{
+            fontSize: 8, padding: "3px 8px", border: "none", cursor: "pointer", borderRadius: 2,
+            background: modo === m ? "#FFA028" : "#1a1a1a",
+            color:      modo === m ? "#000"    : "#555",
+            fontFamily: "monospace", textTransform: "uppercase",
+          }}>
+            {m === "simple" ? "Simple" : "Ajustado por PIB pc"}
+          </button>
+        ))}
+      </div>
+
+      {/* Ranking */}
+      {ranking.length > 0 && (
+        <div style={{ padding: "4px 12px 12px" }}>
+          <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, marginBottom: 8 }}>
+            RANKING DE MONEDAS — Big Mac vs USD (negativo = más barato)
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {ranking.map(r => {
+              const val    = r[subvalKey]
+              const isArg  = r.iso === "ARG"
+              const barPct = Math.abs(val) / maxAbs * 60
+              const color  = val <= 0 ? "#4AF6C3" : "#FF433D"
+              return (
+                <div key={r.iso} style={{ display: "grid", gridTemplateColumns: "110px 24px 1fr 60px", alignItems: "center", gap: 6 }}>
+                  <div style={{ fontSize: 9, color: isArg ? "#FFA028" : "#888", textAlign: "right",
+                    fontWeight: isArg ? 700 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {r.nombre}
+                  </div>
+                  <div style={{ fontSize: 8, color: "#555", textAlign: "center", fontFamily: "monospace" }}>{r.iso}</div>
+                  <div style={{ position: "relative", height: 12, background: "#0d0d0d" }}>
+                    <div style={{
+                      position: "absolute", height: "100%",
+                      background: isArg ? "#FFA028" : color, opacity: 0.75,
+                      width: `${barPct}%`,
+                      left: val <= 0 ? `${60 - barPct}%` : "60%",
+                    }} />
+                    {/* Centro */}
+                    <div style={{ position: "absolute", left: "60%", top: 0, bottom: 0, width: 1, background: "#333" }} />
+                  </div>
+                  <div style={{ fontSize: 9, fontWeight: 700, fontFamily: "monospace",
+                    color: isArg ? "#FFA028" : color, textAlign: "right" }}>
+                    {val >= 0 ? "+" : ""}{fmtNum(val, 1)}%
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div style={{ fontSize: 8, color: "#333", marginTop: 8, borderTop: "1px solid #111", paddingTop: 4 }}>
+            Fuente: The Economist Big Mac Index · github.com/TheEconomist/big-mac-data ·
+            Datos semestrales · No constituye análisis de inversión.
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Riesgo País ────────────────────────────────────────────────────────────────
+
+interface RiesgoData {
+  actual: {
+    riesgoPaisBps: number
+    fecha: string
+  } | null
+  historico: { fecha: string; valor: number }[]
+  historicoConSMA: { fecha: string; valor: number; sma30?: number; sma90?: number }[]
+  regionales: { pais: string; valor: number }[]
+  alertas: string[]
+}
+
+function RiesgoPaisView() {
+  const [data, setData] = useState<RiesgoData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/riesgo-pais")
+      .then(r => r.json())
+      .then(j => { setData(j.data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando Riesgo País...</div>
+
+  const bps      = data?.actual?.riesgoPaisBps
+  const historico = data?.historicoConSMA ?? data?.historico ?? []
+  const regionales = data?.regionales ?? []
+
+  // Variaciones
+  const ult    = historico.at(-1)
+  const hace5  = historico.at(-5)   // ~1 semana
+  const hace22 = historico.at(-22)  // ~1 mes
+  const var1w  = ult && hace5  ? ult.valor - hace5.valor  : null
+  const var1m  = ult && hace22 ? ult.valor - hace22.valor : null
+
+  const bpsColor = bps != null
+    ? bps < 500 ? "#4AF6C3" : bps < 1000 ? "#FFA028" : "#FF433D"
+    : "#555"
+
+  const maxReg = Math.max(...regionales.map(r => r.valor), 1)
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+        <KPI label="EMBI+ Argentina"
+          value={bps != null ? String(Math.round(bps)) : null}
+          unit={`bps · ${data?.actual?.fecha ?? "—"} · ${bps != null ? (bps < 500 ? "BAJO" : bps < 1000 ? "MEDIO" : "ALTO") : ""}`}
+          valueColor={bpsColor} />
+        <KPI label="Var. 1 semana"
+          value={var1w != null ? `${var1w >= 0 ? "+" : ""}${Math.round(var1w)} bps` : null}
+          unit="~5 ruedas"
+          valueColor={var1w != null ? (var1w <= 0 ? "#4AF6C3" : "#FF433D") : "#555"} />
+        <KPI label="Var. 1 mes"
+          value={var1m != null ? `${var1m >= 0 ? "+" : ""}${Math.round(var1m)} bps` : null}
+          unit="~22 ruedas"
+          valueColor={var1m != null ? (var1m <= 0 ? "#4AF6C3" : "#FF433D") : "#555"} />
+      </div>
+
+      {historico.length > 0 && (
+        <div style={{ padding: "8px 12px 0" }}>
+          <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, marginBottom: 4 }}>
+            EMBI+ ARGENTINA — HISTÓRICO CON MEDIAS MÓVILES
+          </div>
+          <BBGLineChart
+            title=""
+            data={historico.slice(-500)}
+            lines={[
+              { key: "valor", name: "EMBI+", color: "#FF433D" },
+              { key: "sma30", name: "SMA30", color: "#FFA028" },
+              { key: "sma90", name: "SMA90", color: "#4FC3F7" },
+            ]}
+            height={260}
+            yAxisLabel="bps"
+            formatValue={v => `${Math.round(v)} bps`}
+            defaultRange="all"
+            showZeroLine={false}
+            enableLineToggle
+          />
+        </div>
+      )}
+
+      {regionales.length > 0 && (
+        <div style={{ padding: "8px 12px 12px" }}>
+          <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, marginBottom: 8 }}>
+            COMPARATIVO REGIONAL — EMBI+ (bps)
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {[...regionales].sort((a, b) => b.valor - a.valor).map(r => {
+              const isArg = r.pais === "Argentina"
+              const barPct = r.valor / maxReg * 75
+              return (
+                <div key={r.pais} style={{ display: "grid", gridTemplateColumns: "110px 1fr 60px", alignItems: "center", gap: 8 }}>
+                  <div style={{ fontSize: 9, color: isArg ? "#FFA028" : "#888", textAlign: "right",
+                    fontWeight: isArg ? 700 : 400 }}>{r.pais}</div>
+                  <div style={{ position: "relative", height: 12, background: "#0d0d0d" }}>
+                    <div style={{ position: "absolute", height: "100%",
+                      background: isArg ? "#FFA028" : "#4FC3F7", opacity: 0.75, width: `${barPct}%` }} />
+                  </div>
+                  <div style={{ fontSize: 9, fontWeight: 700, fontFamily: "monospace",
+                    color: isArg ? "#FFA028" : "#4FC3F7", textAlign: "right" }}>
+                    {Math.round(r.valor)}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>
+            Fuente: BCRA / JPMorgan EMBI+ · bps = puntos básicos sobre Treasuries USA
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Deuda Pública ──────────────────────────────────────────────────────────────
+
+interface DeudaData {
+  data: {
+    historico_pib:    { anio: string; deuda_pib: number }[]
+    ultimo:           { anio: string; deuda_pib: number | null }
+    vencimientos:     { anio: string; monto: number }[]
+    composicion_acreedor: { nombre: string; pct: number }[]
+    composicion_moneda:   { nombre: string; pct: number }[]
+    is_live: boolean
+  }
+  source: string
+}
+
+function DeudaView() {
+  const [licitaciones, setLicitaciones] = useState<{
+    fecha: string; adjudicado_bn: number | null; vencimientos_bn: number | null; rollover_pct: number | null; url: string
+  }[] | null>(null)
+  const [stock, setStock] = useState<DeudaData | null>(null)
+  const [subTab, setSubTab] = useState<"licitaciones" | "stock">("licitaciones")
+  const [loadingLic, setLoadingLic] = useState(true)
+  const [loadingStock, setLoadingStock] = useState(false)
+
+  useEffect(() => {
+    fetch("/api/deuda?n=6")
+      .then(r => r.json())
+      .then(j => { setLicitaciones(j.data); setLoadingLic(false) })
+      .catch(() => setLoadingLic(false))
+  }, [])
+
+  useEffect(() => {
+    if (subTab === "stock" && !stock) {
+      setLoadingStock(true)
+      fetch("/api/deuda?endpoint=stock")
+        .then(r => r.json())
+        .then(j => { setStock(j); setLoadingStock(false) })
+        .catch(() => setLoadingStock(false))
+    }
+  }, [subTab, stock])
+
+  const PIE_COLORS = ["#FFA028", "#4AF6C3", "#4FC3F7", "#CE93D8"]
+
+  return (
+    <div>
+      <SubTabs tabs={[
+        { key: "licitaciones", label: "Licitaciones" },
+        { key: "stock",        label: "Stock & Composición" },
+      ]} active={subTab} onChange={k => setSubTab(k as "licitaciones" | "stock")} />
+
+      {subTab === "licitaciones" && (
+        loadingLic
+          ? <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando licitaciones...</div>
+          : (
+            <div style={{ padding: "8px 12px", overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 9 }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid #222" }}>
+                    {["Fecha", "Adjudicado (B$)", "Vencimientos (B$)", "Rollover %"].map(h => (
+                      <th key={h} style={{ padding: "4px 8px", color: "#555", textAlign: "right", fontWeight: 400, letterSpacing: 1 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(licitaciones ?? []).map((r, i) => (
+                    <tr key={i} style={{ borderBottom: "1px solid #0d0d0d" }}>
+                      <td style={{ padding: "3px 8px", color: "#666" }}>{r.fecha}</td>
+                      <td style={{ padding: "3px 8px", color: "#FFA028", textAlign: "right" }}>
+                        {r.adjudicado_bn != null ? fmtNum(r.adjudicado_bn, 1) : "—"}
+                      </td>
+                      <td style={{ padding: "3px 8px", color: "#4FC3F7", textAlign: "right" }}>
+                        {r.vencimientos_bn != null ? fmtNum(r.vencimientos_bn, 1) : "—"}
+                      </td>
+                      <td style={{ padding: "3px 8px", textAlign: "right",
+                        color: r.rollover_pct != null ? (r.rollover_pct >= 100 ? "#4AF6C3" : "#FF433D") : "#555",
+                        fontWeight: 700 }}>
+                        {r.rollover_pct != null ? `${fmtNum(r.rollover_pct, 1)}%` : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>
+                Fuente: argentina.gob.ar/economia/licitaciones · Rollover &gt;100% = renovación con superávit de deuda
+              </div>
+            </div>
+          )
+      )}
+
+      {subTab === "stock" && (
+        loadingStock
+          ? <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando stock de deuda...</div>
+          : stock ? (
+            <div>
+              <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+                <KPI label="Deuda / PIB"
+                  value={stock.data.ultimo.deuda_pib != null ? `${fmtNum(stock.data.ultimo.deuda_pib, 1)}%` : null}
+                  unit={`Año ${stock.data.ultimo.anio} · ${stock.data.is_live ? "Datos oficiales" : "Estimación"}`}
+                  valueColor={stock.data.ultimo.deuda_pib != null
+                    ? (stock.data.ultimo.deuda_pib < 70 ? "#4AF6C3" : stock.data.ultimo.deuda_pib < 90 ? "#FFA028" : "#FF433D")
+                    : "#555"} />
+              </div>
+
+              {/* Histórico deuda/PIB */}
+              {stock.data.historico_pib.length > 0 && (
+                <div style={{ padding: "8px 12px 0" }}>
+                  <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, marginBottom: 4 }}>DEUDA / PIB — EVOLUCIÓN</div>
+                  <BBGAreaChart
+                    title=""
+                    data={stock.data.historico_pib.map(r => ({ fecha: r.anio + "-01-01", valor: r.deuda_pib }))}
+                    areas={[{ key: "valor", name: "Deuda/PIB", color: "#FFA028" }]}
+                    height={220}
+                    yAxisLabel="%"
+                    formatValue={v => `${fmtNum(v, 1)}%`}
+                    defaultRange="all"
+                  />
+                </div>
+              )}
+
+              {/* Vencimientos próximos */}
+              {stock.data.vencimientos.length > 0 && (
+                <div style={{ padding: "8px 12px 0" }}>
+                  <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, marginBottom: 4 }}>
+                    VENCIMIENTOS PRÓXIMOS (USD millones)
+                  </div>
+                  {stock.data.vencimientos.map(r => {
+                    const maxMonto = Math.max(...stock.data.vencimientos.map(v => v.monto), 1)
+                    return (
+                      <div key={r.anio} style={{ display: "grid", gridTemplateColumns: "50px 1fr 100px", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                        <div style={{ fontSize: 9, color: "#888", textAlign: "right", fontFamily: "monospace" }}>{r.anio}</div>
+                        <div style={{ position: "relative", height: 14, background: "#0d0d0d" }}>
+                          <div style={{ position: "absolute", height: "100%", background: "#FF433D", opacity: 0.7,
+                            width: `${r.monto / maxMonto * 90}%` }} />
+                        </div>
+                        <div style={{ fontSize: 9, fontFamily: "monospace", color: "#FF433D", textAlign: "right" }}>
+                          USD {fmtNum(r.monto, 0)}M
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Composición por acreedor */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, padding: "8px 12px" }}>
+                {[
+                  { title: "Por Acreedor", data: stock.data.composicion_acreedor },
+                  { title: "Por Moneda",   data: stock.data.composicion_moneda },
+                ].map((section, si) => (
+                  <div key={section.title} style={{ background: "#080808", border: "1px solid #111", padding: 10 }}>
+                    <div style={{ fontSize: 8, color: "#FFA028", letterSpacing: 1, marginBottom: 8 }}>{section.title.toUpperCase()}</div>
+                    {section.data.map((item, ii) => (
+                      <div key={item.nombre} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                        <div style={{ width: 8, height: 8, background: PIE_COLORS[(si * 4 + ii) % PIE_COLORS.length] }} />
+                        <div style={{ flex: 1, fontSize: 8, color: "#888" }}>{item.nombre}</div>
+                        <div style={{ fontSize: 9, fontFamily: "monospace", color: "#ccc", fontWeight: 700 }}>{item.pct}%</div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ padding: "4px 12px", fontSize: 8, color: "#333" }}>
+                {stock.source}
+              </div>
+            </div>
+          ) : <div style={{ padding: 24, color: "#444", textAlign: "center", fontSize: 11 }}>Sin datos disponibles</div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 const MACRO_TABS = [
@@ -2402,6 +2898,10 @@ const MACRO_TABS = [
   { key: "fiscal",      label: "Fiscal"           },
   { key: "desigualdad", label: "Desigualdad"      },
   { key: "piramides",   label: "Pirámides"        },
+  { key: "tcr",         label: "TCR/ITCRM"        },
+  { key: "bigmac",      label: "Big Mac Index"    },
+  { key: "riesgo",      label: "Riesgo País"      },
+  { key: "deuda",       label: "Deuda Pública"    },
 ]
 
 export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
@@ -2417,6 +2917,10 @@ export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
       {activeTab === "fiscal"      && <FiscalSankeyView />}
       {activeTab === "desigualdad" && <DesigualdadView />}
       {activeTab === "piramides"   && <PiramidesView />}
+      {activeTab === "tcr"         && <TCRView />}
+      {activeTab === "bigmac"      && <BigMacView />}
+      {activeTab === "riesgo"      && <RiesgoPaisView />}
+      {activeTab === "deuda"       && <DeudaView />}
     </div>
   )
 }
