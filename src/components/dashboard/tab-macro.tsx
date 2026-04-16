@@ -23,6 +23,7 @@ import {
   BarChart, Bar, Cell, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Legend, AreaChart, Area,
+  PieChart, Pie,
 } from "recharts"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -1420,6 +1421,52 @@ export function MiInflacionView() {
     Object.fromEntries(PONDERACIONES.map(p => [p.cat, p.actual]))
   )
   const [encuestaRespuestas, setEncuestaRespuestas] = useState<Record<number, number>>({})
+  const [ipcDataMi, setIpcDataMi] = useState<Record<string, [string, number][]> | null>(null)
+
+  useEffect(() => {
+    fetch("/api/macro?endpoint=ipc")
+      .then(r => r.json())
+      .then(j => setIpcDataMi(j.data ?? null))
+      .catch(() => {})
+  }, [])
+
+  // ── Cálculo IPC personal ──────────────────────────────────────────────────
+  const getLatestVarPct = (series: [string, number][] | undefined): number | null => {
+    if (!series || series.length < 2) return null
+    const sorted = [...series].sort((a, b) => a[0].localeCompare(b[0]))
+    const last = sorted.at(-1)![1], prev = sorted.at(-2)![1]
+    if (!prev) return null
+    return ((last / prev) - 1) * 100
+  }
+  const ipcGeneralMensual: number | null = (() => {
+    if (!ipcDataMi?.ipc_var_mensual?.length) return null
+    const sorted = [...ipcDataMi.ipc_var_mensual].sort((a, b) => a[0].localeCompare(b[0]))
+    const v = sorted.at(-1)?.[1]
+    return v != null ? v * 100 : null
+  })()
+  const miRates = {
+    alimentos: getLatestVarPct(ipcDataMi?.ipc_alimentos),
+    regulados: getLatestVarPct(ipcDataMi?.ipc_regulados),
+    nucleo:    getLatestVarPct(ipcDataMi?.ipc_nucleo),
+  }
+  const CAT_TIPO_MI: Record<string, keyof typeof miRates> = {
+    "Alimentos y bebidas": "alimentos",
+    "Vivienda y servicios": "regulados",
+    "Transporte": "regulados",
+    "Comunicación": "regulados",
+  }
+  const tuIpc: number | null = (() => {
+    const fallback = ipcGeneralMensual
+    let sum = 0
+    for (const p of PONDERACIONES) {
+      const tipo = CAT_TIPO_MI[p.cat] ?? "nucleo"
+      const rate = miRates[tipo] ?? fallback
+      if (rate == null) continue
+      sum += (ponderaciones[p.cat] / 100) * rate
+    }
+    return sum > 0 ? sum : null
+  })()
+  const diffIpc = tuIpc != null && ipcGeneralMensual != null ? tuIpc - ipcGeneralMensual : null
 
   const handleGastoChange = (cat: string, value: number) => {
     setGastos({ ...gastos, [cat]: Math.max(0, value) })
@@ -1790,9 +1837,9 @@ export function MiInflacionView() {
       {modo === "resultado" && (
         <>
           <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, marginBottom: 12, background: "#111" }}>
-            <KPI label="Tu IPC (Est.)" value={fmtNum(2.66)} unit="% mensual" valueColor="#FFA028" />
-            <KPI label="IPC General INDEC" value={fmtNum(2.8)} unit="% mensual" />
-            <KPI label="Diferencia" value={fmtNum(-0.14)} unit="p.p." valueColor="#4AF6C3" />
+            <KPI label="Tu IPC (Est.)" value={tuIpc != null ? fmtNum(tuIpc) : "—"} unit="% mensual" valueColor="#FFA028" />
+            <KPI label="IPC General INDEC" value={ipcGeneralMensual != null ? fmtNum(ipcGeneralMensual) : "—"} unit="% mensual" />
+            <KPI label="Diferencia" value={diffIpc != null ? fmtNum(diffIpc) : "—"} unit="p.p." valueColor={diffIpc != null ? (diffIpc > 0 ? "#FF433D" : "#4AF6C3") : "#777"} />
           </div>
 
           <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: 12, marginBottom: 12 }}>
@@ -1841,6 +1888,121 @@ export function MiInflacionView() {
           </button>
         </>
       )}
+    </div>
+  )
+}
+
+// ── IPC Histórica 1943–presente ───────────────────────────────────────────────
+interface IpcHistoricoRow { anio: number; inflacion: number; nota?: string }
+
+function IpcHistoricaView() {
+  const [serie, setSerie] = useState<IpcHistoricoRow[]>([])
+  const [stats, setStats] = useState<{ pico: IpcHistoricoRow; promedio: number; total_anios: number; desde: number; hasta: number } | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/ipc-historico")
+      .then(r => r.json())
+      .then(j => {
+        setSerie(j.data?.serie ?? [])
+        setStats(j.data?.stats ?? null)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 10, fontFamily: "monospace" }}>Cargando histórico 1943–presente...</div>
+
+  const chartData = serie.map(r => ({ anio: String(r.anio), inflacion: r.inflacion, nota: r.nota }))
+
+  return (
+    <div style={{ padding: "8px 12px" }}>
+      {/* KPIs */}
+      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111", marginBottom: 8 }}>
+        {stats?.pico && (
+          <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "#080808", border: "1px solid #111" }}>
+            <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>Pico histórico</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#FF433D", fontFamily: "monospace" }}>
+              {stats.pico.inflacion >= 1000
+                ? `${(stats.pico.inflacion / 1000).toFixed(1)}k%`
+                : `${stats.pico.inflacion.toFixed(0)}%`
+              }
+            </div>
+            <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>{stats.pico.anio} — {stats.pico.nota ?? "Hiperinflación"}</div>
+          </div>
+        )}
+        {stats?.promedio != null && (
+          <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "#080808", border: "1px solid #111" }}>
+            <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>Promedio {stats.desde}–{stats.hasta}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#FFA028", fontFamily: "monospace" }}>{stats.promedio.toFixed(1)}%</div>
+            <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>inflación anual promedio</div>
+          </div>
+        )}
+        {serie.at(-1) && (
+          <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "#080808", border: "1px solid #111" }}>
+            <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>
+              {serie.at(-1)!.anio} {serie.at(-1)!.nota?.includes("curso") ? "(en curso)" : ""}
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#4AF6C3", fontFamily: "monospace" }}>{serie.at(-1)!.inflacion.toFixed(1)}%</div>
+            <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>último año disponible</div>
+          </div>
+        )}
+        <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "#080808", border: "1px solid #111", display: "flex", alignItems: "flex-end" }}>
+          <DownloadCSV
+            data={serie.map(r => ({ año: r.anio, inflacion_pct: r.inflacion, nota: r.nota ?? "" }))}
+            filename="ipc-historico-1943"
+          />
+        </div>
+      </div>
+
+      {/* Gráfico — BarChart con color por intensidad */}
+      <ResponsiveContainer width="100%" height={320}>
+        <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 16 }} barCategoryGap="4%">
+          <CartesianGrid stroke="#0d0d0d" strokeDasharray="3 3" />
+          <XAxis
+            dataKey="anio"
+            tick={{ fill: "#555", fontSize: 7 }}
+            axisLine={{ stroke: "#222" }}
+            tickLine={false}
+            interval={9}
+          />
+          <YAxis
+            tick={{ fill: "#555", fontSize: 8 }}
+            axisLine={{ stroke: "#222" }}
+            tickLine={false}
+            tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k%` : `${v.toFixed(0)}%`}
+            scale="log"
+            domain={[0.1, "auto"]}
+          />
+          <Tooltip
+            contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 9, fontFamily: "monospace" }}
+            formatter={(v: unknown, _: unknown, props: { payload?: IpcHistoricoRow }) => {
+              const val = Number(v)
+              const nota = props.payload?.nota
+              return [`${val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val.toFixed(1)}%${nota ? ` — ${nota}` : ""}`, "Inflación anual"]
+            }}
+            labelFormatter={(l: unknown) => `Año ${l}`}
+          />
+          <Bar dataKey="inflacion" radius={[2, 2, 0, 0]}>
+            {chartData.map((r) => (
+              <Cell
+                key={r.anio}
+                fill={r.inflacion >= 100 ? "#FF433D" : r.inflacion >= 50 ? "#FFA028" : r.inflacion < 0 ? "#4FC3F7" : "#4AF6C3"}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+
+      <div style={{ display: "flex", gap: 12, marginTop: 6, fontSize: 8, color: "#444", fontFamily: "monospace", flexWrap: "wrap" }}>
+        <span style={{ color: "#FF433D" }}>■ ≥100% (hiperinflación)</span>
+        <span style={{ color: "#FFA028" }}>■ 50–99%</span>
+        <span style={{ color: "#4AF6C3" }}>■ 0–49%</span>
+        <span style={{ color: "#4FC3F7" }}>■ deflación</span>
+      </div>
+      <div style={{ fontSize: 8, color: "#333", marginTop: 4, fontFamily: "monospace" }}>
+        Fuente: INDEC / BCRA (1943–2016) · datos.gob.ar IPC mensual (2017–presente) · Escala logarítmica
+      </div>
     </div>
   )
 }
@@ -1949,6 +2111,52 @@ function BreakEvenSection() {
           <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>TNA · depósitos &gt;$1MM · {tasas?.fecha ?? ""}</div>
         </div>
       </div>
+
+      {/* Gráfico forward — inflación mensual proyectada 12 meses */}
+      {(bk?.lecap_corto_tea != null || rem?.inflacion_12m != null) && (() => {
+        const lecapMensual = bk?.lecap_corto_tea != null
+          ? (Math.pow(1 + bk.lecap_corto_tea / 100, 1 / 12) - 1) * 100 : null
+        const remMensual = rem?.inflacion_12m != null
+          ? (Math.pow(1 + rem.inflacion_12m / 100, 1 / 12) - 1) * 100 : null
+        const cerMensual = cer?.inflacion_anual_trailing != null
+          ? (Math.pow(1 + cer.inflacion_anual_trailing / 100, 1 / 12) - 1) * 100 : null
+        const hoy = new Date()
+        const forwardData = Array.from({ length: 12 }, (_, i) => {
+          const d = new Date(hoy.getFullYear(), hoy.getMonth() + i + 1, 1)
+          const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+          const label = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getFullYear()).slice(2)}`
+          return { mes, label, lecap: lecapMensual, rem: remMensual, cer: cerMensual }
+        })
+        return (
+          <div style={{ padding: "8px 12px 4px" }}>
+            <div style={{ fontSize: 9, color: "#666", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>
+              INFLACIÓN MENSUAL ESPERADA — PRÓXIMOS 12 MESES (proyección flat desde valores actuales)
+            </div>
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={forwardData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="#111" strokeDasharray="3 3" />
+                <XAxis dataKey="label" tick={{ fill: "#555", fontSize: 8 }} axisLine={{ stroke: "#222" }} tickLine={false} />
+                <YAxis
+                  tick={{ fill: "#555", fontSize: 8 }} axisLine={{ stroke: "#222" }} tickLine={false}
+                  tickFormatter={(v: number) => `${v.toFixed(1)}%`}
+                  domain={["auto", "auto"]}
+                />
+                <Tooltip
+                  contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 9, fontFamily: "monospace" }}
+                  formatter={(v: unknown, name: unknown) => [`${Number(v).toFixed(2)}% mensual`, String(name)]}
+                />
+                <Legend wrapperStyle={{ fontSize: 8, color: "#666" }} />
+                {lecapMensual != null && <Line type="monotone" dataKey="lecap" name="LECAP Breakeven" stroke="#FFD700" strokeWidth={2} dot={false} />}
+                {remMensual   != null && <Line type="monotone" dataKey="rem"   name="REM Analistas"   stroke="#FFA028" strokeWidth={2} dot={false} />}
+                {cerMensual   != null && <Line type="monotone" dataKey="cer"   name="CER Trailing"    stroke="#CE93D8" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />}
+              </LineChart>
+            </ResponsiveContainer>
+            <div style={{ fontSize: 8, color: "#333", marginTop: 2, fontFamily: "monospace" }}>
+              Proyección lineal — LECAP TEA → mensual | REM 12M → mensual | CER anualizado 30d → mensual
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Interpretación */}
       {bk?.interpretation && (
@@ -2078,14 +2286,6 @@ function IpcView() {
   const years = Array.from(new Set(serieCompleta.map(([d]) => d.slice(0, 4)))).sort()
   const serieFiltrada = ipcYear === "all" ? serieCompleta : serieCompleta.filter(([d]) => d.startsWith(ipcYear))
 
-  // Acumulado anual (ya en %)
-  const acumPorAnio: Record<string, number> = {}
-  years.forEach(y => {
-    const meses = serieCompleta.filter(([d]) => d.startsWith(y))
-    if (meses.length > 0)
-      acumPorAnio[y] = meses.reduce((acc, [, v]) => (1 + acc / 100) * (1 + v / 100) * 100 - 100, 0)
-  })
-
   // Datos para el gráfico de línea
   const chartData = serieFiltrada.map(([d, v]) => ({
     date: d,
@@ -2111,10 +2311,11 @@ function IpcView() {
 
       <SubTabs
         tabs={[
-          { key: "serie",    label: "Serie Mensual" },
-          { key: "canasta",  label: "Canasta 2016 vs 2022" },
-          { key: "personal", label: "Mi Inflación" },
-          { key: "mundo",    label: "Inflación Mundial" },
+          { key: "serie",     label: "Serie Mensual" },
+          { key: "historica", label: "Histórica 1943–" },
+          { key: "canasta",   label: "Canasta 2016 vs 2022" },
+          { key: "personal",  label: "Mi Inflación" },
+          { key: "mundo",     label: "Inflación Mundial" },
         ]}
         active={ipcTab}
         onChange={setIpcTab}
@@ -2164,21 +2365,6 @@ function IpcView() {
               </LineChart>
             </ResponsiveContainer>
 
-            {/* Panel acumulado por año */}
-            {ipcYear === "all" && years.length > 0 && (
-              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 10, padding: "8px 4px 0", borderTop: "1px solid #111" }}>
-                {years.slice(-8).map(y => (
-                  <div key={y} style={{ flex: "1 1 75px", padding: "6px 10px", background: "#080808", border: "1px solid #1a1a1a", borderRadius: 3, textAlign: "center" }}>
-                    <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", marginBottom: 2 }}>{y}</div>
-                    <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "monospace",
-                      color: (acumPorAnio[y] ?? 0) > 100 ? "#FF433D" : (acumPorAnio[y] ?? 0) > 30 ? "#FFA028" : "#4AF6C3" }}>
-                      {acumPorAnio[y] != null ? `${acumPorAnio[y].toFixed(0)}%` : "—"}
-                    </div>
-                    <div style={{ fontSize: 7, color: "#333", fontFamily: "monospace" }}>acum.</div>
-                  </div>
-                ))}
-              </div>
-            )}
             <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>Fuente: INDEC · IPC Nacional · datos.gob.ar</div>
           </div>
 
@@ -2186,6 +2372,8 @@ function IpcView() {
           <BreakEvenSection />
         </div>
       )}
+
+      {ipcTab === "historica" && <IpcHistoricaView />}
 
       {ipcTab === "canasta" && <PonderacionesTable />}
 
@@ -2307,7 +2495,7 @@ function BalanzaView() {
   const chartData = rows.map(r => ({
     label: r.d,
     Exportaciones: r.expo,
-    Importaciones: r.impo != null ? -r.impo : null,   // impo negativa para visual
+    Importaciones: r.impo,
     Saldo: r.saldo,
   }))
 
@@ -2349,10 +2537,10 @@ function BalanzaView() {
             <DownloadCSV data={rows.map(r => ({ periodo: r.d, exportaciones: r.expo ?? "", importaciones: r.impo ?? "", saldo: r.saldo ?? "" }))} filename="balanza-comercial" />
           </div>
 
-          {/* Gráfico de barras */}
+          {/* Gráfico de líneas — Expo / Impo / Saldo */}
           <div style={{ padding: "0 8px 8px" }}>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }} barCategoryGap="20%">
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="#1a1a1a" strokeDasharray="3 3" />
                 <XAxis
                   dataKey="label"
@@ -2370,42 +2558,21 @@ function BalanzaView() {
                   tick={{ fill: "#555", fontSize: 8 }}
                   axisLine={{ stroke: "#333" }}
                   tickLine={false}
-                  tickFormatter={(v: number) => `${Math.round(Math.abs(v)).toLocaleString("es-AR")}`}
+                  tickFormatter={(v: number) => `${Math.round(v).toLocaleString("es-AR")}`}
                 />
                 <Tooltip
                   contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10, color: "#FFA028" }}
-                  formatter={(value: unknown, name: unknown) => {
-                    const v = Number(value)
-                    const absV = Math.abs(v)
-                    return [`${absV.toLocaleString("es-AR")} M USD`, String(name)]
-                  }}
+                  formatter={(value: unknown, name: unknown) => [`${Number(value).toLocaleString("es-AR")} M USD`, String(name)]}
+                  labelFormatter={(l: unknown) => { const s = String(l); const p = s.split("-"); return p.length >= 2 ? `${p[1]}/${p[0]}` : s }}
                 />
                 <Legend wrapperStyle={{ fontSize: 9, color: "#888" }} />
                 <ReferenceLine y={0} stroke="#333" />
-                <Bar dataKey="Exportaciones" fill="#4AF6C3" opacity={0.85} radius={[2, 2, 0, 0]} />
-                <Bar dataKey="Importaciones" fill="#FF433D" opacity={0.85} radius={[0, 0, 2, 2]} />
-              </BarChart>
+                <Line type="monotone" dataKey="Exportaciones" stroke="#4AF6C3" strokeWidth={2} dot={false} connectNulls />
+                <Line type="monotone" dataKey="Importaciones" stroke="#FF433D" strokeWidth={2} dot={false} connectNulls />
+                <Line type="monotone" dataKey="Saldo" stroke="#FFA028" strokeWidth={1.5} dot={false} connectNulls strokeDasharray="4 2" />
+              </LineChart>
             </ResponsiveContainer>
-            {/* Saldo como línea separada */}
-            <div style={{ marginTop: 8 }}>
-              <ResponsiveContainer width="100%" height={100}>
-                <BarChart data={rows.map(r => ({ label: r.d, Saldo: r.saldo }))} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid stroke="#1a1a1a" strokeDasharray="3 3" />
-                  <XAxis dataKey="label" tick={{ fill: "#555", fontSize: 8 }} axisLine={{ stroke: "#333" }} tickLine={false}
-                    tickFormatter={(d: string) => { const p = d.split("-"); return p.length >= 2 ? p[1] + "/" + p[0].slice(2) : d }}
-                    interval="preserveStartEnd" />
-                  <YAxis tick={{ fill: "#555", fontSize: 8 }} axisLine={{ stroke: "#333" }} tickLine={false}
-                    tickFormatter={(v: number) => `${Math.round(v).toLocaleString("es-AR")}`} />
-                  <Tooltip contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10, color: "#FFA028" }}
-                    formatter={(v: unknown) => [`${Number(v).toLocaleString("es-AR")} M USD`, "Saldo"]} />
-                  <ReferenceLine y={0} stroke="#555" strokeDasharray="3 3" />
-                  <Bar dataKey="Saldo" radius={[2, 2, 0, 0]}>
-                    {rows.map((r) => (
-                      <Cell key={r.d} fill={r.saldo != null && r.saldo >= 0 ? "#4AF6C3" : "#FF433D"} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+            <div style={{ display: "none" }}>{/* saldo chart merged above */}
               <div style={{ fontSize: 8, color: "#333", textAlign: "center", marginTop: 2 }}>SALDO COMERCIAL (USD millones)</div>
             </div>
             <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>Fuente: INDEC · Intercambio Comercial Argentino · datos.gob.ar</div>
@@ -3374,7 +3541,89 @@ function FXView() {
           Fuente: argentinadatos.com · Bandas BCRA desde 11-abr-2025 · F1 (hasta dic-2025): Piso −1%/mes · Techo +1%/mes · F2 (ene-2026+): IPC T-2 real vía INDEC/datos.gob.ar · proyección 3 meses
         </div>
       </div>
+      <FXExpectativasSection lastOficial={last?.oficial ?? null} />
       </>}
+    </div>
+  )
+}
+
+// ── FX Expectativas (REM forward + Polymarket) ────────────────────────────────
+function FXExpectativasSection({ lastOficial }: { lastOficial: number | null }) {
+  const [remData, setRemData]   = useState<{ dolar_12m: number | null; fecha: string | null } | null>(null)
+  const [polyData, setPolyData] = useState<{ question: string; probability: number; slug: string }[]>([])
+
+  useEffect(() => {
+    fetch("/api/breakeven")
+      .then(r => r.json())
+      .then(j => setRemData(j.data?.rem ?? null))
+      .catch(() => {})
+    fetch("/api/polymarket?category=argentina")
+      .then(r => r.json())
+      .then(j => setPolyData(j.data ?? []))
+      .catch(() => {})
+  }, [])
+
+  if (!remData?.dolar_12m && polyData.length === 0) return null
+
+  const dolar12m = remData?.dolar_12m
+  const monthlyRate = dolar12m != null ? Math.pow(1 + dolar12m / 100, 1 / 12) - 1 : null
+  const base = lastOficial
+
+  const hoy = new Date()
+  const forwardData = base != null && monthlyRate != null
+    ? Array.from({ length: 13 }, (_, i) => {
+        if (i === 0) {
+          return { label: "HOY", oficial_fwd: base, rem_fwd: base }
+        }
+        const d = new Date(hoy.getFullYear(), hoy.getMonth() + i, 1)
+        const label = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getFullYear()).slice(2)}`
+        return { label, oficial_fwd: null, rem_fwd: parseFloat((base * Math.pow(1 + monthlyRate, i)).toFixed(0)) }
+      })
+    : []
+
+  // Polymarket: buscar mercado de mayor volumen sobre dólar/devaluación argentina
+  const polyMarketFX = polyData.find(m =>
+    /dollar|dolar|peso|devaluación|devaluation|ars|tc|tipo de cambio/i.test(m.question)
+  )
+
+  return (
+    <div style={{ borderTop: "1px solid #111", marginTop: 4, padding: "8px 12px" }}>
+      <div style={{ fontSize: 9, color: "#FFA028", fontFamily: "monospace", letterSpacing: 1.5, fontWeight: 700, marginBottom: 6 }}>
+        EXPECTATIVAS TC — PRÓXIMOS 12 MESES
+      </div>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+        {dolar12m != null && (
+          <div style={{ flex: "1 1 140px", padding: "8px 12px", background: "#080808", border: "1px solid #111" }}>
+            <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>REM — USD en 12M</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#4FC3F7", fontFamily: "monospace" }}>+{dolar12m.toFixed(1)}%</div>
+            <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>mediana analistas · {remData?.fecha ?? ""}</div>
+          </div>
+        )}
+        {polyMarketFX && (
+          <div style={{ flex: "1 1 200px", padding: "8px 12px", background: "#080808", border: "1px solid #222" }}>
+            <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>Polymarket</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#FFA028", fontFamily: "monospace" }}>{polyMarketFX.probability}%</div>
+            <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", lineHeight: 1.4, marginTop: 2 }}>{polyMarketFX.question.slice(0, 80)}</div>
+          </div>
+        )}
+      </div>
+      {forwardData.length > 0 && (
+        <ResponsiveContainer width="100%" height={160}>
+          <LineChart data={forwardData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke="#111" strokeDasharray="3 3" />
+            <XAxis dataKey="label" tick={{ fill: "#555", fontSize: 8 }} axisLine={{ stroke: "#222" }} tickLine={false} />
+            <YAxis tick={{ fill: "#555", fontSize: 8 }} axisLine={{ stroke: "#222" }} tickLine={false}
+              tickFormatter={(v: number) => `$${v.toLocaleString("es-AR")}`} domain={["auto", "auto"]} />
+            <Tooltip contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 9, fontFamily: "monospace" }}
+              formatter={(v: unknown) => [`$${Number(v).toLocaleString("es-AR")}`, "Proyección REM"]} />
+            <Line type="monotone" dataKey="oficial_fwd" name="Tipo de cambio oficial actual" stroke="#4AF6C3" strokeWidth={2} dot={{ r: 4 }} connectNulls={false} />
+            <Line type="monotone" dataKey="rem_fwd" name="Proyección REM" stroke="#4FC3F7" strokeWidth={2} dot={false} strokeDasharray="5 3" connectNulls />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+      <div style={{ fontSize: 8, color: "#333", fontFamily: "monospace", marginTop: 2 }}>
+        Proyección compuesta mensual desde dólar oficial · REM BCRA · Polymarket Gamma API
+      </div>
     </div>
   )
 }
@@ -3780,21 +4029,40 @@ function DeudaView() {
                 </div>
               )}
 
-              {/* Composición por acreedor */}
+              {/* Composición por acreedor y moneda — PieCharts */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, padding: "8px 12px" }}>
-                {[
+                {([
                   { title: "Por Acreedor", data: stock.data.composicion_acreedor },
                   { title: "Por Moneda",   data: stock.data.composicion_moneda },
-                ].map((section, si) => (
+                ] as const).map((section, si) => (
                   <div key={section.title} style={{ background: "#080808", border: "1px solid #111", padding: 10 }}>
-                    <div style={{ fontSize: 8, color: "#FFA028", letterSpacing: 1, marginBottom: 8 }}>{section.title.toUpperCase()}</div>
-                    {section.data.map((item, ii) => (
-                      <div key={item.nombre} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                        <div style={{ width: 8, height: 8, background: PIE_COLORS[(si * 4 + ii) % PIE_COLORS.length] }} />
-                        <div style={{ flex: 1, fontSize: 8, color: "#888" }}>{item.nombre}</div>
-                        <div style={{ fontSize: 9, fontFamily: "monospace", color: "#ccc", fontWeight: 700 }}>{item.pct}%</div>
+                    <div style={{ fontSize: 8, color: "#FFA028", letterSpacing: 1, marginBottom: 4 }}>{section.title.toUpperCase()}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <PieChart width={110} height={110}>
+                        <Pie
+                          data={section.data.map(d => ({ name: d.nombre, value: d.pct }))}
+                          cx={50} cy={50} innerRadius={28} outerRadius={50}
+                          dataKey="value" stroke="none"
+                        >
+                          {section.data.map((_, ii) => (
+                            <Cell key={ii} fill={PIE_COLORS[(si * 4 + ii) % PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 8, fontFamily: "monospace" }}
+                          formatter={(v: unknown, name: unknown) => [`${v}%`, String(name)]}
+                        />
+                      </PieChart>
+                      <div style={{ flex: 1 }}>
+                        {section.data.map((item, ii) => (
+                          <div key={item.nombre} style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3 }}>
+                            <div style={{ width: 7, height: 7, background: PIE_COLORS[(si * 4 + ii) % PIE_COLORS.length], flexShrink: 0 }} />
+                            <div style={{ flex: 1, fontSize: 8, color: "#888", lineHeight: 1.2 }}>{item.nombre}</div>
+                            <div style={{ fontSize: 9, fontFamily: "monospace", color: "#ccc", fontWeight: 700 }}>{item.pct}%</div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
                   </div>
                 ))}
               </div>

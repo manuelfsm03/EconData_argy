@@ -242,7 +242,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (endpoint === "balanza") {
-      const data = await getMultiserie(["exportaciones", "importaciones", "saldo_comercial"], 24)
+      const data = await getMultiserie(["exportaciones", "importaciones", "saldo_comercial"], 120)
       return NextResponse.json({ data, updated_at: new Date().toISOString(), source: "apis.datos.gob.ar" })
     }
 
