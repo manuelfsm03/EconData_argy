@@ -93,10 +93,40 @@ function GraficoTC({ data }: { data: TCEntry[] }) {
     })
   }
 
+  // Dominio Y ajustado a los datos visibles + 3% de padding
+  const yDomain = useMemo(() => {
+    const activeKeys = LINES.filter((l) => visibles.has(l.key)).map((l) => l.key)
+    const values: number[] = data.flatMap((entry) =>
+      activeKeys.flatMap((k) => {
+        const v = entry[k as keyof TCEntry]
+        return typeof v === "number" && v > 0 ? [v] : []
+      })
+    )
+    if (values.length === 0) return ["auto", "auto"] as const
+    const min = Math.min(...values)
+    const max = Math.max(...values)
+    const pad = Math.max((max - min) * 0.03, max * 0.01)
+    return [Math.floor(min - pad), Math.ceil(max + pad)] as const
+  }, [data, visibles])
+
+  // Override manual de escala
+  const [scaleMin, setScaleMin] = useState("")
+  const [scaleMax, setScaleMax] = useState("")
+  const isOverriding = scaleMin !== "" || scaleMax !== ""
+
+  const effectiveDomain = useMemo((): [number | string, number | string] => {
+    const uMin = scaleMin !== "" ? parseFloat(scaleMin) : null
+    const uMax = scaleMax !== "" ? parseFloat(scaleMax) : null
+    return [
+      uMin !== null && !isNaN(uMin) ? uMin : yDomain[0],
+      uMax !== null && !isNaN(uMax) ? uMax : yDomain[1],
+    ]
+  }, [yDomain, scaleMin, scaleMax])
+
   return (
     <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a" }}>
-      {/* Toggle buttons */}
-      <div style={{ display: "flex", gap: 4, padding: "6px 12px", borderBottom: "1px solid #1a1a1a" }}>
+      {/* Toggle buttons + controles de escala */}
+      <div style={{ display: "flex", gap: 4, padding: "6px 12px", borderBottom: "1px solid #1a1a1a", alignItems: "center", flexWrap: "wrap" }}>
         {LINES.map((l) => (
           <button
             key={l.key}
@@ -113,6 +143,47 @@ function GraficoTC({ data }: { data: TCEntry[] }) {
             {l.name}
           </button>
         ))}
+
+        {/* Escala manual */}
+        <div style={{ marginLeft: "auto", display: "flex", gap: 4, alignItems: "center" }}>
+          <span style={{ fontSize: 9, color: "#444", letterSpacing: 1 }}>Y:</span>
+          <input
+            type="number"
+            placeholder={typeof yDomain[0] === "number" ? String(Math.round(yDomain[0] as number)) : "min"}
+            value={scaleMin}
+            onChange={(e) => setScaleMin(e.target.value)}
+            style={{
+              width: 58, fontSize: 9, background: "#0d0d0d",
+              border: `1px solid ${scaleMin ? "#FFA028" : "#333"}`,
+              color: scaleMin ? "#FFA028" : "#666",
+              padding: "2px 4px", borderRadius: 2, outline: "none",
+            }}
+          />
+          <span style={{ fontSize: 9, color: "#333" }}>–</span>
+          <input
+            type="number"
+            placeholder={typeof yDomain[1] === "number" ? String(Math.round(yDomain[1] as number)) : "max"}
+            value={scaleMax}
+            onChange={(e) => setScaleMax(e.target.value)}
+            style={{
+              width: 58, fontSize: 9, background: "#0d0d0d",
+              border: `1px solid ${scaleMax ? "#FFA028" : "#333"}`,
+              color: scaleMax ? "#FFA028" : "#666",
+              padding: "2px 4px", borderRadius: 2, outline: "none",
+            }}
+          />
+          {isOverriding && (
+            <button
+              onClick={() => { setScaleMin(""); setScaleMax("") }}
+              style={{
+                fontSize: 9, padding: "2px 6px", background: "transparent",
+                border: "1px solid #555", color: "#888", cursor: "pointer", borderRadius: 2,
+              }}
+            >
+              AUTO
+            </button>
+          )}
+        </div>
       </div>
 
       <div style={{ padding: "8px 4px 4px 0" }}>
@@ -126,10 +197,17 @@ function GraficoTC({ data }: { data: TCEntry[] }) {
               interval="preserveStartEnd"
             />
             <YAxis
+              domain={effectiveDomain}
               tick={{ fill: "#555", fontSize: 9 }}
               axisLine={{ stroke: "#333" }} tickLine={false}
-              tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`}
-              width={42}
+              tickFormatter={(v: number) =>
+                v >= 10_000
+                  ? `$${(v / 1_000).toFixed(0)}k`
+                  : v >= 1_000
+                  ? `$${(v / 1_000).toFixed(1)}k`
+                  : `$${Math.round(v)}`
+              }
+              width={52}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend
