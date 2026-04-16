@@ -8,52 +8,36 @@ interface ChartDownloadProps {
   chartRef?: React.RefObject<HTMLDivElement | null>
 }
 
-async function svgToPng(container: HTMLElement, filename: string) {
-  const svg = container.querySelector("svg")
-  if (!svg) { alert("No se encontró el gráfico SVG."); return }
+async function capturePng(container: HTMLElement, filename: string) {
+  // html-to-image captures the actual rendered DOM (CSS styles included)
+  // — fixes blank charts when using Recharts SVG serialization approach
+  const { toPng } = await import("html-to-image")
 
-  const rect = svg.getBoundingClientRect()
-  const W = Math.round(rect.width  || 900)
-  const H = Math.round(rect.height || 350)
+  const dataUrl = await toPng(container, {
+    backgroundColor: "#060606",
+    pixelRatio: window.devicePixelRatio || 2,
+    style: { borderRadius: "0" },
+  })
 
-  // Serializar el SVG con fondo negro explícito
-  const clone = svg.cloneNode(true) as SVGElement
-  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg")
-  clone.setAttribute("width",  String(W))
-  clone.setAttribute("height", String(H))
-  // Insertar rect de fondo
-  const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect")
-  bg.setAttribute("width", "100%"); bg.setAttribute("height", "100%"); bg.setAttribute("fill", "#060606")
-  clone.insertBefore(bg, clone.firstChild)
-
-  const svgStr  = new XMLSerializer().serializeToString(clone)
-  const svgBlob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" })
-  const url     = URL.createObjectURL(svgBlob)
-
+  // Draw watermark on top via canvas
   const img = new Image()
-  img.crossOrigin = "anonymous"
   await new Promise<void>((resolve, reject) => {
     img.onload  = () => resolve()
     img.onerror = reject
-    img.src = url
+    img.src = dataUrl
   })
 
+  const W = img.width
+  const H = img.height
+
   const canvas = document.createElement("canvas")
-  const scale  = window.devicePixelRatio || 1
-  canvas.width  = W * scale
-  canvas.height = H * scale
+  canvas.width  = W
+  canvas.height = H
   const ctx = canvas.getContext("2d")!
-  ctx.scale(scale, scale)
 
-  // Fondo
-  ctx.fillStyle = "#060606"
-  ctx.fillRect(0, 0, W, H)
+  ctx.drawImage(img, 0, 0)
 
-  // Gráfico
-  ctx.drawImage(img, 0, 0, W, H)
-  URL.revokeObjectURL(url)
-
-  // Marca de agua diagonal central (tenue)
+  // Diagonal watermark (very subtle)
   ctx.save()
   ctx.translate(W / 2, H / 2)
   ctx.rotate(-Math.PI / 6)
@@ -64,7 +48,7 @@ async function svgToPng(container: HTMLElement, filename: string) {
   ctx.fillText("lapizarra.ar", 0, 0)
   ctx.restore()
 
-  // Marca de agua esquina inferior derecha
+  // Corner watermark
   ctx.font = `${Math.round(W / 70)}px monospace`
   ctx.fillStyle = "rgba(255,160,40,0.45)"
   ctx.textAlign  = "right"
@@ -72,9 +56,11 @@ async function svgToPng(container: HTMLElement, filename: string) {
   ctx.fillText("lapizarra.ar", W - 8, H - 6)
 
   const a = document.createElement("a")
-  a.download = (filename.endsWith(".png") ? filename : filename + ".png")
+  a.download = filename.endsWith(".png") ? filename : filename + ".png"
   a.href = canvas.toDataURL("image/png")
+  document.body.appendChild(a)
   a.click()
+  document.body.removeChild(a)
 }
 
 function downloadCsv(data: Record<string, unknown>[], filename: string) {
@@ -95,12 +81,14 @@ function downloadCsv(data: Record<string, unknown>[], filename: string) {
   const a    = document.createElement("a")
   a.href = url
   a.download = filename.endsWith(".csv") ? filename : filename + ".csv"
+  document.body.appendChild(a)
   a.click()
+  document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
 
 export function ChartDownload({ csvData, filename, chartRef }: ChartDownloadProps) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen]       = useState(false)
   const [loading, setLoading] = useState(false)
   const btnRef = useRef<HTMLDivElement>(null)
 
@@ -108,8 +96,8 @@ export function ChartDownload({ csvData, filename, chartRef }: ChartDownloadProp
     if (!chartRef?.current) { alert("No hay referencia al gráfico."); return }
     setLoading(true)
     setOpen(false)
-    try { await svgToPng(chartRef.current, filename) }
-    catch { alert("Error al generar la imagen.") }
+    try { await capturePng(chartRef.current, filename) }
+    catch (e) { console.error(e); alert("Error al generar la imagen.") }
     finally { setLoading(false) }
   }
 
