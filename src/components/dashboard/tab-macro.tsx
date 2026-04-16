@@ -1884,7 +1884,7 @@ function IpcView() {
   years.forEach(y => {
     const meses = serieCompleta.filter(([d]) => d.startsWith(y))
     if (meses.length > 0) {
-      const acum = meses.reduce((acc, [, v]) => (1 + acc) * (1 + v / 100) - 1, 0) * 100
+      const acum = meses.reduce((acc, [, v]) => (1 + acc) * (1 + v) - 1, 0) * 100
       acumPorAnio[y] = acum
     }
   })
@@ -1893,7 +1893,7 @@ function IpcView() {
     <div>
       <SectionMeta title="IPC — Inflación" help="El IPC (Índice de Precios al Consumidor) mide la variación mensual e interanual de los precios al consumidor. Elaborado por INDEC. La variación interanual compara con el mismo mes del año anterior." source="INDEC · datos.gob.ar" />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
-        <KPI label="IPC Var. Mensual" value={varMensual != null ? fmtNum(varMensual) : null} unit="% mensual · último dato" />
+        <KPI label="IPC Var. Mensual" value={varMensual != null ? fmtNum(varMensual * 100) : null} unit="% mensual · último dato" />
         <KPI label="IPC Interanual" value={varInteranual != null ? fmtNum(varInteranual) : null} unit="% interanual · último dato" />
         <KPI label="IPC Núcleo" value={nucleoMensual != null ? fmtNum(nucleoMensual) : null} unit="% mensual · excl. estac. y reg." />
         <KPI label="Alimentos" value={getVarMens("ipc_alimentos") != null ? fmtNum(getVarMens("ipc_alimentos")) : null} unit="% mensual" />
@@ -1928,7 +1928,7 @@ function IpcView() {
               ))}
             </div>
             <DownloadCSV
-              data={serieFiltrada.map(([d, v]) => ({ periodo: d, variacion_mensual_pct: v.toFixed(2) }))}
+              data={serieFiltrada.map(([d, v]) => ({ periodo: d, variacion_mensual_pct: (v * 100).toFixed(2) }))}
               filename="ipc-mensual"
             />
           </div>
@@ -1956,19 +1956,28 @@ function IpcView() {
                   tick={{ fill: "#555", fontSize: 8 }}
                   axisLine={{ stroke: "#333" }}
                   tickLine={false}
-                  tickFormatter={(v: number) => `${v.toFixed(1)}%`}
+                  tickFormatter={(v: number) => `${(v * 100).toFixed(1)}%`}
                 />
-                <Tooltip
-                  contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10 }}
-                  labelStyle={{ color: "#FFA028" }}
-                  itemStyle={{ color: "#fff" }}
-                  formatter={(v: unknown) => [`${Number(v).toFixed(2)}%`, "Var. mensual IPC"]}
-                  labelFormatter={(l) => `Período: ${String(l)}`}
-                />
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                <Tooltip {...{
+                  contentStyle: { background: "#0a0a0a", border: "1px solid #222", fontSize: 10 },
+                  itemStyle: { color: "#aaa" },
+                  formatter: (v: unknown) => [`${(Number(v) * 100).toFixed(2)}%`, "Var. mensual IPC"],
+                  labelFormatter: (l: unknown, payload: any[]) => (
+                    <span>
+                      <span style={{ color: "#FFA028" }}>Período: {String(l)}</span>
+                      {payload?.[0]?.value != null && (
+                        <span style={{ display: "block", fontSize: 18, fontWeight: 700, color: "#fff", margin: "4px 0 2px" }}>
+                          {(Number(payload[0].value) * 100).toFixed(2)}%
+                        </span>
+                      )}
+                    </span>
+                  ),
+                } as any} />
                 <ReferenceLine y={0} stroke="#333" />
                 <Bar dataKey="valor" radius={[2, 2, 0, 0]}>
                   {serieFiltrada.map(([d, v]) => (
-                    <Cell key={d} fill={v > 6 ? "#FF433D" : v > 3 ? "#FFA028" : "#4AF6C3"} />
+                    <Cell key={d} fill={v > 0.06 ? "#FF433D" : v > 0.03 ? "#FFA028" : "#4AF6C3"} />
                   ))}
                 </Bar>
               </BarChart>
