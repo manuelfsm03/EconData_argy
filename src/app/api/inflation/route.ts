@@ -33,7 +33,7 @@ async function fetchFallbackInflation(limit: number, offset: number, requestUrl:
         date,
         monthly: monthlyValue,
         yearToDate: Number.isFinite(ytdBase) ? ytdBase : null,
-        interannual: interannual.get(date) ?? null,
+        interannual: interannual.get(date) != null ? (interannual.get(date)! / 100) : null,
         accumulated: null,
       }
     })
