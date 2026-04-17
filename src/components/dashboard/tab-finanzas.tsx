@@ -804,18 +804,29 @@ function CommoditiesView() {
     data: histMap[`${k}_${selPeriod}`] ?? [],
   })).filter(s => s.item)
 
-  const dateSet = new Set<string>()
-  for (const s of allSeries) for (const [d] of s.data) dateSet.add(d)
-  const dates = [...dateSet].sort()
-
   const seriesMap: Record<string, Record<string, number>> = {}
   for (const s of allSeries) seriesMap[s.item.key] = Object.fromEntries(s.data)
 
+  // Primera fecha común a TODAS las series seleccionadas
+  const commonStart = allSeries.reduce<string | null>((acc, s) => {
+    const first = s.data[0]?.[0]
+    if (!first) return acc
+    return acc == null || first > acc ? first : acc
+  }, null)
+
+  const dateSet = new Set<string>()
+  for (const s of allSeries) for (const [d] of s.data) {
+    if (!commonStart || d >= commonStart) dateSet.add(d)
+  }
+  const dates = [...dateSet].sort()
+
   const base0: Record<string, number> = {}
-  if (isMulti) {
+  if (isMulti && commonStart) {
     for (const s of allSeries) {
-      const first = s.data[0]?.[1]
-      if (first) base0[s.item.key] = first
+      // Buscar el valor en commonStart o el primer valor disponible desde ahí
+      const val = seriesMap[s.item.key]?.[commonStart]
+        ?? s.data.find(([d]) => d >= commonStart)?.[1]
+      if (val) base0[s.item.key] = val
     }
   }
 
@@ -1138,23 +1149,30 @@ function CryptoView() {
     data: histMap[`${k}_${selPeriod}`] ?? [],
   })).filter(s => s.crypto && s.data.length)
 
-  // Unir todas las fechas
-  const dateSet = new Set<string>()
-  for (const s of allSeries) for (const [d] of s.data) dateSet.add(d)
-  const dates = [...dateSet].sort()
-
   // Construir mapa por serie
   const seriesMap: Record<string, Record<string, number>> = {}
-  for (const s of allSeries) {
-    seriesMap[s.crypto.key] = Object.fromEntries(s.data)
-  }
+  for (const s of allSeries) seriesMap[s.crypto.key] = Object.fromEntries(s.data)
 
-  // Si multi: normalizar a base 100 desde primer punto
+  // Primera fecha COMÚN a todas las series (la más tardía de los primeros puntos)
+  const commonStart = allSeries.reduce<string | null>((acc, s) => {
+    const first = s.data[0]?.[0]
+    if (!first) return acc
+    return acc == null || first > acc ? first : acc
+  }, null)
+
+  const dateSet = new Set<string>()
+  for (const s of allSeries) for (const [d] of s.data) {
+    if (!commonStart || d >= commonStart) dateSet.add(d)
+  }
+  const dates = [...dateSet].sort()
+
+  // Base = valor en commonStart para cada serie
   const base100: Record<string, number> = {}
-  if (isMulti) {
+  if (isMulti && commonStart) {
     for (const s of allSeries) {
-      const firstVal = s.data[0]?.[1]
-      if (firstVal) base100[s.crypto.key] = firstVal
+      const val = seriesMap[s.crypto.key]?.[commonStart]
+        ?? s.data.find(([d]) => d >= commonStart)?.[1]
+      if (val) base100[s.crypto.key] = val
     }
   }
 
@@ -1164,7 +1182,7 @@ function CryptoView() {
       const raw = seriesMap[s.crypto.key]?.[fecha]
       if (raw != null) {
         row[s.crypto.key] = isMulti && base100[s.crypto.key]
-          ? parseFloat((((raw / base100[s.crypto.key]) - 1) * 100).toFixed(2))  // % change from start
+          ? parseFloat((((raw / base100[s.crypto.key]) - 1) * 100).toFixed(2))
           : raw
       }
     }
