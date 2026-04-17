@@ -14,6 +14,12 @@ function fmtNum(v: number | null | undefined, decimals = 2): string {
   return v.toLocaleString("es-AR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
 }
 
+// USD prices always use English format (comma thousands, period decimal)
+function fmtUSD(v: number | null | undefined, decimals = 2): string {
+  if (v == null) return "—"
+  return v.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+}
+
 function fmtPct(v: number | null | undefined, decimals = 2): string {
   if (v == null) return "—"
   return `${fmtNum(v, decimals)}%`
@@ -946,10 +952,10 @@ function CryptoView() {
             }}>
               <div style={{ fontSize: 8, color: isActive ? c.color : "#555", textTransform: "uppercase", letterSpacing: 1 }}>{c.label}</div>
               <div style={{ fontSize: 17, fontWeight: 700, color: isActive ? "#fff" : "#444", marginTop: 2, lineHeight: 1 }}>
-                {q ? `$${fmtNum(q.precio, decimals(c.key))}` : "—"}
+                {q ? `$${fmtUSD(q.precio, decimals(c.key))}` : "—"}
               </div>
               <div style={{ fontSize: 9, color: q ? changeColor(q.variacion_pct) : "#333", marginTop: 2, fontWeight: 700 }}>
-                {q ? `${q.variacion_pct >= 0 ? "+" : ""}${fmtNum(q.variacion_pct, 2)}%` : "—"}
+                {q ? `${q.variacion_pct >= 0 ? "+" : ""}${fmtUSD(q.variacion_pct, 2)}%` : "—"}
               </div>
               {isActive && <div style={{ width: "100%", height: 2, background: c.color, marginTop: 4, borderRadius: 1 }} />}
             </button>
@@ -986,7 +992,7 @@ function CryptoView() {
                   tickFormatter={d => (d as string)?.slice(0, 7)}
                   interval={Math.max(1, Math.floor(dates.length / 10))} />
                 <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} domain={["auto", "auto"]}
-                  tickFormatter={v => isMulti ? `${v}` : `$${Math.round(v as number).toLocaleString("en-US")}`} />
+                  tickFormatter={v => isMulti ? `${Math.round(v as number)}` : `$${Math.round(v as number).toLocaleString("en-US")}`} />
                 <Tooltip
                   contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 9, color: "#fff", fontFamily: "monospace" }}
                   itemStyle={{ color: "#fff" }}
@@ -995,10 +1001,11 @@ function CryptoView() {
                     const c = CRYPTOS.find(x => x.key === name)
                     const val = v as number
                     return isMulti
-                      ? [`${fmtNum(val, 2)} (base 100)`, c?.label ?? String(name)]
-                      : [`$${fmtNum(val, decimals(String(name)))}`, c?.label ?? String(name)]
+                      ? [`${fmtUSD(val, 1)} (base 100)`, c?.label ?? String(name)]
+                      : [`$${fmtUSD(val, decimals(String(name)))}`, c?.label ?? String(name)]
                   }}
                 />
+                {isMulti && <ReferenceLine y={100} stroke="#333" strokeDasharray="4 4" label={{ value: "base 100", fill: "#555", fontSize: 8, position: "insideTopLeft" }} />}
                 <Legend wrapperStyle={{ fontSize: 9, color: "#aaa" }}
                   formatter={(value) => CRYPTOS.find(c => c.key === value)?.label ?? value} />
                 {allSeries.map(s => (
