@@ -41,12 +41,12 @@ interface RofexRow {
   date: string
   position: string
   maturity: string
-  maturityLabel: string
-  price: number
-  devaluation: number
-  monthlyDevaluation: number
-  tna: number
-  cft: number
+  maturityLabel: string | null
+  price: number | null
+  devaluation: number | null
+  monthlyDevaluation: number | null
+  tna: number | null
+  cft: number | null
   volume: number | null
   openInterest: number | null
   source: "matba" | "db"
