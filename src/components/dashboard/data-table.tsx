@@ -1,10 +1,12 @@
 "use client"
 
+import React from "react"
 import { cn } from "@/lib/utils"
 
 interface Column<T> {
   key: keyof T | string
   header: string
+  headerNode?: React.ReactNode
   render?: (value: unknown, row: T) => React.ReactNode
   className?: string
   numeric?: boolean
@@ -35,7 +37,7 @@ export function DataTable<T extends object>({
                   key={String(col.key)}
                   className={cn(col.numeric && "text-right", col.className)}
                 >
-                  {col.header}
+                  {col.headerNode ?? col.header}
                 </th>
               ))}
             </tr>
