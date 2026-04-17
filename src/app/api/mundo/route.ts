@@ -40,8 +40,14 @@ const TICKERS: Record<string, string> = {
   brent: "BZ=F",
   dxy: "DX-Y.NYB",
   // Crypto
-  bitcoin: "BTC-USD",
+  bitcoin:  "BTC-USD",
   ethereum: "ETH-USD",
+  solana:   "SOL-USD",
+  cardano:  "ADA-USD",
+  xrp:      "XRP-USD",
+  bnb:      "BNB-USD",
+  usdt:     "USDT-USD",
+  usdc:     "USDC-USD",
 }
 
 const YF_HEADERS = {

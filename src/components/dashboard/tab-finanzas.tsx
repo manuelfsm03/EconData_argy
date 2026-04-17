@@ -825,8 +825,14 @@ function MundoView() {
 // ── CRIPTO ────────────────────────────────────────────────────────────────────
 
 const CRYPTOS = [
-  { key: "bitcoin", label: "Bitcoin", ticker: "BTC-USD", color: "#FFA028" },
-  { key: "ethereum", label: "Ethereum", ticker: "ETH-USD", color: "#CE93D8" },
+  { key: "bitcoin",  label: "Bitcoin",  ticker: "BTC-USD",  color: "#FFA028" },
+  { key: "ethereum", label: "Ethereum", ticker: "ETH-USD",  color: "#CE93D8" },
+  { key: "solana",   label: "Solana",   ticker: "SOL-USD",  color: "#4AF6C3" },
+  { key: "cardano",  label: "Cardano",  ticker: "ADA-USD",  color: "#4FC3F7" },
+  { key: "xrp",      label: "XRP",      ticker: "XRP-USD",  color: "#FFD700" },
+  { key: "bnb",      label: "BNB",      ticker: "BNB-USD",  color: "#F0B90B" },
+  { key: "usdt",     label: "USDT",     ticker: "USDT-USD", color: "#26A17B" },
+  { key: "usdc",     label: "USDC",     ticker: "USDC-USD", color: "#2775CA" },
 ]
 
 function CryptoView() {
@@ -854,19 +860,23 @@ function CryptoView() {
 
   if (loading) return <Loading />
 
-  const btc = snap["bitcoin"]
-  const eth = snap["ethereum"]
   const sel = CRYPTOS.find(c => c.key === selCrypto)
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-      {/* KPIs */}
+      {/* KPIs — todas las criptos */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "#050505", borderBottom: "1px solid #111" }}>
-        <KPI label="Bitcoin (BTC)" value={btc ? `$${fmtNum(btc.precio, 0)}` : null} valueColor="#FFA028"
-          unit={btc ? `${btc.variacion_pct >= 0 ? "+" : ""}${fmtNum(btc.variacion_pct, 2)}% hoy` : undefined} />
-        <KPI label="Ethereum (ETH)" value={eth ? `$${fmtNum(eth.precio, 0)}` : null} valueColor="#CE93D8"
-          unit={eth ? `${eth.variacion_pct >= 0 ? "+" : ""}${fmtNum(eth.variacion_pct, 2)}% hoy` : undefined} />
-        {btc && eth && <KPI label="Ratio BTC/ETH" value={fmtNum(btc.precio / eth.precio, 2)} unit="unidades ETH por 1 BTC" />}
+        {CRYPTOS.map(c => {
+          const q = snap[c.key]
+          const decimals = ["usdt","usdc"].includes(c.key) ? 4 : c.key === "cardano" || c.key === "xrp" ? 4 : 0
+          return (
+            <KPI key={c.key} label={c.label}
+              value={q ? `$${fmtNum(q.precio, decimals)}` : null}
+              valueColor={c.color}
+              unit={q ? `${q.variacion_pct >= 0 ? "+" : ""}${fmtNum(q.variacion_pct, 2)}% hoy` : undefined}
+            />
+          )
+        })}
       </div>
 
       {/* Selector */}
