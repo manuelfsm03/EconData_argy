@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from "next/server"
 const MERVAL_BASE = "https://api-merval-production.up.railway.app"
 
 // Todas las categorías + tickers
-export const STOCK_CATEGORIES: Record<string, string[]> = {
+const STOCK_CATEGORIES: Record<string, string[]> = {
   "Bancos y servicios financieros": ["GGAL", "BMA", "BBAR", "SUPV", "VALO", "BYMA", "MTR", "BHIP", "BPAT"],
   "Energía y servicios públicos": ["YPFD", "PAMP", "CEPU", "EDN", "TGSU2", "TGNO4", "TRAN", "CAPX", "CECO2", "CGPA2", "GBAN"],
   "Telecomunicaciones y medios": ["TECO2", "CVH", "GCLA"],
@@ -28,9 +28,9 @@ export const STOCK_CATEGORIES: Record<string, string[]> = {
 }
 
 // Top tickers para ticker tape (Merval líquidos)
-export const MERVAL_TOP = ["GGAL", "BMA", "BBAR", "YPFD", "PAMP", "CEPU", "TECO2", "ALUA", "TXAR", "LOMA", "MIRG", "AGRO", "IRSA", "SUPV"]
+const MERVAL_TOP = ["GGAL", "BMA", "BBAR", "YPFD", "PAMP", "CEPU", "TECO2", "ALUA", "TXAR", "LOMA", "MIRG", "AGRO", "IRSA", "SUPV"]
 
-export interface StockQuote {
+interface StockQuote {
   ticker: string
   category: string
   lastPrice: number | null

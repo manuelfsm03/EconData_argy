@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 
-export interface NewsItem {
+interface NewsItem {
   id: string
   ticker: string
   title: string

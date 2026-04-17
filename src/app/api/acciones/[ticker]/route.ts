@@ -21,7 +21,7 @@ const YF_HEADERS = {
 
 const MERVAL_BASE = "https://api-merval-production.up.railway.app"
 
-export interface OHLCEntry {
+interface OHLCEntry {
   date: string
   open: number | null
   high: number | null
@@ -30,7 +30,7 @@ export interface OHLCEntry {
   volume: number | null
 }
 
-export interface StockDetail {
+interface StockDetail {
   ticker: string
   yfSymbol: string
   lastPrice: number | null
