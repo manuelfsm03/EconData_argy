@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { TabMacro } from "./tab-macro"
 import { TabResumen } from "./tab-resumen"
+import { TabFinanzas } from "./tab-finanzas"
 import { NewsFeed } from "./news-feed"
 import { TickerTape } from "./ticker-tape"
 import { CommandPalette } from "./command-palette"
@@ -216,7 +217,7 @@ export function Dashboard() {
       {/* ── CONTENIDO ───────────────────────────────────────────────────────── */}
       <div style={{ maxWidth: 1400, margin: "0 auto" }}>
         {activeTab === "resumen"   && <TabResumen onNavigate={handleNavigate} />}
-        {activeTab === "finanzas"  && <FinanzasPlaceholder />}
+        {activeTab === "finanzas"  && <TabFinanzas />}
         {activeTab === "macro"     && <TabMacro initialSubtab={macroSubtab} />}
         {activeTab === "bcra"      && <TabBCRALazy initialSubtab={bcraSubtab} />}
         {activeTab === "noticias"  && <TabNoticias />}
