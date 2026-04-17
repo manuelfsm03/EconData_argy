@@ -4321,7 +4321,7 @@ type SenorejaData = {
 }
 
 // Reusable label style for KPI cards
-const kpiLabel: React.CSSProperties = { fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }
+const kpiLabel: React.CSSProperties = { fontSize: 9, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }
 const kpiUnit:  React.CSSProperties = { fontSize: 9, color: "#bbb", marginTop: 2 }
 
 function SenorejaView() {
@@ -4359,7 +4359,7 @@ function SenorejaView() {
           <div style={kpiLabel}>α Cagan estimado</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#FFA028", fontFamily: "monospace" }}>{fmtNum(params.alpha, 3)}</div>
           <div style={kpiUnit}>semi-elasticidad dinero</div>
-          <div style={{ fontSize: 9, color: "#888", marginTop: 2 }}>R² = {fmtNum(params.r2, 3)}</div>
+          <div style={{ fontSize: 9, color: "#bbb", marginTop: 2 }}>R² = {fmtNum(params.r2, 3)}</div>
         </div>
         <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "10px 14px", flex: "1 1 140px" }}>
           <div style={kpiLabel}>π* óptima (Laffer)</div>
@@ -4404,7 +4404,7 @@ function SenorejaView() {
               <YAxis yAxisId="left" stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${Math.round(v / 1000)}B`} />
               {hasPbi && <YAxis yAxisId="right" orientation="right" stroke="#FFA028" fontSize={9} tick={{ fill: "#FFA028" }} tickFormatter={v => `${v}%`} domain={[0, "auto"]} />}
               <Tooltip
-                contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10 }}
+                contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10, color: "#fff" }} itemStyle={{ color: "#fff" }} labelStyle={{ color: "#aaa" }}
                 formatter={(v: unknown, name: unknown) => {
                   if (name === "pct_pbi") return [`${fmtNum(v as number, 2)}% del PBI`, "% PBI"]
                   return [`${fmtNum((v as number) / 1000, 1)}B ARS reales`, "Señoreaje"]
@@ -4442,7 +4442,7 @@ function SenorejaView() {
               />
               <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${Math.round(v / 1000)}B`} />
               <Tooltip
-                contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10 }}
+                contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10, color: "#fff" }} itemStyle={{ color: "#fff" }} labelStyle={{ color: "#aaa" }}
                 formatter={(v: unknown, name: unknown) => [
                   name === "senoraje" ? `${fmtNum((v as number) / 1000, 1)}B ARS reales` : `${fmtNum(v as number, 0)}% anual`,
                   name === "senoraje" ? "Señoreaje teórico" : "Señoreaje obs.",
@@ -4488,7 +4488,7 @@ function SenorejaView() {
               <XAxis dataKey="anio" stroke="#333" fontSize={9} tick={{ fill: "#888" }} />
               <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${Math.round(v / 1000)}B`} />
               <Tooltip
-                contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10 }}
+                contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10, color: "#fff" }} itemStyle={{ color: "#fff" }} labelStyle={{ color: "#aaa" }}
                 formatter={(v: unknown) => [`${fmtNum((v as number) / 1000, 1)}B ARS reales`, "M/P promedio anual"]}
               />
               <Area type="monotone" dataKey="mp_promedio" stroke="#4AF6C3" strokeWidth={2} fill="url(#gradMP)" dot={false} isAnimationActive={false} />
@@ -4508,7 +4508,7 @@ function SenorejaView() {
               <XAxis dataKey="anio" stroke="#333" fontSize={9} tick={{ fill: "#888" }} />
               <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${v}%`} />
               <Tooltip
-                contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10 }}
+                contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10, color: "#fff" }} itemStyle={{ color: "#fff" }} labelStyle={{ color: "#aaa" }}
                 formatter={(v: unknown) => [`${fmtNum(v as number, 1)}%`, "Inflación anual"]}
               />
               <ReferenceLine y={params.pi_star_pct} stroke="#FFA028" strokeDasharray="4 4"
