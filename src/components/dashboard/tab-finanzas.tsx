@@ -414,6 +414,9 @@ interface RofexRow {
   monthlyDevaluation: number
   tna: number
   cft: number
+  volume?: number | null
+  openInterest?: number | null
+  source?: "matba" | "db"
 }
 
 function RofexView() {
@@ -430,7 +433,7 @@ function RofexView() {
   if (loading) return <Loading />
   if (!data.length) return (
     <div style={{ padding: 40, textAlign: "center", color: "#555", fontFamily: "monospace", fontSize: 9 }}>
-      Sin datos ROFEX — verificar cron de scraping
+      Sin datos ROFEX — Matba API no disponible · verificar conectividad
     </div>
   )
 
@@ -510,7 +513,7 @@ function RofexView() {
       </div>
 
       <div style={{ padding: "6px 14px", fontSize: 8, color: "#888", borderTop: "1px solid #111", fontFamily: "monospace" }}>
-        Fuente: ROFEX (Rosario Futures Exchange) vía cron scraping · Actualización diaria
+        Fuente: {data[0]?.source === "matba" ? "Matba Rofex API (apicem.matbarofex.com.ar)" : "ROFEX DB (cron)"} · Actualización cada 5 min
       </div>
     </div>
   )
