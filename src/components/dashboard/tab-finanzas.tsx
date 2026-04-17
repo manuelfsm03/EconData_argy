@@ -927,7 +927,7 @@ function CryptoView() {
       const raw = seriesMap[s.crypto.key]?.[fecha]
       if (raw != null) {
         row[s.crypto.key] = isMulti && base100[s.crypto.key]
-          ? parseFloat(((raw / base100[s.crypto.key]) * 100).toFixed(2))
+          ? parseFloat((((raw / base100[s.crypto.key]) - 1) * 100).toFixed(2))  // % change from start
           : raw
       }
     }
@@ -966,7 +966,7 @@ function CryptoView() {
       {/* Controles */}
       <div style={{ padding: "6px 14px", background: "#050505", borderBottom: "1px solid #111", display: "flex", alignItems: "center", gap: 8 }}>
         <span style={{ fontSize: 8, color: "#555", fontFamily: "monospace" }}>
-          {isMulti ? "Índice base 100" : "Precio USD"}
+          {isMulti ? "% variación desde inicio del período" : "Precio USD"}
         </span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
           {["1mo", "3mo", "6mo", "1y", "2y", "5y"].map(p => (
@@ -992,7 +992,7 @@ function CryptoView() {
                   tickFormatter={d => (d as string)?.slice(0, 7)}
                   interval={Math.max(1, Math.floor(dates.length / 10))} />
                 <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} domain={["auto", "auto"]}
-                  tickFormatter={v => isMulti ? `${Math.round(v as number)}` : `$${Math.round(v as number).toLocaleString("en-US")}`} />
+                  tickFormatter={v => isMulti ? `${(v as number) >= 0 ? "+" : ""}${Math.round(v as number)}%` : `$${Math.round(v as number).toLocaleString("en-US")}`} />
                 <Tooltip
                   contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 9, color: "#fff", fontFamily: "monospace" }}
                   itemStyle={{ color: "#fff" }}
@@ -1001,11 +1001,11 @@ function CryptoView() {
                     const c = CRYPTOS.find(x => x.key === name)
                     const val = v as number
                     return isMulti
-                      ? [`${fmtUSD(val, 1)} (base 100)`, c?.label ?? String(name)]
+                      ? [`${val >= 0 ? "+" : ""}${fmtUSD(val, 1)}%`, c?.label ?? String(name)]
                       : [`$${fmtUSD(val, decimals(String(name)))}`, c?.label ?? String(name)]
                   }}
                 />
-                {isMulti && <ReferenceLine y={100} stroke="#333" strokeDasharray="4 4" label={{ value: "base 100", fill: "#555", fontSize: 8, position: "insideTopLeft" }} />}
+                {isMulti && <ReferenceLine y={0} stroke="#444" strokeDasharray="4 4" label={{ value: "0%", fill: "#555", fontSize: 8, position: "insideTopLeft" }} />}
                 <Legend wrapperStyle={{ fontSize: 9, color: "#aaa" }}
                   formatter={(value) => CRYPTOS.find(c => c.key === value)?.label ?? value} />
                 {allSeries.map(s => (
@@ -1018,7 +1018,7 @@ function CryptoView() {
           )
         }
         <div style={{ fontSize: 8, color: "#888", marginTop: 4, fontFamily: "monospace" }}>
-          {isMulti ? "Gráfico normalizado — base 100 al inicio del período seleccionado · click en una cripto para agregar/quitar" : "Precio en USD · click en múltiples criptos para superponer"}
+          {isMulti ? "% de variación desde el inicio del período · 0% = punto de partida · click en una cripto para agregar/quitar" : "Precio en USD · click en múltiples criptos para superponer y comparar rendimientos"}
         </div>
       </div>
 
