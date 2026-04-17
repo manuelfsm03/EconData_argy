@@ -879,14 +879,10 @@ export function EmaeView() {
                     />
                     <Tooltip
                       contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10, color: "#FFA028" }}
-<<<<<<< HEAD
                       formatter={(v) => {
                         const num = typeof v === "number" ? v : Number(v ?? NaN)
                         return Number.isFinite(num) ? fmtNum(num, 1) : "—"
                       }}
-=======
-                      formatter={(v: unknown) => { const val = v as number | undefined; return val != null ? fmtNum(val, 1) : "—" }}
->>>>>>> upstream/lorenzo
                       cursor={{ fill: "rgba(255,255,255,0.03)" }}
                     />
                     <Legend wrapperStyle={{ fontSize: 9, color: "#888" }} iconType="rect" iconSize={10} />
@@ -923,14 +919,10 @@ export function EmaeView() {
                     />
                     <Tooltip
                       contentStyle={{ background: "#0a0a0a", border: "1px solid #333", fontSize: 10, color: "#FFA028" }}
-<<<<<<< HEAD
                       formatter={(v) => {
                         const num = typeof v === "number" ? v : Number(v ?? NaN)
                         return Number.isFinite(num) ? [`${fmtNum(num, 1)} años`, "Esperanza de vida"] : ["—", "Esperanza de vida"]
                       }}
-=======
-                      formatter={(v: unknown) => { const val = v as number | undefined; return val != null ? [`${fmtNum(val, 1)} años`, "Esperanza de vida"] as [string, string] : ["—", "Esperanza de vida"] as [string, string] }}
->>>>>>> upstream/lorenzo
                       cursor={{ fill: "rgba(255,255,255,0.03)" }}
                     />
                     <Bar dataKey="esperanza" name="Esperanza de vida (años)" fill="#4FC3F7" radius={[2, 2, 0, 0]} maxBarSize={28} />
@@ -1715,13 +1707,8 @@ export function MiInflacionView() {
                   temp["Restaurantes/hoteles"] = encuestaRespuestas[8] || 0
 
                   // Distribuir resto entre categorías menores
-<<<<<<< HEAD
                   const gastosContemp: Record<string, number> = Object.entries(temp).reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {} as Record<string, number>)
                   const totalTemp = Object.values(gastosContemp).reduce((a, b) => a + Number(b ?? 0), 0)
-=======
-                  const gastosContemp = Object.entries(temp).reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {} as Record<string, number>)
-                  const totalTemp = Object.values(gastosContemp).reduce((a, b) => a + b, 0)
->>>>>>> upstream/lorenzo
 
                   // Categorías sin pregunta directa
                   const resto = Math.max(0, totalTemp * 0.08) // 8% de gastos menores

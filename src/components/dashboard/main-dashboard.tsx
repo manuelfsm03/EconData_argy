@@ -99,7 +99,7 @@ export function Dashboard() {
     return () => window.removeEventListener("keydown", handler)
   }, [])
 
-  const handleNavigate = useCallback((tab: string, subtab: string | null, bcra?: string | null) => {
+  const handleNavigate = useCallback((tab: string, subtab?: string | null, bcra?: string | null) => {
     setActiveTab(tab)
     setMacroSubtab(subtab ?? null)
     if (bcra !== undefined) setBcraSubtab(bcra)
