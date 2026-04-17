@@ -242,7 +242,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (endpoint === "balanza") {
-      const data = await getMultiserie(["exportaciones", "importaciones", "saldo_comercial"], 24)
+      const data = await getMultiserie(["exportaciones", "importaciones", "saldo_comercial"], 120)
       return NextResponse.json({ data, updated_at: new Date().toISOString(), source: "apis.datos.gob.ar" })
     }
 
@@ -653,8 +653,38 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // ── PONDERACIONES IPC (INDEC metodología) ────────────────────────────────
+    if (endpoint === "ponderaciones") {
+      return NextResponse.json({
+        data: [
+          { cat: "Alimentos y bebidas",       actual: 25.4, propuesto: 22.4 },
+          { cat: "Beb. alcohólicas/tabaco",   actual:  2.3, propuesto:  2.1 },
+          { cat: "Indumentaria",              actual:  6.8, propuesto:  5.8 },
+          { cat: "Vivienda y servicios",      actual:  9.1, propuesto: 12.6 },
+          { cat: "Equipamiento hogar",        actual:  7.3, propuesto:  5.9 },
+          { cat: "Salud",                     actual:  7.5, propuesto:  9.1 },
+          { cat: "Transporte",               actual: 14.1, propuesto: 13.8 },
+          { cat: "Comunicación",              actual:  2.7, propuesto:  3.4 },
+          { cat: "Recreación y cultura",      actual:  7.5, propuesto:  6.5 },
+          { cat: "Educación",                 actual:  4.3, propuesto:  5.2 },
+          { cat: "Restaurantes/hoteles",      actual:  7.1, propuesto:  7.8 },
+          { cat: "Otros bienes/servicios",    actual:  6.0, propuesto:  5.4 },
+        ],
+        // categorías clasificadas por tipo IPC para cálculo de "tu inflación"
+        tipos: {
+          "Alimentos y bebidas": "alimentos",
+          "Vivienda y servicios": "regulados",
+          "Transporte": "regulados",
+          "Comunicación": "regulados",
+        } as Record<string, string>,
+        updated_at: new Date().toISOString(),
+        source: "INDEC — Metodología IPC Nacional base 2004 y actualización 2022",
+        nota: "Ponderaciones base dic-2016 (2004) y actualización metodológica 2022 (Canasta 2022/23).",
+      })
+    }
+
     return NextResponse.json(
-      { error: "endpoint no válido. Usar ?endpoint=emae|ipc|ipi|balanza|fiscal|fiscal_sankey|automotriz|patentamientos" },
+      { error: "endpoint no válido. Usar ?endpoint=emae|ipc|ipi|balanza|fiscal|fiscal_sankey|automotriz|patentamientos|ponderaciones" },
       { status: 400 },
     )
   } catch (error) {

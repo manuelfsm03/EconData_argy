@@ -21,6 +21,7 @@ export function TabDepositos() {
       <BBGChartPanel title="DEPOSITOS CTA CTE" loading={depositosCC.loading} error={depositosCC.error} source={depositosCC.source}>
         <BBGAreaChart
           title="DEPOSITOS CUENTA CORRIENTE — NIVEL"
+          glossaryKey="DEPOSITOS CC"
           data={depositosCC.data}
           areas={[{ key: "depositos_cc", name: "Cta Corriente", color: "#4AF6C3" }]}
           yAxisLabel="MM ARS"
@@ -30,6 +31,7 @@ export function TabDepositos() {
       <BBGChartPanel title="CAJAS DE AHORRO" loading={cajasAhorro.loading} error={cajasAhorro.error} source={cajasAhorro.source}>
         <BBGAreaChart
           title="CAJAS DE AHORRO — NIVEL"
+          glossaryKey="CAJAS DE AHORRO"
           data={cajasAhorro.data}
           areas={[{ key: "cajas_ahorro", name: "Cajas Ahorro", color: "#FFA028" }]}
           yAxisLabel="MM ARS"
@@ -39,6 +41,7 @@ export function TabDepositos() {
       <BBGChartPanel title="PLAZOS FIJOS" loading={plazosFijos.loading} error={plazosFijos.error} source={plazosFijos.source}>
         <BBGAreaChart
           title="PLAZOS FIJOS — NIVEL"
+          glossaryKey="TASA PLAZO FIJO"
           data={plazosFijos.data}
           areas={[{ key: "plazos_fijos", name: "Plazos Fijos", color: "#0068FF" }]}
           yAxisLabel="MM ARS"
@@ -49,6 +52,7 @@ export function TabDepositos() {
       <BBGChartPanel title="COMPONENTES DEPOSITOS" loading={components.loading} error={components.error} source={components.source}>
         <BBGLineChart
           title="COMPONENTES DE DEPOSITOS"
+          glossaryKey="COMPONENTES DEPOSITOS"
           data={components.data}
           lines={[
             { key: "depositos_cc", name: "Cta Cte", color: "#4AF6C3" },
@@ -62,6 +66,7 @@ export function TabDepositos() {
       <BBGChartPanel title="BASE MONETARIA" loading={baseMon.loading} error={baseMon.error} source={baseMon.source}>
         <BBGAreaChart
           title="BASE MONETARIA — NIVEL"
+          glossaryKey="BASE MONETARIA"
           data={baseMon.data}
           areas={[{ key: "base_monetaria", name: "Base Monetaria", color: "#FFD700" }]}
           yAxisLabel="MM ARS"
@@ -71,6 +76,7 @@ export function TabDepositos() {
       <BBGChartPanel title="CIRCULACION MONETARIA" loading={circulante.loading} error={circulante.error} source={circulante.source}>
         <BBGAreaChart
           title="CIRCULACION MONETARIA — NIVEL"
+          glossaryKey="CIRCULACION MONETARIA"
           data={circulante.data}
           areas={[{ key: "circulacion", name: "Circulación", color: "#FF433D" }]}
           yAxisLabel="MM ARS"
@@ -81,6 +87,7 @@ export function TabDepositos() {
       <BBGChartPanel title="PRESTAMOS PRIV" loading={prestamos.loading} error={prestamos.error} source={prestamos.source}>
         <BBGAreaChart
           title="PRESTAMOS AL SECTOR PRIVADO — NIVEL"
+          glossaryKey="PRESTAMOS PRIVADO"
           data={prestamos.data}
           areas={[{ key: "prestamos_privado", name: "Préstamos Priv.", color: "#4AF6C3" }]}
           yAxisLabel="MM ARS"
@@ -90,6 +97,7 @@ export function TabDepositos() {
       <BBGChartPanel title="M2 PRIVADO YOY" loading={m2.loading} error={m2.error} source={m2.source}>
         <BBGLineChart
           title="M2 PRIVADO — YOY"
+          glossaryKey="M2"
           data={m2.data}
           lines={[{ key: "m2_privado_yoy", name: "M2 Priv YoY", color: "#FFA028" }]}
           yAxisLabel="%"

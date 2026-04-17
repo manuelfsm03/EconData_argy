@@ -10,38 +10,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
+import { STOCK_CATEGORIES, MERVAL_TOP, type StockQuote } from "@/lib/stock-categories"
 
 const MERVAL_BASE = "https://api-merval-production.up.railway.app"
-
-// Todas las categorías + tickers
-const STOCK_CATEGORIES: Record<string, string[]> = {
-  "Bancos y servicios financieros": ["GGAL", "BMA", "BBAR", "SUPV", "VALO", "BYMA", "MTR", "BHIP", "BPAT"],
-  "Energía y servicios públicos": ["YPFD", "PAMP", "CEPU", "EDN", "TGSU2", "TGNO4", "TRAN", "CAPX", "CECO2", "CGPA2", "GBAN"],
-  "Telecomunicaciones y medios": ["TECO2", "CVH", "GCLA"],
-  "Materiales y construcción": ["TXAR", "ALUA", "LOMA", "HARG", "RIGO", "CELU", "DYCA", "GARO", "POLL"],
-  "Industria y manufactura": ["AGRO", "MIRG", "LONG", "DOME", "FERR", "FIPL", "GRIM", "COME"],
-  "Agro, alimentos y retail": ["MOLI", "MOLA", "MORI", "ESME", "HAVA", "LEDE", "SAMI", "PATA", "SEMI", "CRES"],
-  "Inmobiliario y desarrollo": ["CTIO", "IRSA", "TGLT"],
-  "Química, salud y agroquímicos": ["RICH", "INTR", "CARC", "ROSE"],
-  "Infraestructura y concesiones": ["AUSO", "OEST"],
-  "Tecnología y servicios": ["GAMI", "BOLT", "HSAT", "GCDI"],
-}
-
-// Top tickers para ticker tape (Merval líquidos)
-const MERVAL_TOP = ["GGAL", "BMA", "BBAR", "YPFD", "PAMP", "CEPU", "TECO2", "ALUA", "TXAR", "LOMA", "MIRG", "AGRO", "IRSA", "SUPV"]
-
-interface StockQuote {
-  ticker: string
-  category: string
-  lastPrice: number | null
-  closePrice: number | null
-  openPrice: number | null
-  change1D: number | null     // % variación vs cierre anterior
-  volume: number | null       // volumen efectivo en ARS
-  bid: number | null
-  ask: number | null
-}
-
 // ── In-memory cache ────────────────────────────────────────────────────────────
 const _cache: Record<string, { data: unknown; expiry: number }> = {}
 function getCached<T>(k: string): T | null {

@@ -56,6 +56,29 @@ interface NewsTableProps {
   onMore: () => void
 }
 
+function CategoryBadge({ category }: { category: string }) {
+  const cat = CATEGORIES.find((c) => c.key === category)
+  if (!cat || cat.key === "todos") return null
+  return (
+    <span style={{
+      display: "inline-block",
+      fontSize: 8,
+      fontFamily: "monospace",
+      fontWeight: 700,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      color: cat.color,
+      border: `1px solid ${cat.color}44`,
+      borderRadius: 10,
+      padding: "1px 5px",
+      marginRight: 5,
+      verticalAlign: "middle",
+      whiteSpace: "nowrap",
+    }}>
+      {cat.label}
+    </span>
+  )
+}
 function NewsTable({ rows, extra, loading, expandedId, onToggle, onMore }: NewsTableProps) {
   const visible   = rows.slice(0, INITIAL + extra)
   const remaining = rows.length - visible.length
@@ -80,24 +103,25 @@ function NewsTable({ rows, extra, loading, expandedId, onToggle, onMore }: NewsT
               }}
               onClick={() => item.description && onToggle(item.id)}
             >
-              <td style={{ color: "#FFA028", fontSize: 10, verticalAlign: "top" }}>
+              <td style={{ color: "#FFA028", fontSize: 12, verticalAlign: "top", paddingTop: 10, paddingBottom: 10 }}>
                 {fmtTime(item.pubDate)}
               </td>
-              <td style={{ color: "#0068FF", fontSize: 10, verticalAlign: "top", fontWeight: 500 }}>
+              <td style={{ color: "#0068FF", fontSize: 12, verticalAlign: "top", fontWeight: 500, paddingTop: 10, paddingBottom: 10 }}>
                 {item.source.toUpperCase().slice(0, 14)}
               </td>
-              <td style={{ whiteSpace: "normal" }}>
+              <td style={{ whiteSpace: "normal", paddingTop: 10, paddingBottom: 10 }}>
+                <CategoryBadge category={item.category} />
                 <a
                   href={item.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ color: "#FFFFFF", fontSize: 11 }}
+                  style={{ color: "#FFFFFF", fontSize: 13, lineHeight: 1.5 }}
                   onClick={(e) => e.stopPropagation()}
                 >
                   {item.title}
                 </a>
                 {expandedId === item.id && item.description && (
-                  <div style={{ color: "#888888", fontSize: 10, marginTop: 4, lineHeight: 1.4 }}>
+                  <div style={{ color: "#888888", fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
                     {item.description}
                   </div>
                 )}
@@ -176,47 +200,45 @@ export function NewsFeed() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "calc(100dvh - 68px)" }}>
-      {/* Tabs de categoría */}
+      {/* Filtros de categoría — pill */}
       <div
         style={{
           display: "flex",
-          borderBottom: "1px solid #1a1a1a",
-          overflowX: "auto",
-          scrollbarWidth: "none",
+          gap: 6,
+          flexWrap: "wrap",
+          padding: "10px 14px",
+          borderBottom: "1px solid #111",
+          background: "#050505",
+          alignItems: "center",
         }}
       >
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat.key}
-            onClick={() => setCategory(cat.key)}
-            style={{
-              padding: "5px 14px",
-              fontSize: 10,
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              border: "none",
-              borderBottom: category === cat.key ? `2px solid ${cat.color}` : "2px solid transparent",
-              background: "none",
-              color: category === cat.key ? cat.color : "#444444",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              transition: "color 0.15s",
-            }}
-          >
-            {cat.label}
-          </button>
-        ))}
-        <span
-          style={{
-            marginLeft: "auto",
-            color: "#333333",
-            fontSize: 10,
-            padding: "5px 12px",
-            alignSelf: "center",
-            whiteSpace: "nowrap",
-          }}
-        >
+        {CATEGORIES.map((cat) => {
+          const active = category === cat.key
+          return (
+            <button
+              key={cat.key}
+              onClick={() => setCategory(cat.key)}
+              style={{
+                padding: "4px 12px",
+                fontSize: 10,
+                fontWeight: active ? 700 : 400,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                border: active ? `1px solid ${cat.color}66` : "1px solid #2a2a2a",
+                borderRadius: 20,
+                background: active ? `${cat.color}18` : "transparent",
+                color: active ? cat.color : "#555",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                transition: "all 0.15s",
+                fontFamily: "monospace",
+              }}
+            >
+              {cat.label}
+            </button>
+          )
+        })}
+        <span style={{ marginLeft: "auto", color: "#333", fontSize: 10, fontFamily: "monospace" }}>
           {filtered.length} noticias
         </span>
       </div>
@@ -259,29 +281,34 @@ export function NewsFeed() {
               {internacional.length}
             </span>
           </div>
-          {/* Filtro por país */}
-          <div style={{ display: "flex", gap: 2, padding: "4px 8px", borderBottom: "1px solid #111", flexWrap: "wrap", background: "#050505" }}>
-            {COUNTRIES.map((c) => (
-              <button
-                key={c.key}
-                onClick={() => setCountry(c.key)}
-                style={{
-                  padding: "2px 8px",
-                  fontSize: 9,
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                  border: "none",
-                  borderBottom: country === c.key ? "2px solid #FFA028" : "2px solid transparent",
-                  background: "none",
-                  color: country === c.key ? "#FFA028" : "#444",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {c.label}
-              </button>
-            ))}
+          {/* Filtro por país — pill */}
+          <div style={{ display: "flex", gap: 4, padding: "8px 10px", borderBottom: "1px solid #111", flexWrap: "wrap", background: "#060606" }}>
+            {COUNTRIES.map((c) => {
+              const active = country === c.key
+              return (
+                <button
+                  key={c.key}
+                  onClick={() => setCountry(c.key)}
+                  style={{
+                    padding: "3px 10px",
+                    fontSize: 9,
+                    fontWeight: active ? 600 : 400,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.04em",
+                    border: active ? "1px solid rgba(255,160,40,0.4)" : "1px solid #2a2a2a",
+                    borderRadius: 20,
+                    background: active ? "rgba(255,160,40,0.08)" : "transparent",
+                    color: active ? "#FFA028" : "#555",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    transition: "all 0.15s",
+                    fontFamily: "monospace",
+                  }}
+                >
+                  {c.label}
+                </button>
+              )
+            })}
           </div>
           <div style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
             <NewsTable

@@ -9,8 +9,8 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Panel de Control",
-  description: "Argentine financial markets terminal",
+  title: "La Pizarra",
+  description: "Dashboard macroeconómico argentino — tipos de cambio, inflación, BCRA, deuda y más",
 };
 
 export default function RootLayout({

@@ -29,6 +29,7 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   politics: ["election", "president", "congress", "senator", "governor", "vote", "campaign", "democrat", "republican", "prime minister", "parliament"],
   economics: ["inflation", "fed", "interest rate", "recession", "gdp", "stock", "s&p", "unemployment", "crypto", "bitcoin", "ethereum"],
   geopolitics: ["china", "taiwan", "russia", "ukraine", "iran", "israel", "war", "conflict", "peace", "military", "sanctions", "korea"],
+  argentina: ["argentina", "peso", "milei", "ars", "devaluation", "devaluación", "cepo", "dólar", "dolar", "inflación argentina", "argentina inflation", "argentina cpi"],
 }
 
 function categorizeMarket(question: string): string {
@@ -68,7 +69,11 @@ async function fetchPolymarketMarkets(
   if (cached) return cached as Array<any>
 
   try {
-    const res = await fetch("https://gamma-api.polymarket.com/markets?limit=200", {
+    // Para Argentina, usar búsqueda específica
+    const apiUrl = category === "argentina"
+      ? "https://gamma-api.polymarket.com/markets?search=argentina&limit=50&active=true"
+      : "https://gamma-api.polymarket.com/markets?limit=200"
+    const res = await fetch(apiUrl, {
       headers: {
         "User-Agent": "PanelDeControl/2.0",
       },
