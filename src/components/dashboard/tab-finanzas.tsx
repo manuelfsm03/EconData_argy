@@ -31,7 +31,6 @@ const FIN_TABS = [
   { key: "bonos",      label: "Renta Fija",   icon: "§" },
   { key: "rofex",      label: "ROFEX",        icon: "⇄" },
   { key: "plazofijo",  label: "Plazo Fijo",   icon: "%" },
-  { key: "agregados",  label: "Agregados",    icon: "Σ" },
   { key: "mundo",      label: "Mercados Mundo", icon: "⬡" },
   { key: "crypto",     label: "Cripto",       icon: "₿" },
 ]
@@ -933,7 +932,6 @@ export function TabFinanzas({ initialSubtab }: { initialSubtab?: string | null }
       {activeTab === "bonos"     && <BonosView />}
       {activeTab === "rofex"     && <RofexView />}
       {activeTab === "plazofijo" && <PlazoFijoView />}
-      {activeTab === "agregados" && <AgregadosView />}
       {activeTab === "mundo"     && <MundoView />}
       {activeTab === "crypto"    && <CryptoView />}
     </div>
