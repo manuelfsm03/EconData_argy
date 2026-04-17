@@ -1093,6 +1093,9 @@ const CRYPTOS = [
   { key: "usdc",     label: "USDC",     ticker: "USDC-USD", color: "#2775CA" },
 ]
 
+interface CriptoYaRate { ask: number; bid: number; totalAsk: number; totalBid: number; time: number }
+interface CriptoYaData { [exchange: string]: CriptoYaRate }
+
 function CryptoView() {
   const [snap, setSnap] = useState<Record<string, WorldQuote | null>>({})
   const [hist, setHist] = useState<[string, number][]>([])
@@ -1100,12 +1103,26 @@ function CryptoView() {
   const [selPeriod, setSelPeriod] = useState("1y")
   const [loading, setLoading] = useState(true)
   const [loadingHist, setLoadingHist] = useState(false)
+  const [dominance, setDominance] = useState<number | null>(null)
+  const [usdtArs, setUsdtArs] = useState<CriptoYaData | null>(null)
 
   useEffect(() => {
     fetch("/api/mundo")
       .then(r => r.json())
       .then(j => setSnap(j.data ?? {}))
       .finally(() => setLoading(false))
+
+    // CoinGecko global — dominancia BTC
+    fetch("https://api.coingecko.com/api/v3/global")
+      .then(r => r.json())
+      .then(j => setDominance(j?.data?.market_cap_percentage?.btc ?? null))
+      .catch(() => {})
+
+    // CriptoYa — USDT/ARS por exchange
+    fetch("https://criptoya.com/api/USDT/ARS/0.1")
+      .then(r => r.json())
+      .then(j => setUsdtArs(j))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -1202,8 +1219,54 @@ function CryptoView() {
         }
       </div>
 
+      {/* USDT/ARS por exchange + BTC Dominance */}
+      {(usdtArs || dominance != null) && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "#111", borderTop: "1px solid #111" }}>
+          {/* USDT/ARS */}
+          {usdtArs && (
+            <div style={{ background: "#050505", padding: 14 }}>
+              <SectionTitle title="USDT/ARS por exchange (CriptoYa)" />
+              <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 9 }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid #1a1a1a" }}>
+                    {["Exchange", "Compra", "Venta"].map(h => (
+                      <th key={h} style={{ padding: "3px 6px", color: "#555", fontWeight: 400, textAlign: h === "Exchange" ? "left" : "right" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(usdtArs)
+                    .filter(([, v]) => v?.ask > 0)
+                    .sort((a, b) => a[1].ask - b[1].ask)
+                    .slice(0, 8)
+                    .map(([ex, v]) => (
+                      <tr key={ex} style={{ borderBottom: "1px solid #0d0d0d" }}>
+                        <td style={{ padding: "3px 6px", color: "#FFA028" }}>{ex.toUpperCase()}</td>
+                        <td style={{ padding: "3px 6px", color: "#4AF6C3", textAlign: "right" }}>${fmtNum(v.bid, 2)}</td>
+                        <td style={{ padding: "3px 6px", color: "#FF433D", textAlign: "right" }}>${fmtNum(v.ask, 2)}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* BTC Dominance */}
+          {dominance != null && (
+            <div style={{ background: "#050505", padding: 14, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 8 }}>
+              <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace" }}>BTC Dominance</div>
+              <div style={{ fontSize: 48, fontWeight: 700, color: "#FFA028", fontFamily: "monospace", lineHeight: 1 }}>
+                {fmtNum(dominance, 1)}%
+              </div>
+              <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace" }}>% del market cap total cripto</div>
+              <div style={{ fontSize: 7, color: "#444", fontFamily: "monospace" }}>CoinGecko</div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div style={{ padding: "6px 14px", fontSize: 8, color: "#888", borderTop: "1px solid #111", fontFamily: "monospace" }}>
-        Fuente: Yahoo Finance · Precios en USD · Actualización cada 5 min
+        Fuente: Yahoo Finance · CoinGecko (dominance) · CriptoYa (USDT/ARS) · Precios en USD · Actualización cada 5 min
       </div>
     </div>
   )
