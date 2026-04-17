@@ -518,116 +518,96 @@ function RofexView() {
 
 // ── PLAZO FIJO ────────────────────────────────────────────────────────────────
 
-interface PlazoFijoData {
-  tasa_promedio?: number
-  tasa_banco_nacion?: number
-  tasa_banco_provincia?: number
-  tasa_max?: number
-  tna_promedio?: number
-  tea_promedio?: number
-  updated_at?: string
-  bancos?: { nombre: string; tna: number; tea?: number }[]
+interface PlazoFijoAPIData {
+  badlar: { fecha: string; valor: number }[]
+  tm20:   { fecha: string; valor: number }[]
+  tpm:    { fecha: string; valor: number }[]
+  pf30:   { fecha: string; valor: number }[]
 }
 
 function PlazoFijoView() {
-  const [data, setData] = useState<PlazoFijoData | null>(null)
+  const [data, setData] = useState<PlazoFijoAPIData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Intentar desde BCRA API variable 35 (tasa promedio pf 30 días)
-    fetch("/api/bcra?variable=35")
+    fetch("/api/bcra?endpoint=plazofijo")
       .then(r => r.json())
-      .then(j => {
-        const rows = j?.data ?? j ?? []
-        const last = Array.isArray(rows) ? rows[rows.length - 1] : null
-        if (last?.valor) {
-          const tna = last.valor
-          const tea = (Math.pow(1 + tna / 100 / 365, 365) - 1) * 100
-          setData({ tna_promedio: tna, tea_promedio: parseFloat(tea.toFixed(2)) })
-        }
-      })
+      .then(j => setData(j?.data ?? null))
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
-  // Datos de referencia BCRA (fijos hasta nueva actualización)
-  const bancos = [
-    { nombre: "Banco Nación", tna: 36.0 },
-    { nombre: "Banco Provincia", tna: 37.0 },
-    { nombre: "Banco Galicia", tna: 38.5 },
-    { nombre: "Banco BBVA", tna: 37.5 },
-    { nombre: "Banco Santander", tna: 38.0 },
-    { nombre: "Banco Macro", tna: 39.0 },
-    { nombre: "Banco HSBC", tna: 37.0 },
-    { nombre: "Banco ICBC", tna: 38.0 },
-    { nombre: "Banco Patagonia", tna: 38.5 },
-    { nombre: "Naranja X / Brubank", tna: 42.0 },
-    { nombre: "Ualá", tna: 43.0 },
-    { nombre: "Mercado Pago", tna: 43.5 },
-  ]
-
-  const tna = data?.tna_promedio ?? 36.0
-  const tea = data?.tea_promedio ?? parseFloat(((Math.pow(1 + tna / 100 / 365, 365) - 1) * 100).toFixed(2))
-  const tem = parseFloat(((Math.pow(1 + tna / 100 / 365, 30) - 1) * 100).toFixed(2))
-
-  const chartData = bancos.map(b => ({
-    nombre: b.nombre.replace("Banco ", ""),
-    tna: b.tna,
-    tea: parseFloat(((Math.pow(1 + b.tna / 100 / 365, 365) - 1) * 100).toFixed(2)),
-    real: b.tna - (data?.tna_promedio ?? 36),
-  }))
-
   if (loading) return <Loading />
+
+  const lastVal = (arr?: { valor: number }[]) => arr?.[arr.length - 1]?.valor ?? null
+  const toTEA = (tna: number | null) => tna != null
+    ? parseFloat(((Math.pow(1 + tna / 100 / 365, 365) - 1) * 100).toFixed(2))
+    : null
+  const toTEM = (tna: number | null) => tna != null
+    ? parseFloat(((Math.pow(1 + tna / 100 / 365, 30) - 1) * 100).toFixed(2))
+    : null
+
+  const badlar = lastVal(data?.badlar)
+  const tm20   = lastVal(data?.tm20)
+  const pf30   = lastVal(data?.pf30)
+  const tea    = toTEA(pf30)
+  const tem    = toTEM(pf30)
+
+  // Gráfico histórico: unir badlar + tm20 + pf30 por fecha
+  const byDate: Record<string, { fecha: string; badlar?: number; tm20?: number; pf30?: number }> = {}
+  for (const p of data?.badlar ?? []) {
+    byDate[p.fecha] = { ...(byDate[p.fecha] ?? { fecha: p.fecha }), badlar: p.valor }
+  }
+  for (const p of data?.tm20 ?? []) {
+    byDate[p.fecha] = { ...(byDate[p.fecha] ?? { fecha: p.fecha }), tm20: p.valor }
+  }
+  for (const p of data?.pf30 ?? []) {
+    byDate[p.fecha] = { ...(byDate[p.fecha] ?? { fecha: p.fecha }), pf30: p.valor }
+  }
+  const chartData = Object.values(byDate)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    .filter((_, i, arr) => i % Math.max(1, Math.floor(arr.length / 150)) === 0)
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       {/* KPIs */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "#050505", borderBottom: "1px solid #111" }}>
-        <KPI label="TNA promedio (BCRA)" value={fmtPct(tna)} valueColor="#FFA028" unit="30 días" />
-        <KPI label="TEA equivalente" value={fmtPct(tea)} valueColor="#4AF6C3" unit="tasa efectiva anual" />
-        <KPI label="TEM equivalente" value={fmtPct(tem)} valueColor="#FFD700" unit="tasa efectiva mensual" />
-        <KPI label="Mayor tasa digital" value="Mercado Pago / Ualá" valueColor="#CE93D8" unit="43–43.5% TNA" />
+        <KPI label="BADLAR bancos privados" value={badlar != null ? fmtPct(badlar) : null} valueColor="#FFA028" unit="depósitos > $1M · TNA" />
+        <KPI label="TM20 bancos privados"   value={tm20   != null ? fmtPct(tm20)   : null} valueColor="#4AF6C3" unit="depósitos > $20M · TNA" />
+        <KPI label="Tasa depósitos 30d"     value={pf30   != null ? fmtPct(pf30)   : null} valueColor="#FFD700" unit="promedio sistema · TNA" />
+        <KPI label="TEA equivalente (30d)"  value={tea    != null ? fmtPct(tea)    : null} valueColor="#CE93D8" unit="tasa efectiva anual" />
+        <KPI label="TEM equivalente (30d)"  value={tem    != null ? fmtPct(tem)    : null} valueColor="#4FC3F7" unit="tasa efectiva mensual" />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "#111" }}>
-        {/* Comparativa bancos */}
-        <div style={{ background: "#050505", padding: 16 }}>
-          <SectionTitle title="TNA por entidad (30 días)" />
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 40 }}>
-              <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" horizontal={false} />
-              <XAxis type="number" stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${v}%`} domain={[30, 50]} />
-              <YAxis type="category" dataKey="nombre" stroke="#333" fontSize={8} tick={{ fill: "#aaa" }} width={100} />
-              <Tooltip {...tooltipStyle} formatter={(v: unknown) => [`${fmtNum(v as number, 1)}%`, "TNA"]} />
-              <ReferenceLine x={tna} stroke="#FFA028" strokeDasharray="4 4" label={{ value: "BCRA", fill: "#FFA028", fontSize: 8 }} />
-              <Bar dataKey="tna" radius={[0, 2, 2, 0]}>
-                {chartData.map((d, i) => (
-                  <Cell key={i} fill={d.tna >= tna ? "#4AF6C3" : "#FF6B6B"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* TNA vs TEA */}
-        <div style={{ background: "#050505", padding: 16 }}>
-          <SectionTitle title="TNA vs TEA por entidad" />
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" />
-              <XAxis dataKey="nombre" stroke="#333" fontSize={7} tick={{ fill: "#888" }} angle={-35} textAnchor="end" interval={0} />
-              <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${v}%`} domain={[30, 50]} />
-              <Tooltip {...tooltipStyle} formatter={(v: unknown, name: unknown) => [`${fmtNum(v as number, 2)}%`, name === "tna" ? "TNA" : "TEA"]} />
-              <Legend wrapperStyle={{ fontSize: 9, color: "#aaa" }} />
-              <Bar dataKey="tna" name="TNA" fill="#FFA028" opacity={0.8} />
-              <Bar dataKey="tea" name="TEA" fill="#4AF6C3" opacity={0.8} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+      {/* Gráfico histórico */}
+      <div style={{ padding: 16, background: "#050505" }}>
+        <SectionTitle title="Tasas de referencia — histórico (% TNA)" />
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={chartData} margin={{ top: 8, right: 20, left: 0, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" />
+            <XAxis dataKey="fecha" stroke="#333" fontSize={8} tick={{ fill: "#888" }}
+              tickFormatter={d => (d as string)?.slice(0, 7)}
+              interval={Math.max(1, Math.floor(chartData.length / 12))} />
+            <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${v}%`} domain={["auto", "auto"]} />
+            <Tooltip
+              contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 9, color: "#fff", fontFamily: "monospace" }}
+              itemStyle={{ color: "#fff" }} labelStyle={{ color: "#aaa" }}
+              formatter={(v: unknown, name: unknown) => [
+                `${fmtNum(v as number, 2)}%`,
+                name === "badlar" ? "BADLAR" : name === "tm20" ? "TM20" : "Depósitos 30d",
+              ]}
+            />
+            <Legend wrapperStyle={{ fontSize: 9, color: "#aaa" }}
+              formatter={v => v === "badlar" ? "BADLAR (>$1M)" : v === "tm20" ? "TM20 (>$20M)" : "Depósitos 30d"} />
+            <Line type="monotone" dataKey="badlar" stroke="#FFA028" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />
+            <Line type="monotone" dataKey="tm20"   stroke="#4AF6C3" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />
+            <Line type="monotone" dataKey="pf30"   stroke="#FFD700" strokeWidth={1.5} strokeDasharray="4 4" dot={false} isAnimationActive={false} connectNulls />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
 
       <div style={{ padding: "6px 14px", fontSize: 8, color: "#888", borderTop: "1px solid #111", fontFamily: "monospace" }}>
-        Fuente: BCRA API variable 35 (tasa pf 30 días) · Tasas de bancos privados: referencia indicativa · Fin Reg. A 7095
+        Fuente: BCRA API v4.0 — Var 7 (BADLAR), 8 (TM20), 12 (Tasa depósitos 30d) · Tasas agregadas del sistema · No incluye tasas individuales por banco
       </div>
     </div>
   )
