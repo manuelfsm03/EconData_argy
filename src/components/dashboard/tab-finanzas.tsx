@@ -1103,11 +1103,11 @@ const CRYPTOS = [
 
 function CryptoView() {
   const [snap, setSnap] = useState<Record<string, WorldQuote | null>>({})
-  const [histMap, setHistMap] = useState<Record<string, [string, number][]>>({})
-  const [selected, setSelected] = useState<Set<string>>(new Set(["bitcoin"]))
+  const [hist, setHist] = useState<[string, number][]>([])
+  const [selKey, setSelKey] = useState("bitcoin")
   const [selPeriod, setSelPeriod] = useState("1y")
   const [loading, setLoading] = useState(true)
-  const [loadingKeys, setLoadingKeys] = useState<Set<string>>(new Set())
+  const [loadingHist, setLoadingHist] = useState(false)
 
   useEffect(() => {
     fetch("/api/mundo")
@@ -1116,102 +1116,29 @@ function CryptoView() {
       .finally(() => setLoading(false))
   }, [])
 
-  // Fetch histórico para cada cripto seleccionada
   useEffect(() => {
-    const toFetch = [...selected].filter(k => !histMap[`${k}_${selPeriod}`])
-    if (!toFetch.length) return
-    setLoadingKeys(prev => new Set([...prev, ...toFetch]))
-    Promise.all(
-      toFetch.map(k =>
-        fetch(`/api/mundo?ticker=${k}&hist=${selPeriod}`)
-          .then(r => r.json())
-          .then(j => ({ k, data: (j.data ?? []) as [string, number][] }))
-          .catch(() => ({ k, data: [] as [string, number][] }))
-      )
-    ).then(results => {
-      setHistMap(prev => {
-        const next = { ...prev }
-        for (const { k, data } of results) next[`${k}_${selPeriod}`] = data
-        return next
-      })
-      setLoadingKeys(prev => {
-        const next = new Set(prev)
-        for (const { k } of results) next.delete(k)
-        return next
-      })
-    })
-  }, [selected, selPeriod])
-
-  function toggleCrypto(key: string) {
-    setSelected(prev => {
-      const next = new Set(prev)
-      if (next.has(key)) { if (next.size > 1) next.delete(key) }
-      else next.add(key)
-      return next
-    })
-  }
+    setLoadingHist(true)
+    fetch(`/api/mundo?ticker=${selKey}&hist=${selPeriod}`)
+      .then(r => r.json())
+      .then(j => setHist(j.data ?? []))
+      .finally(() => setLoadingHist(false))
+  }, [selKey, selPeriod])
 
   if (loading) return <Loading />
 
-  const isMulti = selected.size > 1
-
-  // Construir datos del gráfico combinado por fecha
-  const allSeries = [...selected].map(k => ({
-    crypto: CRYPTOS.find(c => c.key === k)!,
-    data: histMap[`${k}_${selPeriod}`] ?? [],
-  })).filter(s => s.crypto && s.data.length)
-
-  // Construir mapa por serie
-  const seriesMap: Record<string, Record<string, number>> = {}
-  for (const s of allSeries) seriesMap[s.crypto.key] = Object.fromEntries(s.data)
-
-  // Primera fecha COMÚN a todas las series (la más tardía de los primeros puntos)
-  const commonStart = allSeries.reduce<string | null>((acc, s) => {
-    const first = s.data[0]?.[0]
-    if (!first) return acc
-    return acc == null || first > acc ? first : acc
-  }, null)
-
-  const dateSet = new Set<string>()
-  for (const s of allSeries) for (const [d] of s.data) {
-    if (!commonStart || d >= commonStart) dateSet.add(d)
-  }
-  const dates = [...dateSet].sort()
-
-  // Base = valor en commonStart para cada serie
-  const base100: Record<string, number> = {}
-  if (isMulti && commonStart) {
-    for (const s of allSeries) {
-      const val = seriesMap[s.crypto.key]?.[commonStart]
-        ?? s.data.find(([d]) => d >= commonStart)?.[1]
-      if (val) base100[s.crypto.key] = val
-    }
-  }
-
-  const chartData = dates.map(fecha => {
-    const row: Record<string, unknown> = { fecha }
-    for (const s of allSeries) {
-      const raw = seriesMap[s.crypto.key]?.[fecha]
-      if (raw != null) {
-        row[s.crypto.key] = isMulti && base100[s.crypto.key]
-          ? parseFloat((((raw / base100[s.crypto.key]) - 1) * 100).toFixed(2))
-          : raw
-      }
-    }
-    return row
-  })
-
+  const sel = CRYPTOS.find(c => c.key === selKey)!
   const decimals = (key: string) => ["usdt","usdc"].includes(key) ? 4 : ["cardano","xrp","bnb"].includes(key) ? 3 : 0
+  const chartData = hist.map(([fecha, valor]) => ({ fecha, valor }))
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-      {/* KPIs — todas las criptos como cards clickeables */}
+      {/* KPIs — cards clickeables, selección simple */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "8px 14px", background: "#050505", borderBottom: "1px solid #111" }}>
         {CRYPTOS.map(c => {
           const q = snap[c.key]
-          const isActive = selected.has(c.key)
+          const isActive = selKey === c.key
           return (
-            <button key={c.key} onClick={() => toggleCrypto(c.key)} style={{
+            <button key={c.key} onClick={() => setSelKey(c.key)} style={{
               flex: "1 1 110px", padding: "8px 10px", textAlign: "left", cursor: "pointer",
               background: isActive ? "#0d0d0d" : "#060606",
               border: isActive ? `1px solid ${c.color}55` : "1px solid #111",
@@ -1232,9 +1159,7 @@ function CryptoView() {
 
       {/* Controles */}
       <div style={{ padding: "6px 14px", background: "#050505", borderBottom: "1px solid #111", display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 8, color: "#555", fontFamily: "monospace" }}>
-          {isMulti ? "% variación desde inicio del período" : "Precio USD"}
-        </span>
+        <span style={{ fontSize: 8, color: "#555", fontFamily: "monospace" }}>Precio USD</span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
           {["1mo", "3mo", "6mo", "1y", "2y", "5y"].map(p => (
             <button key={p} onClick={() => setSelPeriod(p)} style={{
@@ -1247,46 +1172,38 @@ function CryptoView() {
         </div>
       </div>
 
-      {/* Gráfico superpuesto */}
+      {/* Gráfico */}
       <div style={{ padding: 16, background: "#050505" }}>
-        {loadingKeys.size > 0
+        <SectionTitle title={`${sel.label} — precio USD`} />
+        {loadingHist
           ? <div style={{ height: 320, display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: 9, fontFamily: "monospace" }}>Cargando…</div>
           : (
             <ResponsiveContainer width="100%" height={320}>
-              <LineChart data={chartData} margin={{ top: 8, right: 20, left: 10, bottom: 4 }}>
+              <AreaChart data={chartData} margin={{ top: 8, right: 20, left: 10, bottom: 4 }}>
+                <defs>
+                  <linearGradient id="cryptoGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={sel.color} stopOpacity={0.25} />
+                    <stop offset="95%" stopColor={sel.color} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" />
                 <XAxis dataKey="fecha" stroke="#333" fontSize={8} tick={{ fill: "#888" }}
                   tickFormatter={d => (d as string)?.slice(0, 7)}
-                  interval={Math.max(1, Math.floor(dates.length / 10))} />
+                  interval={Math.max(1, Math.floor(chartData.length / 10))} />
                 <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} domain={["auto", "auto"]}
-                  tickFormatter={v => isMulti ? `${(v as number) >= 0 ? "+" : ""}${Math.round(v as number)}%` : `$${Math.round(v as number).toLocaleString("en-US")}`} />
+                  tickFormatter={v => `$${Math.round(v as number).toLocaleString("en-US")}`} />
                 <Tooltip
                   contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 9, color: "#fff", fontFamily: "monospace" }}
                   itemStyle={{ color: "#fff" }}
                   labelStyle={{ color: "#aaa" }}
-                  formatter={(v: unknown, name: unknown) => {
-                    const c = CRYPTOS.find(x => x.key === name)
-                    const val = v as number
-                    return isMulti
-                      ? [`${val >= 0 ? "+" : ""}${fmtUSD(val, 1)}%`, c?.label ?? String(name)]
-                      : [`$${fmtUSD(val, decimals(String(name)))}`, c?.label ?? String(name)]
-                  }}
+                  formatter={(v: unknown) => [`$${fmtUSD(v as number, decimals(selKey))}`, sel.label]}
                 />
-                {isMulti && <ReferenceLine y={0} stroke="#444" strokeDasharray="4 4" label={{ value: "0%", fill: "#555", fontSize: 8, position: "insideTopLeft" }} />}
-                <Legend wrapperStyle={{ fontSize: 9, color: "#aaa" }}
-                  formatter={(value) => CRYPTOS.find(c => c.key === value)?.label ?? value} />
-                {allSeries.map(s => (
-                  <Line key={s.crypto.key} type="monotone" dataKey={s.crypto.key}
-                    stroke={s.crypto.color} strokeWidth={2} dot={false} isAnimationActive={false}
-                    connectNulls />
-                ))}
-              </LineChart>
+                <Area type="monotone" dataKey="valor" stroke={sel.color} strokeWidth={2}
+                  fill="url(#cryptoGrad)" dot={false} isAnimationActive={false} />
+              </AreaChart>
             </ResponsiveContainer>
           )
         }
-        <div style={{ fontSize: 8, color: "#888", marginTop: 4, fontFamily: "monospace" }}>
-          {isMulti ? "% de variación desde el inicio del período · 0% = punto de partida · click en una cripto para agregar/quitar" : "Precio en USD · click en múltiples criptos para superponer y comparar rendimientos"}
-        </div>
       </div>
 
       <div style={{ padding: "6px 14px", fontSize: 8, color: "#888", borderTop: "1px solid #111", fontFamily: "monospace" }}>
