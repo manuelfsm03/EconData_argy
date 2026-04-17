@@ -5,6 +5,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Legend,
 } from "recharts"
+import { InfoTooltip } from "@/components/ui/info-tooltip"
+import { GLOSSARY } from "@/lib/glossary"
 
 export type DateRange = "1w" | "1m" | "3m" | "6m" | "1y" | "ytd" | "all"
 
@@ -20,6 +22,7 @@ interface BBGLineChartProps {
   data: Record<string, unknown>[]
   lines: LineConfig[]
   title: string
+  glossaryKey?: string
   yAxisLabel?: string
   yAxisRight?: { label: string; format?: (v: number) => string }
   height?: number
@@ -41,24 +44,33 @@ function compactNum(v: number): string {
 
 function fmtDateShort(dateStr: string): string {
   try {
-    const d = new Date(dateStr + "T00:00:00")
+    const d = parseDate(String(dateStr))
+    if (isNaN(d.getTime())) return String(dateStr)
     return d.toLocaleDateString("es-AR", { month: "short", year: "2-digit" })
-  } catch { return dateStr }
+  } catch { return String(dateStr) }
 }
 
 function fmtDateFull(dateStr: string): string {
   try {
-    const d = new Date(dateStr + "T00:00:00")
+    const d = parseDate(String(dateStr))
+    if (isNaN(d.getTime())) return String(dateStr)
     return d.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })
-  } catch { return dateStr }
+  } catch { return String(dateStr) }
+}
+
+function parseDate(dateStr: string): Date {
+  if (!dateStr) return new Date(NaN)
+  // Normalizar YYYY-MM → YYYY-MM-01 para evitar Invalid Date
+  const normalized = /^\d{4}-\d{2}$/.test(dateStr) ? dateStr + "-01" : dateStr
+  return new Date(normalized + (normalized.includes("T") ? "" : "T00:00:00"))
 }
 
 function filterDataByRange(data: Record<string, unknown>[], range: DateRange): Record<string, unknown>[] {
   if (range === "all" || data.length === 0) return data
-  
+
   const now = new Date()
   const cutoff = new Date()
-  
+
   switch (range) {
     case "1w": cutoff.setDate(now.getDate() - 7); break
     case "1m": cutoff.setMonth(now.getMonth() - 1); break
@@ -68,13 +80,22 @@ function filterDataByRange(data: Record<string, unknown>[], range: DateRange): R
     case "ytd": cutoff.setMonth(0); cutoff.setDate(1); break
     default: return data
   }
-  
-  return data.filter(d => {
-    const dateStr = d.date as string
-    if (!dateStr) return false
-    const date = new Date(dateStr + "T00:00:00")
+
+  const filtered = data.filter(d => {
+    const date = parseDate(d.date as string)
+    if (isNaN(date.getTime())) return true // si no parsea, incluir igual
     return date >= cutoff
   })
+
+  // Si el filtro dejó < 2 puntos, usar los últimos N según el rango
+  if (filtered.length < 2) {
+    const fallback: Record<number, number> = { 0: 7, 1: 1, 3: 3, 6: 6 }
+    const months = range === "1w" ? 0 : range === "1m" ? 1 : range === "3m" ? 3 : range === "6m" ? 6 : range === "1y" ? 12 : range === "ytd" ? 6 : 0
+    void fallback
+    return data.slice(-Math.max(months * 4, 12))
+  }
+
+  return filtered
 }
 
 const RANGE_OPTIONS: { value: DateRange; label: string }[] = [
@@ -88,7 +109,7 @@ const RANGE_OPTIONS: { value: DateRange; label: string }[] = [
 ]
 
 export function BBGLineChart({
-  data, lines, title, yAxisLabel, yAxisRight, height = 180,
+  data, lines, title, glossaryKey, yAxisLabel, yAxisRight, height = 180,
   showZeroLine, formatValue, enableDateRange = true, defaultRange = "1m",
   enableLineToggle = false,
 }: BBGLineChartProps) {
@@ -102,14 +123,71 @@ export function BBGLineChart({
   const visibleLines = enableLineToggle ? lines.filter(l => !hidden.has(l.key)) : lines
 
   const filteredData = useMemo(() => {
+    if (!data || data.length === 0) return []
     return filterDataByRange(data, range)
   }, [data, range])
+
+  // Dominios Y ajustados a los datos visibles + padding (eje izquierdo y derecho)
+  const yDomainLeft = useMemo(() => {
+    const leftLines = lines.filter((l) => !l.yAxisId || l.yAxisId === "left")
+    const values: number[] = filteredData.flatMap((d) =>
+      leftLines.flatMap((l) => {
+        const v = d[l.key]
+        return typeof v === "number" ? [v] : []
+      })
+    )
+    if (values.length === 0) return ["auto", "auto"] as const
+    const min = Math.min(...values)
+    const max = Math.max(...values)
+    const pad = Math.max((max - min) * 0.05, Math.abs(max) * 0.02)
+    return [min - pad, max + pad] as const
+  }, [filteredData, lines])
+
+  const yDomainRight = useMemo(() => {
+    if (!yAxisRight) return ["auto", "auto"] as const
+    const rightLines = lines.filter((l) => l.yAxisId === "right")
+    const values: number[] = filteredData.flatMap((d) =>
+      rightLines.flatMap((l) => {
+        const v = d[l.key]
+        return typeof v === "number" ? [v] : []
+      })
+    )
+    if (values.length === 0) return ["auto", "auto"] as const
+    const min = Math.min(...values)
+    const max = Math.max(...values)
+    const pad = Math.max((max - min) * 0.05, Math.abs(max) * 0.02)
+    return [min - pad, max + pad] as const
+  }, [filteredData, lines, yAxisRight])
+
+  // Overrides manuales de escala
+  const [scaleMin, setScaleMin] = useState("")
+  const [scaleMax, setScaleMax] = useState("")
+  const isOverriding = scaleMin !== "" || scaleMax !== ""
+
+  const effectiveDomainLeft = useMemo((): [number | string, number | string] => {
+    const uMin = scaleMin !== "" ? parseFloat(scaleMin) : null
+    const uMax = scaleMax !== "" ? parseFloat(scaleMax) : null
+    return [
+      uMin !== null && !isNaN(uMin) ? uMin : yDomainLeft[0],
+      uMax !== null && !isNaN(uMax) ? uMax : yDomainLeft[1],
+    ]
+  }, [yDomainLeft, scaleMin, scaleMax])
 
   return (
     <div className="bbg-panel">
       <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
-        <span>{title}</span>
-        <div style={{ display: "flex", gap: "2px", flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ display: "flex", alignItems: "center" }}>
+          {title}
+          {glossaryKey && GLOSSARY[glossaryKey] && (
+            <InfoTooltip
+              text={GLOSSARY[glossaryKey].text}
+              source={GLOSSARY[glossaryKey].source}
+              url={GLOSSARY[glossaryKey].url}
+              position="bottom"
+            />
+          )}
+        </span>
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
           {enableLineToggle && lines.map(l => (
             <button
               key={l.key}
@@ -123,9 +201,49 @@ export function BBGLineChart({
               }}
             >{l.name}</button>
           ))}
+          {enableLineToggle && <span style={{ width: 1, height: 12, background: "#222", margin: "0 2px" }} />}
+          <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+            <span style={{ fontSize: "9px", color: "#444", letterSpacing: 1 }}>Y:</span>
+            <input
+              type="number"
+              placeholder={typeof yDomainLeft[0] === "number" ? String(Math.round(yDomainLeft[0] as number)) : "min"}
+              value={scaleMin}
+              onChange={(e) => setScaleMin(e.target.value)}
+              style={{
+                width: 52, fontSize: "9px", background: "#0d0d0d",
+                border: `1px solid ${scaleMin ? "#FFA028" : "#333"}`,
+                color: scaleMin ? "#FFA028" : "#666",
+                padding: "1px 4px", borderRadius: 2, outline: "none",
+              }}
+            />
+            <span style={{ fontSize: "9px", color: "#333" }}>–</span>
+            <input
+              type="number"
+              placeholder={typeof yDomainLeft[1] === "number" ? String(Math.round(yDomainLeft[1] as number)) : "max"}
+              value={scaleMax}
+              onChange={(e) => setScaleMax(e.target.value)}
+              style={{
+                width: 52, fontSize: "9px", background: "#0d0d0d",
+                border: `1px solid ${scaleMax ? "#FFA028" : "#333"}`,
+                color: scaleMax ? "#FFA028" : "#666",
+                padding: "1px 4px", borderRadius: 2, outline: "none",
+              }}
+            />
+            {isOverriding && (
+              <button
+                onClick={() => { setScaleMin(""); setScaleMax("") }}
+                style={{
+                  fontSize: "9px", padding: "1px 5px", background: "transparent",
+                  border: "1px solid #555", color: "#888", cursor: "pointer", borderRadius: 2,
+                }}
+              >
+                AUTO
+              </button>
+            )}
+          </div>
           {enableDateRange && (
             <>
-              {enableLineToggle && <span style={{ width: 1, height: 12, background: "#222", margin: "0 4px" }} />}
+              <span style={{ width: 1, height: 12, background: "#222", margin: "0 2px" }} />
               {RANGE_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -155,6 +273,7 @@ export function BBGLineChart({
             />
             <YAxis
               yAxisId="left"
+              domain={effectiveDomainLeft}
               tick={{ fill: "#555555", fontSize: 9 }}
               axisLine={{ stroke: "#333333" }}
               tickLine={false}
@@ -164,6 +283,7 @@ export function BBGLineChart({
             {yAxisRight && (
               <YAxis
                 yAxisId="right" orientation="right"
+                domain={yDomainRight}
                 tick={{ fill: "#555555", fontSize: 9 }}
                 axisLine={{ stroke: "#333333" }}
                 tickLine={false}

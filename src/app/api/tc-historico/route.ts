@@ -31,6 +31,7 @@ interface MergedEntry {
   ccl?: number
   oficial?: number
   mayorista?: number
+  cripto?: number
 }
 
 // ── In-memory cache ────────────────────────────────────────────────────────────
@@ -82,12 +83,13 @@ export async function GET(request: NextRequest) {
   }
 
   // Fetch all in parallel
-  const [blueRaw, mepRaw, cclRaw, oficialRaw, mayoristaRaw] = await Promise.all([
+  const [blueRaw, mepRaw, cclRaw, oficialRaw, mayoristaRaw, criptoRaw] = await Promise.all([
     fetchTipo("blue"),
     fetchTipo("bolsa"),
     fetchTipo("contadoconliqui"),
     fetchTipo("oficial"),
     fetchTipo("mayorista"),
+    fetchTipo("cripto"),
   ])
 
   const cutoff = cutoffFromPeriod(period)
@@ -103,11 +105,12 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  addRows(blueRaw, "blue")
-  addRows(mepRaw, "mep")
-  addRows(cclRaw, "ccl")
-  addRows(oficialRaw, "oficial")
+  addRows(blueRaw,      "blue")
+  addRows(mepRaw,       "mep")
+  addRows(cclRaw,       "ccl")
+  addRows(oficialRaw,   "oficial")
   addRows(mayoristaRaw, "mayorista")
+  addRows(criptoRaw,    "cripto")
 
   const merged = Object.values(mapa).sort((a, b) => (a.date > b.date ? 1 : -1))
 

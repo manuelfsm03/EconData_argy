@@ -201,11 +201,72 @@ export async function GET(request: NextRequest) {
     const cached = getCache<unknown[]>(cacheKey)
     if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), cached: true })
 
+    let cclActual: number | null = null
+    try {
+      const dolarRes = await fetch("https://dolarapi.com/v1/dolares", {
+        headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
+        signal: AbortSignal.timeout(5000),
+        next: { revalidate: 60 },
+      })
+      if (dolarRes.ok) {
+        const dolarData = await dolarRes.json() as Array<{ casa?: string; venta?: number }>
+        const ccl = dolarData.find((d) => d.casa === "contadoconliqui")
+        cclActual = ccl?.venta ?? null
+      }
+    } catch {
+      // noop
+    }
+
+    try {
+      const instrumentos = await prisma.capInstrument.findMany({
+        where: { vencimiento: { gt: new Date() } },
+        orderBy: { vencimiento: "asc" },
+      })
+
+      if (instrumentos.length > 0) {
+        const screener = instrumentos.map((inst) => {
+          const hoy = new Date()
+          const diasVto = Math.round((inst.vencimiento.getTime() - hoy.getTime()) / (24 * 3600 * 1000))
+          const tcImplicito =
+            cclActual != null && inst.tem != null && diasVto > 0
+              ? Number((cclActual * Math.pow(1 + inst.tem / 100, diasVto / 30)).toFixed(2))
+              : null
+
+          return {
+            ticker: inst.ticker,
+            tipo: inst.tipo,
+            vencimiento: inst.vencimiento.toISOString().split("T")[0],
+            diasVencimiento: diasVto,
+            precio: inst.precio,
+            tir: inst.tir,
+            tea: inst.tea,
+            tem: inst.tem,
+            tcImplicito,
+          }
+        })
+
+        setCache(cacheKey, screener, 300)
+        return NextResponse.json({
+          data: screener,
+          updated_at: new Date().toISOString(),
+          source: "db_local + byma",
+          nota: "lecaps desde DB local; si falla, cae a fallback estático",
+        })
+      }
+    } catch {
+      // caer a fallback estático
+    }
+
     const hoy = new Date()
     const screener = CAP_INSTRUMENT_DEFS
       .map((inst) => {
         const vencimiento = new Date(inst.vencimiento)
         const diasVto = Math.round((vencimiento.getTime() - hoy.getTime()) / (24 * 3600 * 1000))
+        const tcImplicito =
+          cclActual != null && inst.tem != null && diasVto > 0
+            ? Number((cclActual * Math.pow(1 + inst.tem / 100, diasVto / 30)).toFixed(2))
+            : null
+
         return {
           ticker: inst.ticker,
           tipo: inst.tipo,
@@ -214,7 +275,8 @@ export async function GET(request: NextRequest) {
           precio: null,
           tir: null,
           tea: null,
-          tem: null,
+          tem: inst.tem ?? null,
+          tcImplicito,
         }
       })
       .filter((inst) => inst.diasVencimiento >= 0)
@@ -224,7 +286,7 @@ export async function GET(request: NextRequest) {
       data: screener,
       updated_at: new Date().toISOString(),
       source: "fallback_estatico",
-      nota: "las lecaps quedaron en fallback estático; faltan precios live específicos",
+      nota: "las lecaps caen a fallback estático si la DB local no está disponible",
     })
   }
 

@@ -31,7 +31,7 @@ function extractVideoId(input: string): string | null {
 
 export function LiveSection() {
   const [channels, setChannels]     = useState(DEFAULT_CHANNELS)
-  const [collapsed, setCollapsed]   = useState(false)
+  const [collapsed, setCollapsed]   = useState(true)
   const [muted, setMuted]           = useState<Record<string, boolean>>(
     Object.fromEntries(DEFAULT_CHANNELS.map((c) => [c.id, true]))
   )
@@ -75,18 +75,13 @@ export function LiveSection() {
       {/* Header */}
       <div
         className="bbg-panel-header"
-        style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", userSelect: "none" }}
-        onClick={() => setCollapsed((v) => !v)}
+        style={{ display: "flex", alignItems: "center", gap: 8 }}
       >
         <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#FF433D", display: "inline-block", boxShadow: "0 0 6px #FF433D" }} />
         EN VIVO
-        <span style={{ marginLeft: "auto", color: "#333", fontSize: 9, fontWeight: 400 }}>
-          {collapsed ? "▼ EXPANDIR" : "▲ COLAPSAR"}
-        </span>
       </div>
 
-      {!collapsed && (
-        <>
+      <>
           {/* Grid de canales */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gridTemplateRows: "repeat(2, 150px)", gap: 1, background: "#111" }}>
             {channels.map((ch, idx) => (
@@ -159,8 +154,7 @@ export function LiveSection() {
 
             {error && <span style={{ fontSize: 9, color: "#FF433D" }}>{error}</span>}
           </div>
-        </>
-      )}
+      </>
     </div>
   )
 }

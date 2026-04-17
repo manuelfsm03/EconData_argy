@@ -20,6 +20,7 @@ export interface CapInstrumentDef {
   ticker: string
   tipo: string
   vencimiento: string
+  tem?: number
 }
 
 export const BOND_DEFS: BondDef[] = [

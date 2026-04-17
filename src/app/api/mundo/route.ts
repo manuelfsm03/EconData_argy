@@ -24,25 +24,54 @@ const TICKERS: Record<string, string> = {
   dow: "^DJI",
   merval: "^MERV",
   vix: "^VIX",
-  // Commodities
+  // Commodities agrícolas
   soja: "ZS=F",
   maiz: "ZC=F",
   trigo: "ZW=F",
+  arroz: "ZR=F",
+  azucar: "SB=F",   // cotiza en cents/lb — dividir por 100 en UI para USD/lb
+  cafe: "KC=F",
+  algodon: "CT=F",
+  // Energía
   petroleo: "CL=F",
+  brent: "BZ=F",
+  gas_natural: "NG=F",
+  gasoil: "HO=F",
+  // Metales — ALI=F (COMEX Aluminium) no tiene datos confiables en YF; usamos HG=F (Cobre) como referencia
   oro: "GC=F",
+  plata: "SI=F",
+  cobre: "HG=F",
+  // Tierras raras & estratégicos
+  remx: "REMX",          // VanEck Rare Earth/Strategic Metals ETF
+  mp_materials: "MP",    // MP Materials — mayor productor EEUU
+  lithium_etf: "LIT",   // Global X Lithium & Battery Tech ETF
+  albemarle: "ALB",      // Albemarle — litio/tierras raras
+  uranium: "URA",        // Global X Uranium ETF
+  cobalt_nickel: "VALE", // Vale — níquel/cobalto
   // FX
   eurusd: "EURUSD=X",
   usdbrl: "USDBRL=X",
   usdcny: "USDCNY=X",
   // Renta fija USA
   us10y: "^TNX",
-  // Commodities extra
-  brent: "BZ=F",
+  us5y: "^FVX",
+  us2y: "^IRX", // 13-week T-bill como proxy del extremo corto
+  // Índices extra
   dxy: "DX-Y.NYB",
   // Crypto
-  bitcoin: "BTC-USD",
+  bitcoin:  "BTC-USD",
   ethereum: "ETH-USD",
+  solana:   "SOL-USD",
+  cardano:  "ADA-USD",
+  xrp:      "XRP-USD",
+  bnb:      "BNB-USD",
+  usdt:     "USDT-USD",
+  usdc:     "USDC-USD",
 }
+
+// Tickers cuya variación diaria suele exceder el umbral por naturaleza (ETFs de volatilidad, cripto)
+const HIGH_VOL_TICKERS = new Set(["vix", "bitcoin", "ethereum", "solana", "cardano", "xrp", "bnb"])
+const MAX_1D_CHANGE_PCT = 25 // umbral para descartar variaciones sospechosas en commodities / índices
 
 const YF_HEADERS = {
   "User-Agent":
@@ -89,6 +118,13 @@ async function getQuote(nombre: string, ticker: string): Promise<[string, QuoteR
     if (last == null || prev == null || prev === 0) return [nombre, null]
 
     const chg = ((last - prev) / prev) * 100
+
+    // Descartar variaciones diarias sospechosas (ej. arroz ZR=F con -98%)
+    if (!HIGH_VOL_TICKERS.has(nombre) && Math.abs(chg) > MAX_1D_CHANGE_PCT) {
+      console.warn(`[mundo] Variación sospechosa ${ticker} (${nombre}): ${chg.toFixed(2)}% — descartando`)
+      return [nombre, null]
+    }
+
     return [
       nombre,
       {

@@ -5,6 +5,8 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
 } from "recharts"
+import { InfoTooltip } from "@/components/ui/info-tooltip"
+import { GLOSSARY } from "@/lib/glossary"
 
 export type DateRange = "1w" | "1m" | "3m" | "6m" | "1y" | "ytd" | "all"
 
@@ -19,6 +21,7 @@ interface BBGAreaChartProps {
   data: Record<string, unknown>[]
   areas: AreaConfig[]
   title: string
+  glossaryKey?: string
   yAxisLabel?: string
   height?: number
   stacked?: boolean
@@ -85,7 +88,7 @@ const RANGE_OPTIONS: { value: DateRange; label: string }[] = [
 ]
 
 export function BBGAreaChart({
-  data, areas, title, yAxisLabel, height = 180, stacked, formatValue,
+  data, areas, title, glossaryKey, yAxisLabel, height = 180, stacked, formatValue,
   enableDateRange = true, defaultRange = "1m"
 }: BBGAreaChartProps) {
   const [range, setRange] = useState<DateRange>(defaultRange)
@@ -95,31 +98,111 @@ export function BBGAreaChart({
     return filterDataByRange(data, range)
   }, [data, range])
 
+  // Dominio Y ajustado a los datos visibles + padding
+  const yDomain = useMemo(() => {
+    const values: number[] = filteredData.flatMap((d) =>
+      areas.flatMap((a) => {
+        const v = d[a.key]
+        return typeof v === "number" ? [v] : []
+      })
+    )
+    if (values.length === 0) return ["auto", "auto"] as const
+    const min = Math.min(...values)
+    const max = Math.max(...values)
+    const pad = Math.max((max - min) * 0.05, Math.abs(max) * 0.02)
+    return [min - pad, max + pad] as const
+  }, [filteredData, areas])
+
+  // Override manual de escala
+  const [scaleMin, setScaleMin] = useState("")
+  const [scaleMax, setScaleMax] = useState("")
+  const isOverriding = scaleMin !== "" || scaleMax !== ""
+
+  const effectiveDomain = useMemo((): [number | string, number | string] => {
+    const uMin = scaleMin !== "" ? parseFloat(scaleMin) : null
+    const uMax = scaleMax !== "" ? parseFloat(scaleMax) : null
+    return [
+      uMin !== null && !isNaN(uMin) ? uMin : yDomain[0],
+      uMax !== null && !isNaN(uMax) ? uMax : yDomain[1],
+    ]
+  }, [yDomain, scaleMin, scaleMax])
+
   return (
     <div className="bbg-panel">
-      <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span>{title}</span>
-        {enableDateRange && (
-          <div style={{ display: "flex", gap: "2px" }}>
-            {RANGE_OPTIONS.map((opt) => (
+      <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+        <span style={{ display: "flex", alignItems: "center" }}>
+          {title}
+          {glossaryKey && GLOSSARY[glossaryKey] && (
+            <InfoTooltip
+              text={GLOSSARY[glossaryKey].text}
+              source={GLOSSARY[glossaryKey].source}
+              url={GLOSSARY[glossaryKey].url}
+              position="bottom"
+            />
+          )}
+        </span>
+        <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+            <span style={{ fontSize: "9px", color: "#444", letterSpacing: 1 }}>Y:</span>
+            <input
+              type="number"
+              placeholder={typeof yDomain[0] === "number" ? String(Math.round(yDomain[0] as number)) : "min"}
+              value={scaleMin}
+              onChange={(e) => setScaleMin(e.target.value)}
+              style={{
+                width: 52, fontSize: "9px", background: "#0d0d0d",
+                border: `1px solid ${scaleMin ? "#FFA028" : "#333"}`,
+                color: scaleMin ? "#FFA028" : "#666",
+                padding: "1px 4px", borderRadius: 2, outline: "none",
+              }}
+            />
+            <span style={{ fontSize: "9px", color: "#333" }}>–</span>
+            <input
+              type="number"
+              placeholder={typeof yDomain[1] === "number" ? String(Math.round(yDomain[1] as number)) : "max"}
+              value={scaleMax}
+              onChange={(e) => setScaleMax(e.target.value)}
+              style={{
+                width: 52, fontSize: "9px", background: "#0d0d0d",
+                border: `1px solid ${scaleMax ? "#FFA028" : "#333"}`,
+                color: scaleMax ? "#FFA028" : "#666",
+                padding: "1px 4px", borderRadius: 2, outline: "none",
+              }}
+            />
+            {isOverriding && (
               <button
-                key={opt.value}
-                onClick={() => setRange(opt.value)}
+                onClick={() => { setScaleMin(""); setScaleMax("") }}
                 style={{
-                  fontSize: "9px",
-                  padding: "2px 6px",
-                  border: "none",
-                  background: range === opt.value ? "#FFA028" : "transparent",
-                  color: range === opt.value ? "#000" : "#888",
-                  cursor: "pointer",
-                  borderRadius: "2px",
+                  fontSize: "9px", padding: "1px 5px", background: "transparent",
+                  border: "1px solid #555", color: "#888", cursor: "pointer", borderRadius: 2,
                 }}
               >
-                {opt.label}
+                AUTO
               </button>
-            ))}
+            )}
           </div>
-        )}
+          {enableDateRange && (
+            <div style={{ display: "flex", gap: "2px" }}>
+              {RANGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setRange(opt.value)}
+                  style={{
+                    fontSize: "9px",
+                    padding: "2px 6px",
+                    border: "none",
+                    background: range === opt.value ? "#FFA028" : "transparent",
+                    color: range === opt.value ? "#000" : "#888",
+                    cursor: "pointer",
+                    borderRadius: "2px",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       <div style={{ padding: "4px 4px 0 0" }}>
         <ResponsiveContainer width="100%" height={height}>
@@ -141,6 +224,7 @@ export function BBGAreaChart({
               interval="preserveStartEnd"
             />
             <YAxis
+              domain={effectiveDomain}
               tick={{ fill: "#555555", fontSize: 9 }}
               axisLine={{ stroke: "#333333" }}
               tickLine={false}
