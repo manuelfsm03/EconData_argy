@@ -707,7 +707,7 @@ const COMM_GROUPS = [
       { key: "maiz",     label: "Maíz",     unit: "USD/bu",  ticker: "ZC=F",  decimals: 2, flag: "🌽" },
       { key: "trigo",    label: "Trigo",    unit: "USD/bu",  ticker: "ZW=F",  decimals: 2, flag: "🌾" },
       { key: "arroz",    label: "Arroz",    unit: "USD/cwt", ticker: "ZR=F",  decimals: 2, flag: "🍚" },
-      { key: "azucar",   label: "Azúcar",   unit: "USD/lb",  ticker: "SB=F",  decimals: 2, flag: "🧂" },
+      { key: "azucar",   label: "Azúcar",   unit: "c/lb",    ticker: "SB=F",  decimals: 2, flag: "🧂" },
       { key: "cafe",     label: "Café",     unit: "USD/lb",  ticker: "KC=F",  decimals: 2, flag: "☕" },
       { key: "algodon",  label: "Algodón",  unit: "USD/lb",  ticker: "CT=F",  decimals: 2, flag: "🪡" },
     ],
@@ -726,10 +726,9 @@ const COMM_GROUPS = [
     label: "Metales",
     color: "#FFD700",
     items: [
-      { key: "oro",       label: "Oro",       unit: "USD/oz",  ticker: "GC=F",  decimals: 0, flag: "🥇" },
-      { key: "plata",     label: "Plata",     unit: "USD/oz",  ticker: "SI=F",  decimals: 2, flag: "🥈" },
-      { key: "cobre",     label: "Cobre",     unit: "USD/lb",  ticker: "HG=F",  decimals: 3, flag: "🔶" },
-      { key: "aluminio",  label: "Aluminio",  unit: "USD/lb",  ticker: "ALI=F", decimals: 3, flag: "⬜" },
+      { key: "oro",    label: "Oro",   unit: "USD/oz", ticker: "GC=F", decimals: 0, flag: "🥇" },
+      { key: "plata",  label: "Plata", unit: "USD/oz", ticker: "SI=F", decimals: 2, flag: "🥈" },
+      { key: "cobre",  label: "Cobre", unit: "USD/lb", ticker: "HG=F", decimals: 3, flag: "🔶" },
     ],
   },
   {
