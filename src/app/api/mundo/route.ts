@@ -42,6 +42,13 @@ const TICKERS: Record<string, string> = {
   plata: "SI=F",
   cobre: "HG=F",
   aluminio: "ALI=F",
+  // Tierras raras & estratégicos
+  remx: "REMX",        // VanEck Rare Earth/Strategic Metals ETF
+  mp_materials: "MP",  // MP Materials — mayor productor EEUU
+  lithium_etf: "LIT",  // Global X Lithium & Battery Tech ETF
+  albemarle: "ALB",    // Albemarle — litio/tierras raras
+  uranium: "URA",      // Global X Uranium ETF
+  cobalt_nickel: "VALE", // Vale — níquel/cobalto
   // FX
   eurusd: "EURUSD=X",
   usdbrl: "USDBRL=X",

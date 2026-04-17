@@ -742,6 +742,18 @@ const COMM_GROUPS = [
       { key: "aluminio",  label: "Aluminio",  unit: "USD/lb",  ticker: "ALI=F", decimals: 3, flag: "⬜" },
     ],
   },
+  {
+    label: "Tierras Raras & Estratégicos",
+    color: "#CE93D8",
+    items: [
+      { key: "remx",        label: "REMX ETF",     unit: "ETF USD",  ticker: "REMX", decimals: 2, flag: "⛏️" },
+      { key: "mp_materials",label: "MP Materials",  unit: "USD/acc",  ticker: "MP",   decimals: 2, flag: "🪨" },
+      { key: "lithium_etf", label: "Litio ETF",     unit: "ETF USD",  ticker: "LIT",  decimals: 2, flag: "🔋" },
+      { key: "albemarle",   label: "Albemarle",     unit: "USD/acc",  ticker: "ALB",  decimals: 2, flag: "⚗️" },
+      { key: "uranium",     label: "Uranio ETF",    unit: "ETF USD",  ticker: "URA",  decimals: 2, flag: "☢️" },
+      { key: "cobalt_nickel",label: "Vale (Ni/Co)", unit: "USD/acc",  ticker: "VALE", decimals: 2, flag: "🧲" },
+    ],
+  },
 ]
 
 const COMM_ALL = COMM_GROUPS.flatMap(g => g.items)
