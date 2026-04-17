@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { STOCK_CATEGORIES, MERVAL_TOP, type StockQuote } from "@/lib/stock-categories"
 
-const MERVAL_BASE = "https://api-merval-production.up.railway.app"
+// api-merval/byma deshabilitado por criterio legal; acciones usa fuentes públicas permitidas
 // ── In-memory cache ────────────────────────────────────────────────────────────
 const _cache: Record<string, { data: unknown; expiry: number }> = {}
 function getCached<T>(k: string): T | null {
@@ -91,67 +91,9 @@ async function enrichWithRavaFallback(symbols: string[], base: Map<string, Stock
   return base
 }
 
-// ── Fetch batch from api-merval ────────────────────────────────────────────────
-async function fetchBatch(symbols: string[]): Promise<Map<string, StockQuote>> {
-  const result = new Map<string, StockQuote>()
-  if (symbols.length === 0) return result
-
-  // Build URL with repeated symbols param
-  const params = symbols.map((s) => `symbols=${s}:24hs`).join("&")
-  const url = `${MERVAL_BASE}/v1/quotes/batch?${params}&depth=1`
-
-  try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
-      signal: AbortSignal.timeout(10000),
-      next: { revalidate: 60 },
-    })
-    if (!res.ok) return result
-
-    const j = await res.json()
-    const quotes: unknown[] = j.quotes ?? []
-
-    for (const q of quotes) {
-      const quote = q as Record<string, unknown>
-      const symbol = (quote.symbol as string)?.replace(/D$/, "") // GD30D → GD30
-      const md = quote.marketData as Record<string, unknown>
-      if (!md) continue
-
-      const la = md.LA as Record<string, unknown> | null
-      const cl = md.CL as Record<string, unknown> | null
-      const bi = (md.BI as unknown[]) ?? []
-      const of_ = (md.OF as unknown[]) ?? []
-
-      const lastPrice = la?.price ? parseFloat(la.price as string) : null
-      const closePrice = cl?.price ? parseFloat(cl.price as string) : null
-      const openPrice = md.OP ? parseFloat(md.OP as string) : null
-      const volume = md.EV ? ((md.EV as Record<string, unknown>).size as number) ?? null : null
-
-      const bid = bi.length > 0 ? parseFloat((bi[0] as Record<string, unknown>).price as string) : null
-      const ask = of_.length > 0 ? parseFloat((of_[0] as Record<string, unknown>).price as string) : null
-
-      const change1D =
-        lastPrice != null && closePrice != null && closePrice > 0
-          ? ((lastPrice - closePrice) / closePrice) * 100
-          : null
-
-      result.set(symbol, {
-        ticker: symbol,
-        category: "",
-        lastPrice,
-        closePrice,
-        openPrice,
-        change1D,
-        volume,
-        bid,
-        ask,
-      })
-    }
-  } catch {
-    // Timeout or network error — return empty
-  }
-
-  return result
+// ── Fuentes públicas permitidas (sin api-merval/byma) ─────────────────────────
+async function fetchBatch(_: string[]): Promise<Map<string, StockQuote>> {
+  return new Map<string, StockQuote>()
 }
 
 // ── GET ────────────────────────────────────────────────────────────────────────
