@@ -1137,8 +1137,12 @@ function CryptoView() {
               <div style={{ fontSize: 17, fontWeight: 700, color: isActive ? "#fff" : "#444", marginTop: 2, lineHeight: 1 }}>
                 {q ? `$${fmtUSD(q.precio, decimals(c.key))}` : "—"}
               </div>
-              <div style={{ fontSize: 9, color: q ? changeColor(q.variacion_pct) : "#333", marginTop: 2, fontWeight: 700 }}>
+              <div style={{
+                fontSize: 9, marginTop: 2, fontWeight: 700,
+                color: !q ? "#333" : (["usdt","usdc"].includes(c.key) && Math.abs(q.variacion_pct) < 0.1) ? "#666" : changeColor(q.variacion_pct),
+              }}>
                 {q ? `${q.variacion_pct >= 0 ? "+" : ""}${fmtUSD(q.variacion_pct, 2)}%` : "—"}
+                <span style={{ fontSize: 7, color: "#555", marginLeft: 3, fontWeight: 400 }}>1D</span>
               </div>
               {isActive && <div style={{ width: "100%", height: 2, background: c.color, marginTop: 4, borderRadius: 1 }} />}
             </button>
