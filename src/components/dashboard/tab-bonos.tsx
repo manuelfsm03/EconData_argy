@@ -727,20 +727,27 @@ export function TabBonos() {
   const [activeTab, setActiveTab] = useState("snapshot")
   const [bonds, setBonds] = useState<SovereignBond[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const fetchBondsMerval = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const mervalSymbols = ["GD30D", "GD35D", "GD41D", "AL29D", "AL30D", "AL35D", "AE38D"]
       const params = mervalSymbols.map((s) => `symbols=${s}:24hs`).join("&")
       const mervalUrl = `https://api-merval-production.up.railway.app/v1/quotes/batch?${params}&depth=1`
 
-      const [bonosJson, mervalJson] = await Promise.all([
-        fetch("/api/bonos").then((r) => r.json()),
+      const [bonosRes, mervalJson] = await Promise.all([
+        fetch("/api/bonos"),
         fetch(mervalUrl).then((r) => r.json()).catch(() => null),
       ])
 
+      const bonosJson = bonosRes.ok ? await bonosRes.json() : { data: [], error: `bonos http ${bonosRes.status}` }
       const rawBonds: SovereignBond[] = bonosJson.data ?? []
+
+      if (!bonosRes.ok && rawBonds.length === 0) {
+        setLoadError(bonosJson.error ?? "no se pudieron cargar bonos")
+      }
 
       const changeMap = new Map<string, number | null>()
       if (mervalJson?.quotes) {
@@ -762,6 +769,7 @@ export function TabBonos() {
     } catch {
       const j = await fetch("/api/bonos").then((r) => r.json()).catch(() => ({ data: [] }))
       setBonds((j.data ?? []).map((b: SovereignBond) => ({ ...b, outstanding: OUTSTANDING[b.ticker] })))
+      if (!(j.data ?? []).length) setLoadError("no se pudieron cargar bonos desde el backend")
     } finally {
       setLoading(false)
     }
@@ -785,9 +793,9 @@ export function TabBonos() {
   if (bonds.length === 0) {
     return (
       <div style={{ padding: 16 }}>
-        <div style={{ color: "#FF433D", fontSize: 12, marginBottom: 8 }}>No hay bonos en la base de datos.</div>
-        <div style={{ color: "#555", fontSize: 11 }}>
-          Ejecutar: <code style={{ color: "#FFA028" }}>npx ts-node prisma/seed-bonds.ts</code>
+        <div style={{ color: "#FF433D", fontSize: 12, marginBottom: 8 }}>no se pudo armar el panel de bonos.</div>
+        <div style={{ color: "#777", fontSize: 11 }}>
+          {loadError ?? "faltan datos suficientes para renderizar la curva"}
         </div>
       </div>
     )

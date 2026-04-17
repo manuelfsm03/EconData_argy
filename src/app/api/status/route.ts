@@ -1,30 +1,33 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
+type HealthCheck = {
+  source: string
+  name: string
+  url: string
+}
+
+const CHECKS: HealthCheck[] = [
+  { source: "rava", name: "Rava.com", url: "https://www.rava.com/perfil/gd30" },
+  { source: "finanzasargy", name: "ArgentinaDatos Dólares", url: "https://api.argentinadatos.com/v1/cotizaciones/dolares" },
+  { source: "criptoya", name: "DolarAPI / Cripto", url: "https://dolarapi.com/v1/dolares" },
+  { source: "bcra", name: "BCRA / Macro", url: "https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais" },
+  { source: "indec", name: "INDEC / datos.gob.ar", url: "https://apis.datos.gob.ar/series/api/series/?ids=145.3_INGNACUAL_DICI_M_38&limit=2" },
+  { source: "rss", name: "RSS Feeds", url: "https://www.infobae.com/feeds/rss/economia.xml" },
+]
+
 export async function GET() {
   try {
-    // Get the latest scrape log for each source
-    const sources = ["rava", "finanzasargy", "criptoya", "bcra", "indec", "rss"]
-
-    const status = await Promise.all(
-      sources.map(async (source) => {
+    const dbStatuses = await Promise.all(
+      CHECKS.map(async (sourceCfg) => {
         const log = await prisma.scrapeLog.findFirst({
-          where: { source },
+          where: { source: sourceCfg.source },
           orderBy: { startedAt: "desc" },
         })
 
-        const sourceNames: Record<string, string> = {
-          rava: "Rava.com",
-          finanzasargy: "FinanzasArgy",
-          criptoya: "CriptoYa",
-          bcra: "BCRA",
-          indec: "INDEC",
-          rss: "RSS Feeds",
-        }
-
         return {
-          name: sourceNames[source] || source,
-          source,
+          name: sourceCfg.name,
+          source: sourceCfg.source,
           lastRun: log?.completedAt || log?.startedAt || null,
           status: log?.status === "success"
             ? "success"
@@ -39,12 +42,41 @@ export async function GET() {
       })
     )
 
-    return NextResponse.json(status)
+    return NextResponse.json(dbStatuses)
   } catch (error) {
-    console.error("Error fetching status:", error)
-    return NextResponse.json(
-      { error: "Failed to fetch status" },
-      { status: 500 }
+    console.error("Error fetching status from DB:", error)
+
+    const statuses = await Promise.all(
+      CHECKS.map(async (check) => {
+        try {
+          const startedAt = Date.now()
+          const res = await fetch(check.url, {
+            headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json,text/html,application/xml" },
+            signal: AbortSignal.timeout(10000),
+            next: { revalidate: 900 },
+          })
+          const duration = Date.now() - startedAt
+          return {
+            name: check.name,
+            source: check.source,
+            lastRun: new Date().toISOString(),
+            status: res.ok ? "success" : "error",
+            recordsAdded: undefined,
+            message: res.ok ? `healthcheck ok · ${duration}ms` : `http ${res.status}`,
+          }
+        } catch (healthError) {
+          return {
+            name: check.name,
+            source: check.source,
+            lastRun: new Date().toISOString(),
+            status: "error",
+            recordsAdded: undefined,
+            message: healthError instanceof Error ? healthError.message : "healthcheck failed",
+          }
+        }
+      })
     )
+
+    return NextResponse.json(statuses)
   }
 }

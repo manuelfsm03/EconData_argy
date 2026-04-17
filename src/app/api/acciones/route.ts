@@ -52,6 +52,52 @@ function setCached(k: string, d: unknown, ttlSec: number) {
   _cache[k] = { data: d, expiry: Date.now() + ttlSec * 1000 }
 }
 
+function parseLocaleNumber(raw: string | null | undefined): number | null {
+  if (!raw) return null
+  const match = raw.trim().match(/-?[\d.]+(?:,\d+)?/)
+  if (!match) return null
+  const value = Number(match[0].replace(/\./g, "").replace(",", "."))
+  return Number.isFinite(value) ? value : null
+}
+
+async function scrapeRavaQuote(symbol: string): Promise<StockQuote | null> {
+  try {
+    const res = await fetch(`https://www.rava.com/perfil/${symbol.toLowerCase()}`, {
+      headers: { "User-Agent": "Mozilla/5.0 PanelDeControl/2.0", Accept: "text/html" },
+      signal: AbortSignal.timeout(12000),
+      next: { revalidate: 300 },
+    })
+    if (!res.ok) return null
+    const html = await res.text()
+    const lastPrice = parseLocaleNumber(html.match(/Precio:<\/span>\s*<span class="bolder">([^<]+)</i)?.[1])
+    if (lastPrice == null) return null
+    return {
+      ticker: symbol,
+      category: "",
+      lastPrice,
+      closePrice: null,
+      openPrice: null,
+      change1D: null,
+      volume: null,
+      bid: null,
+      ask: null,
+    }
+  } catch {
+    return null
+  }
+}
+
+async function enrichWithRavaFallback(symbols: string[], base: Map<string, StockQuote>): Promise<Map<string, StockQuote>> {
+  const missing = symbols.filter((symbol) => (base.get(symbol)?.lastPrice ?? null) == null)
+  if (missing.length === 0) return base
+
+  const fallbackQuotes = await Promise.all(missing.map(scrapeRavaQuote))
+  fallbackQuotes.forEach((quote) => {
+    if (quote?.ticker) base.set(quote.ticker, quote)
+  })
+  return base
+}
+
 // ── Fetch batch from api-merval ────────────────────────────────────────────────
 async function fetchBatch(symbols: string[]): Promise<Map<string, StockQuote>> {
   const result = new Map<string, StockQuote>()
@@ -128,7 +174,8 @@ export async function GET(request: NextRequest) {
     const cached = getCached<StockQuote[]>(cacheKey)
     if (cached) return NextResponse.json({ data: cached, cached: true })
 
-    const qmap = await fetchBatch(MERVAL_TOP)
+    let qmap = await fetchBatch(MERVAL_TOP)
+    qmap = await enrichWithRavaFallback(MERVAL_TOP, qmap)
     const data: StockQuote[] = MERVAL_TOP.map((t) => {
       const q = qmap.get(t) ?? { ticker: t, category: "", lastPrice: null, closePrice: null, openPrice: null, change1D: null, volume: null, bid: null, ask: null }
       q.category = findCategory(t)
@@ -142,7 +189,8 @@ export async function GET(request: NextRequest) {
   // Override tickers
   if (tickersParam) {
     const tickers = tickersParam.split(",").map((t) => t.trim().toUpperCase())
-    const qmap = await fetchBatch(tickers)
+    let qmap = await fetchBatch(tickers)
+    qmap = await enrichWithRavaFallback(tickers, qmap)
     const data = tickers.map((t) => {
       const q = qmap.get(t) ?? { ticker: t, category: "", lastPrice: null, closePrice: null, openPrice: null, change1D: null, volume: null, bid: null, ask: null }
       q.category = findCategory(t)
@@ -171,7 +219,8 @@ export async function GET(request: NextRequest) {
     batches.push(allTickers.slice(i, i + batchSize))
   }
 
-  const qmaps = await Promise.all(batches.map(fetchBatch))
+  let qmaps = await Promise.all(batches.map(fetchBatch))
+  qmaps = await Promise.all(qmaps.map((qm, idx) => enrichWithRavaFallback(batches[idx], qm)))
   const merged = new Map<string, StockQuote>()
   for (const qm of qmaps) {
     for (const [k, v] of qm) merged.set(k, v)

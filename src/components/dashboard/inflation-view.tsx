@@ -391,7 +391,7 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
             background: "#0a0a0a"
           }}>
             <iframe
-              src="/inflation_map_global.html"
+              src="/inflation_map.html"
               style={{
                 width: "100%",
                 height: "600px",
