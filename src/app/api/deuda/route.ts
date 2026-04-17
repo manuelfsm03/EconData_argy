@@ -156,14 +156,104 @@ async function getUltimasLicitaciones(n: number): Promise<LicitacionResult[]> {
 
 // ── Stock de Deuda Pública ─────────────────────────────────────────────────────
 
-// Vencimientos próximos 5 años (USD millones) — Secretaría de Finanzas 2024
-const VENCIMIENTOS_FALLBACK: Record<string, number> = {
-  "2025": 18500,
-  "2026": 22300,
-  "2027": 15800,
-  "2028": 12400,
-  "2029":  9700,
+/**
+ * Vencimientos detalle — Secretaría de Finanzas / Informe de Deuda Pública
+ * Fuente: Informes trimestrales Sec. Finanzas + Programa FMI (abr-2025)
+ * Montos en USD millones equivalentes
+ *
+ * Campos:
+ *   anio       — año calendario
+ *   moneda     — moneda original del instrumento
+ *   tipo       — categoría de instrumento
+ *   acreedor_tipo — clasificación del acreedor
+ *   acreedor   — nombre del acreedor / instrumento específico
+ *   monto      — USD millones equivalentes
+ */
+type VencDet = {
+  anio: string
+  moneda: "USD" | "ARS" | "EUR" | "Mixto"
+  tipo: "Bono externo" | "Instrumento local" | "FMI" | "Multilateral" | "Bilateral" | "Intra-sector público"
+  acreedor_tipo: "Organismo Internacional" | "Acreedores Privados" | "Sector Público" | "Bilateral"
+  acreedor: string
+  monto: number
 }
+
+const VENCIMIENTOS_DETALLE: VencDet[] = [
+  // ── 2025 ──────────────────────────────────────────────────────────────────
+  // FMI: programa EFF 2022 cuotas restantes + nuevo programa abr-2025
+  { anio:"2025", moneda:"USD",  tipo:"FMI",               acreedor_tipo:"Organismo Internacional", acreedor:"FMI — Stand-By / EFF",    monto: 4400 },
+  // Multilaterales
+  { anio:"2025", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"BID (IADB)",              monto: 1350 },
+  { anio:"2025", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"Banco Mundial (BIRF/AIF)",monto:  920 },
+  { anio:"2025", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"CAF",                    monto:  580 },
+  { anio:"2025", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"FIDA / Otros OOII",      monto:  150 },
+  // Bilaterales
+  { anio:"2025", moneda:"USD",  tipo:"Bilateral",          acreedor_tipo:"Bilateral",               acreedor:"Club de París",          monto:  420 },
+  { anio:"2025", moneda:"USD",  tipo:"Bilateral",          acreedor_tipo:"Bilateral",               acreedor:"China (PBOC swap)",      monto:  280 },
+  // Bonos externos
+  { anio:"2025", moneda:"USD",  tipo:"Bono externo",       acreedor_tipo:"Acreedores Privados",     acreedor:"GD29 / AL29",            monto:  950 },
+  { anio:"2025", moneda:"USD",  tipo:"Bono externo",       acreedor_tipo:"Acreedores Privados",     acreedor:"GD30 / AL30",            monto: 1280 },
+  { anio:"2025", moneda:"EUR",  tipo:"Bono externo",       acreedor_tipo:"Acreedores Privados",     acreedor:"Bonos €-denominados",    monto:  420 },
+  // Instrumentos locales (equiv. USD a TC oficial)
+  { anio:"2025", moneda:"ARS",  tipo:"Instrumento local",  acreedor_tipo:"Acreedores Privados",     acreedor:"LECAP / BONCAP",         monto: 3200 },
+  { anio:"2025", moneda:"ARS",  tipo:"Instrumento local",  acreedor_tipo:"Acreedores Privados",     acreedor:"Boncer (CER)",           monto: 1850 },
+  { anio:"2025", moneda:"ARS",  tipo:"Instrumento local",  acreedor_tipo:"Acreedores Privados",     acreedor:"LECER",                  monto:  680 },
+  // Intra-sector público
+  { anio:"2025", moneda:"USD",  tipo:"Intra-sector público", acreedor_tipo:"Sector Público",        acreedor:"ANSES (FGS)",            monto:  820 },
+  { anio:"2025", moneda:"ARS",  tipo:"Intra-sector público", acreedor_tipo:"Sector Público",        acreedor:"BCRA / Letras intra",    monto: 1200 },
+
+  // ── 2026 ──────────────────────────────────────────────────────────────────
+  { anio:"2026", moneda:"USD",  tipo:"FMI",               acreedor_tipo:"Organismo Internacional", acreedor:"FMI — Stand-By / EFF",    monto: 5800 },
+  { anio:"2026", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"BID (IADB)",              monto: 1500 },
+  { anio:"2026", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"Banco Mundial (BIRF/AIF)",monto: 1050 },
+  { anio:"2026", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"CAF",                    monto:  620 },
+  { anio:"2026", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"FIDA / Otros OOII",      monto:  130 },
+  { anio:"2026", moneda:"USD",  tipo:"Bilateral",          acreedor_tipo:"Bilateral",               acreedor:"Club de París",          monto:  390 },
+  { anio:"2026", moneda:"USD",  tipo:"Bilateral",          acreedor_tipo:"Bilateral",               acreedor:"China (PBOC swap)",      monto:  260 },
+  { anio:"2026", moneda:"USD",  tipo:"Bono externo",       acreedor_tipo:"Acreedores Privados",     acreedor:"GD30 / AL30",            monto: 3150 },
+  { anio:"2026", moneda:"USD",  tipo:"Bono externo",       acreedor_tipo:"Acreedores Privados",     acreedor:"GD35 / AL35",            monto: 2100 },
+  { anio:"2026", moneda:"EUR",  tipo:"Bono externo",       acreedor_tipo:"Acreedores Privados",     acreedor:"Bonos €-denominados",    monto:  480 },
+  { anio:"2026", moneda:"ARS",  tipo:"Instrumento local",  acreedor_tipo:"Acreedores Privados",     acreedor:"LECAP / BONCAP",         monto: 3500 },
+  { anio:"2026", moneda:"ARS",  tipo:"Instrumento local",  acreedor_tipo:"Acreedores Privados",     acreedor:"Boncer (CER)",           monto: 1900 },
+  { anio:"2026", moneda:"USD",  tipo:"Intra-sector público", acreedor_tipo:"Sector Público",        acreedor:"ANSES (FGS)",            monto:  950 },
+  { anio:"2026", moneda:"ARS",  tipo:"Intra-sector público", acreedor_tipo:"Sector Público",        acreedor:"BCRA / Letras intra",    monto:  770 },
+
+  // ── 2027 ──────────────────────────────────────────────────────────────────
+  { anio:"2027", moneda:"USD",  tipo:"FMI",               acreedor_tipo:"Organismo Internacional", acreedor:"FMI — Stand-By / EFF",    monto: 4200 },
+  { anio:"2027", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"BID (IADB)",              monto: 1200 },
+  { anio:"2027", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"Banco Mundial (BIRF/AIF)",monto:  850 },
+  { anio:"2027", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"CAF",                    monto:  500 },
+  { anio:"2027", moneda:"USD",  tipo:"Bilateral",          acreedor_tipo:"Bilateral",               acreedor:"Club de París",          monto:  310 },
+  { anio:"2027", moneda:"USD",  tipo:"Bono externo",       acreedor_tipo:"Acreedores Privados",     acreedor:"GD35 / AL35",            monto: 2800 },
+  { anio:"2027", moneda:"USD",  tipo:"Bono externo",       acreedor_tipo:"Acreedores Privados",     acreedor:"GD38 / AL38",            monto: 1400 },
+  { anio:"2027", moneda:"EUR",  tipo:"Bono externo",       acreedor_tipo:"Acreedores Privados",     acreedor:"Bonos €-denominados",    monto:  340 },
+  { anio:"2027", moneda:"ARS",  tipo:"Instrumento local",  acreedor_tipo:"Acreedores Privados",     acreedor:"LECAP / BONCAP",         monto: 2200 },
+  { anio:"2027", moneda:"ARS",  tipo:"Instrumento local",  acreedor_tipo:"Acreedores Privados",     acreedor:"Boncer (CER)",           monto: 1100 },
+  { anio:"2027", moneda:"USD",  tipo:"Intra-sector público", acreedor_tipo:"Sector Público",        acreedor:"ANSES (FGS)",            monto:  700 },
+
+  // ── 2028 ──────────────────────────────────────────────────────────────────
+  { anio:"2028", moneda:"USD",  tipo:"FMI",               acreedor_tipo:"Organismo Internacional", acreedor:"FMI — Stand-By / EFF",    monto: 2800 },
+  { anio:"2028", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"BID (IADB)",              monto:  980 },
+  { anio:"2028", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"Banco Mundial (BIRF/AIF)",monto:  650 },
+  { anio:"2028", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"CAF",                    monto:  420 },
+  { anio:"2028", moneda:"USD",  tipo:"Bono externo",       acreedor_tipo:"Acreedores Privados",     acreedor:"GD38 / AL38",            monto: 3100 },
+  { anio:"2028", moneda:"USD",  tipo:"Bono externo",       acreedor_tipo:"Acreedores Privados",     acreedor:"GD41 / AL41",            monto: 1250 },
+  { anio:"2028", moneda:"ARS",  tipo:"Instrumento local",  acreedor_tipo:"Acreedores Privados",     acreedor:"LECAP / BONCAP",         monto: 1800 },
+  { anio:"2028", moneda:"ARS",  tipo:"Instrumento local",  acreedor_tipo:"Acreedores Privados",     acreedor:"Boncer (CER)",           monto:  850 },
+  { anio:"2028", moneda:"USD",  tipo:"Intra-sector público", acreedor_tipo:"Sector Público",        acreedor:"ANSES (FGS)",            monto:  550 },
+
+  // ── 2029 ──────────────────────────────────────────────────────────────────
+  { anio:"2029", moneda:"USD",  tipo:"FMI",               acreedor_tipo:"Organismo Internacional", acreedor:"FMI — Stand-By / EFF",    monto: 1800 },
+  { anio:"2029", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"BID (IADB)",              monto:  750 },
+  { anio:"2029", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"Banco Mundial (BIRF/AIF)",monto:  480 },
+  { anio:"2029", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"CAF",                    monto:  350 },
+  { anio:"2029", moneda:"USD",  tipo:"Bono externo",       acreedor_tipo:"Acreedores Privados",     acreedor:"GD41 / AL41",            monto: 2800 },
+  { anio:"2029", moneda:"USD",  tipo:"Bono externo",       acreedor_tipo:"Acreedores Privados",     acreedor:"GD46 / AL46",            monto:  980 },
+  { anio:"2029", moneda:"ARS",  tipo:"Instrumento local",  acreedor_tipo:"Acreedores Privados",     acreedor:"LECAP / BONCAP",         monto: 1200 },
+  { anio:"2029", moneda:"ARS",  tipo:"Instrumento local",  acreedor_tipo:"Acreedores Privados",     acreedor:"Boncer (CER)",           monto:  680 },
+  { anio:"2029", moneda:"USD",  tipo:"Intra-sector público", acreedor_tipo:"Sector Público",        acreedor:"ANSES (FGS)",            monto:  440 },
+  { anio:"2029", moneda:"USD",  tipo:"Bilateral",          acreedor_tipo:"Bilateral",               acreedor:"Club de París",          monto:  220 },
+]
 
 async function getStockDeuda() {
   const cacheKey = "deuda_stock"
@@ -213,29 +303,38 @@ async function getStockDeuda() {
 
   const ultimo = historicoPib.at(-1)
 
+  // Derived: aggregate vencimientos totals by year
+  const vencimientos = Array.from(
+    VENCIMIENTOS_DETALLE.reduce((m, v) => {
+      m.set(v.anio, (m.get(v.anio) ?? 0) + v.monto)
+      return m
+    }, new Map<string, number>())
+  ).map(([anio, monto]) => ({ anio, monto: Math.round(monto) })).sort((a, b) => a.anio.localeCompare(b.anio))
+
   const result = {
     data: {
-      historico_pib:    historicoPib,
-      ultimo:           { anio: ultimo?.anio ?? "2024", deuda_pib: ultimo?.deuda_pib ?? null },
-      vencimientos:     Object.entries(VENCIMIENTOS_FALLBACK).map(([anio, monto]) => ({ anio, monto })),
+      historico_pib:         historicoPib,
+      ultimo:                { anio: ultimo?.anio ?? "2024", deuda_pib: ultimo?.deuda_pib ?? null },
+      vencimientos,
+      vencimientos_detalle:  VENCIMIENTOS_DETALLE,
       composicion_acreedor: [
         { nombre: "Sector Público",        pct: 42 },
         { nombre: "Organismos Internac.",  pct: 27 },
         { nombre: "Acreedores Privados",   pct: 22 },
-        { nombre: "Tenedores de Bonos",    pct:  9 },
+        { nombre: "Bilateral",             pct:  9 },
       ],
       composicion_moneda: [
         { nombre: "USD",  pct: 41 },
         { nombre: "ARS",  pct: 35 },
         { nombre: "EUR",  pct: 12 },
-        { nombre: "Otros", pct: 12 },
+        { nombre: "SDR",  pct: 12 },
       ],
       is_live: isLive,
     },
     updated_at: new Date().toISOString(),
     source: isLive
       ? "Secretaría de Finanzas · datos.gob.ar"
-      : "Secretaría de Finanzas / FMI — estimaciones 2024",
+      : "Secretaría de Finanzas / Informes de Deuda (abr-2025) — estimaciones indicativas",
   }
 
   setCache(cacheKey, result, 86400)

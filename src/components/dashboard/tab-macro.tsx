@@ -161,27 +161,27 @@ function SubTabs({ tabs, active, onChange }: { tabs: { key: string; label: strin
 
 // ── IPC Ponderaciones ─────────────────────────────────────────────────────────
 
-const PONDERACIONES = [
-  { cat: "Alimentos y bebidas", actual: 25.4, propuesto: 22.4 },
-  { cat: "Beb. alcohólicas/tabaco", actual: 2.3, propuesto: 2.1 },
-  { cat: "Indumentaria", actual: 6.8, propuesto: 5.8 },
-  { cat: "Vivienda y servicios", actual: 9.1, propuesto: 12.6 },
-  { cat: "Equipamiento hogar", actual: 7.3, propuesto: 5.9 },
-  { cat: "Salud", actual: 7.5, propuesto: 9.1 },
-  { cat: "Transporte", actual: 14.1, propuesto: 13.8 },
-  { cat: "Comunicación", actual: 2.7, propuesto: 3.4 },
-  { cat: "Recreación y cultura", actual: 7.5, propuesto: 6.5 },
-  { cat: "Educación", actual: 4.3, propuesto: 5.2 },
-  { cat: "Restaurantes/hoteles", actual: 7.1, propuesto: 7.8 },
-  { cat: "Otros bienes/servicios", actual: 6.0, propuesto: 5.4 },
-]
+type PonderRow = { cat: string; actual: number; propuesto: number }
+
+function usePonderaciones(): { rows: PonderRow[]; tipos: Record<string, string>; loading: boolean } {
+  const [rows, setRows] = useState<PonderRow[]>([])
+  const [tipos, setTipos] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    fetch("/api/macro?endpoint=ponderaciones")
+      .then(r => r.json())
+      .then(j => { setRows(j.data ?? []); setTipos(j.tipos ?? {}) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+  return { rows, tipos, loading }
+}
 
 export function PonderacionesTable() {
-  const chartData = PONDERACIONES.map(p => ({
-    nombre: p.cat,
-    "2004": p.actual,
-    "2022": p.propuesto,
-  }))
+  const { rows, loading } = usePonderaciones()
+  if (loading) return <div style={{ padding: 24, color: "#666", fontSize: 11 }}>Cargando ponderaciones…</div>
+
+  const chartData = rows.map(p => ({ nombre: p.cat, "2004": p.actual, "2022": p.propuesto }))
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -197,13 +197,7 @@ export function PonderacionesTable() {
               <XAxis type="number" stroke="#555555" fontSize={9} axisLine={{ stroke: "#333333" }} />
               <YAxis dataKey="nombre" type="category" stroke="#555555" fontSize={9} width={135} axisLine={{ stroke: "#333333" }} tick={{ fill: "#999999", fontSize: 9 }} />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: "#0a0a0a",
-                  border: "1px solid #333333",
-                  borderRadius: "0",
-                  fontSize: "10px",
-                  fontFamily: "monospace",
-                }}
+                contentStyle={{ backgroundColor: "#0a0a0a", border: "1px solid #333333", borderRadius: "0", fontSize: "10px", fontFamily: "monospace" }}
                 labelStyle={{ color: "#FFA028" }}
               />
               <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }} />
@@ -219,33 +213,21 @@ export function PonderacionesTable() {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              <th style={{ textAlign: "left", padding: "4px 8px", fontSize: 9, color: "#555", borderBottom: "1px solid #222" }}>
-                División COICOP
-              </th>
-              <th style={{ textAlign: "right", padding: "4px 8px", fontSize: 9, color: "#4FC3F7", borderBottom: "1px solid #222" }}>
-                Base 2004
-              </th>
-              <th style={{ textAlign: "right", padding: "4px 8px", fontSize: 9, color: "#FFD54F", borderBottom: "1px solid #222" }}>
-                Base 2022
-              </th>
-              <th style={{ textAlign: "right", padding: "4px 8px", fontSize: 9, color: "#555", borderBottom: "1px solid #222" }}>
-                Δ p.p.
-              </th>
+              <th style={{ textAlign: "left", padding: "4px 8px", fontSize: 9, color: "#888", borderBottom: "1px solid #222" }}>División COICOP</th>
+              <th style={{ textAlign: "right", padding: "4px 8px", fontSize: 9, color: "#4FC3F7", borderBottom: "1px solid #222" }}>Base 2004</th>
+              <th style={{ textAlign: "right", padding: "4px 8px", fontSize: 9, color: "#FFD54F", borderBottom: "1px solid #222" }}>Base 2022</th>
+              <th style={{ textAlign: "right", padding: "4px 8px", fontSize: 9, color: "#888", borderBottom: "1px solid #222" }}>Δ p.p.</th>
             </tr>
           </thead>
           <tbody>
-            {PONDERACIONES.map((p, i) => {
+            {rows.map((p, i) => {
               const delta = p.propuesto - p.actual
               return (
                 <tr key={p.cat} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
                   <td style={{ padding: "4px 8px", fontSize: 11, color: "#aaa" }}>{p.cat}</td>
-                  <td style={{ padding: "4px 8px", fontSize: 11, color: "#4FC3F7", textAlign: "right", fontFamily: "monospace" }}>
-                    {p.actual.toFixed(1)}%
-                  </td>
-                  <td style={{ padding: "4px 8px", fontSize: 11, color: "#FFD54F", textAlign: "right", fontFamily: "monospace" }}>
-                    {p.propuesto.toFixed(1)}%
-                  </td>
-                  <td style={{ padding: "4px 8px", fontSize: 11, textAlign: "right", fontFamily: "monospace", color: delta > 0 ? "#4AF6C3" : delta < 0 ? "#FF433D" : "#555" }}>
+                  <td style={{ padding: "4px 8px", fontSize: 11, color: "#4FC3F7", textAlign: "right", fontFamily: "monospace" }}>{p.actual.toFixed(1)}%</td>
+                  <td style={{ padding: "4px 8px", fontSize: 11, color: "#FFD54F", textAlign: "right", fontFamily: "monospace" }}>{p.propuesto.toFixed(1)}%</td>
+                  <td style={{ padding: "4px 8px", fontSize: 11, textAlign: "right", fontFamily: "monospace", color: delta > 0 ? "#4AF6C3" : delta < 0 ? "#FF433D" : "#888" }}>
                     {delta > 0 ? "+" : ""}{delta.toFixed(1)}
                   </td>
                 </tr>
@@ -253,8 +235,8 @@ export function PonderacionesTable() {
             })}
           </tbody>
         </table>
-        <div style={{ padding: "6px 8px", fontSize: 9, color: "#444", borderTop: "1px solid #111" }}>
-          Fuente INDEC — Base 2016 usa ENGHo 2004/05 (vigente) · Base 2022 usa ENGHo 2017/18 (propuesta, no lanzada a feb 2026)
+        <div style={{ padding: "6px 8px", fontSize: 9, color: "#666", borderTop: "1px solid #111" }}>
+          Fuente: INDEC · /api/macro?endpoint=ponderaciones — ENGHo 2004/05 (base vigente) · ENGHo 2017/18 (actualización 2022)
         </div>
       </div>
     </div>
@@ -1414,15 +1396,25 @@ function EmaeView() {
 // ── Mi Inflación Component ──────────────────────────────────────────────────────
 
 export function MiInflacionView() {
+  const { rows: PONDERACIONES, tipos: TIPOS_API } = usePonderaciones()
   const [modo, setModo] = useState<"inicio" | "gasto" | "encuesta" | "ajuste" | "resultado">("inicio")
-  const [gastos, setGastos] = useState<Record<string, number>>(
-    Object.fromEntries(PONDERACIONES.map(p => [p.cat, 0]))
-  )
-  const [ponderaciones, setPonderaciones] = useState<Record<string, number>>(
-    Object.fromEntries(PONDERACIONES.map(p => [p.cat, p.actual]))
-  )
+  const [gastos, setGastos] = useState<Record<string, number>>({})
+  const [ponderaciones, setPonderaciones] = useState<Record<string, number>>({})
   const [encuestaRespuestas, setEncuestaRespuestas] = useState<Record<number, number>>({})
   const [ipcDataMi, setIpcDataMi] = useState<Record<string, [string, number][]> | null>(null)
+
+  // Initialize gastos/ponderaciones once rows are fetched
+  useEffect(() => {
+    if (PONDERACIONES.length === 0) return
+    setGastos(prev => {
+      if (Object.keys(prev).length > 0) return prev
+      return Object.fromEntries(PONDERACIONES.map(p => [p.cat, 0]))
+    })
+    setPonderaciones(prev => {
+      if (Object.keys(prev).length > 0) return prev
+      return Object.fromEntries(PONDERACIONES.map(p => [p.cat, p.actual]))
+    })
+  }, [PONDERACIONES])
 
   useEffect(() => {
     fetch("/api/macro?endpoint=ipc")
@@ -1450,17 +1442,12 @@ export function MiInflacionView() {
     regulados: getLatestVarPct(ipcDataMi?.ipc_regulados),
     nucleo:    getLatestVarPct(ipcDataMi?.ipc_nucleo),
   }
-  const CAT_TIPO_MI: Record<string, keyof typeof miRates> = {
-    "Alimentos y bebidas": "alimentos",
-    "Vivienda y servicios": "regulados",
-    "Transporte": "regulados",
-    "Comunicación": "regulados",
-  }
+  const CAT_TIPO_MI = TIPOS_API as Record<string, keyof typeof miRates>
   const tuIpc: number | null = (() => {
     const fallback = ipcGeneralMensual
     let sum = 0
     for (const p of PONDERACIONES) {
-      const tipo = CAT_TIPO_MI[p.cat] ?? "nucleo"
+      const tipo = (CAT_TIPO_MI[p.cat] ?? "nucleo") as keyof typeof miRates
       const rate = miRates[tipo] ?? fallback
       if (rate == null) continue
       sum += (ponderaciones[p.cat] / 100) * rate
@@ -3897,16 +3884,244 @@ function RiesgoPaisView() {
 
 // ── Deuda Pública ──────────────────────────────────────────────────────────────
 
+type VencDet = {
+  anio: string
+  moneda: string
+  tipo: string
+  acreedor_tipo: string
+  acreedor: string
+  monto: number
+}
+
 interface DeudaData {
   data: {
-    historico_pib:    { anio: string; deuda_pib: number }[]
-    ultimo:           { anio: string; deuda_pib: number | null }
-    vencimientos:     { anio: string; monto: number }[]
+    historico_pib:       { anio: string; deuda_pib: number }[]
+    ultimo:              { anio: string; deuda_pib: number | null }
+    vencimientos:        { anio: string; monto: number }[]
+    vencimientos_detalle: VencDet[]
     composicion_acreedor: { nombre: string; pct: number }[]
     composicion_moneda:   { nombre: string; pct: number }[]
     is_live: boolean
   }
   source: string
+}
+
+// Colors for stacked vencimientos by type
+const TIPO_COLORS: Record<string, string> = {
+  "FMI":                 "#FF433D",
+  "Multilateral":        "#FFA028",
+  "Bilateral":           "#FFD54F",
+  "Bono externo":        "#4AF6C3",
+  "Instrumento local":   "#4FC3F7",
+  "Intra-sector público":"#CE93D8",
+}
+
+const dropStyle: React.CSSProperties = {
+  background: "#0d0d0d",
+  color: "#ccc",
+  border: "1px solid #2a2a2a",
+  borderRadius: 2,
+  padding: "4px 8px",
+  fontSize: 10,
+  fontFamily: "monospace",
+  cursor: "pointer",
+  outline: "none",
+  minWidth: 140,
+  appearance: "none" as const,
+  WebkitAppearance: "none" as const,
+  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23555'/%3E%3C/svg%3E")`,
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "right 8px center",
+  paddingRight: 24,
+}
+
+function VencimientosFilter({ detalle }: { detalle: VencDet[] }) {
+  const monedas = Array.from(new Set(detalle.map(d => d.moneda))).sort()
+  const tipos   = Array.from(new Set(detalle.map(d => d.tipo))).sort()
+  const acTipos = Array.from(new Set(detalle.map(d => d.acreedor_tipo))).sort()
+
+  const [fMoneda,   setFMoneda]   = useState("")
+  const [fTipo,     setFTipo]     = useState("")
+  const [fAcTipo,   setFAcTipo]   = useState("")
+  const [fAcreedor, setFAcreedor] = useState("")
+
+  const filtrado = detalle.filter(d =>
+    (!fMoneda   || d.moneda        === fMoneda)   &&
+    (!fTipo     || d.tipo          === fTipo)     &&
+    (!fAcTipo   || d.acreedor_tipo === fAcTipo)   &&
+    (!fAcreedor || d.acreedor      === fAcreedor)
+  )
+
+  const acreedores = Array.from(new Set(
+    detalle
+      .filter(d =>
+        (!fMoneda || d.moneda        === fMoneda) &&
+        (!fTipo   || d.tipo          === fTipo)   &&
+        (!fAcTipo || d.acreedor_tipo === fAcTipo)
+      )
+      .map(d => d.acreedor)
+  )).sort()
+
+  const anos = Array.from(new Set(filtrado.map(d => d.anio))).sort()
+  const tiposActivos = Array.from(new Set(filtrado.map(d => d.tipo))).sort()
+  const barData = anos.map(anio => {
+    const row: Record<string, number | string> = { anio }
+    for (const tipo of tiposActivos) {
+      row[tipo] = Math.round(filtrado.filter(d => d.anio === anio && d.tipo === tipo).reduce((s, d) => s + d.monto, 0))
+    }
+    row["total"] = Math.round(filtrado.filter(d => d.anio === anio).reduce((s, d) => s + d.monto, 0))
+    return row
+  })
+
+  const isFiltered = !!(fMoneda || fTipo || fAcTipo || fAcreedor)
+
+  const resetAll = () => { setFMoneda(""); setFTipo(""); setFAcTipo(""); setFAcreedor("") }
+
+  return (
+    <div style={{ padding: "10px 14px" }}>
+      {/* Header + filters in one compact bar */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, whiteSpace: "nowrap", fontFamily: "monospace" }}>
+          VENCIMIENTOS PRÓXIMOS
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          {/* Moneda */}
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 8, color: "#555", letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" }}>Moneda</span>
+            <select style={{ ...dropStyle, borderColor: fMoneda ? "#FFA028" : "#2a2a2a" }}
+              value={fMoneda} onChange={e => setFMoneda(e.target.value)}>
+              <option value="">Todas</option>
+              {monedas.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+
+          {/* Tipo deuda */}
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 8, color: "#555", letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" }}>Tipo</span>
+            <select style={{ ...dropStyle, borderColor: fTipo ? "#FFA028" : "#2a2a2a" }}
+              value={fTipo} onChange={e => { setFTipo(e.target.value); setFAcreedor("") }}>
+              <option value="">Todos</option>
+              {tipos.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+
+          {/* Acreedor tipo */}
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 8, color: "#555", letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" }}>Sector</span>
+            <select style={{ ...dropStyle, borderColor: fAcTipo ? "#FFA028" : "#2a2a2a" }}
+              value={fAcTipo} onChange={e => { setFAcTipo(e.target.value); setFAcreedor("") }}>
+              <option value="">Todos</option>
+              {acTipos.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+
+          {/* Acreedor específico */}
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 8, color: "#555", letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" }}>Acreedor</span>
+            <select style={{ ...dropStyle, minWidth: 180, borderColor: fAcreedor ? "#FFA028" : "#2a2a2a" }}
+              value={fAcreedor} onChange={e => setFAcreedor(e.target.value)}>
+              <option value="">Todos</option>
+              {acreedores.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+
+          {/* Reset */}
+          {isFiltered && (
+            <button onClick={resetAll} style={{ background: "transparent", border: "1px solid #333", color: "#666", borderRadius: 2, padding: "4px 10px", fontSize: 9, cursor: "pointer", fontFamily: "monospace" }}>
+              ✕ Reset
+            </button>
+          )}
+        </div>
+
+        {/* Total chip */}
+        {isFiltered && (
+          <div style={{ marginLeft: "auto", fontSize: 10, color: "#FF433D", fontFamily: "monospace", fontWeight: 700, whiteSpace: "nowrap" }}>
+            Total: USD {fmtNum(filtrado.reduce((s, d) => s + d.monto, 0), 0)}M
+          </div>
+        )}
+      </div>
+
+      {/* Stacked bar chart */}
+      {barData.length > 0 ? (
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={barData} margin={{ top: 4, right: 12, left: 0, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" vertical={false} />
+            <XAxis dataKey="anio" stroke="#333" fontSize={9} tick={{ fill: "#888" }} />
+            <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${Math.round(v / 1000)}B`} />
+            <Tooltip
+              contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10, fontFamily: "monospace" }}
+              formatter={(v: unknown, name: unknown) => [`USD ${fmtNum(v as number, 0)}M`, String(name)]}
+            />
+            {tiposActivos.map(tipo => (
+              <Bar key={tipo} dataKey={tipo} stackId="a" fill={TIPO_COLORS[tipo] ?? "#888"} radius={tipo === tiposActivos[tiposActivos.length - 1] ? [2, 2, 0, 0] : [0, 0, 0, 0]} />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      ) : (
+        <div style={{ padding: 20, color: "#555", textAlign: "center", fontSize: 11 }}>Sin datos para la selección</div>
+      )}
+
+      {/* Totals below each bar — alineados con el área del chart (left margin = 0, right = 12) */}
+      <div style={{ display: "flex", paddingLeft: 42, paddingRight: 12, marginTop: 2 }}>
+        {barData.map(r => (
+          <div key={r.anio as string} style={{ flex: 1, textAlign: "center", fontSize: 8, color: "#FF433D", fontFamily: "monospace" }}>
+            {fmtNum(r["total"] as number, 0)}M
+          </div>
+        ))}
+      </div>
+
+      {/* Legend — debajo, centrada */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center", marginTop: 8 }}>
+        {tiposActivos.map(tipo => (
+          <div key={tipo} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ width: 8, height: 8, background: TIPO_COLORS[tipo] ?? "#888", flexShrink: 0 }} />
+            <span style={{ fontSize: 8, color: "#888" }}>{tipo}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Breakdown table — only when filtering by specific acreedor */}
+      {isFiltered && filtrado.length > 0 && (
+        <div style={{ overflowX: "auto", marginTop: 10, borderTop: "1px solid #111", paddingTop: 8 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 9, fontFamily: "monospace" }}>
+            <thead>
+              <tr>
+                {["Año", "Acreedor", "Tipo", "Moneda", "USD M"].map(h => (
+                  <th key={h} style={{ padding: "3px 8px", color: "#555", textAlign: h === "USD M" ? "right" : "left", fontWeight: 400, letterSpacing: 1, borderBottom: "1px solid #1a1a1a" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[...filtrado].sort((a, b) => a.anio.localeCompare(b.anio) || b.monto - a.monto).map((d, i) => (
+                <tr key={i} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
+                  <td style={{ padding: "3px 8px", color: "#888" }}>{d.anio}</td>
+                  <td style={{ padding: "3px 8px", color: "#ccc" }}>{d.acreedor}</td>
+                  <td style={{ padding: "3px 8px" }}>
+                    <span style={{ color: TIPO_COLORS[d.tipo] ?? "#888", background: `${TIPO_COLORS[d.tipo]}18`, padding: "1px 6px", borderRadius: 2 }}>{d.tipo}</span>
+                  </td>
+                  <td style={{ padding: "3px 8px", color: "#666" }}>{d.moneda}</td>
+                  <td style={{ padding: "3px 8px", color: "#FF433D", textAlign: "right", fontWeight: 700 }}>
+                    {fmtNum(d.monto, 0)}
+                  </td>
+                </tr>
+              ))}
+              <tr style={{ borderTop: "1px solid #1a1a1a" }}>
+                <td colSpan={4} style={{ padding: "4px 8px", color: "#666" }}>Total selección</td>
+                <td style={{ padding: "4px 8px", color: "#FF433D", textAlign: "right", fontWeight: 700 }}>
+                  {fmtNum(filtrado.reduce((s, d) => s + d.monto, 0), 0)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div style={{ fontSize: 8, color: "#444", marginTop: 8 }}>
+        Fuente: Secretaría de Finanzas · USD millones equiv. · Estimaciones indicativas basadas en informes oficiales de deuda
+      </div>
+    </div>
+  )
 }
 
 function DeudaView() {
@@ -4014,60 +4229,49 @@ function DeudaView() {
                 </div>
               )}
 
-              {/* Vencimientos próximos */}
-              {stock.data.vencimientos.length > 0 && (
-                <div style={{ padding: "8px 12px 0" }}>
-                  <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, marginBottom: 4 }}>
-                    VENCIMIENTOS PRÓXIMOS (USD millones)
-                  </div>
-                  {stock.data.vencimientos.map(r => {
-                    const maxMonto = Math.max(...stock.data.vencimientos.map(v => v.monto), 1)
-                    return (
-                      <div key={r.anio} style={{ display: "grid", gridTemplateColumns: "50px 1fr 100px", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                        <div style={{ fontSize: 9, color: "#888", textAlign: "right", fontFamily: "monospace" }}>{r.anio}</div>
-                        <div style={{ position: "relative", height: 14, background: "#0d0d0d" }}>
-                          <div style={{ position: "absolute", height: "100%", background: "#FF433D", opacity: 0.7,
-                            width: `${r.monto / maxMonto * 90}%` }} />
-                        </div>
-                        <div style={{ fontSize: 9, fontFamily: "monospace", color: "#FF433D", textAlign: "right" }}>
-                          USD {fmtNum(r.monto, 0)}M
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+              {/* Vencimientos próximos — con filtros */}
+              {stock.data.vencimientos_detalle?.length > 0 && (
+                <VencimientosFilter detalle={stock.data.vencimientos_detalle} />
               )}
 
               {/* Composición por acreedor y moneda — PieCharts */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, padding: "8px 12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, padding: "0 12px 8px" }}>
                 {([
                   { title: "Por Acreedor", data: stock.data.composicion_acreedor },
                   { title: "Por Moneda",   data: stock.data.composicion_moneda },
                 ] as const).map((section, si) => (
-                  <div key={section.title} style={{ background: "#080808", border: "1px solid #111", padding: 10 }}>
-                    <div style={{ fontSize: 8, color: "#FFA028", letterSpacing: 1, marginBottom: 4 }}>{section.title.toUpperCase()}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <PieChart width={110} height={110}>
-                        <Pie
-                          data={section.data.map(d => ({ name: d.nombre, value: d.pct }))}
-                          cx={50} cy={50} innerRadius={28} outerRadius={50}
-                          dataKey="value" stroke="none"
-                        >
-                          {section.data.map((_, ii) => (
-                            <Cell key={ii} fill={PIE_COLORS[(si * 4 + ii) % PIE_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 8, fontFamily: "monospace" }}
-                          formatter={(v: unknown, name: unknown) => [`${v}%`, String(name)]}
-                        />
-                      </PieChart>
+                  <div key={section.title} style={{ background: "#080808", border: "1px solid #111", padding: "12px 16px" }}>
+                    <div style={{ fontSize: 8, color: "#FFA028", letterSpacing: 1.5, marginBottom: 12, textTransform: "uppercase" }}>{section.title}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+                      {/* Donut fijo 260×260 */}
+                      <div style={{ flexShrink: 0, width: 260, height: 260 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={section.data.map(d => ({ name: d.nombre, value: d.pct }))}
+                              cx="50%" cy="50%"
+                              innerRadius="38%" outerRadius="50%"
+                              dataKey="value" stroke="none"
+                              paddingAngle={2}
+                            >
+                              {section.data.map((_, ii) => (
+                                <Cell key={ii} fill={PIE_COLORS[(si * 4 + ii) % PIE_COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 9, fontFamily: "monospace" }}
+                              formatter={(v: unknown, name: unknown) => [`${v}%`, String(name)]}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      {/* Legend */}
                       <div style={{ flex: 1 }}>
                         {section.data.map((item, ii) => (
-                          <div key={item.nombre} style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3 }}>
-                            <div style={{ width: 7, height: 7, background: PIE_COLORS[(si * 4 + ii) % PIE_COLORS.length], flexShrink: 0 }} />
-                            <div style={{ flex: 1, fontSize: 8, color: "#888", lineHeight: 1.2 }}>{item.nombre}</div>
-                            <div style={{ fontSize: 9, fontFamily: "monospace", color: "#ccc", fontWeight: 700 }}>{item.pct}%</div>
+                          <div key={item.nombre} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                            <div style={{ width: 8, height: 8, background: PIE_COLORS[(si * 4 + ii) % PIE_COLORS.length], flexShrink: 0, borderRadius: 1 }} />
+                            <div style={{ flex: 1, fontSize: 10, color: "#aaa", lineHeight: 1.3 }}>{item.nombre}</div>
+                            <div style={{ fontSize: 11, fontFamily: "monospace", color: "#fff", fontWeight: 700, minWidth: 36, textAlign: "right" }}>{item.pct}%</div>
                           </div>
                         ))}
                       </div>
@@ -4086,6 +4290,245 @@ function DeudaView() {
   )
 }
 
+// ── Señoreaje ──────────────────────────────────────────────────────────────────
+
+type SenorejaAnual = {
+  anio: number
+  inflacion_anual: number
+  mp_promedio: number
+  senoraje: number
+  senoraje_nominal?: number
+  pbi_nominal?: number | null
+  senoraje_pct_pbi?: number | null
+}
+type SenorejaData = {
+  serie_anual: SenorejaAnual[]
+  estimacion_2026: {
+    meses_disponibles: number
+    senoraje_parcial: number
+    senoraje_estimado_anual: number
+    inflacion_parcial: number
+  } | null
+  params: {
+    alpha: number
+    k: number
+    r2: number
+    pi_star: number
+    pi_star_pct: number
+    s_max: number
+  }
+  laffer_curve: { pi: number; senoraje: number }[]
+}
+
+// Reusable label style for KPI cards
+const kpiLabel: React.CSSProperties = { fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }
+const kpiUnit:  React.CSSProperties = { fontSize: 9, color: "#bbb", marginTop: 2 }
+
+function SenorejaView() {
+  const [data, setData] = useState<SenorejaData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/senoraje")
+      .then(r => r.json())
+      .then(setData)
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div style={{ padding: 40, color: "#888", textAlign: "center", fontSize: 11 }}>Cargando señoreaje…</div>
+  if (!data) return <div style={{ padding: 40, color: "#888", textAlign: "center", fontSize: 11 }}>Sin datos</div>
+
+  const { serie_anual, estimacion_2026, params, laffer_curve } = data
+  const anio2025 = serie_anual.find(r => r.anio === 2025)
+
+  // Observed dots on Laffer curve
+  const obsPoints = serie_anual.map(r => ({ pi: Math.round(r.inflacion_anual * 10) / 10, senoraje: r.senoraje, anio: r.anio }))
+
+  // Historical + estimate bar data (with % PBI)
+  const hasPbi = serie_anual.some(r => r.senoraje_pct_pbi != null)
+  const barData = [
+    ...serie_anual.map(r => ({ label: String(r.anio), senoraje: r.senoraje, pct_pbi: r.senoraje_pct_pbi ?? undefined, tipo: "obs" })),
+    ...(estimacion_2026 ? [{ label: "2026e", senoraje: estimacion_2026.senoraje_estimado_anual, pct_pbi: undefined, tipo: "est" }] : []),
+  ]
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      {/* KPI row */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "#050505", borderBottom: "1px solid #111" }}>
+        <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "10px 14px", flex: "1 1 140px" }}>
+          <div style={kpiLabel}>α Cagan estimado</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#FFA028", fontFamily: "monospace" }}>{fmtNum(params.alpha, 3)}</div>
+          <div style={kpiUnit}>semi-elasticidad dinero</div>
+          <div style={{ fontSize: 9, color: "#888", marginTop: 2 }}>R² = {fmtNum(params.r2, 3)}</div>
+        </div>
+        <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "10px 14px", flex: "1 1 140px" }}>
+          <div style={kpiLabel}>π* óptima (Laffer)</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#4AF6C3", fontFamily: "monospace" }}>{fmtNum(params.pi_star_pct, 1)}%</div>
+          <div style={kpiUnit}>inflación anual de max señoreaje</div>
+        </div>
+        <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "10px 14px", flex: "1 1 140px" }}>
+          <div style={kpiLabel}>Señoreaje máx. teórico</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#4AF6C3", fontFamily: "monospace" }}>{fmtNum(params.s_max / 1000, 0)}B</div>
+          <div style={kpiUnit}>millones ARS reales (base)</div>
+        </div>
+        <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "10px 14px", flex: "1 1 140px" }}>
+          <div style={kpiLabel}>Señoreaje 2025</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: anio2025 ? "#fff" : "#666", fontFamily: "monospace" }}>
+            {anio2025 ? fmtNum(anio2025.senoraje / 1000, 0) + "B" : "—"}
+          </div>
+          <div style={kpiUnit}>
+            {anio2025?.senoraje_pct_pbi != null ? `${fmtNum(anio2025.senoraje_pct_pbi, 1)}% del PBI` : "millones ARS reales"}
+          </div>
+        </div>
+        <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "10px 14px", flex: "1 1 140px" }}>
+          <div style={kpiLabel}>Señoreaje 2026e</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: estimacion_2026 ? "#FFA028" : "#666", fontFamily: "monospace" }}>
+            {estimacion_2026 ? fmtNum(estimacion_2026.senoraje_estimado_anual / 1000, 0) + "B" : "—"}
+          </div>
+          <div style={kpiUnit}>
+            {estimacion_2026 ? `estimado · ${estimacion_2026.meses_disponibles} meses disp.` : "sin datos"}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "#111" }}>
+        {/* Señoreaje histórico anual */}
+        <div style={{ background: "#050505", padding: 16 }}>
+          <div style={{ fontSize: 10, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>
+            Señoreaje Anual Histórico
+          </div>
+          <ResponsiveContainer width="100%" height={280}>
+            <ComposedChart data={barData} margin={{ top: 8, right: hasPbi ? 44 : 12, left: 0, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="2 4" stroke="#111" />
+              <XAxis dataKey="label" stroke="#333" fontSize={9} tick={{ fill: "#888" }} />
+              <YAxis yAxisId="left" stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${Math.round(v / 1000)}B`} />
+              {hasPbi && <YAxis yAxisId="right" orientation="right" stroke="#FFA028" fontSize={9} tick={{ fill: "#FFA028" }} tickFormatter={v => `${v}%`} domain={[0, "auto"]} />}
+              <Tooltip
+                contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10 }}
+                formatter={(v: unknown, name: unknown) => {
+                  if (name === "pct_pbi") return [`${fmtNum(v as number, 2)}% del PBI`, "% PBI"]
+                  return [`${fmtNum((v as number) / 1000, 1)}B ARS reales`, "Señoreaje"]
+                }}
+              />
+              <ReferenceLine yAxisId="left" y={params.s_max} stroke="#FFA028" strokeDasharray="4 4" label={{ value: "S máx", fill: "#FFA028", fontSize: 9, position: "right" }} />
+              <Bar yAxisId="left" dataKey="senoraje" radius={[2, 2, 0, 0]}>
+                {barData.map((d, i) => (
+                  <Cell key={i} fill={d.tipo === "est" ? "#FFA028" : "#4AF6C3"} opacity={d.tipo === "est" ? 0.7 : 0.85} />
+                ))}
+              </Bar>
+              {hasPbi && <Line yAxisId="right" type="monotone" dataKey="pct_pbi" stroke="#FFA028" strokeWidth={2} dot={{ r: 3, fill: "#FFA028" }} isAnimationActive={false} connectNulls />}
+            </ComposedChart>
+          </ResponsiveContainer>
+          <div style={{ fontSize: 8, color: "#bbb", marginTop: 4 }}>Naranja = estimado 2026 · línea punteada = S máx teórico{hasPbi ? " · línea continua naranja = % del PBI" : ""}</div>
+        </div>
+
+        {/* Curva de Laffer */}
+        <div style={{ background: "#050505", padding: 16 }}>
+          <div style={{ fontSize: 10, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>
+            Curva de Laffer Monetaria
+          </div>
+          <ResponsiveContainer width="100%" height={280}>
+            <ComposedChart margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="2 4" stroke="#111" />
+              <XAxis
+                dataKey="pi"
+                type="number"
+                domain={[0, 500]}
+                stroke="#333"
+                fontSize={9}
+                tick={{ fill: "#888" }}
+                tickFormatter={v => `${v}%`}
+                label={{ value: "Inflación anual (%)", fill: "#888", fontSize: 8, position: "insideBottom", offset: -2 }}
+              />
+              <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${Math.round(v / 1000)}B`} />
+              <Tooltip
+                contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10 }}
+                formatter={(v: unknown, name: unknown) => [
+                  name === "senoraje" ? `${fmtNum((v as number) / 1000, 1)}B ARS reales` : `${fmtNum(v as number, 0)}% anual`,
+                  name === "senoraje" ? "Señoreaje teórico" : "Señoreaje obs.",
+                ]}
+                labelFormatter={v => `π = ${v}%`}
+              />
+              <ReferenceLine x={params.pi_star_pct} stroke="#FFA028" strokeDasharray="4 4"
+                label={{ value: `π*=${fmtNum(params.pi_star_pct, 0)}%`, fill: "#FFA028", fontSize: 9, position: "insideTopRight" }}
+              />
+              {/* Theoretical Laffer line */}
+              <Line data={laffer_curve} type="monotone" dataKey="senoraje" dot={false}
+                stroke="#4AF6C3" strokeWidth={2} isAnimationActive={false} />
+              {/* Observed annual dots */}
+              <Line
+                data={obsPoints}
+                type="linear"
+                dataKey="senoraje"
+                dot={{ r: 4, fill: "#FFA028", stroke: "#FFA028" }}
+                stroke="none"
+                isAnimationActive={false}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+          <div style={{ fontSize: 8, color: "#bbb", marginTop: 4 }}>
+            Curva teórica Cagan · Puntos naranjas = observaciones anuales · π* = inflación de recaudación máxima
+          </div>
+        </div>
+
+        {/* Saldos reales M/P */}
+        <div style={{ background: "#050505", padding: 16 }}>
+          <div style={{ fontSize: 10, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>
+            Saldos Reales M/P (Base Monetaria)
+          </div>
+          <ResponsiveContainer width="100%" height={240}>
+            <AreaChart data={serie_anual} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
+              <defs>
+                <linearGradient id="gradMP" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#4AF6C3" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#4AF6C3" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="2 4" stroke="#111" />
+              <XAxis dataKey="anio" stroke="#333" fontSize={9} tick={{ fill: "#888" }} />
+              <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${Math.round(v / 1000)}B`} />
+              <Tooltip
+                contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10 }}
+                formatter={(v: unknown) => [`${fmtNum((v as number) / 1000, 1)}B ARS reales`, "M/P promedio anual"]}
+              />
+              <Area type="monotone" dataKey="mp_promedio" stroke="#4AF6C3" strokeWidth={2} fill="url(#gradMP)" dot={false} isAnimationActive={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+          <div style={{ fontSize: 8, color: "#bbb", marginTop: 4 }}>Saldos monetarios reales anualizados · base período inicial</div>
+        </div>
+
+        {/* Inflación anual observada */}
+        <div style={{ background: "#050505", padding: 16 }}>
+          <div style={{ fontSize: 10, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>
+            Inflación Anual Observada
+          </div>
+          <ResponsiveContainer width="100%" height={240}>
+            <ComposedChart data={serie_anual} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="2 4" stroke="#111" />
+              <XAxis dataKey="anio" stroke="#333" fontSize={9} tick={{ fill: "#888" }} />
+              <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${v}%`} />
+              <Tooltip
+                contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10 }}
+                formatter={(v: unknown) => [`${fmtNum(v as number, 1)}%`, "Inflación anual"]}
+              />
+              <ReferenceLine y={params.pi_star_pct} stroke="#FFA028" strokeDasharray="4 4"
+                label={{ value: `π*`, fill: "#FFA028", fontSize: 9, position: "right" }}
+              />
+              <Bar dataKey="inflacion_anual" fill="#FF6B6B" radius={[2, 2, 0, 0]} opacity={0.8} />
+            </ComposedChart>
+          </ResponsiveContainer>
+          <div style={{ fontSize: 8, color: "#bbb", marginTop: 4 }}>Línea naranja = π* (inflación de máximo señoreaje teórico)</div>
+        </div>
+      </div>
+
+      <div style={{ padding: "6px 14px", fontSize: 8, color: "#888", borderTop: "1px solid #111" }}>
+        Modelo Cagan (1956) · α estimado por MCO sobre datos anuales de saldos reales e inflación ·
+        Señoreaje = π × (M/P) · Fuente: BCRA API v4.0 (Var 15 Base Monetaria) · datos.gob.ar IPC mensual · World Bank (PBI nominal ARS)
+      </div>
+    </div>
+  )
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 const MACRO_TABS = [
@@ -4099,6 +4542,7 @@ const MACRO_TABS = [
   { key: "bigmac",      label: "Big Mac Index"    },
   { key: "riesgo",      label: "Riesgo País"      },
   { key: "deuda",       label: "Deuda Pública"    },
+  { key: "senoraje",   label: "Señoreaje"        },
 ]
 
 export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
@@ -4117,6 +4561,7 @@ export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
       {activeTab === "bigmac"      && <BigMacView />}
       {activeTab === "riesgo"      && <RiesgoPaisView />}
       {activeTab === "deuda"       && <DeudaView />}
+      {activeTab === "senoraje"    && <SenorejaView />}
     </div>
   )
 }
