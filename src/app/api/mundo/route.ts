@@ -54,6 +54,8 @@ const TICKERS: Record<string, string> = {
   usdcny: "USDCNY=X",
   // Renta fija USA
   us10y: "^TNX",
+  us5y: "^FVX",
+  us2y: "^IRX", // 13-week T-bill como proxy del extremo corto
   // Índices extra
   dxy: "DX-Y.NYB",
   // Crypto

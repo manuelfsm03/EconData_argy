@@ -950,6 +950,19 @@ function CommoditiesView() {
         </div>
       </div>
 
+      {/* Spread WTI/Brent */}
+      {snap.petroleo && snap.brent && (
+        <div style={{ padding: "6px 14px", background: "#050505", borderTop: "1px solid #111", display: "flex", alignItems: "center", gap: 16 }}>
+          <span style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>SPREAD BRENT – WTI:</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "#FFA028", fontFamily: "monospace" }}>
+            ${fmtUSD(snap.brent.precio - snap.petroleo.precio, 2)} USD/bbl
+          </span>
+          <span style={{ fontSize: 8, color: "#555", fontFamily: "monospace" }}>
+            Brent ${fmtUSD(snap.brent.precio, 2)} · WTI ${fmtUSD(snap.petroleo.precio, 2)}
+          </span>
+        </div>
+      )}
+
       <div style={{ padding: "6px 14px", fontSize: 8, color: "#888", borderTop: "1px solid #111", fontFamily: "monospace" }}>
         Fuente: Yahoo Finance (futuros) · ZS=Soja, ZC=Maíz, ZW=Trigo, CL=WTI, GC=Oro, SI=Plata, HG=Cobre · Precios diferidos ~15 min
       </div>
@@ -965,22 +978,36 @@ const MUNDO_GROUPS: Record<string, string[]> = {
   "Índices": ["sp500", "nasdaq", "dow", "merval", "vix"],
   "Commodities": ["soja", "maiz", "trigo", "petroleo", "brent", "oro"],
   "FX": ["eurusd", "usdbrl", "usdcny", "dxy"],
-  "Renta Fija": ["us10y"],
+  "Renta Fija": ["us10y", "us5y", "us2y"],
 }
+
+// Puntos de la curva UST — via Treasury.gov CSV (daily)
+const UST_CURVE_MATURITIES = [
+  { label: "1M",  field: "1 Mo" },
+  { label: "3M",  field: "3 Mo" },
+  { label: "6M",  field: "6 Mo" },
+  { label: "1Y",  field: "1 Yr" },
+  { label: "2Y",  field: "2 Yr" },
+  { label: "5Y",  field: "5 Yr" },
+  { label: "10Y", field: "10 Yr" },
+  { label: "30Y", field: "30 Yr" },
+]
 
 const MUNDO_LABELS: Record<string, string> = {
   sp500: "S&P 500", nasdaq: "Nasdaq", dow: "Dow Jones", merval: "Merval", vix: "VIX",
   soja: "Soja", maiz: "Maíz", trigo: "Trigo", petroleo: "WTI", brent: "Brent", oro: "Oro",
   eurusd: "EUR/USD", usdbrl: "USD/BRL", usdcny: "USD/CNY", dxy: "DXY",
-  us10y: "UST 10Y",
+  us10y: "UST 10Y", us5y: "UST 5Y", us2y: "UST 2Y",
 }
 
 const MUNDO_UNITS: Record<string, string> = {
   sp500: "pts", nasdaq: "pts", dow: "pts", merval: "pts", vix: "idx",
   soja: "USD/bu", maiz: "USD/bu", trigo: "USD/bu", petroleo: "USD/bbl", brent: "USD/bbl", oro: "USD/oz",
   eurusd: "EUR/USD", usdbrl: "BRL/USD", usdcny: "CNY/USD", dxy: "idx",
-  us10y: "%",
+  us10y: "%", us5y: "%", us2y: "%",
 }
+
+interface USTPoint { label: string; yield: number }
 
 function MundoView() {
   const [snap, setSnap] = useState<Record<string, WorldQuote | null>>({})
@@ -989,12 +1016,32 @@ function MundoView() {
   const [selPeriod, setSelPeriod] = useState("1y")
   const [loading, setLoading] = useState(true)
   const [loadingHist, setLoadingHist] = useState(false)
+  const [ustCurve, setUstCurve] = useState<USTPoint[] | null>(null)
 
   useEffect(() => {
     fetch("/api/mundo")
       .then(r => r.json())
       .then(j => setSnap(j.data ?? {}))
       .finally(() => setLoading(false))
+
+    // US Treasury yield curve — Treasury.gov CSV
+    const year = new Date().getFullYear()
+    fetch(`https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/${year}/all?type=daily_treasury_yield_curve&field_tdr_date_value=${year}&csv=true`)
+      .then(r => r.text())
+      .then(csv => {
+        const lines = csv.trim().split("\n")
+        if (lines.length < 2) return
+        const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, ""))
+        const lastLine = lines[lines.length - 1].split(",").map(v => v.trim().replace(/"/g, ""))
+        const row: Record<string, string> = {}
+        headers.forEach((h, i) => { row[h] = lastLine[i] })
+        const curve = UST_CURVE_MATURITIES.map(m => {
+          const val = parseFloat(row[m.field] ?? "")
+          return { label: m.label, yield: isNaN(val) ? 0 : val }
+        }).filter(p => p.yield > 0)
+        if (curve.length >= 4) setUstCurve(curve)
+      })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -1073,8 +1120,27 @@ function MundoView() {
         )}
       </div>
 
+      {/* US Treasury yield curve */}
+      {ustCurve && (
+        <div style={{ padding: 16, background: "#050505", borderTop: "1px solid #111" }}>
+          <SectionTitle title="Curva de rendimientos UST — última fecha disponible" />
+          <ResponsiveContainer width="100%" height={180}>
+            <LineChart data={ustCurve} margin={{ top: 8, right: 20, left: 0, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" />
+              <XAxis dataKey="label" stroke="#333" fontSize={9} tick={{ fill: "#888" }} />
+              <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${v}%`} domain={["auto", "auto"]} />
+              <Tooltip {...tooltipStyle} formatter={(v: unknown) => [`${fmtNum(v as number, 3)}%`, "Yield"]} />
+              <Line type="monotone" dataKey="yield" stroke="#4AF6C3" strokeWidth={2} dot={{ r: 3, fill: "#4AF6C3" }} isAnimationActive={false} />
+            </LineChart>
+          </ResponsiveContainer>
+          <div style={{ fontSize: 7, color: "#555", marginTop: 4, fontFamily: "monospace" }}>
+            {ustCurve.map(p => `${p.label}: ${fmtNum(p.yield, 2)}%`).join(" · ")}
+          </div>
+        </div>
+      )}
+
       <div style={{ padding: "6px 14px", fontSize: 8, color: "#888", borderTop: "1px solid #111", fontFamily: "monospace" }}>
-        Fuente: Yahoo Finance (mercados globales) · Precios diferidos ~15 min
+        Fuente: Yahoo Finance (mercados globales) · Treasury.gov (curva UST) · Precios diferidos ~15 min
       </div>
     </div>
   )
