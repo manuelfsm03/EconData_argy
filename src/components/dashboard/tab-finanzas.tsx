@@ -882,6 +882,9 @@ const COMM_GROUPS = [
 
 const COMM_ALL = COMM_GROUPS.flatMap(g => g.items)
 
+interface AgroGrano { disponible: number | null; fobOficial: number | null; retencion: number; unidad: string }
+interface AgroLocalData { soja: AgroGrano; maiz: AgroGrano; trigo: AgroGrano; girasol: AgroGrano; source: string }
+
 function CommoditiesView() {
   const [snap, setSnap] = useState<Record<string, WorldQuote | null>>({})
   const [histMap, setHistMap] = useState<Record<string, [string, number][]>>({})
@@ -889,12 +892,18 @@ function CommoditiesView() {
   const [selPeriod, setSelPeriod] = useState("1y")
   const [loading, setLoading] = useState(true)
   const [loadingKeys, setLoadingKeys] = useState<Set<string>>(new Set())
+  const [agroLocal, setAgroLocal] = useState<AgroLocalData | null>(null)
 
   useEffect(() => {
     fetch("/api/mundo")
       .then(r => r.json())
       .then(j => setSnap(j.data ?? {}))
       .finally(() => setLoading(false))
+
+    fetch("/api/agro-local")
+      .then(r => r.json())
+      .then(j => setAgroLocal(j))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -1095,8 +1104,37 @@ function CommoditiesView() {
         </div>
       )}
 
+      {/* Precios locales Rosario */}
+      {agroLocal && (
+        <div style={{ padding: 14, background: "#050505", borderTop: "1px solid #111" }}>
+          <SectionTitle title="Precios disponible Rosario (BCR) — USD/tn" />
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+            {(["soja", "maiz", "trigo", "girasol"] as const).map(grano => {
+              const g = agroLocal[grano]
+              return (
+                <div key={grano} style={{ flex: "1 1 130px", padding: "8px 10px", background: "#080808", border: "1px solid #111", fontFamily: "monospace" }}>
+                  <div style={{ fontSize: 8, color: "#4AF6C3", textTransform: "capitalize", letterSpacing: 1 }}>{grano}</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", marginTop: 2 }}>
+                    {g.disponible != null ? `$${fmtUSD(g.disponible, 0)}` : "—"}
+                  </div>
+                  <div style={{ fontSize: 8, color: "#555", marginTop: 1 }}>{g.unidad}</div>
+                  {g.fobOficial != null && (
+                    <div style={{ fontSize: 8, color: "#888", marginTop: 2 }}>
+                      FOB: ${fmtUSD(g.fobOficial, 0)} · Ret: {g.retencion}%
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <div style={{ fontSize: 7, color: "#444", marginTop: 4, fontFamily: "monospace" }}>
+            {agroLocal.source} · FOB teórico = disponible × (1 − retención%) − gastos portuarios ~$15/tn
+          </div>
+        </div>
+      )}
+
       <div style={{ padding: "6px 14px", fontSize: 8, color: "#888", borderTop: "1px solid #111", fontFamily: "monospace" }}>
-        Fuente: Yahoo Finance (futuros) · ZS=Soja, ZC=Maíz, ZW=Trigo, CL=WTI, GC=Oro, SI=Plata, HG=Cobre · Precios diferidos ~15 min
+        Fuente: Yahoo Finance (futuros) · BCR Rosario (disponible) · ZS=Soja, ZC=Maíz, ZW=Trigo, CL=WTI, GC=Oro · Precios diferidos ~15 min
       </div>
     </div>
   )
@@ -1140,6 +1178,18 @@ const MUNDO_UNITS: Record<string, string> = {
 }
 
 interface USTPoint { label: string; yield: number }
+
+// Próximos earnings USA — actualizar manualmente cada trimestre
+const NEXT_EARNINGS: { ticker: string; empresa: string; fecha: string; afterHours: boolean; sector: string }[] = [
+  { ticker: "GOOGL", empresa: "Alphabet",   fecha: "2026-04-24", afterHours: false, sector: "Tech" },
+  { ticker: "MSFT",  empresa: "Microsoft",  fecha: "2026-04-23", afterHours: true,  sector: "Tech" },
+  { ticker: "META",  empresa: "Meta",       fecha: "2026-04-24", afterHours: true,  sector: "Tech" },
+  { ticker: "AAPL",  empresa: "Apple",      fecha: "2026-05-01", afterHours: true,  sector: "Tech" },
+  { ticker: "AMZN",  empresa: "Amazon",     fecha: "2026-05-01", afterHours: true,  sector: "Retail/Tech" },
+  { ticker: "NVDA",  empresa: "Nvidia",     fecha: "2026-05-22", afterHours: false, sector: "Semiconductores" },
+  { ticker: "TSLA",  empresa: "Tesla",      fecha: "2026-07-22", afterHours: false, sector: "EV/Tech" },
+  { ticker: "JPM",   empresa: "JPMorgan",   fecha: "2026-07-14", afterHours: false, sector: "Financiero" },
+]
 
 function MundoView() {
   const [snap, setSnap] = useState<Record<string, WorldQuote | null>>({})
@@ -1270,6 +1320,39 @@ function MundoView() {
           </div>
         </div>
       )}
+
+      {/* Próximos earnings USA */}
+      <div style={{ padding: 16, background: "#050505", borderTop: "1px solid #111" }}>
+        <SectionTitle title="Próximos earnings USA — estimados Q2/Q3 2026" />
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+          {NEXT_EARNINGS.sort((a, b) => a.fecha.localeCompare(b.fecha)).map(e => {
+            const daysUntil = Math.round((new Date(e.fecha).getTime() - Date.now()) / 86_400_000)
+            const isNear = daysUntil <= 14
+            return (
+              <div key={e.ticker} style={{
+                flex: "1 1 140px", padding: "8px 10px", background: "#080808",
+                border: `1px solid ${isNear ? "#FFA02833" : "#111"}`,
+                fontFamily: "monospace",
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#FFA028" }}>{e.ticker}</span>
+                  <span style={{ fontSize: 7, color: isNear ? "#FFA028" : "#444" }}>
+                    {daysUntil > 0 ? `en ${daysUntil}d` : daysUntil === 0 ? "HOY" : "pasado"}
+                  </span>
+                </div>
+                <div style={{ fontSize: 8, color: "#666", marginTop: 1 }}>{e.empresa}</div>
+                <div style={{ fontSize: 8, color: "#444", marginTop: 2 }}>
+                  {e.fecha} {e.afterHours ? "· after hours" : "· pre-market"}
+                </div>
+                <div style={{ fontSize: 7, color: "#333", marginTop: 1 }}>{e.sector}</div>
+              </div>
+            )
+          })}
+        </div>
+        <div style={{ fontSize: 7, color: "#444", marginTop: 6, fontFamily: "monospace" }}>
+          Fechas orientativas — pueden variar. Verificar en earningswhispers.com
+        </div>
+      </div>
 
       <div style={{ padding: "6px 14px", fontSize: 8, color: "#888", borderTop: "1px solid #111", fontFamily: "monospace" }}>
         Fuente: Yahoo Finance (mercados globales) · Treasury.gov (curva UST) · Precios diferidos ~15 min
