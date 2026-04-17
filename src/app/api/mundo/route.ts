@@ -24,20 +24,31 @@ const TICKERS: Record<string, string> = {
   dow: "^DJI",
   merval: "^MERV",
   vix: "^VIX",
-  // Commodities
+  // Commodities agrícolas
   soja: "ZS=F",
   maiz: "ZC=F",
   trigo: "ZW=F",
+  arroz: "ZR=F",
+  azucar: "SB=F",
+  cafe: "KC=F",
+  algodon: "CT=F",
+  // Energía
   petroleo: "CL=F",
+  brent: "BZ=F",
+  gas_natural: "NG=F",
+  gasoil: "HO=F",
+  // Metales
   oro: "GC=F",
+  plata: "SI=F",
+  cobre: "HG=F",
+  aluminio: "ALI=F",
   // FX
   eurusd: "EURUSD=X",
   usdbrl: "USDBRL=X",
   usdcny: "USDCNY=X",
   // Renta fija USA
   us10y: "^TNX",
-  // Commodities extra
-  brent: "BZ=F",
+  // Índices extra
   dxy: "DX-Y.NYB",
   // Crypto
   bitcoin:  "BTC-USD",

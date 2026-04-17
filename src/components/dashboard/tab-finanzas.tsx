@@ -37,8 +37,9 @@ const FIN_TABS = [
   { key: "bonos",      label: "Renta Fija",   icon: "§" },
   { key: "rofex",      label: "ROFEX",        icon: "⇄" },
   { key: "plazofijo",  label: "Plazo Fijo",   icon: "%" },
+  { key: "commodities", label: "Commodities",    icon: "◈" },
   { key: "mundo",      label: "Mercados Mundo", icon: "⬡" },
-  { key: "crypto",     label: "Cripto",       icon: "₿" },
+  { key: "crypto",     label: "Cripto",         icon: "₿" },
 ]
 
 function SubTabs({ active, onChange }: { active: string; onChange: (k: string) => void }) {
@@ -705,6 +706,242 @@ function AgregadosView() {
   )
 }
 
+// ── COMMODITIES ───────────────────────────────────────────────────────────────
+
+const COMM_GROUPS = [
+  {
+    label: "Agrícolas",
+    color: "#4AF6C3",
+    items: [
+      { key: "soja",     label: "Soja",     unit: "USD/bu",  ticker: "ZS=F",  decimals: 2, flag: "🫘" },
+      { key: "maiz",     label: "Maíz",     unit: "USD/bu",  ticker: "ZC=F",  decimals: 2, flag: "🌽" },
+      { key: "trigo",    label: "Trigo",    unit: "USD/bu",  ticker: "ZW=F",  decimals: 2, flag: "🌾" },
+      { key: "arroz",    label: "Arroz",    unit: "USD/cwt", ticker: "ZR=F",  decimals: 2, flag: "🍚" },
+      { key: "azucar",   label: "Azúcar",   unit: "USD/lb",  ticker: "SB=F",  decimals: 2, flag: "🧂" },
+      { key: "cafe",     label: "Café",     unit: "USD/lb",  ticker: "KC=F",  decimals: 2, flag: "☕" },
+      { key: "algodon",  label: "Algodón",  unit: "USD/lb",  ticker: "CT=F",  decimals: 2, flag: "🪡" },
+    ],
+  },
+  {
+    label: "Energía",
+    color: "#FFA028",
+    items: [
+      { key: "petroleo",    label: "WTI",         unit: "USD/bbl", ticker: "CL=F", decimals: 2, flag: "🛢️" },
+      { key: "brent",       label: "Brent",       unit: "USD/bbl", ticker: "BZ=F", decimals: 2, flag: "🛢️" },
+      { key: "gas_natural", label: "Gas Natural", unit: "USD/MMBtu", ticker: "NG=F", decimals: 3, flag: "🔥" },
+      { key: "gasoil",      label: "Gasoil",      unit: "USD/gal", ticker: "HO=F", decimals: 3, flag: "⛽" },
+    ],
+  },
+  {
+    label: "Metales",
+    color: "#FFD700",
+    items: [
+      { key: "oro",       label: "Oro",       unit: "USD/oz",  ticker: "GC=F",  decimals: 0, flag: "🥇" },
+      { key: "plata",     label: "Plata",     unit: "USD/oz",  ticker: "SI=F",  decimals: 2, flag: "🥈" },
+      { key: "cobre",     label: "Cobre",     unit: "USD/lb",  ticker: "HG=F",  decimals: 3, flag: "🔶" },
+      { key: "aluminio",  label: "Aluminio",  unit: "USD/lb",  ticker: "ALI=F", decimals: 3, flag: "⬜" },
+    ],
+  },
+]
+
+const COMM_ALL = COMM_GROUPS.flatMap(g => g.items)
+
+function CommoditiesView() {
+  const [snap, setSnap] = useState<Record<string, WorldQuote | null>>({})
+  const [histMap, setHistMap] = useState<Record<string, [string, number][]>>({})
+  const [selected, setSelected] = useState<Set<string>>(new Set(["soja", "maiz", "trigo"]))
+  const [selPeriod, setSelPeriod] = useState("1y")
+  const [loading, setLoading] = useState(true)
+  const [loadingKeys, setLoadingKeys] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    fetch("/api/mundo")
+      .then(r => r.json())
+      .then(j => setSnap(j.data ?? {}))
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    const toFetch = [...selected].filter(k => !histMap[`${k}_${selPeriod}`])
+    if (!toFetch.length) return
+    setLoadingKeys(prev => new Set([...prev, ...toFetch]))
+    Promise.all(
+      toFetch.map(k =>
+        fetch(`/api/mundo?ticker=${k}&hist=${selPeriod}`)
+          .then(r => r.json())
+          .then(j => ({ k, data: (j.data ?? []) as [string, number][] }))
+          .catch(() => ({ k, data: [] as [string, number][] }))
+      )
+    ).then(results => {
+      setHistMap(prev => {
+        const next = { ...prev }
+        for (const { k, data } of results) next[`${k}_${selPeriod}`] = data
+        return next
+      })
+      setLoadingKeys(prev => {
+        const next = new Set(prev)
+        for (const { k } of results) next.delete(k)
+        return next
+      })
+    })
+  }, [selected, selPeriod])
+
+  function toggle(key: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) { if (next.size > 1) next.delete(key) }
+      else next.add(key)
+      return next
+    })
+  }
+
+  if (loading) return <Loading />
+
+  const isMulti = selected.size > 1
+  const allSeries = [...selected].map(k => ({
+    item: COMM_ALL.find(c => c.key === k)!,
+    group: COMM_GROUPS.find(g => g.items.some(i => i.key === k))!,
+    data: histMap[`${k}_${selPeriod}`] ?? [],
+  })).filter(s => s.item)
+
+  const dateSet = new Set<string>()
+  for (const s of allSeries) for (const [d] of s.data) dateSet.add(d)
+  const dates = [...dateSet].sort()
+
+  const seriesMap: Record<string, Record<string, number>> = {}
+  for (const s of allSeries) seriesMap[s.item.key] = Object.fromEntries(s.data)
+
+  const base0: Record<string, number> = {}
+  if (isMulti) {
+    for (const s of allSeries) {
+      const first = s.data[0]?.[1]
+      if (first) base0[s.item.key] = first
+    }
+  }
+
+  const chartData = dates.map(fecha => {
+    const row: Record<string, unknown> = { fecha }
+    for (const s of allSeries) {
+      const raw = seriesMap[s.item.key]?.[fecha]
+      if (raw != null) {
+        row[s.item.key] = isMulti && base0[s.item.key]
+          ? parseFloat((((raw / base0[s.item.key]) - 1) * 100).toFixed(2))
+          : raw
+      }
+    }
+    return row
+  })
+
+  // Colores únicos por ítem
+  const ITEM_COLORS = ["#4AF6C3","#FFA028","#FFD700","#FF6B6B","#CE93D8","#4FC3F7","#F06292","#81C784","#FF8A65","#A5D6A7","#90CAF9"]
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+
+      {/* Cards por grupo */}
+      {COMM_GROUPS.map(g => (
+        <div key={g.label}>
+          <div style={{ padding: "5px 14px 2px", fontSize: 8, color: g.color, textTransform: "uppercase", letterSpacing: 2, fontFamily: "monospace", background: "#030303", borderBottom: "1px solid #0d0d0d" }}>
+            {g.label}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "4px 14px 6px", background: "#050505", borderBottom: "1px solid #111" }}>
+            {g.items.map((item, idx) => {
+              const q = snap[item.key]
+              const isActive = selected.has(item.key)
+              const color = ITEM_COLORS[COMM_ALL.findIndex(c => c.key === item.key) % ITEM_COLORS.length]
+              return (
+                <button key={item.key} onClick={() => toggle(item.key)} style={{
+                  flex: "1 1 120px", padding: "8px 10px", textAlign: "left", cursor: "pointer",
+                  background: isActive ? "#0d0d0d" : "#060606",
+                  border: isActive ? `1px solid ${color}55` : "1px solid #111",
+                  fontFamily: "monospace", transition: "all 0.15s",
+                }}>
+                  <div style={{ fontSize: 8, color: isActive ? color : "#555", textTransform: "uppercase", letterSpacing: 0.8 }}>
+                    {item.flag} {item.label}
+                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: isActive ? "#fff" : "#444", marginTop: 2, lineHeight: 1 }}>
+                    {q ? `$${fmtUSD(q.precio, item.decimals)}` : "—"}
+                  </div>
+                  <div style={{ fontSize: 8, color: "#555", marginTop: 1 }}>{item.unit}</div>
+                  <div style={{ fontSize: 9, color: q ? changeColor(q.variacion_pct) : "#333", marginTop: 2, fontWeight: 700 }}>
+                    {q ? `${q.variacion_pct >= 0 ? "+" : ""}${fmtUSD(q.variacion_pct, 2)}%` : "—"}
+                  </div>
+                  {isActive && <div style={{ width: "100%", height: 2, background: color, marginTop: 3, borderRadius: 1 }} />}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* Controles período */}
+      <div style={{ padding: "6px 14px", background: "#050505", borderBottom: "1px solid #111", display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 8, color: "#555", fontFamily: "monospace" }}>
+          {isMulti ? "% variación desde inicio del período" : `Precio en ${COMM_ALL.find(c => c.key === [...selected][0])?.unit ?? "USD"}`}
+        </span>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
+          {["1mo", "3mo", "6mo", "1y", "2y", "5y"].map(p => (
+            <button key={p} onClick={() => setSelPeriod(p)} style={{
+              fontSize: 8, fontFamily: "monospace", padding: "2px 8px", borderRadius: 12, cursor: "pointer",
+              background: selPeriod === p ? "rgba(255,160,40,0.12)" : "transparent",
+              border: selPeriod === p ? "1px solid rgba(255,160,40,0.4)" : "1px solid #1a1a1a",
+              color: selPeriod === p ? "#FFA028" : "#555",
+            }}>{p}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Gráfico */}
+      <div style={{ padding: 16, background: "#050505" }}>
+        {loadingKeys.size > 0
+          ? <div style={{ height: 300, display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: 9, fontFamily: "monospace" }}>Cargando…</div>
+          : (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={chartData} margin={{ top: 8, right: 20, left: 10, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" />
+                <XAxis dataKey="fecha" stroke="#333" fontSize={8} tick={{ fill: "#888" }}
+                  tickFormatter={d => (d as string)?.slice(0, 7)}
+                  interval={Math.max(1, Math.floor(dates.length / 10))} />
+                <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} domain={["auto", "auto"]}
+                  tickFormatter={v => isMulti
+                    ? `${(v as number) >= 0 ? "+" : ""}${Math.round(v as number)}%`
+                    : `$${fmtUSD(v as number, allSeries[0]?.item.decimals ?? 2)}`} />
+                <Tooltip
+                  contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 9, color: "#fff", fontFamily: "monospace" }}
+                  itemStyle={{ color: "#fff" }}
+                  labelStyle={{ color: "#aaa" }}
+                  formatter={(v: unknown, name: unknown) => {
+                    const item = COMM_ALL.find(c => c.key === name)
+                    const val = v as number
+                    return isMulti
+                      ? [`${val >= 0 ? "+" : ""}${fmtUSD(val, 1)}%`, item?.label ?? String(name)]
+                      : [`$${fmtUSD(val, item?.decimals ?? 2)} ${item?.unit ?? ""}`, item?.label ?? String(name)]
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: 9, color: "#aaa" }}
+                  formatter={value => COMM_ALL.find(c => c.key === value)?.label ?? value} />
+                {isMulti && <ReferenceLine y={0} stroke="#444" strokeDasharray="4 4" />}
+                {allSeries.map((s, idx) => (
+                  <Line key={s.item.key} type="monotone" dataKey={s.item.key}
+                    stroke={ITEM_COLORS[COMM_ALL.findIndex(c => c.key === s.item.key) % ITEM_COLORS.length]}
+                    strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          )
+        }
+        <div style={{ fontSize: 8, color: "#888", marginTop: 4, fontFamily: "monospace" }}>
+          {isMulti ? "% variación acumulada desde inicio del período · click en un commodity para agregar/quitar del gráfico" : "Precio de contrato futuro · click en múltiples commodities para comparar rendimientos"}
+        </div>
+      </div>
+
+      <div style={{ padding: "6px 14px", fontSize: 8, color: "#888", borderTop: "1px solid #111", fontFamily: "monospace" }}>
+        Fuente: Yahoo Finance (futuros) · ZS=Soja, ZC=Maíz, ZW=Trigo, CL=WTI, GC=Oro, SI=Plata, HG=Cobre · Precios diferidos ~15 min
+      </div>
+    </div>
+  )
+}
+
 // ── MERCADOS MUNDO ────────────────────────────────────────────────────────────
 
 interface WorldQuote { precio: number; variacion_pct: number; ticker: string }
@@ -1041,7 +1278,8 @@ export function TabFinanzas({ initialSubtab }: { initialSubtab?: string | null }
       {activeTab === "bonos"     && <BonosView />}
       {activeTab === "rofex"     && <RofexView />}
       {activeTab === "plazofijo" && <PlazoFijoView />}
-      {activeTab === "mundo"     && <MundoView />}
+      {activeTab === "commodities" && <CommoditiesView />}
+      {activeTab === "mundo"      && <MundoView />}
       {activeTab === "crypto"    && <CryptoView />}
     </div>
   )
