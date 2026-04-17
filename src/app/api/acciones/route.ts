@@ -31,6 +31,22 @@ function parseLocaleNumber(raw: string | null | undefined): number | null {
   return Number.isFinite(value) ? value : null
 }
 
+function extractRavaMetric(html: string, label: string): number | null {
+  const safeLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const patterns = [
+    new RegExp(`<span>\\s*${safeLabel}:?\\s*<\\/span>\\s*<span class="bolder">([^<]+)`, "i"),
+    new RegExp(`${safeLabel}:<\\/span>\\s*<span class="bolder">([^<]+)`, "i"),
+    new RegExp(`>${safeLabel}<\\/span>\\s*<span class="bolder">([^<]+)`, "i"),
+  ]
+
+  for (const pattern of patterns) {
+    const value = parseLocaleNumber(html.match(pattern)?.[1])
+    if (value != null) return value
+  }
+
+  return null
+}
+
 async function scrapeRavaQuote(symbol: string): Promise<StockQuote | null> {
   try {
     const res = await fetch(`https://www.rava.com/perfil/${symbol.toLowerCase()}`, {
@@ -40,15 +56,21 @@ async function scrapeRavaQuote(symbol: string): Promise<StockQuote | null> {
     })
     if (!res.ok) return null
     const html = await res.text()
-    const lastPrice = parseLocaleNumber(html.match(/Precio:<\/span>\s*<span class="bolder">([^<]+)</i)?.[1])
+    const lastPrice = extractRavaMetric(html, "Precio")
     if (lastPrice == null) return null
+
+    const closePrice = extractRavaMetric(html, "Anterior")
+    const change1D = closePrice != null && closePrice > 0
+      ? ((lastPrice - closePrice) / closePrice) * 100
+      : null
+
     return {
       ticker: symbol,
       category: "",
       lastPrice,
-      closePrice: null,
+      closePrice,
       openPrice: null,
-      change1D: null,
+      change1D,
       volume: null,
       bid: null,
       ask: null,
