@@ -1962,7 +1962,9 @@ function IpcHistoricaView() {
             domain={["auto", "auto"]}
           />
           <Tooltip
-            contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 9, fontFamily: "monospace" }}
+            contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 9, fontFamily: "monospace", color: "#fff" }}
+            itemStyle={{ color: "#fff" }}
+            labelStyle={{ color: "#aaa" }}
             formatter={(v: unknown, _: unknown, props: { payload?: IpcHistoricoRow }) => {
               const val = Number(v)
               const nota = props.payload?.nota
@@ -1981,13 +1983,13 @@ function IpcHistoricaView() {
         </BarChart>
       </ResponsiveContainer>
 
-      <div style={{ display: "flex", gap: 12, marginTop: 6, fontSize: 8, color: "#444", fontFamily: "monospace", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 12, marginTop: 6, fontSize: 8, color: "#aaa", fontFamily: "monospace", flexWrap: "wrap" }}>
         <span style={{ color: "#FF433D" }}>■ ≥100% (hiperinflación)</span>
         <span style={{ color: "#FFA028" }}>■ 50–99%</span>
         <span style={{ color: "#4AF6C3" }}>■ 0–49%</span>
         <span style={{ color: "#4FC3F7" }}>■ deflación</span>
       </div>
-      <div style={{ fontSize: 8, color: "#333", marginTop: 4, fontFamily: "monospace" }}>
+      <div style={{ fontSize: 8, color: "#777", marginTop: 4, fontFamily: "monospace" }}>
         Fuente: INDEC / BCRA (1943–2016) · datos.gob.ar IPC mensual (2017–presente) · Escala logarítmica
       </div>
     </div>
