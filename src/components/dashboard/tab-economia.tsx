@@ -61,13 +61,13 @@ function KPIBlock({
         minWidth: 140,
       }}
     >
-      <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+      <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
         {label}
       </div>
       <div style={{ fontSize: 20, fontWeight: 700, color: valueColor ?? "#FFA028", fontFamily: "monospace" }}>
         {value ?? "—"}
       </div>
-      <div style={{ fontSize: 9, color: "#444", marginTop: 2 }}>{unit}</div>
+      <div style={{ fontSize: 9, color: "#888", marginTop: 2 }}>{unit}</div>
     </div>
   )
 }
@@ -94,13 +94,13 @@ function DolarCard({ rate, oficial }: { rate: DolarRate; oficial: DolarRate | nu
       </div>
       <div style={{ display: "flex", gap: 16 }}>
         <div>
-          <div style={{ fontSize: 9, color: "#555" }}>COMPRA</div>
+          <div style={{ fontSize: 9, color: "#888" }}>COMPRA</div>
           <div style={{ fontSize: 15, color: "#ccc", fontFamily: "monospace", fontWeight: 600 }}>
             ${rate.compra?.toFixed(2) ?? "—"}
           </div>
         </div>
         <div>
-          <div style={{ fontSize: 9, color: "#555" }}>VENTA</div>
+          <div style={{ fontSize: 9, color: "#888" }}>VENTA</div>
           <div style={{ fontSize: 15, color: "#fff", fontFamily: "monospace", fontWeight: 700 }}>
             ${rate.venta?.toFixed(2) ?? "—"}
           </div>
@@ -159,7 +159,7 @@ export function TabEconomia() {
 
   if (loading) {
     return (
-      <div style={{ padding: 24, color: "#555", fontSize: 12, textAlign: "center" }}>
+      <div style={{ padding: 24, color: "#888", fontSize: 12, textAlign: "center" }}>
         Cargando cotizaciones...
       </div>
     )
@@ -183,7 +183,7 @@ export function TabEconomia() {
       <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between" }}>
         <span>TIPOS DE CAMBIO — ARGENTINA</span>
         {lastUpdate && (
-          <span style={{ color: "#444", fontWeight: 400 }}>
+          <span style={{ color: "#888", fontWeight: 400 }}>
             UPD {new Date(lastUpdate).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
           </span>
         )}
@@ -238,7 +238,7 @@ export function TabEconomia() {
       </div>
 
       {/* Source note */}
-      <div style={{ padding: "4px 8px", fontSize: 9, color: "#333", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 8px", fontSize: 9, color: "#777", borderTop: "1px solid #111" }}>
         FUENTE: dolarapi.com · datos.gob.ar · estadisticasbcra.com (riesgo país requiere BCRA_TOKEN)
       </div>
     </div>

@@ -150,7 +150,7 @@ function ScreenerCategory({ cat, stocks, onSelect }: {
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span style={{ fontSize: 9, color: "#4AF6C3" }}>{positives}↑</span>
           <span style={{ fontSize: 9, color: "#FF433D" }}>{negatives}↓</span>
-          <span style={{ fontSize: 9, color: "#555" }}>{collapsed ? "▼" : "▲"}</span>
+          <span style={{ fontSize: 9, color: "#888" }}>{collapsed ? "▼" : "▲"}</span>
         </div>
       </div>
 
@@ -161,9 +161,9 @@ function ScreenerCategory({ cat, stocks, onSelect }: {
               <SortTh k="ticker" label="Ticker" align="left" />
               <SortTh k="lastPrice" label="Último" />
               <SortTh k="change1D" label="Var 1D%" />
-              <th style={{ padding: "3px 8px", fontSize: 9, color: "#555", textAlign: "right", borderBottom: "1px solid #1a1a1a" }}>Cierre ant.</th>
+              <th style={{ padding: "3px 8px", fontSize: 9, color: "#888", textAlign: "right", borderBottom: "1px solid #1a1a1a" }}>Cierre ant.</th>
               <SortTh k="volume" label="Volumen" />
-              <th style={{ padding: "3px 8px", fontSize: 9, color: "#555", textAlign: "right", borderBottom: "1px solid #1a1a1a" }}>Bid / Ask</th>
+              <th style={{ padding: "3px 8px", fontSize: 9, color: "#888", textAlign: "right", borderBottom: "1px solid #1a1a1a" }}>Bid / Ask</th>
             </tr>
           </thead>
           <tbody>
@@ -188,10 +188,10 @@ function ScreenerCategory({ cat, stocks, onSelect }: {
                 <td style={{ padding: "5px 8px", fontSize: 11, color: "#888", textAlign: "right", fontFamily: "monospace" }}>
                   {stock.closePrice != null ? fmtNum(stock.closePrice, 2) : "—"}
                 </td>
-                <td style={{ padding: "5px 8px", fontSize: 11, color: "#666", textAlign: "right", fontFamily: "monospace" }}>
+                <td style={{ padding: "5px 8px", fontSize: 11, color: "#999", textAlign: "right", fontFamily: "monospace" }}>
                   {fmtVol(stock.volume)}
                 </td>
-                <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", textAlign: "right", fontFamily: "monospace" }}>
+                <td style={{ padding: "5px 8px", fontSize: 10, color: "#888", textAlign: "right", fontFamily: "monospace" }}>
                   {stock.bid != null && stock.ask != null
                     ? `${fmtNum(stock.bid, 1)} / ${fmtNum(stock.ask, 1)}`
                     : "—"}
@@ -221,7 +221,7 @@ function ScreenerView({ onSelect }: { onSelect: (t: string) => void }) {
 
   useEffect(() => { load() }, [load])
 
-  if (loading) return <div style={{ padding: 32, textAlign: "center", color: "#555", fontSize: 11 }}>Cargando cotizaciones del Merval...</div>
+  if (loading) return <div style={{ padding: 32, textAlign: "center", color: "#888", fontSize: 11 }}>Cargando cotizaciones del Merval...</div>
   if (error) return <div style={{ padding: 16, color: "#FF433D", fontSize: 11 }}>Error: {error}</div>
 
   const allStocks = Object.values(data).flat()
@@ -242,10 +242,10 @@ function ScreenerView({ onSelect }: { onSelect: (t: string) => void }) {
             outline: "none",
           }}
         />
-        <span style={{ fontSize: 9, color: "#555" }}>{allStocks.length} instrumentos · Haz click en un ticker para ver detalle</span>
+        <span style={{ fontSize: 9, color: "#888" }}>{allStocks.length} instrumentos · Haz click en un ticker para ver detalle</span>
         <button onClick={load} style={{
           marginLeft: "auto", fontSize: 9, padding: "3px 8px",
-          background: "transparent", border: "1px solid #333", color: "#666", cursor: "pointer",
+          background: "transparent", border: "1px solid #333", color: "#999", cursor: "pointer",
         }}>↻ Actualizar</button>
       </div>
 
@@ -253,7 +253,7 @@ function ScreenerView({ onSelect }: { onSelect: (t: string) => void }) {
         <ScreenerCategory key={cat} cat={cat} stocks={stocks} onSelect={onSelect} />
       ))}
 
-      <div style={{ padding: "4px 8px", fontSize: 9, color: "#333", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 8px", fontSize: 9, color: "#777", borderTop: "1px solid #111" }}>
         Precios: api-merval (24hs) · Variación vs cierre anterior · Click en ticker para ver detalle + gráfico
       </div>
     </div>
@@ -278,7 +278,7 @@ function PeerComparison() {
       .catch(() => setLoading(false))
   }, [selectedCat])
 
-  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando...</div>
+  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando...</div>
 
   const stocks = data[selectedCat] ?? []
   const withData = stocks.filter((s) => s.lastPrice != null)
@@ -311,15 +311,15 @@ function PeerComparison() {
           {/* Median banner */}
           {medianPrice != null && (
             <div style={{ padding: "6px 12px", background: "#0d0d0d", borderBottom: "1px solid #1a1a1a", display: "flex", gap: 24 }}>
-              <div style={{ fontSize: 9, color: "#555" }}>
+              <div style={{ fontSize: 9, color: "#888" }}>
                 Mediana precio: <span style={{ color: "#FFA028", fontFamily: "monospace" }}>{fmtNum(medianPrice)}</span>
               </div>
               {medianChange != null && (
-                <div style={{ fontSize: 9, color: "#555" }}>
+                <div style={{ fontSize: 9, color: "#888" }}>
                   Mediana var 1D: <span style={{ color: changeColor(medianChange), fontFamily: "monospace" }}>{fmtPct(medianChange)}</span>
                 </div>
               )}
-              <div style={{ fontSize: 9, color: "#555" }}>{withData.length} instrumentos</div>
+              <div style={{ fontSize: 9, color: "#888" }}>{withData.length} instrumentos</div>
             </div>
           )}
 
@@ -328,7 +328,7 @@ function PeerComparison() {
               <tr>
                 {["Ticker", "Último Px", "Var 1D%", "Cierre ant.", "Volumen", "vs Mediana 1D"].map((h, i) => (
                   <th key={h} style={{
-                    padding: "4px 8px", fontSize: 9, color: "#555",
+                    padding: "4px 8px", fontSize: 9, color: "#888",
                     textAlign: i === 0 ? "left" : "right",
                     borderBottom: "1px solid #1a1a1a",
                   }}>{h}</th>
@@ -354,7 +354,7 @@ function PeerComparison() {
                       <td style={{ padding: "5px 8px", fontSize: 11, color: "#888", textAlign: "right", fontFamily: "monospace" }}>
                         {fmtNum(stock.closePrice)}
                       </td>
-                      <td style={{ padding: "5px 8px", fontSize: 11, color: "#666", textAlign: "right", fontFamily: "monospace" }}>
+                      <td style={{ padding: "5px 8px", fontSize: 11, color: "#999", textAlign: "right", fontFamily: "monospace" }}>
                         {fmtVol(stock.volume)}
                       </td>
                       <td style={{ padding: "5px 8px", fontSize: 11, fontFamily: "monospace", textAlign: "right",
@@ -381,7 +381,7 @@ function DetailTooltip({ active, payload, label }: any) {
   const close = payload.find((p: { dataKey: string }) => p.dataKey === "close")?.value
   return (
     <div style={{ background: "#0d0d0d", border: "1px solid #333", padding: "8px 12px", fontSize: 11 }}>
-      <div style={{ color: "#666", fontSize: 9, marginBottom: 4 }}>{label}</div>
+      <div style={{ color: "#999", fontSize: 9, marginBottom: 4 }}>{label}</div>
       {close != null && <div style={{ color: "#FFA028", fontFamily: "monospace" }}>Cierre: {fmtNum(close)}</div>}
     </div>
   )
@@ -411,7 +411,7 @@ function StockDetailView({ ticker, onClose }: { ticker: string; onClose: () => v
       .catch(() => {})
   }, [ticker])
 
-  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando {ticker}...</div>
+  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando {ticker}...</div>
   if (!detail) return <div style={{ padding: 16, color: "#FF433D", fontSize: 11 }}>No se pudo cargar {ticker}</div>
 
   return (
@@ -430,13 +430,13 @@ function StockDetailView({ ticker, onClose }: { ticker: string; onClose: () => v
             </span>
           </div>
           <div style={{ display: "flex", gap: 16, marginTop: 4 }}>
-            {detail.high52w && <span style={{ fontSize: 9, color: "#555" }}>52W H: <span style={{ color: "#4AF6C3" }}>{fmtNum(detail.high52w)}</span></span>}
-            {detail.low52w && <span style={{ fontSize: 9, color: "#555" }}>52W L: <span style={{ color: "#FF433D" }}>{fmtNum(detail.low52w)}</span></span>}
-            {detail.volume && <span style={{ fontSize: 9, color: "#555" }}>Vol: <span style={{ color: "#888" }}>{fmtVol(detail.volume)}</span></span>}
-            <span style={{ fontSize: 9, color: "#555" }}>{detail.currency}</span>
+            {detail.high52w && <span style={{ fontSize: 9, color: "#888" }}>52W H: <span style={{ color: "#4AF6C3" }}>{fmtNum(detail.high52w)}</span></span>}
+            {detail.low52w && <span style={{ fontSize: 9, color: "#888" }}>52W L: <span style={{ color: "#FF433D" }}>{fmtNum(detail.low52w)}</span></span>}
+            {detail.volume && <span style={{ fontSize: 9, color: "#888" }}>Vol: <span style={{ color: "#888" }}>{fmtVol(detail.volume)}</span></span>}
+            <span style={{ fontSize: 9, color: "#888" }}>{detail.currency}</span>
           </div>
         </div>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 16 }}>✕</button>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 16 }}>✕</button>
       </div>
 
       {/* Panel toggle */}
@@ -497,7 +497,7 @@ function StockDetailView({ ticker, onClose }: { ticker: string; onClose: () => v
       {activePanel === "news" && (
         <div style={{ maxHeight: 320, overflowY: "auto" }}>
           {news.length === 0 ? (
-            <div style={{ padding: 16, color: "#555", fontSize: 11, textAlign: "center" }}>
+            <div style={{ padding: 16, color: "#888", fontSize: 11, textAlign: "center" }}>
               No se encontraron noticias recientes para {ticker}
             </div>
           ) : (
@@ -508,11 +508,11 @@ function StockDetailView({ ticker, onClose }: { ticker: string; onClose: () => v
                 </a>
                 <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                   <span style={{ fontSize: 9, color: "#FFA028" }}>{n.source}</span>
-                  <span style={{ fontSize: 9, color: "#444" }}>
+                  <span style={{ fontSize: 9, color: "#888" }}>
                     {new Date(n.date).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })}
                   </span>
                 </div>
-                {n.snippet && <div style={{ fontSize: 10, color: "#666", marginTop: 4, lineHeight: 1.4 }}>{n.snippet}</div>}
+                {n.snippet && <div style={{ fontSize: 10, color: "#999", marginTop: 4, lineHeight: 1.4 }}>{n.snippet}</div>}
               </div>
             ))
           )}
@@ -550,7 +550,7 @@ export function TabAcciones() {
       {activeTab === "detalle" && (
         selectedTicker
           ? <StockDetailView ticker={selectedTicker} onClose={() => { setSelectedTicker(null); setActiveTab("screener") }} />
-          : <div style={{ padding: 32, textAlign: "center", color: "#555", fontSize: 11 }}>
+          : <div style={{ padding: 32, textAlign: "center", color: "#888", fontSize: 11 }}>
               Seleccioná un ticker desde el Screener para ver el detalle
             </div>
       )}

@@ -15,6 +15,8 @@ import {
   ComposedChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts"
+import { InfoTooltip } from "@/components/ui/info-tooltip"
+import { GLOSSARY } from "@/lib/glossary"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -254,7 +256,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
       background: "#0d0d0d", borderBottom: "1px solid #1a1a1a", borderTop: "1px solid #1a1a1a",
-      padding: "3px 12px", fontSize: 9, color: "#444",
+      padding: "3px 12px", fontSize: 9, color: "#888",
       textTransform: "uppercase", letterSpacing: "0.12em",
     }}>
       {children}
@@ -302,13 +304,18 @@ function TCRatesTable({ dolares }: { dolares: DolarResponse | null }) {
         {rows.map((row, i) => (
           <tr key={row.key} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
             <td style={{ color: row.color, fontWeight: 700 }}>
-              {row.label}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+                {row.label}
+                {GLOSSARY[row.key.toUpperCase()] && (
+                  <InfoTooltip text={GLOSSARY[row.key.toUpperCase()].text} source={GLOSSARY[row.key.toUpperCase()].source} url={GLOSSARY[row.key.toUpperCase()].url} position="bottom" />
+                )}
+              </span>
               {row.badge && <span style={{ fontSize: 8, color: "#FFA028", marginLeft: 6, border: "1px solid #FFA02833", padding: "0 3px" }}>{row.badge}</span>}
             </td>
             <td className="num" style={{ color: "#fff", fontWeight: 600 }}>{fmtARS(row.venta)}</td>
-            <td className="num" style={{ color: "#666" }}>{fmtARS(row.compra)}</td>
+            <td className="num" style={{ color: "#999" }}>{fmtARS(row.compra)}</td>
             <td className="num" style={{ color: varColor(row.variacion) }}>{fmtPct(row.variacion)}</td>
-            <td className="num" style={{ color: "#555" }}>{row.brecha != null ? fmtPct(row.brecha) : "—"}</td>
+            <td className="num" style={{ color: "#888" }}>{row.brecha != null ? fmtPct(row.brecha) : "—"}</td>
           </tr>
         ))}
       </tbody>
@@ -330,7 +337,7 @@ function InternacionalTable({ data }: { data: InternacionalData | null }) {
       <thead>
         <tr>
           <th>Par</th>
-          <th style={{ color: "#555" }}>Descripción</th>
+          <th style={{ color: "#888" }}>Descripción</th>
           <th className="num">Último</th>
           <th className="num">1D %</th>
         </tr>
@@ -338,8 +345,15 @@ function InternacionalTable({ data }: { data: InternacionalData | null }) {
       <tbody>
         {rows.map((row, i) => (
           <tr key={row.label} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
-            <td style={{ color: "#4FC3F7", fontWeight: 700 }}>{row.label}</td>
-            <td style={{ color: "#444" }}>{row.desc}</td>
+            <td style={{ color: "#4FC3F7", fontWeight: 700 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+                {row.label}
+                {GLOSSARY[row.label] && (
+                  <InfoTooltip text={GLOSSARY[row.label].text} source={GLOSSARY[row.label].source} url={GLOSSARY[row.label].url} position="bottom" />
+                )}
+              </span>
+            </td>
+            <td style={{ color: "#888" }}>{row.desc}</td>
             <td className="num" style={{ color: "#fff", fontWeight: 600 }}>
               {row.val != null ? row.val.toFixed(row.dec) : "—"}
             </td>
@@ -357,7 +371,7 @@ function InternacionalTable({ data }: { data: InternacionalData | null }) {
 
 function RofexTable({ futures }: { futures: RofexFuture[] }) {
   if (!futures.length) return (
-    <div style={{ padding: "10px 12px", fontSize: 10, color: "#444" }}>
+    <div style={{ padding: "10px 12px", fontSize: 10, color: "#888" }}>
       Sin datos ROFEX — los futuros se cargan vía cron o POST /api/rofex
     </div>
   )
@@ -391,7 +405,7 @@ function RofexTable({ futures }: { futures: RofexFuture[] }) {
 
 function LecapTable({ instruments }: { instruments: CapInstrument[] }) {
   if (!instruments.length) return (
-    <div style={{ padding: "10px 12px", fontSize: 10, color: "#444" }}>
+    <div style={{ padding: "10px 12px", fontSize: 10, color: "#888" }}>
       Sin datos LECAPs — ejecutar seed de instrumentos
     </div>
   )
@@ -413,9 +427,9 @@ function LecapTable({ instruments }: { instruments: CapInstrument[] }) {
         {instruments.map((inst, i) => (
           <tr key={inst.ticker} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
             <td style={{ color: "#FFD700", fontWeight: 700 }}>{inst.ticker}</td>
-            <td style={{ color: "#555" }}>{inst.tipo}</td>
+            <td style={{ color: "#888" }}>{inst.tipo}</td>
             <td style={{ color: "#888" }}>{fmtDateFull(inst.vencimiento)}</td>
-            <td className="num" style={{ color: "#666" }}>{inst.diasVencimiento}</td>
+            <td className="num" style={{ color: "#999" }}>{inst.diasVencimiento}</td>
             <td className="num bbg-white">{inst.precio?.toFixed(2) ?? "—"}</td>
             <td className="num bbg-positive">{inst.tem != null ? inst.tem.toFixed(2) + "%" : "—"}</td>
             <td className="num" style={{ color: "#999" }}>{inst.tea != null ? inst.tea.toFixed(1) + "%" : "—"}</td>
@@ -436,7 +450,7 @@ function ChartTooltip({ active, payload, label }: any) {
   if (!entries.length) return null
   return (
     <div style={{ background: "#0a0a0a", border: "1px solid #333", padding: "8px 12px", fontSize: 10 }}>
-      <div style={{ color: "#555", marginBottom: 4, fontSize: 9 }}>{fmtDateFull(label)}</div>
+      <div style={{ color: "#888", marginBottom: 4, fontSize: 9 }}>{fmtDateFull(label)}</div>
       {entries.map((p: { name: string; value: number; color: string }) => (
         <div key={p.name} style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
           <span style={{ color: p.color }}>{p.name}</span>
@@ -604,7 +618,7 @@ function ChartSection({
       {/* Controles bandas */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "4px 12px", borderBottom: "1px solid #1a1a1a", alignItems: "center" }}>
         {/* Fases históricas */}
-        <span style={{ fontSize: 8, color: "#333", textTransform: "uppercase", letterSpacing: "0.08em" }}>Bandas:</span>
+        <span style={{ fontSize: 8, color: "#777", textTransform: "uppercase", letterSpacing: "0.08em" }}>Bandas:</span>
         <ToggleBtn active={showFase1} color="#818CF8" onClick={() => setShowFase1(v => !v)}>F1 2%</ToggleBtn>
         <ToggleBtn active={showFase2} color="#06B6D4" onClick={() => setShowFase2(v => !v)}>F2 1%</ToggleBtn>
         <ToggleBtn active={showBandas} color="#22C55E" onClick={() => setShowBandas(v => !v)}>F3 IPC</ToggleBtn>
@@ -634,7 +648,7 @@ function ChartSection({
                 />
               )}
             </div>
-            <div style={{ fontSize: 8, color: "#333", display: "flex", gap: 8 }}>
+            <div style={{ fontSize: 8, color: "#777", display: "flex", gap: 8 }}>
               <span style={{ color: "#4AF6C388" }}>· bull +1pp</span>
               <span style={{ color: "#A78BFA88" }}>· neutral</span>
               <span style={{ color: "#FF433D88" }}>· bear −1pp</span>
@@ -648,7 +662,7 @@ function ChartSection({
       </div>
 
       {loading ? (
-        <div style={{ padding: 24, textAlign: "center", color: "#444", fontSize: 10 }}>Cargando histórico...</div>
+        <div style={{ padding: 24, textAlign: "center", color: "#888", fontSize: 10 }}>Cargando histórico...</div>
       ) : (
         <div style={{ padding: "6px 4px 0 0" }}>
           <ResponsiveContainer width="100%" height={380}>
@@ -767,7 +781,7 @@ export function TabTiposCambio() {
     return (
       <div className="bbg-panel">
         <div className="bbg-panel-header">TIPOS DE CAMBIO</div>
-        <div style={{ padding: 32, textAlign: "center", color: "#444", fontSize: 10 }}>Cargando datos...</div>
+        <div style={{ padding: 32, textAlign: "center", color: "#888", fontSize: 10 }}>Cargando datos...</div>
       </div>
     )
   }

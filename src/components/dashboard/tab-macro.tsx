@@ -79,13 +79,13 @@ function KPI({
         flex: "1 1 160px",
       }}
     >
-      <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+      <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
         {label}
       </div>
       <div style={{ fontSize: 20, fontWeight: 700, color: valueColor ?? "#FFA028", fontFamily: "monospace" }}>
         {value ?? "—"}
       </div>
-      <div style={{ fontSize: 9, color: "#444", marginTop: 2 }}>{unit}</div>
+      <div style={{ fontSize: 9, color: "#888", marginTop: 2 }}>{unit}</div>
       {var1 != null && (
         <div style={{ fontSize: 10, color: varColor(var1), marginTop: 4 }}>
           {varSign(var1)}{fmtNum(var1)}% {var1Label}
@@ -105,7 +105,7 @@ function KPI({
 function MiniTable({ title, rows }: { title: string; rows: { label: string; value: string; color?: string }[] }) {
   return (
     <div style={{ background: "#060606", border: "1px solid #1a1a1a" }}>
-      <div style={{ padding: "4px 8px", background: "#0d0d0d", fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid #111" }}>
+      <div style={{ padding: "4px 8px", background: "#0d0d0d", fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid #111" }}>
         {title}
       </div>
       {rows.map((r, i) => (
@@ -179,7 +179,7 @@ function usePonderaciones(): { rows: PonderRow[]; tipos: Record<string, string>;
 
 export function PonderacionesTable() {
   const { rows, loading } = usePonderaciones()
-  if (loading) return <div style={{ padding: 24, color: "#666", fontSize: 11 }}>Cargando ponderaciones…</div>
+  if (loading) return <div style={{ padding: 24, color: "#999", fontSize: 11 }}>Cargando ponderaciones…</div>
 
   const chartData = rows.map(p => ({ nombre: p.cat, "2004": p.actual, "2022": p.propuesto }))
 
@@ -235,7 +235,7 @@ export function PonderacionesTable() {
             })}
           </tbody>
         </table>
-        <div style={{ padding: "6px 8px", fontSize: 9, color: "#666", borderTop: "1px solid #111" }}>
+        <div style={{ padding: "6px 8px", fontSize: 9, color: "#999", borderTop: "1px solid #111" }}>
           Fuente: INDEC · /api/macro?endpoint=ponderaciones — ENGHo 2004/05 (base vigente) · ENGHo 2017/18 (actualización 2022)
         </div>
       </div>
@@ -276,7 +276,7 @@ function SectionHeader({ title, source }: { title: string; source?: string }) {
         {title}
       </span>
       {source && (
-        <span style={{ fontSize: 8, color: "#444", textTransform: "uppercase", letterSpacing: 1 }}>{source}</span>
+        <span style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1 }}>{source}</span>
       )}
     </div>
   )
@@ -297,18 +297,18 @@ function EstructuralKPI({
     }}>
       {year && (
         <div style={{
-          position: "absolute", top: 6, right: 8, fontSize: 8, color: "#333",
+          position: "absolute", top: 6, right: 8, fontSize: 8, color: "#777",
           fontFamily: "monospace", background: "#111", padding: "1px 4px", border: "1px solid #1a1a1a",
         }}>{year}</div>
       )}
-      <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, paddingRight: 32 }}>
+      <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, paddingRight: 32 }}>
         {label}
       </div>
       <div style={{ fontSize: 18, fontWeight: 700, color: valueColor, fontFamily: "monospace" }}>
         {value ?? "—"}
       </div>
-      <div style={{ fontSize: 9, color: "#444", marginTop: 2 }}>{unit}</div>
-      {nota && <div style={{ fontSize: 8, color: "#333", marginTop: 4, lineHeight: 1.4 }}>{nota}</div>}
+      <div style={{ fontSize: 9, color: "#888", marginTop: 2 }}>{unit}</div>
+      {nota && <div style={{ fontSize: 8, color: "#777", marginTop: 4, lineHeight: 1.4 }}>{nota}</div>}
     </div>
   )
 }
@@ -508,7 +508,7 @@ function PoblacionSerieChart({ country, selectedYear }: { country: string; selec
     <div className="bbg-panel" style={{ marginTop: 8 }}>
       <div className="bbg-panel-header">POBLACIÓN TOTAL — EVOLUCIÓN 1950–2100</div>
       {loading ? (
-        <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11 }}>Cargando serie de población...</div>
+        <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11 }}>Cargando serie de población...</div>
       ) : (
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={serie} margin={{ top: 8, right: 20, left: 10, bottom: 4 }}>
@@ -555,7 +555,7 @@ function PoblacionSerieChart({ country, selectedYear }: { country: string; selec
           </AreaChart>
         </ResponsiveContainer>
       )}
-      <div style={{ padding: "4px 12px 6px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 12px 6px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
         Fuente: populationpyramid.net · UN World Population Prospects 2024 · Años &gt;2025 = proyecciones ONU
       </div>
     </div>
@@ -643,7 +643,7 @@ export function EmaeView() {
 
   }, [])
 
-  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando EMAE...</div>
+  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando EMAE...</div>
 
   const ultimoEmae = data?.emae?.[0]
   const varMensual = data?.emae_var_mensual?.[0]?.[1]
@@ -724,6 +724,7 @@ export function EmaeView() {
         <div style={{ padding: "8px 0" }}>
           <BBGAreaChart
             title="EMAE — EVOLUCIÓN 12 MESES"
+            glossaryKey="EMAE"
             data={recentEmae.map(([d, v]) => ({ date: d, emae: v }))}
             areas={[{ key: "emae", name: "EMAE", color: "#FFA028" }]}
             height={280}
@@ -747,7 +748,7 @@ export function EmaeView() {
         source={`INDEC · EPH Continua${periodoLaboral ? ` · ${periodoLaboral}` : ""}`}
       />
       {laboralLoading ? (
-        <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando datos EPH...</div>
+        <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Cargando datos EPH...</div>
       ) : (
         <>
           <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
@@ -798,7 +799,7 @@ export function EmaeView() {
       {/* ── INDICADORES ESTRUCTURALES ──────────────────────────────────── */}
       <SectionHeader title="Indicadores Estructurales" source="INDEC · datos.gob.ar · World Bank" />
       {estructuralLoading ? (
-        <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando indicadores estructurales...</div>
+        <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Cargando indicadores estructurales...</div>
       ) : (
         <>
           {/* Fila 1 — Actividad económica */}
@@ -942,7 +943,7 @@ export function EmaeView() {
                 )}
               </span>
               {piramideMeta && (
-                <span style={{ fontSize: 8, fontWeight: 400, color: "#555", textTransform: "none" }}>
+                <span style={{ fontSize: 8, fontWeight: 400, color: "#888", textTransform: "none" }}>
                   Total: <span style={{ color: "#fff" }}>{(piramideMeta.total / 1e6).toFixed(1)}M</span>
                   &nbsp;·&nbsp;<span style={{ color: "#4FC3F7" }}>V {(piramideMeta.total_m / 1e6).toFixed(1)}M</span>
                   &nbsp;·&nbsp;<span style={{ color: "#F48FB1" }}>M {(piramideMeta.total_f / 1e6).toFixed(1)}M</span>
@@ -950,7 +951,7 @@ export function EmaeView() {
               )}
             </div>
             <div style={{ padding: "8px 12px 4px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>Año</span>
+              <span style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1 }}>Año</span>
               <input
                 type="range" min={1950} max={2100} step={1} value={piramideYear}
                 onChange={e => setPiramideYear(Number(e.target.value))}
@@ -970,18 +971,18 @@ export function EmaeView() {
               </div>
             </div>
             {piramideLoading ? (
-              <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11 }}>Cargando pirámide...</div>
+              <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11 }}>Cargando pirámide...</div>
             ) : (
               <PyramidChart data={piramideData} height={400} />
             )}
-            <div style={{ padding: "4px 12px 6px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+            <div style={{ padding: "4px 12px 6px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
               Fuente: populationpyramid.net · UN World Population Prospects 2024 · Años &gt;2025 = proyecciones ONU
             </div>
           </div>
 
           <PoblacionSerieChart country="32" selectedYear={piramideYear} />
 
-          <div style={{ padding: "6px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111", lineHeight: 1.6 }}>
+          <div style={{ padding: "6px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111", lineHeight: 1.6 }}>
             PBI, per cápita, población, Gini, natalidad y mortalidad: INDEC vía apis.datos.gob.ar ·
             Esperanza de vida: World Bank (SP.DYN.LE00.IN) · Pirámide: populationpyramid.net · UN WPP 2024 · El año en cada tarjeta = último dato publicado disponible.
           </div>
@@ -997,9 +998,9 @@ export function EmaeView() {
         source="INDEC · Índice Base 2004=100 · Valores originales"
       />
       {emaeSectorialLoading ? (
-        <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando EMAE sectorial...</div>
+        <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Cargando EMAE sectorial...</div>
       ) : emaeSectorialData.length === 0 ? (
-        <div style={{ padding: 12, color: "#444", fontSize: 11 }}>Sin datos disponibles</div>
+        <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Sin datos disponibles</div>
       ) : (
         <>
           {/* Ranking: barras horizontales ordenadas por variación interanual */}
@@ -1046,7 +1047,7 @@ export function EmaeView() {
                   <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, fontWeight: 700 }}>
                     EMAE — VARIACIÓN INTERANUAL POR SECTOR · {periodoLabel}
                   </div>
-                  <div style={{ fontSize: 8, color: "#333" }}>Base 2004=100 · INDEC</div>
+                  <div style={{ fontSize: 8, color: "#777" }}>Base 2004=100 · INDEC</div>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   {ranking.map(s => {
@@ -1082,7 +1083,7 @@ export function EmaeView() {
                   })}
                 </div>
                 {ranking.length > 0 && (
-                  <div style={{ marginTop: 8, fontSize: 8, color: "#333" }}>
+                  <div style={{ marginTop: 8, fontSize: 8, color: "#777" }}>
                     Variación interanual calculada desde índice. Mes anterior (m/m): {
                       ranking.slice(0, 3).map(s => `${s.label.split(" ")[0]} ${s.varMes != null ? (s.varMes >= 0 ? "+" : "") + s.varMes.toFixed(1) + "%" : "—"}`).join(" · ")
                     }
@@ -1131,9 +1132,9 @@ export function EmaeView() {
         source="INDEC · UCI Base 2004 · % sobre capacidad total"
       />
       {actividadLoading ? (
-        <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando UCI...</div>
+        <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Cargando UCI...</div>
       ) : !actividadData?.uci?.length ? (
-        <div style={{ padding: 12, color: "#444", fontSize: 11 }}>Sin datos UCI disponibles</div>
+        <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Sin datos UCI disponibles</div>
       ) : (
         <>
           {/* KPI nivel general */}
@@ -1187,9 +1188,9 @@ export function EmaeView() {
         source="INDEC · Miles de millones ARS · Corrientes y constantes base 2017"
       />
       {actividadLoading ? (
-        <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando supermercados...</div>
+        <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Cargando supermercados...</div>
       ) : !actividadData?.supermercados?.length ? (
-        <div style={{ padding: 12, color: "#444", fontSize: 11 }}>Sin datos de supermercados disponibles</div>
+        <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Sin datos de supermercados disponibles</div>
       ) : (
         <>
           {(() => {
@@ -1242,9 +1243,9 @@ export function EmaeView() {
         source="UTDT · Universidad Torcuato Di Tella · Encuesta mensual"
       />
       {confianzaLoading ? (
-        <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando ICC...</div>
+        <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Cargando ICC...</div>
       ) : !confianzaData?.ultimo ? (
-        <div style={{ padding: 12, color: "#444", fontSize: 11 }}>Sin datos disponibles</div>
+        <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Sin datos disponibles</div>
       ) : (
         <>
           {/* KPIs último período */}
@@ -1317,7 +1318,7 @@ export function EmaeView() {
           </div>
 
           {/* Nota metodológica */}
-          <div style={{ padding: "6px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111", lineHeight: 1.6 }}>
+          <div style={{ padding: "6px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111", lineHeight: 1.6 }}>
             Fuente: Universidad Torcuato Di Tella (UTDT) · Encuesta mensual a hogares del AMBA e interior urbano ·
             Índice compuesto: situación personal + situación macroeconómica + bienes durables ·
             Escala: por debajo de 35 = pesimismo marcado · 35-50 = cautela · 50+ = optimismo.
@@ -1331,9 +1332,9 @@ export function EmaeView() {
         source="UTDT · Universidad Torcuato Di Tella · Encuesta mensual"
       />
       {icgLoading ? (
-        <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando ICG...</div>
+        <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Cargando ICG...</div>
       ) : !icgData?.ultimo ? (
-        <div style={{ padding: 12, color: "#444", fontSize: 11 }}>Sin datos disponibles</div>
+        <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Sin datos disponibles</div>
       ) : (
         <>
           {/* KPIs último período */}
@@ -1389,7 +1390,7 @@ export function EmaeView() {
           </div>
 
           {/* Nota metodológica */}
-          <div style={{ padding: "6px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111", lineHeight: 1.6 }}>
+          <div style={{ padding: "6px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111", lineHeight: 1.6 }}>
             Fuente: Universidad Torcuato Di Tella (UTDT) · Encuesta mensual · Escala 0–5 ·
             Subíndices: evaluación general, interés general, eficiencia, honestidad y capacidad ·
             Por debajo de 2 = desconfianza marcada · 2–3 = confianza moderada · 3+ = confianza alta.
@@ -1568,7 +1569,7 @@ export function MiInflacionView() {
             </button>
           </div>
 
-          <div style={{ fontSize: 8, color: "#555", padding: "8px", background: "#060606", border: "1px solid #111", lineHeight: 1.5 }}>
+          <div style={{ fontSize: 8, color: "#888", padding: "8px", background: "#060606", border: "1px solid #111", lineHeight: 1.5 }}>
             Basado en datos INDEC. Los valores se normalizan automáticamente a 100%.
           </div>
         </>
@@ -1588,7 +1589,7 @@ export function MiInflacionView() {
                   {p.cat}
                 </label>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <span style={{ color: "#555", lineHeight: "24px" }}>$</span>
+                  <span style={{ color: "#888", lineHeight: "24px" }}>$</span>
                   <input
                     type="number"
                     min="0"
@@ -1608,7 +1609,7 @@ export function MiInflacionView() {
                 </div>
               </div>
             ))}
-            <div style={{ fontSize: 8, color: "#666", paddingTop: 8, borderTop: "1px solid #222" }}>
+            <div style={{ fontSize: 8, color: "#999", paddingTop: 8, borderTop: "1px solid #222" }}>
               Total: ${Object.values(gastos).reduce((a, b) => a + b, 0).toLocaleString("es-AR")}
             </div>
           </div>
@@ -1669,7 +1670,7 @@ export function MiInflacionView() {
                   {item.q}
                 </label>
                 <div style={{ display: "flex", gap: 6 }}>
-                  <span style={{ color: "#555", lineHeight: "24px", minWidth: "16px" }}>$</span>
+                  <span style={{ color: "#888", lineHeight: "24px", minWidth: "16px" }}>$</span>
                   <input
                     type="number"
                     min="0"
@@ -1843,7 +1844,7 @@ export function MiInflacionView() {
             <table style={{ width: "100%", fontSize: 9 }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid #222" }}>
-                  <th style={{ textAlign: "left", padding: "4px 0", color: "#555" }}>Categoría</th>
+                  <th style={{ textAlign: "left", padding: "4px 0", color: "#888" }}>Categoría</th>
                   <th style={{ textAlign: "right", padding: "4px 0", color: "#FFA028" }}>Tu %</th>
                   <th style={{ textAlign: "right", padding: "4px 0", color: "#4AF6C3" }}>INDEC %</th>
                 </tr>
@@ -1864,7 +1865,7 @@ export function MiInflacionView() {
             </table>
           </div>
 
-          <div style={{ fontSize: 9, color: "#666", padding: "8px", background: "#060606", border: "1px solid #111", marginBottom: 12, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 9, color: "#999", padding: "8px", background: "#060606", border: "1px solid #111", marginBottom: 12, lineHeight: 1.5 }}>
             <strong>Nota:</strong> Esta es una estimación de tu IPC personalizado. Para mayor precisión, consulta datos.gob.ar
           </div>
 
@@ -1907,7 +1908,7 @@ function IpcHistoricaView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 10, fontFamily: "monospace" }}>Cargando histórico 1943–presente...</div>
+  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 10, fontFamily: "monospace" }}>Cargando histórico 1943–presente...</div>
 
   const chartData = serie.map(r => ({ anio: String(r.anio), inflacion: r.inflacion, nota: r.nota }))
 
@@ -1917,30 +1918,30 @@ function IpcHistoricaView() {
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111", marginBottom: 8 }}>
         {stats?.pico && (
           <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "#080808", border: "1px solid #111" }}>
-            <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>Pico histórico</div>
+            <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>Pico histórico</div>
             <div style={{ fontSize: 20, fontWeight: 700, color: "#FF433D", fontFamily: "monospace" }}>
               {stats.pico.inflacion >= 1000
                 ? `${(stats.pico.inflacion / 1000).toFixed(1)}k%`
                 : `${stats.pico.inflacion.toFixed(0)}%`
               }
             </div>
-            <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>{stats.pico.anio} — {stats.pico.nota ?? "Hiperinflación"}</div>
+            <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>{stats.pico.anio} — {stats.pico.nota ?? "Hiperinflación"}</div>
           </div>
         )}
         {stats?.promedio != null && (
           <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "#080808", border: "1px solid #111" }}>
-            <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>Promedio {stats.desde}–{stats.hasta}</div>
+            <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>Promedio {stats.desde}–{stats.hasta}</div>
             <div style={{ fontSize: 20, fontWeight: 700, color: "#FFA028", fontFamily: "monospace" }}>{stats.promedio.toFixed(1)}%</div>
-            <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>inflación anual promedio</div>
+            <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>inflación anual promedio</div>
           </div>
         )}
         {serie.at(-1) && (
           <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "#080808", border: "1px solid #111" }}>
-            <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>
+            <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>
               {serie.at(-1)!.anio} {serie.at(-1)!.nota?.includes("curso") ? "(en curso)" : ""}
             </div>
             <div style={{ fontSize: 20, fontWeight: 700, color: "#4AF6C3", fontFamily: "monospace" }}>{serie.at(-1)!.inflacion.toFixed(1)}%</div>
-            <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>último año disponible</div>
+            <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>último año disponible</div>
           </div>
         )}
         <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "#080808", border: "1px solid #111", display: "flex", alignItems: "flex-end" }}>
@@ -2039,7 +2040,7 @@ function BreakEvenSection() {
     })
   }, [])
 
-  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 10, fontFamily: "monospace" }}>Cargando expectativas de mercado...</div>
+  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 10, fontFamily: "monospace" }}>Cargando expectativas de mercado...</div>
 
   const bk = bkData?.breakeven
   const rem = bkData?.rem
@@ -2056,7 +2057,7 @@ function BreakEvenSection() {
         <div style={{ fontSize: 9, color: "#FFA028", fontFamily: "monospace", letterSpacing: 1.5, fontWeight: 700 }}>
           EXPECTATIVAS DE MERCADO — BREAKEVEN INFLACIÓN
         </div>
-        <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace", marginTop: 2 }}>
+        <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", marginTop: 2 }}>
           Breakeven = TEA LECAP (tasa fija) − inflación esperada REM · Mide la tasa real implícita que descuenta el mercado
         </div>
       </div>
@@ -2065,47 +2066,47 @@ function BreakEvenSection() {
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#0d0d0d" }}>
         {/* Tasa fija: LECAP TEA */}
         <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "#080808", border: "1px solid #111" }}>
-          <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>LECAP más corta · TEA</div>
+          <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>LECAP más corta · TEA</div>
           <div style={{ fontSize: 20, fontWeight: 700, color: "#FFD700", fontFamily: "monospace" }}>
             {bk?.lecap_corto_tea != null ? `${bk.lecap_corto_tea.toFixed(1)}%` : "—"}
           </div>
-          <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>tasa fija de mercado · anual</div>
+          <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>tasa fija de mercado · anual</div>
         </div>
 
         {/* REM inflación 12M */}
         <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "#080808", border: "1px solid #111" }}>
-          <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>REM inflación 12M</div>
+          <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>REM inflación 12M</div>
           <div style={{ fontSize: 20, fontWeight: 700, color: "#FF433D", fontFamily: "monospace" }}>
             {rem?.inflacion_12m != null ? `${rem.inflacion_12m.toFixed(1)}%` : "—"}
           </div>
-          <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>mediana analistas · BCRA {rem?.fecha ?? ""}</div>
+          <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>mediana analistas · BCRA {rem?.fecha ?? ""}</div>
         </div>
 
         {/* Breakeven real implícito */}
         <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "#080808", border: `1px solid ${realColor}33` }}>
-          <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>Tasa real implícita</div>
+          <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>Tasa real implícita</div>
           <div style={{ fontSize: 20, fontWeight: 700, color: realColor, fontFamily: "monospace" }}>
             {bk?.real_vs_rem != null ? `${bk.real_vs_rem >= 0 ? "+" : ""}${bk.real_vs_rem.toFixed(1)}%` : "—"}
           </div>
-          <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>LECAP TEA − inflac. REM</div>
+          <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>LECAP TEA − inflac. REM</div>
         </div>
 
         {/* CER trailing */}
         <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "#080808", border: "1px solid #111" }}>
-          <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>CER trailing 30d</div>
+          <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>CER trailing 30d</div>
           <div style={{ fontSize: 20, fontWeight: 700, color: "#CE93D8", fontFamily: "monospace" }}>
             {cer?.inflacion_anual_trailing != null ? `${cer.inflacion_anual_trailing.toFixed(1)}%` : "—"}
           </div>
-          <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>inflación anualizada observada · BCRA</div>
+          <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>inflación anualizada observada · BCRA</div>
         </div>
 
         {/* BADLAR */}
         <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "#080808", border: "1px solid #111" }}>
-          <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>BADLAR privados</div>
+          <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>BADLAR privados</div>
           <div style={{ fontSize: 20, fontWeight: 700, color: "#4FC3F7", fontFamily: "monospace" }}>
             {tasas?.badlar_tna != null ? `${tasas.badlar_tna.toFixed(1)}%` : "—"}
           </div>
-          <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>TNA · depósitos &gt;$1MM · {tasas?.fecha ?? ""}</div>
+          <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>TNA · depósitos &gt;$1MM · {tasas?.fecha ?? ""}</div>
         </div>
       </div>
 
@@ -2126,7 +2127,7 @@ function BreakEvenSection() {
         })
         return (
           <div style={{ padding: "8px 12px 4px" }}>
-            <div style={{ fontSize: 9, color: "#666", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>
+            <div style={{ fontSize: 9, color: "#999", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>
               INFLACIÓN MENSUAL ESPERADA — PRÓXIMOS 12 MESES (proyección flat desde valores actuales)
             </div>
             <ResponsiveContainer width="100%" height={160}>
@@ -2142,13 +2143,13 @@ function BreakEvenSection() {
                   contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 9, fontFamily: "monospace" }}
                   formatter={(v: unknown, name: unknown) => [`${Number(v).toFixed(2)}% mensual`, String(name)]}
                 />
-                <Legend wrapperStyle={{ fontSize: 8, color: "#666" }} />
+                <Legend wrapperStyle={{ fontSize: 8, color: "#999" }} />
                 {lecapMensual != null && <Line type="monotone" dataKey="lecap" name="LECAP Breakeven" stroke="#FFD700" strokeWidth={2} dot={false} />}
                 {remMensual   != null && <Line type="monotone" dataKey="rem"   name="REM Analistas"   stroke="#FFA028" strokeWidth={2} dot={false} />}
                 {cerMensual   != null && <Line type="monotone" dataKey="cer"   name="CER Trailing"    stroke="#CE93D8" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />}
               </LineChart>
             </ResponsiveContainer>
-            <div style={{ fontSize: 8, color: "#333", marginTop: 2, fontFamily: "monospace" }}>
+            <div style={{ fontSize: 8, color: "#777", marginTop: 2, fontFamily: "monospace" }}>
               Proyección lineal — LECAP TEA → mensual | REM 12M → mensual | CER anualizado 30d → mensual
             </div>
           </div>
@@ -2169,7 +2170,7 @@ function BreakEvenSection() {
       {/* Curva LECAP */}
       {(bkData?.lecaps?.length ?? 0) > 0 && (
         <div style={{ padding: "8px 12px 4px" }}>
-          <div style={{ fontSize: 9, color: "#666", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>CURVA LECAP/BONCAP — TASA FIJA DE MERCADO</div>
+          <div style={{ fontSize: 9, color: "#999", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>CURVA LECAP/BONCAP — TASA FIJA DE MERCADO</div>
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
             {(bkData?.lecaps ?? []).map(l => (
               <div key={l.ticker} style={{
@@ -2180,8 +2181,8 @@ function BreakEvenSection() {
                 <div style={{ fontSize: 14, fontWeight: 700, color: "#FFF", fontFamily: "monospace" }}>
                   {l.tem != null ? `${l.tem.toFixed(2)}%` : "—"}
                 </div>
-                <div style={{ fontSize: 7, color: "#444", fontFamily: "monospace" }}>TEM · {l.dias_vto}d</div>
-                <div style={{ fontSize: 7, color: "#555", fontFamily: "monospace" }}>
+                <div style={{ fontSize: 7, color: "#888", fontFamily: "monospace" }}>TEM · {l.dias_vto}d</div>
+                <div style={{ fontSize: 7, color: "#888", fontFamily: "monospace" }}>
                   {l.tea != null ? `TEA ${l.tea.toFixed(1)}%` : ""}
                 </div>
               </div>
@@ -2193,7 +2194,7 @@ function BreakEvenSection() {
       {/* Top-10 participantes REM */}
       {participantes.length > 0 && (
         <div style={{ padding: "8px 12px 12px" }}>
-          <div style={{ fontSize: 9, color: "#666", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>
+          <div style={{ fontSize: 9, color: "#999", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>
             REM — PRONÓSTICOS INDIVIDUALES · INFLACIÓN 12M (últimos {participantes.length} participantes)
           </div>
           <div style={{ overflowX: "auto" }}>
@@ -2201,7 +2202,7 @@ function BreakEvenSection() {
               <thead>
                 <tr>
                   {["Institución", "Inflac. 12M", "USD 12M", "Tasa 12M"].map(h => (
-                    <th key={h} style={{ padding: "4px 8px", fontSize: 8, color: "#555", textAlign: h === "Institución" ? "left" : "right", borderBottom: "1px solid #1a1a1a" }}>{h}</th>
+                    <th key={h} style={{ padding: "4px 8px", fontSize: 8, color: "#888", textAlign: h === "Institución" ? "left" : "right", borderBottom: "1px solid #1a1a1a" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -2226,7 +2227,7 @@ function BreakEvenSection() {
               </tbody>
             </table>
           </div>
-          <div style={{ fontSize: 8, color: "#333", fontFamily: "monospace", marginTop: 4 }}>
+          <div style={{ fontSize: 8, color: "#777", fontFamily: "monospace", marginTop: 4 }}>
             Fuente: BCRA · REM · Último relevamiento disponible · Ordenado por inflación esperada ascendente
           </div>
         </div>
@@ -2248,7 +2249,7 @@ function IpcView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando IPC...</div>
+  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando IPC...</div>
 
   // Los datos vienen en proporción (0.025 = 2.5%) → multiplicar ×100
   const varMensual    = data?.ipc_var_mensual?.[0]?.[1]
@@ -2323,7 +2324,7 @@ function IpcView() {
           {/* Selector de año + descarga */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 12px", flexWrap: "wrap", gap: 6 }}>
             <div style={{ display: "flex", gap: 3, flexWrap: "wrap", alignItems: "center" }}>
-              <span style={{ fontSize: 8, color: "#444", fontFamily: "monospace", marginRight: 2 }}>AÑO:</span>
+              <span style={{ fontSize: 8, color: "#888", fontFamily: "monospace", marginRight: 2 }}>AÑO:</span>
               {["all", ...years].map(y => (
                 <button key={y} onClick={() => setIpcYear(y)} style={{
                   fontSize: 9, padding: "3px 8px", border: "none", borderRadius: 2, cursor: "pointer",
@@ -2362,7 +2363,7 @@ function IpcView() {
               </LineChart>
             </ResponsiveContainer>
 
-            <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>Fuente: INDEC · IPC Nacional · datos.gob.ar</div>
+            <div style={{ fontSize: 8, color: "#777", marginTop: 4 }}>Fuente: INDEC · IPC Nacional · datos.gob.ar</div>
           </div>
 
           {/* Sección breakeven + REM + top-10 */}
@@ -2384,7 +2385,7 @@ function IpcView() {
             title="Mapa de inflación mundial"
             loading="lazy"
           />
-          <div style={{ padding: "4px 12px", fontSize: 8, color: "#333", fontFamily: "monospace", borderTop: "1px solid #0e0e0e" }}>
+          <div style={{ padding: "4px 12px", fontSize: 8, color: "#777", fontFamily: "monospace", borderTop: "1px solid #0e0e0e" }}>
             Mapa generado con datos de inflación global · lapizarra.ar
           </div>
         </div>
@@ -2413,8 +2414,8 @@ function ComposicionExportView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando composición...</div>
-  if (!raw || (!raw.expo.length && !raw.impo.length)) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos de composición.</div>
+  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando composición...</div>
+  if (!raw || (!raw.expo.length && !raw.impo.length)) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Sin datos de composición.</div>
 
   const data = modo === "expo" ? raw.expo : raw.impo
   const products = Object.keys(data[0] ?? {}).filter((k) => k !== "date")
@@ -2433,7 +2434,7 @@ function ComposicionExportView() {
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px 0" }}>
-        <div style={{ fontSize: 9, color: "#555", fontFamily: "monospace", letterSpacing: 1 }}>
+        <div style={{ fontSize: 9, color: "#888", fontFamily: "monospace", letterSpacing: 1 }}>
           COMPOSICIÓN POR RUBRO (USD MILLONES ANUALES)
         </div>
         <div style={{ display: "flex", gap: 4 }}>
@@ -2450,7 +2451,7 @@ function ComposicionExportView() {
         yAxisLabel="USD millones"
         defaultRange="all"
       />
-      <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
         Fuente: Argendata/Fundar — INDEC · Licencia CC BY-NC-ND 4.0
       </div>
     </div>
@@ -2505,7 +2506,7 @@ export function BalanzaView() {
         active={balanzaTab} onChange={setBalanzaTab} />
       {balanzaTab === "flujos" && (<>
         {loading ? (
-          <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando balanza...</div>
+          <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando balanza...</div>
         ) : (<>
           <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
             <KPI label="Exportaciones" value={lastExpo != null ? `USD ${fmtNum(lastExpo, 0)}M` : null} unit="último dato disponible" />
@@ -2521,7 +2522,7 @@ export function BalanzaView() {
           {/* Selector de año + descarga */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 12px", flexWrap: "wrap", gap: 6 }}>
             <div style={{ display: "flex", gap: 3, flexWrap: "wrap", alignItems: "center" }}>
-              <span style={{ fontSize: 8, color: "#444", fontFamily: "monospace", marginRight: 2 }}>AÑO:</span>
+              <span style={{ fontSize: 8, color: "#888", fontFamily: "monospace", marginRight: 2 }}>AÑO:</span>
               {["all", ...years].map(y => (
                 <button key={y} onClick={() => setBalanzaYear(y)} style={{
                   fontSize: 9, padding: "3px 8px", border: "none", borderRadius: 2, cursor: "pointer",
@@ -2572,7 +2573,7 @@ export function BalanzaView() {
                 </Bar>
               </ComposedChart>
             </ResponsiveContainer>
-            <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>Fuente: INDEC · Intercambio Comercial Argentino · datos.gob.ar — valores en USD millones</div>
+            <div style={{ fontSize: 8, color: "#777", marginTop: 4 }}>Fuente: INDEC · Intercambio Comercial Argentino · datos.gob.ar — valores en USD millones</div>
           </div>
         </>)}
       </>)}
@@ -2629,7 +2630,7 @@ function BalanzaSociosView() {
             <div style={{ fontSize: 9, color: "#FFA028", fontFamily: "monospace", letterSpacing: 1 }}>
               SOCIOS COMERCIALES — AÑO DE REFERENCIA: 2023
             </div>
-            <div style={{ display: "flex", gap: 10, fontSize: 8, color: "#555", fontFamily: "monospace" }}>
+            <div style={{ display: "flex", gap: 10, fontSize: 8, color: "#888", fontFamily: "monospace" }}>
               <span style={{ color: "#4AF6C3" }}>■</span> Superávit (ARG exporta más)
               <span style={{ color: "#FF433D" }}>■</span> Déficit (ARG importa más)
             </div>
@@ -2640,7 +2641,7 @@ function BalanzaSociosView() {
             title="Mapa socios comerciales Argentina 2023"
             loading="lazy"
           />
-          <div style={{ padding: "4px 12px", fontSize: 8, color: "#333", fontFamily: "monospace", borderTop: "1px solid #0e0e0e" }}>
+          <div style={{ padding: "4px 12px", fontSize: 8, color: "#777", fontFamily: "monospace", borderTop: "1px solid #0e0e0e" }}>
             Fuente: INDEC · Comtrade · datos 2023 · lapizarra.ar
           </div>
         </div>
@@ -2648,9 +2649,9 @@ function BalanzaSociosView() {
 
       {vista === "tabla" && (
         loading
-          ? <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando...</div>
+          ? <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando...</div>
           : !data?.length
-            ? <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Sin datos</div>
+            ? <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Sin datos</div>
             : (
               <div style={{ padding: "12px 16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -2662,10 +2663,10 @@ function BalanzaSociosView() {
                 </div>
                 {/* Header */}
                 <div style={{ display: "grid", gridTemplateColumns: "120px 1fr 1fr 80px", gap: 8, marginBottom: 6 }}>
-                  <div style={{ fontSize: 8, color: "#333", textAlign: "right", fontFamily: "monospace" }}>PAÍS</div>
+                  <div style={{ fontSize: 8, color: "#777", textAlign: "right", fontFamily: "monospace" }}>PAÍS</div>
                   <div style={{ fontSize: 8, color: "#4AF6C3", fontFamily: "monospace" }}>EXPO →</div>
                   <div style={{ fontSize: 8, color: "#FF433D", fontFamily: "monospace" }}>IMPO ←</div>
-                  <div style={{ fontSize: 8, color: "#555", textAlign: "right", fontFamily: "monospace" }}>SALDO</div>
+                  <div style={{ fontSize: 8, color: "#888", textAlign: "right", fontFamily: "monospace" }}>SALDO</div>
                 </div>
                 {[...data].sort((a, b) => b.total - a.total).map(r => {
                   const maxVal = Math.max(...data.flatMap(d => [d.expo, d.impo]))
@@ -2711,7 +2712,7 @@ function FiscalView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando fiscal...</div>
+  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando fiscal...</div>
 
   const serieOpts = [
     { key: "resultado_primario", label: "Resultado Primario" },
@@ -2777,8 +2778,8 @@ function PibHistoricoView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando PIB histórico...</div>
-  if (!data || !data.nivel.length) return <div style={{ padding: 12, color: "#444", fontSize: 11 }}>Sin datos disponibles</div>
+  if (loading) return <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Cargando PIB histórico...</div>
+  if (!data || !data.nivel.length) return <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Sin datos disponibles</div>
 
   const ultimo = data.nivel[data.nivel.length - 1] as Record<string, unknown>
   const argVal = ultimo?.Argentina as number | undefined
@@ -2825,12 +2826,12 @@ function PibHistoricoView() {
             ]}
             enableLineToggle height={280} yAxisLabel="Ratio (>1 = ARG encima)"
             formatValue={v => v.toFixed(2)} defaultRange="all" showZeroLine />
-          <div style={{ padding: "4px 10px 0", fontSize: 8, color: "#555" }}>
+          <div style={{ padding: "4px 10px 0", fontSize: 8, color: "#888" }}>
             Ratio = PIB pc ARG / PIB pc País. Mayor que 1 → Argentina tiene mayor PIB per cápita que ese país.
           </div>
         </div>
       )}
-      <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
         Maddison Project Database 2023 · vía Argendata/Fundar (CC BY-NC-ND 4.0)
       </div>
     </div>
@@ -2863,7 +2864,7 @@ function PiramidesView() {
         <div className="bbg-panel-header">EXPLORADOR DE PIRÁMIDES POBLACIONALES</div>
         <div style={{ padding: "10px 12px", display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div>
-            <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>País</div>
+            <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>País</div>
             <select
               value={country}
               onChange={e => setCountry(e.target.value)}
@@ -2873,7 +2874,7 @@ function PiramidesView() {
             </select>
           </div>
           <div style={{ flex: "1 1 200px" }}>
-            <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+            <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
               Año:&nbsp;
               <span style={{ color: year > 2025 ? "#FFA028" : "#4AF6C3", fontWeight: 700, fontFamily: "monospace" }}>{year}</span>
               {year > 2025 && <span style={{ color: "#FFA028", marginLeft: 6 }}>· PROYECCIÓN ONU</span>}
@@ -2883,12 +2884,12 @@ function PiramidesView() {
               onChange={e => setYear(Number(e.target.value))}
               style={{ width: "100%", accentColor: "#FFA028", cursor: "pointer" }}
             />
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#444", marginTop: 2 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#888", marginTop: 2 }}>
               <span>1950</span><span>2025</span><span>2100</span>
             </div>
           </div>
           <div>
-            <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Acceso rápido</div>
+            <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Acceso rápido</div>
             <div style={{ display: "flex", gap: 2 }}>
               {[1950, 1975, 2000, 2025, 2050, 2075, 2100].map(y => (
                 <button key={y} onClick={() => setYear(y)} style={{
@@ -2907,7 +2908,7 @@ function PiramidesView() {
                 { label: "Mujeres", value: `${(meta.total_f / 1e6).toFixed(1)}M`, color: "#F48FB1"  },
               ].map(s => (
                 <div key={s.label} style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase" }}>{s.label}</div>
+                  <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase" }}>{s.label}</div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: s.color, fontFamily: "monospace" }}>{s.value}</div>
                 </div>
               ))}
@@ -2921,16 +2922,16 @@ function PiramidesView() {
           {meta?.proyeccion && <span style={{ fontSize: 8, fontWeight: 400, color: "#FFA028", marginLeft: 8 }}>· PROYECCIÓN ONU</span>}
         </div>
         {loading ? (
-          <div style={{ padding: 40, color: "#555", textAlign: "center", fontSize: 11 }}>Cargando pirámide de {paisName}...</div>
+          <div style={{ padding: 40, color: "#888", textAlign: "center", fontSize: 11 }}>Cargando pirámide de {paisName}...</div>
         ) : data.length > 0 ? (
           <>
             <PyramidChart data={data} height={480} />
-            <div style={{ padding: "4px 12px 8px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+            <div style={{ padding: "4px 12px 8px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
               Fuente: populationpyramid.net · UN World Population Prospects 2024 · Años &gt;2025 = proyecciones ONU · Código de país: {country}
             </div>
           </>
         ) : (
-          <div style={{ padding: 40, color: "#444", textAlign: "center", fontSize: 11 }}>Sin datos disponibles para {paisName} {year}</div>
+          <div style={{ padding: 40, color: "#888", textAlign: "center", fontSize: 11 }}>Sin datos disponibles para {paisName} {year}</div>
         )}
       </div>
       <PoblacionSerieChart country={country} selectedYear={year} />
@@ -2959,8 +2960,8 @@ function DesigualdadView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando indicadores de desigualdad...</div>
-  if (!data) return <div style={{ padding: 12, color: "#444", fontSize: 11 }}>Sin datos disponibles</div>
+  if (loading) return <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Cargando indicadores de desigualdad...</div>
+  if (!data) return <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Sin datos disponibles</div>
 
   const giniUltimo    = data.gini_arg[data.gini_arg.length - 1]
   const giniMin       = data.gini_arg.reduce((a, b) => b[1] < a[1] ? b : a, data.gini_arg[0])
@@ -3000,7 +3001,7 @@ function DesigualdadView() {
             lines={[{ key: "gini", name: "Gini", color: "#FFA028" }]}
             height={240} yAxisLabel="Índice Gini" formatValue={v => fmtNum(v, 1)} defaultRange="all" showZeroLine={false} />
         </div>
-        <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+        <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
           CEDLAS con base en EPH/INDEC · Empalme metodológico entre encuestas · Cobertura urbana · vía Argendata/Fundar (CC BY-NC-ND 4.0)
         </div>
       </>)}
@@ -3034,7 +3035,7 @@ function DesigualdadView() {
             })}
           </div>
         </div>
-        <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111", marginTop: 4 }}>
+        <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111", marginTop: 4 }}>
           SEDLAC/Banco Mundial · Snapshot de último año disponible por país · vía Argendata/Fundar (CC BY-NC-ND 4.0)
         </div>
       </>)}
@@ -3054,7 +3055,7 @@ function DesigualdadView() {
             ]}
             height={240} yAxisLabel="%" formatValue={v => `${fmtNum(v, 1)}%`} defaultRange="all" />
         </div>
-        <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+        <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
           Def. productiva: empleo en unidades de baja productividad · Def. legal: sin aportes al sistema previsional ·
           SEDLAC/Banco Mundial con base en EPH · vía Argendata/Fundar (CC BY-NC-ND 4.0)
         </div>
@@ -3141,7 +3142,7 @@ function TCRSubView() {
     }).catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando TCR...</div>
+  if (loading) return <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando TCR...</div>
 
   const subvalKey = modo === "ajustado" ? "adj_subval_pct" : "subval_pct"
   const sorted = [...ranking].sort((a, b) => a[subvalKey] - b[subvalKey])
@@ -3216,7 +3217,7 @@ function TCRSubView() {
                 {zonaConfig[zonaItcrm].desc}
               </div>
             </div>
-            <div style={{ display: "flex", gap: 12, fontSize: 8, color: "#555", fontFamily: "monospace" }}>
+            <div style={{ display: "flex", gap: 12, fontSize: 8, color: "#888", fontFamily: "monospace" }}>
               <span>Q25 hist: <strong style={{ color: "#FF433D" }}>{q25.toFixed(1)}</strong></span>
               <span>Actual: <strong style={{ color: zonaConfig[zonaItcrm].color }}>{itcrmActual.toFixed(1)}</strong></span>
               <span>Q75 hist: <strong style={{ color: "#4AF6C3" }}>{q75.toFixed(1)}</strong></span>
@@ -3243,7 +3244,7 @@ function TCRSubView() {
               )
             })()}
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 7, color: "#333", fontFamily: "monospace", marginTop: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 7, color: "#777", fontFamily: "monospace", marginTop: 8 }}>
             <span>Mín hist. {Math.min(...itcrmValues).toFixed(0)}</span>
             <span>Máx hist. {Math.max(...itcrmValues).toFixed(0)}</span>
           </div>
@@ -3271,7 +3272,7 @@ function TCRSubView() {
             enableDateRange={true}
             enableLineToggle={true}
           />
-          <div style={{ fontSize: 8, color: "#333", padding: "2px 4px" }}>
+          <div style={{ fontSize: 8, color: "#777", padding: "2px 4px" }}>
             Fuente: BCRA · Base diciembre 2010 = 100 · Índice ponderado por comercio bilateral
           </div>
         </div>
@@ -3301,7 +3302,7 @@ function TCRSubView() {
               }}>Simple</button>
             </div>
           </div>
-          <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace", marginBottom: 8 }}>
+          <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", marginBottom: 8 }}>
             Verde = moneda subvaluada (más competitiva) · Rojo = sobrevaluada (menos competitiva)
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
@@ -3343,7 +3344,7 @@ function TCRSubView() {
               )
             })}
           </div>
-          <div style={{ fontSize: 8, color: "#333", fontFamily: "monospace", marginTop: 8, borderTop: "1px solid #111", paddingTop: 6 }}>
+          <div style={{ fontSize: 8, color: "#777", fontFamily: "monospace", marginTop: 8, borderTop: "1px solid #111", paddingTop: 6 }}>
             Fuente: The Economist · Big Mac Index · PPP ajustado controla por nivel de ingreso per cápita
           </div>
         </div>
@@ -3419,7 +3420,7 @@ function FXView() {
   }
 
   if (loading) return (
-    <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>
+    <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>
       Cargando tipos de cambio...
     </div>
   )
@@ -3467,7 +3468,7 @@ function FXView() {
               flex: "1 1 130px", padding: "10px 14px",
               background: "#080808", border: "1px solid #111",
             }}>
-              <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace", marginBottom: 2 }}>
+              <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace", marginBottom: 2 }}>
                 {name}
               </div>
               <div style={{ fontSize: 22, fontWeight: 700, color, fontFamily: "monospace", lineHeight: 1.2 }}>
@@ -3484,14 +3485,14 @@ function FXView() {
         {/* Banda cambiaria actual */}
         {last && (
           <div style={{ flex: "1 1 130px", padding: "10px 14px", background: "#080808", border: "1px solid #222" }}>
-            <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace", marginBottom: 4 }}>
+            <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace", marginBottom: 4 }}>
               Banda BCRA
             </div>
             <div style={{ fontSize: 11, fontFamily: "monospace", color: "#ccc", lineHeight: 1.9 }}>
               <span style={{ color: "#4AF6C3" }}>↑ Piso:   ${bands[last.date]?.piso?.toFixed(0)  ?? "—"}</span><br />
               <span style={{ color: "#FF433D" }}>↓ Techo: ${bands[last.date]?.techo?.toFixed(0) ?? "—"}</span>
             </div>
-            <div style={{ fontSize: 8, color: "#333", fontFamily: "monospace", marginTop: 2 }}>Piso −1%/mes · Techo +1%/mes · Fase 2 desde ene-2026 IPC T-2</div>
+            <div style={{ fontSize: 8, color: "#777", fontFamily: "monospace", marginTop: 2 }}>Piso −1%/mes · Techo +1%/mes · Fase 2 desde ene-2026 IPC T-2</div>
           </div>
         )}
       </div>
@@ -3503,7 +3504,7 @@ function FXView() {
         borderBottom: "1px solid #0d0d0d",
       }}>
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
-          <span style={{ fontSize: 8, color: "#444", fontFamily: "monospace", marginRight: 4 }}>SERIES:</span>
+          <span style={{ fontSize: 8, color: "#888", fontFamily: "monospace", marginRight: 4 }}>SERIES:</span>
           {FX_LINES.map(({ key, name, color }) => (
             <button key={key} onClick={() => setVisible(v => ({ ...v, [key]: !v[key] }))} style={{
               display: "flex", alignItems: "center", gap: 4,
@@ -3543,7 +3544,7 @@ function FXView() {
           enableLineToggle={false}
           enableDateRange={true}
         />
-        <div style={{ fontSize: 8, color: "#333", marginTop: 4, padding: "0 4px" }}>
+        <div style={{ fontSize: 8, color: "#777", marginTop: 4, padding: "0 4px" }}>
           Fuente: argentinadatos.com · Bandas BCRA desde 11-abr-2025 · F1 (hasta dic-2025): Piso −1%/mes · Techo +1%/mes · F2 (ene-2026+): IPC T-2 real vía INDEC/datos.gob.ar · proyección 3 meses
         </div>
       </div>
@@ -3600,14 +3601,14 @@ function FXExpectativasSection({ lastOficial }: { lastOficial: number | null }) 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
         {dolar12m != null && (
           <div style={{ flex: "1 1 140px", padding: "8px 12px", background: "#080808", border: "1px solid #111" }}>
-            <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>REM — USD en 12M</div>
+            <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>REM — USD en 12M</div>
             <div style={{ fontSize: 20, fontWeight: 700, color: "#4FC3F7", fontFamily: "monospace" }}>+{dolar12m.toFixed(1)}%</div>
-            <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>mediana analistas · {remData?.fecha ?? ""}</div>
+            <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>mediana analistas · {remData?.fecha ?? ""}</div>
           </div>
         )}
         {polyMarketFX && (
           <div style={{ flex: "1 1 200px", padding: "8px 12px", background: "#080808", border: "1px solid #222" }}>
-            <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>Polymarket</div>
+            <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>Polymarket</div>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#FFA028", fontFamily: "monospace" }}>{polyMarketFX.probability}%</div>
             <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", lineHeight: 1.4, marginTop: 2 }}>{polyMarketFX.question.slice(0, 80)}</div>
           </div>
@@ -3627,7 +3628,7 @@ function FXExpectativasSection({ lastOficial }: { lastOficial: number | null }) 
           </LineChart>
         </ResponsiveContainer>
       )}
-      <div style={{ fontSize: 8, color: "#333", fontFamily: "monospace", marginTop: 2 }}>
+      <div style={{ fontSize: 8, color: "#777", fontFamily: "monospace", marginTop: 2 }}>
         Proyección compuesta mensual desde dólar oficial · REM BCRA · Polymarket Gamma API
       </div>
     </div>
@@ -3671,7 +3672,7 @@ function BigMacView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando Big Mac Index...</div>
+  if (loading) return <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando Big Mac Index...</div>
 
   const arg = data?.argentina
   const subvalKey = modo === "ajustado" ? "adj_subval_pct" : "subval_pct"
@@ -3698,7 +3699,7 @@ function BigMacView() {
 
       {/* Selector modo */}
       <div style={{ padding: "8px 12px 4px", display: "flex", gap: 8, alignItems: "center" }}>
-        <span style={{ fontSize: 9, color: "#555", fontFamily: "monospace" }}>Vista:</span>
+        <span style={{ fontSize: 9, color: "#888", fontFamily: "monospace" }}>Vista:</span>
         {(["simple", "ajustado"] as const).map(m => (
           <button key={m} onClick={() => setModo(m)} style={{
             fontSize: 8, padding: "3px 8px", border: "none", cursor: "pointer", borderRadius: 2,
@@ -3729,7 +3730,7 @@ function BigMacView() {
                     fontWeight: isArg ? 700 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {r.nombre}
                   </div>
-                  <div style={{ fontSize: 8, color: "#555", textAlign: "center", fontFamily: "monospace" }}>{r.iso}</div>
+                  <div style={{ fontSize: 8, color: "#888", textAlign: "center", fontFamily: "monospace" }}>{r.iso}</div>
                   <div style={{ position: "relative", height: 12, background: "#0d0d0d" }}>
                     <div style={{
                       position: "absolute", height: "100%",
@@ -3748,7 +3749,7 @@ function BigMacView() {
               )
             })}
           </div>
-          <div style={{ fontSize: 8, color: "#333", marginTop: 8, borderTop: "1px solid #111", paddingTop: 4 }}>
+          <div style={{ fontSize: 8, color: "#777", marginTop: 8, borderTop: "1px solid #111", paddingTop: 4 }}>
             Fuente: The Economist Big Mac Index · github.com/TheEconomist/big-mac-data ·
             Datos semestrales · No constituye análisis de inversión.
           </div>
@@ -3785,7 +3786,7 @@ function RiesgoPaisView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando Riesgo País...</div>
+  if (loading) return <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando Riesgo País...</div>
 
   const bps      = data?.actual?.riesgoPaisBps
   const historico = data?.historicoConSMA ?? data?.historico ?? []
@@ -3883,7 +3884,7 @@ function RiesgoPaisView() {
               )
             })}
           </div>
-          <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>
+          <div style={{ fontSize: 8, color: "#777", marginTop: 4 }}>
             Fuente: BCRA / JPMorgan EMBI+ · bps = puntos básicos sobre Treasuries USA
           </div>
         </div>
@@ -3998,7 +3999,7 @@ function VencimientosFilter({ detalle }: { detalle: VencDet[] }) {
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           {/* Moneda */}
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ fontSize: 8, color: "#555", letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" }}>Moneda</span>
+            <span style={{ fontSize: 8, color: "#888", letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" }}>Moneda</span>
             <select style={{ ...dropStyle, borderColor: fMoneda ? "#FFA028" : "#2a2a2a" }}
               value={fMoneda} onChange={e => setFMoneda(e.target.value)}>
               <option value="">Todas</option>
@@ -4008,7 +4009,7 @@ function VencimientosFilter({ detalle }: { detalle: VencDet[] }) {
 
           {/* Tipo deuda */}
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ fontSize: 8, color: "#555", letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" }}>Tipo</span>
+            <span style={{ fontSize: 8, color: "#888", letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" }}>Tipo</span>
             <select style={{ ...dropStyle, borderColor: fTipo ? "#FFA028" : "#2a2a2a" }}
               value={fTipo} onChange={e => { setFTipo(e.target.value); setFAcreedor("") }}>
               <option value="">Todos</option>
@@ -4018,7 +4019,7 @@ function VencimientosFilter({ detalle }: { detalle: VencDet[] }) {
 
           {/* Acreedor tipo */}
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ fontSize: 8, color: "#555", letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" }}>Sector</span>
+            <span style={{ fontSize: 8, color: "#888", letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" }}>Sector</span>
             <select style={{ ...dropStyle, borderColor: fAcTipo ? "#FFA028" : "#2a2a2a" }}
               value={fAcTipo} onChange={e => { setFAcTipo(e.target.value); setFAcreedor("") }}>
               <option value="">Todos</option>
@@ -4028,7 +4029,7 @@ function VencimientosFilter({ detalle }: { detalle: VencDet[] }) {
 
           {/* Acreedor específico */}
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ fontSize: 8, color: "#555", letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" }}>Acreedor</span>
+            <span style={{ fontSize: 8, color: "#888", letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" }}>Acreedor</span>
             <select style={{ ...dropStyle, minWidth: 180, borderColor: fAcreedor ? "#FFA028" : "#2a2a2a" }}
               value={fAcreedor} onChange={e => setFAcreedor(e.target.value)}>
               <option value="">Todos</option>
@@ -4038,7 +4039,7 @@ function VencimientosFilter({ detalle }: { detalle: VencDet[] }) {
 
           {/* Reset */}
           {isFiltered && (
-            <button onClick={resetAll} style={{ background: "transparent", border: "1px solid #333", color: "#666", borderRadius: 2, padding: "4px 10px", fontSize: 9, cursor: "pointer", fontFamily: "monospace" }}>
+            <button onClick={resetAll} style={{ background: "transparent", border: "1px solid #333", color: "#999", borderRadius: 2, padding: "4px 10px", fontSize: 9, cursor: "pointer", fontFamily: "monospace" }}>
               ✕ Reset
             </button>
           )}
@@ -4069,7 +4070,7 @@ function VencimientosFilter({ detalle }: { detalle: VencDet[] }) {
           </BarChart>
         </ResponsiveContainer>
       ) : (
-        <div style={{ padding: 20, color: "#555", textAlign: "center", fontSize: 11 }}>Sin datos para la selección</div>
+        <div style={{ padding: 20, color: "#888", textAlign: "center", fontSize: 11 }}>Sin datos para la selección</div>
       )}
 
       {/* Totals below each bar — alineados con el área del chart (left margin = 0, right = 12) */}
@@ -4098,7 +4099,7 @@ function VencimientosFilter({ detalle }: { detalle: VencDet[] }) {
             <thead>
               <tr>
                 {["Año", "Acreedor", "Tipo", "Moneda", "USD M"].map(h => (
-                  <th key={h} style={{ padding: "3px 8px", color: "#555", textAlign: h === "USD M" ? "right" : "left", fontWeight: 400, letterSpacing: 1, borderBottom: "1px solid #1a1a1a" }}>{h}</th>
+                  <th key={h} style={{ padding: "3px 8px", color: "#888", textAlign: h === "USD M" ? "right" : "left", fontWeight: 400, letterSpacing: 1, borderBottom: "1px solid #1a1a1a" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -4110,14 +4111,14 @@ function VencimientosFilter({ detalle }: { detalle: VencDet[] }) {
                   <td style={{ padding: "3px 8px" }}>
                     <span style={{ color: TIPO_COLORS[d.tipo] ?? "#888", background: `${TIPO_COLORS[d.tipo]}18`, padding: "1px 6px", borderRadius: 2 }}>{d.tipo}</span>
                   </td>
-                  <td style={{ padding: "3px 8px", color: "#666" }}>{d.moneda}</td>
+                  <td style={{ padding: "3px 8px", color: "#999" }}>{d.moneda}</td>
                   <td style={{ padding: "3px 8px", color: "#FF433D", textAlign: "right", fontWeight: 700 }}>
                     {fmtNum(d.monto, 0)}
                   </td>
                 </tr>
               ))}
               <tr style={{ borderTop: "1px solid #1a1a1a" }}>
-                <td colSpan={4} style={{ padding: "4px 8px", color: "#666" }}>Total selección</td>
+                <td colSpan={4} style={{ padding: "4px 8px", color: "#999" }}>Total selección</td>
                 <td style={{ padding: "4px 8px", color: "#FF433D", textAlign: "right", fontWeight: 700 }}>
                   {fmtNum(filtrado.reduce((s, d) => s + d.monto, 0), 0)}
                 </td>
@@ -4127,7 +4128,7 @@ function VencimientosFilter({ detalle }: { detalle: VencDet[] }) {
         </div>
       )}
 
-      <div style={{ fontSize: 8, color: "#444", marginTop: 8 }}>
+      <div style={{ fontSize: 8, color: "#888", marginTop: 8 }}>
         Fuente: Secretaría de Finanzas · USD millones equiv. · Estimaciones indicativas basadas en informes oficiales de deuda
       </div>
     </div>
@@ -4172,21 +4173,21 @@ function DeudaView() {
 
       {subTab === "licitaciones" && (
         loadingLic
-          ? <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando licitaciones...</div>
+          ? <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando licitaciones...</div>
           : (
             <div style={{ padding: "8px 12px", overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 9 }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid #222" }}>
                     {["Fecha", "Adjudicado (B$)", "Vencimientos (B$)", "Rollover %"].map(h => (
-                      <th key={h} style={{ padding: "4px 8px", color: "#555", textAlign: "right", fontWeight: 400, letterSpacing: 1 }}>{h}</th>
+                      <th key={h} style={{ padding: "4px 8px", color: "#888", textAlign: "right", fontWeight: 400, letterSpacing: 1 }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {(licitaciones ?? []).map((r, i) => (
                     <tr key={i} style={{ borderBottom: "1px solid #0d0d0d" }}>
-                      <td style={{ padding: "3px 8px", color: "#666" }}>{r.fecha}</td>
+                      <td style={{ padding: "3px 8px", color: "#999" }}>{r.fecha}</td>
                       <td style={{ padding: "3px 8px", color: "#FFA028", textAlign: "right" }}>
                         {r.adjudicado_bn != null ? fmtNum(r.adjudicado_bn, 1) : "—"}
                       </td>
@@ -4202,7 +4203,7 @@ function DeudaView() {
                   ))}
                 </tbody>
               </table>
-              <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>
+              <div style={{ fontSize: 8, color: "#777", marginTop: 4 }}>
                 Fuente: argentina.gob.ar/economia/licitaciones · Rollover &gt;100% = renovación con superávit de deuda
               </div>
             </div>
@@ -4211,7 +4212,7 @@ function DeudaView() {
 
       {subTab === "stock" && (
         loadingStock
-          ? <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando stock de deuda...</div>
+          ? <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando stock de deuda...</div>
           : stock ? (
             <div>
               <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
@@ -4290,11 +4291,11 @@ function DeudaView() {
                 ))}
               </div>
 
-              <div style={{ padding: "4px 12px", fontSize: 8, color: "#333" }}>
+              <div style={{ padding: "4px 12px", fontSize: 8, color: "#777" }}>
                 {stock.source}
               </div>
             </div>
-          ) : <div style={{ padding: 24, color: "#444", textAlign: "center", fontSize: 11 }}>Sin datos disponibles</div>
+          ) : <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11 }}>Sin datos disponibles</div>
       )}
     </div>
   )

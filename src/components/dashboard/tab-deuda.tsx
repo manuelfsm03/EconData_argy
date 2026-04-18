@@ -31,7 +31,7 @@ function fmtMonto(v: number | null | undefined): string {
 }
 
 function RolloverBadge({ pct }: { pct: number | null }) {
-  if (pct == null) return <span style={{ color: "#555" }}>—</span>
+  if (pct == null) return <span style={{ color: "#888" }}>—</span>
   const color = pct >= 100 ? "#4AF6C3" : "#FF433D"
   return (
     <span style={{ color, fontFamily: "monospace", fontWeight: 700 }}>
@@ -72,11 +72,11 @@ export function TabDeuda() {
     <div>
       <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between" }}>
         <span>LICITACIONES DEL TESORO NACIONAL</span>
-        <span style={{ color: "#444", fontWeight: 400, fontSize: 9 }}>FUENTE: argentina.gob.ar</span>
+        <span style={{ color: "#888", fontWeight: 400, fontSize: 9 }}>FUENTE: argentina.gob.ar</span>
       </div>
 
       {loading && (
-        <div style={{ padding: 24, color: "#555", fontSize: 11, textAlign: "center" }}>
+        <div style={{ padding: 24, color: "#888", fontSize: 11, textAlign: "center" }}>
           Scrapeando licitaciones de argentina.gob.ar... (puede demorar ~5s)
         </div>
       )}
@@ -110,30 +110,30 @@ export function TabDeuda() {
               { label: "Adjudicado", value: fmtMonto(ultima.adjudicado_bn), unit: "$ millones" },
             ].map((item) => (
               <div key={item.label} style={{ flex: "1 1 150px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "8px 12px" }}>
-                <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+                <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
                   {item.label}
                 </div>
                 <div style={{ fontSize: 18, fontFamily: "monospace", fontWeight: 700, color: "#FFA028" }}>
                   {item.value}
                 </div>
-                <div style={{ fontSize: 9, color: "#444" }}>{item.unit}</div>
+                <div style={{ fontSize: 9, color: "#888" }}>{item.unit}</div>
               </div>
             ))}
             <div style={{ flex: "1 1 150px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "8px 12px" }}>
-              <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+              <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
                 Rollover
               </div>
               <div style={{ fontSize: 18, fontFamily: "monospace", fontWeight: 700 }}>
                 <RolloverBadge pct={ultima.rollover_pct} />
               </div>
-              <div style={{ fontSize: 9, color: "#444" }}>≥100% = financiamiento neto positivo</div>
+              <div style={{ fontSize: 9, color: "#888" }}>≥100% = financiamiento neto positivo</div>
             </div>
           </div>
 
           {/* Instrumentos */}
           {ultima.instrumentos.length > 0 && (
             <div style={{ marginTop: 8 }}>
-              <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+              <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
                 Instrumentos adjudicados
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -163,7 +163,7 @@ export function TabDeuda() {
       {/* Tabla de historial */}
       {licitaciones.length > 0 && !loading && (
         <div style={{ marginTop: 1 }}>
-          <div style={{ padding: "4px 8px", background: "#0d0d0d", fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid #111" }}>
+          <div style={{ padding: "4px 8px", background: "#0d0d0d", fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid #111" }}>
             Historial de licitaciones — promedio rollover:{" "}
             <span style={{ color: rolloverPromedio >= 100 ? "#4AF6C3" : "#FF433D" }}>
               {rolloverPromedio.toFixed(1)}%
@@ -173,7 +173,7 @@ export function TabDeuda() {
             <thead>
               <tr>
                 {["Fecha", "Vencimientos ($M)", "Adjudicado ($M)", "Rollover", "Instrumentos", ""].map((h) => (
-                  <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "#555", textAlign: h === "Fecha" ? "left" : "right", borderBottom: "1px solid #1a1a1a", whiteSpace: "nowrap" }}>
+                  <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "#888", textAlign: h === "Fecha" ? "left" : "right", borderBottom: "1px solid #1a1a1a", whiteSpace: "nowrap" }}>
                     {h}
                   </th>
                 ))}
@@ -192,7 +192,7 @@ export function TabDeuda() {
                   <td style={{ padding: "4px 8px", textAlign: "right" }}>
                     <RolloverBadge pct={l.rollover_pct} />
                   </td>
-                  <td style={{ padding: "4px 8px", fontSize: 10, textAlign: "right", color: "#666" }}>
+                  <td style={{ padding: "4px 8px", fontSize: 10, textAlign: "right", color: "#999" }}>
                     {l.instrumentos.map((inst) => inst.tipo).join(", ") || "—"}
                   </td>
                   <td style={{ padding: "4px 8px" }}>
@@ -213,7 +213,7 @@ export function TabDeuda() {
       )}
 
       {!loading && licitaciones.length === 0 && !error && (
-        <div style={{ padding: 16, color: "#555", fontSize: 11 }}>
+        <div style={{ padding: 16, color: "#888", fontSize: 11 }}>
           No se encontraron licitaciones. El scraping de argentina.gob.ar puede haber fallado o no hay resultados publicados.
         </div>
       )}

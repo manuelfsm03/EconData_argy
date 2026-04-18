@@ -39,14 +39,14 @@ function KPI({ label, value, unit, valueColor = "#fff" }: KPIProps) {
       flex: "1 1 160px", padding: "10px 14px", background: "#080808",
       border: "1px solid #111", display: "flex", flexDirection: "column", gap: 4,
     }}>
-      <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace" }}>
+      <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace" }}>
         {label}
       </div>
       <div style={{ fontSize: 22, fontWeight: 700, color: valueColor, fontFamily: "monospace", lineHeight: 1 }}>
         {value ?? "—"}
       </div>
       {unit && (
-        <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>{unit}</div>
+        <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>{unit}</div>
       )}
     </div>
   )
@@ -141,7 +141,7 @@ function PlazoFijoView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando tasas...</div>
+  if (loading) return <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando tasas...</div>
 
   const badlarUlt = data?.badlar?.at(-1)?.valor
   const tm20Ult   = data?.tm20?.at(-1)?.valor
@@ -209,7 +209,7 @@ function PlazoFijoView() {
             <thead>
               <tr style={{ borderBottom: "1px solid #222" }}>
                 {["Fecha", "BADLAR", "TPM", "Dep. 30d"].map(h => (
-                  <th key={h} style={{ padding: "4px 8px", color: "#555", textAlign: "right", fontWeight: 400 }}>{h}</th>
+                  <th key={h} style={{ padding: "4px 8px", color: "#888", textAlign: "right", fontWeight: 400 }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -219,7 +219,7 @@ function PlazoFijoView() {
                 const pf30Val = data?.pf30?.find(x => x.fecha === r.fecha)?.valor
                 return (
                   <tr key={r.fecha} style={{ borderBottom: "1px solid #0d0d0d" }}>
-                    <td style={{ padding: "3px 8px", color: "#666" }}>{fmtDate(r.fecha)}</td>
+                    <td style={{ padding: "3px 8px", color: "#999" }}>{fmtDate(r.fecha)}</td>
                     <td style={{ padding: "3px 8px", color: "#FFA028", textAlign: "right" }}>{fmtNum(r.valor, 2)}%</td>
                     <td style={{ padding: "3px 8px", color: "#4FC3F7", textAlign: "right" }}>{tpmVal  != null ? `${fmtNum(tpmVal, 2)}%`  : "—"}</td>
                     <td style={{ padding: "3px 8px", color: "#CE93D8", textAlign: "right" }}>{pf30Val != null ? `${fmtNum(pf30Val, 2)}%` : "—"}</td>
@@ -228,7 +228,7 @@ function PlazoFijoView() {
               })}
             </tbody>
           </table>
-          <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>
+          <div style={{ fontSize: 8, color: "#777", marginTop: 4 }}>
             Fuente: BCRA API v4.0 · api.bcra.gob.ar · Variables 7 (BADLAR), 8 (TM20), 6 (TPM), 12 (Dep. 30d)
           </div>
         </div>
@@ -263,7 +263,7 @@ function AgregadosView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando agregados monetarios...</div>
+  if (loading) return <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando agregados monetarios...</div>
 
   // Últimos valores
   const baseUlt     = data?.base?.at(-1)?.valor
@@ -371,7 +371,7 @@ function AgregadosView() {
             <Area type="monotone" dataKey="Base" stroke="#FFA028" fill="#FFA02820" strokeWidth={2}   dot={false} />
           </AreaChart>
         </ResponsiveContainer>
-        <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>
+        <div style={{ fontSize: 8, color: "#777", marginTop: 4 }}>
           Fuente: BCRA API v4.0 · api.bcra.gob.ar ·
           M1 = Billetes (var 17) + Dep. vista (var 21) ·
           M2 = M1 + Cajas ahorro (var 22) ·
@@ -399,7 +399,7 @@ function ReservasView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando reservas...</div>
+  if (loading) return <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando reservas...</div>
 
   const ult = data?.ultima
   const chartData = data?.netas?.slice(-24) ?? []
@@ -444,7 +444,7 @@ function ReservasView() {
               <Area type="monotone" dataKey="netas"  name="Netas"  stroke="#4AF6C3" fill="#4AF6C315" strokeWidth={1.5} dot={false} />
             </AreaChart>
           </ResponsiveContainer>
-          <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>
+          <div style={{ fontSize: 8, color: "#777", marginTop: 4 }}>
             Brutas: Var 1 BCRA API · Netas: argentinadatos.com + metodología F. Machado
           </div>
         </div>
@@ -471,7 +471,7 @@ function ComprasView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando compras/ventas...</div>
+  if (loading) return <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando compras/ventas...</div>
 
   const r = data?.resumen
   const chartData = (data?.datos ?? []).map(row => ({
@@ -522,14 +522,14 @@ function ComprasView() {
             <thead>
               <tr style={{ borderBottom: "1px solid #222" }}>
                 {["Fecha", "Monto (USD M)", "Acum. Mensual (USD M)"].map(h => (
-                  <th key={h} style={{ padding: "4px 8px", color: "#555", textAlign: "right", fontWeight: 400 }}>{h}</th>
+                  <th key={h} style={{ padding: "4px 8px", color: "#888", textAlign: "right", fontWeight: 400 }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {tableData.map(row => (
                 <tr key={row.fecha} style={{ borderBottom: "1px solid #0d0d0d" }}>
-                  <td style={{ padding: "3px 8px", color: "#666" }}>{fmtDate(row.fecha)}</td>
+                  <td style={{ padding: "3px 8px", color: "#999" }}>{fmtDate(row.fecha)}</td>
                   <td style={{ padding: "3px 8px", textAlign: "right",
                     color: row.monto >= 0 ? "#4AF6C3" : "#FF433D", fontWeight: 700 }}>
                     {row.monto >= 0 ? "+" : ""}{fmtNum(row.monto, 0)}
@@ -542,7 +542,7 @@ function ComprasView() {
               ))}
             </tbody>
           </table>
-          <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>
+          <div style={{ fontSize: 8, color: "#777", marginTop: 4 }}>
             Fuente: argentinadatos.com · MULC — Mercado Único y Libre de Cambios · Positivo = BCRA comprador
           </div>
         </div>
@@ -589,7 +589,7 @@ function REMView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando REM...</div>
+  if (loading) return <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando REM...</div>
 
   // Datos para el gráfico histórico (inflación 12M y dólar proyectado)
   const chartData = serie.map(r => ({
@@ -619,7 +619,7 @@ function REMView() {
       {/* KPIs del último relevamiento */}
       {kpis && (
         <>
-          <div style={{ padding: "4px 12px 2px", fontSize: 8, color: "#444", fontFamily: "monospace", letterSpacing: 1.5 }}>
+          <div style={{ padding: "4px 12px 2px", fontSize: 8, color: "#888", fontFamily: "monospace", letterSpacing: 1.5 }}>
             PROYECCIONES A 12 MESES — {fechaLabel.toUpperCase()}
           </div>
           <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
@@ -683,7 +683,7 @@ function REMView() {
             enableLineToggle={true}
             formatValue={(v) => `${v.toFixed(1)}%`}
           />
-          <div style={{ fontSize: 8, color: "#333", padding: "2px 4px" }}>
+          <div style={{ fontSize: 8, color: "#777", padding: "2px 4px" }}>
             Fuente: BCRA · REM · Medianas del consenso de analistas privados
           </div>
         </div>
@@ -703,7 +703,7 @@ function REMView() {
             enableDateRange={true}
             formatValue={(v) => `$${Math.round(v).toLocaleString("es-AR")}`}
           />
-          <div style={{ fontSize: 8, color: "#333", padding: "2px 4px" }}>
+          <div style={{ fontSize: 8, color: "#777", padding: "2px 4px" }}>
             Mediana de analistas del REM. No es una predicción oficial del BCRA.
           </div>
         </div>
@@ -734,7 +734,7 @@ function REMView() {
               <thead>
                 <tr>
                   {["Relevamiento", "Inflac. 12M", "Inflac. 24M", "Núcleo 12M", "USD 12M", "Tasa 12M", "Tasa Real"].map(h => (
-                    <th key={h} style={{ padding: "4px 8px", fontSize: 8, color: "#555", textAlign: h === "Relevamiento" ? "left" : "right", borderBottom: "1px solid #1a1a1a", whiteSpace: "nowrap" }}>
+                    <th key={h} style={{ padding: "4px 8px", fontSize: 8, color: "#888", textAlign: h === "Relevamiento" ? "left" : "right", borderBottom: "1px solid #1a1a1a", whiteSpace: "nowrap" }}>
                       {h}
                     </th>
                   ))}
@@ -774,7 +774,7 @@ function REMView() {
       )}
 
       {!kpis && serie.length === 0 && (
-        <div style={{ padding: 24, color: "#555", fontSize: 11, textAlign: "center", fontFamily: "monospace" }}>
+        <div style={{ padding: 24, color: "#888", fontSize: 11, textAlign: "center", fontFamily: "monospace" }}>
           Sin datos disponibles. El Excel del BCRA puede estar temporalmente inaccesible.
         </div>
       )}
@@ -816,13 +816,13 @@ function TasasView() {
   }, [])
 
   if (loading) return (
-    <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>
+    <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>
       Cargando tasas de referencia...
     </div>
   )
 
   if (!data) return (
-    <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>
+    <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>
       Error al cargar datos.
     </div>
   )
@@ -899,7 +899,7 @@ function TasasView() {
               <div style={{ fontSize: 9, color: t.color, fontFamily: "monospace", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" as const }}>
                 {t.label}
               </div>
-              <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", marginBottom: 6 }}>
+              <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", marginBottom: 6 }}>
                 {t.sub}
               </div>
               <div style={{ fontSize: 24, fontWeight: 700, color: "#fff", fontFamily: "monospace", lineHeight: 1 }}>
@@ -917,7 +917,7 @@ function TasasView() {
 
       {/* ── Gráfico comparativo ── */}
       <div style={{ padding: "10px 12px 0", borderTop: "1px solid #111" }}>
-        <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", letterSpacing: 1.5, marginBottom: 6, textTransform: "uppercase" as const }}>
+        <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", letterSpacing: 1.5, marginBottom: 6, textTransform: "uppercase" as const }}>
           Evolución comparativa
         </div>
         <div ref={chartRef}>
@@ -940,7 +940,7 @@ function TasasView() {
 
       {/* ── TNA vs TEA ── */}
       <div style={{ padding: "10px 12px", borderTop: "1px solid #111" }}>
-        <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", letterSpacing: 1.5, marginBottom: 8, textTransform: "uppercase" as const }}>
+        <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", letterSpacing: 1.5, marginBottom: 8, textTransform: "uppercase" as const }}>
           TNA vs TEA · Simulación $1.000.000
         </div>
         <div style={{ overflowX: "auto" }}>
@@ -948,7 +948,7 @@ function TasasView() {
             <thead>
               <tr style={{ borderBottom: "1px solid #222" }}>
                 {["Tasa", "TNA", "TEA", "Rend. 30 días", "Rend. 365 días"].map(h => (
-                  <th key={h} style={{ padding: "5px 10px", color: "#555", textAlign: "right", fontWeight: 400, whiteSpace: "nowrap" as const }}>
+                  <th key={h} style={{ padding: "5px 10px", color: "#888", textAlign: "right", fontWeight: 400, whiteSpace: "nowrap" as const }}>
                     {h}
                   </th>
                 ))}
@@ -974,7 +974,7 @@ function TasasView() {
               })}
             </tbody>
           </table>
-          <div style={{ fontSize: 8, color: "#333", fontFamily: "monospace", marginTop: 4 }}>
+          <div style={{ fontSize: 8, color: "#777", fontFamily: "monospace", marginTop: 4 }}>
             Simulación teórica sobre $1.000.000. TEA = (1 + TNA/12)^12 − 1. Rend. 30d = Capital × TNA × 30/365.
           </div>
         </div>
@@ -982,7 +982,7 @@ function TasasView() {
 
       {/* ── Estadísticas por tasa ── */}
       <div style={{ padding: "10px 12px", borderTop: "1px solid #111" }}>
-        <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", letterSpacing: 1.5, marginBottom: 8, textTransform: "uppercase" as const }}>
+        <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", letterSpacing: 1.5, marginBottom: 8, textTransform: "uppercase" as const }}>
           Estadísticas — Últimos 12 meses
         </div>
         <div style={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
@@ -998,7 +998,7 @@ function TasasView() {
                   ["Var. (pp)",     s.var1y  != null ? `${fmtNum(s.var1y)} pp` : "—"],
                 ] as [string, string][]).map(([lbl, val]) => (
                   <div key={lbl} style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                    <span style={{ fontSize: 8, color: "#555", fontFamily: "monospace" }}>{lbl}</span>
+                    <span style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>{lbl}</span>
                     <span style={{ fontSize: 8, color: lbl === "Actual" ? "#fff" : "#888", fontFamily: "monospace" }}>{val}</span>
                   </div>
                 ))}
@@ -1011,7 +1011,7 @@ function TasasView() {
       {/* ── Tabla de datos ── */}
       <div style={{ padding: "10px 12px", borderTop: "1px solid #111" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-          <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", letterSpacing: 1.5, textTransform: "uppercase" as const }}>
+          <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", letterSpacing: 1.5, textTransform: "uppercase" as const }}>
             Tabla de datos
           </div>
           <DownloadCSV data={csvData} filename="tasas-referencia-bcra" />
@@ -1020,7 +1020,7 @@ function TasasView() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 9 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid #222" }}>
-                <th style={{ padding: "4px 10px", color: "#555", textAlign: "left", fontWeight: 400 }}>Fecha</th>
+                <th style={{ padding: "4px 10px", color: "#888", textAlign: "left", fontWeight: 400 }}>Fecha</th>
                 {TASAS_CFG.map(t => (
                   <th key={t.key} style={{ padding: "4px 10px", color: t.color, textAlign: "right", fontWeight: 600 }}>
                     {t.label}
@@ -1031,7 +1031,7 @@ function TasasView() {
             <tbody>
               {tableDates.slice(0, showRows).map(f => (
                 <tr key={f} style={{ borderBottom: "1px solid #0a0a0a" }}>
-                  <td style={{ padding: "3px 10px", color: "#666" }}>{fmtDate(f)}</td>
+                  <td style={{ padding: "3px 10px", color: "#999" }}>{fmtDate(f)}</td>
                   {TASAS_CFG.map(t => {
                     const val = data[t.key]?.find(r => r.fecha === f)?.valor
                     return (
@@ -1050,14 +1050,14 @@ function TasasView() {
             onClick={() => setShowRows(n => n + 30)}
             style={{
               marginTop: 8, width: "100%", padding: "6px", background: "none",
-              border: "1px solid #1a1a1a", borderRadius: 3, color: "#555",
+              border: "1px solid #1a1a1a", borderRadius: 3, color: "#888",
               fontFamily: "monospace", fontSize: 9, cursor: "pointer",
             }}
           >
             Mostrar más ({tableDates.length - showRows} restantes)
           </button>
         )}
-        <div style={{ fontSize: 8, color: "#333", fontFamily: "monospace", marginTop: 6 }}>
+        <div style={{ fontSize: 8, color: "#777", fontFamily: "monospace", marginTop: 6 }}>
           Fuente: BCRA API v4.0 · Variables 44 (TAMAR), 7 (BADLAR), 12 (Dep. 30d), 13 (Adelantos CC), 14 (Prést. Pers.)
         </div>
       </div>

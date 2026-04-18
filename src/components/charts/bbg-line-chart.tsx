@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Legend,
@@ -60,7 +60,6 @@ function fmtDateFull(dateStr: string): string {
 
 function parseDate(dateStr: string): Date {
   if (!dateStr) return new Date(NaN)
-  // Normalizar YYYY-MM → YYYY-MM-01 para evitar Invalid Date
   const normalized = /^\d{4}-\d{2}$/.test(dateStr) ? dateStr + "-01" : dateStr
   return new Date(normalized + (normalized.includes("T") ? "" : "T00:00:00"))
 }
@@ -83,15 +82,12 @@ function filterDataByRange(data: Record<string, unknown>[], range: DateRange): R
 
   const filtered = data.filter(d => {
     const date = parseDate(d.date as string)
-    if (isNaN(date.getTime())) return true // si no parsea, incluir igual
+    if (isNaN(date.getTime())) return true
     return date >= cutoff
   })
 
-  // Si el filtro dejó < 2 puntos, usar los últimos N según el rango
   if (filtered.length < 2) {
-    const fallback: Record<number, number> = { 0: 7, 1: 1, 3: 3, 6: 6 }
-    const months = range === "1w" ? 0 : range === "1m" ? 1 : range === "3m" ? 3 : range === "6m" ? 6 : range === "1y" ? 12 : range === "ytd" ? 6 : 0
-    void fallback
+    const months = range === "1w" ? 0 : range === "1m" ? 1 : range === "3m" ? 3 : range === "6m" ? 6 : range === "1y" ? 12 : 6
     return data.slice(-Math.max(months * 4, 12))
   }
 
@@ -127,7 +123,6 @@ export function BBGLineChart({
     return filterDataByRange(data, range)
   }, [data, range])
 
-  // Dominios Y ajustados a los datos visibles + padding (eje izquierdo y derecho)
   const yDomainLeft = useMemo(() => {
     const leftLines = lines.filter((l) => !l.yAxisId || l.yAxisId === "left")
     const values: number[] = filteredData.flatMap((d) =>
@@ -136,7 +131,7 @@ export function BBGLineChart({
         return typeof v === "number" ? [v] : []
       })
     )
-    if (values.length === 0) return ["auto", "auto"] as const
+    if (values.length === 0) return [0, 100] as const
     const min = Math.min(...values)
     const max = Math.max(...values)
     const pad = Math.max((max - min) * 0.05, Math.abs(max) * 0.02)
@@ -144,7 +139,7 @@ export function BBGLineChart({
   }, [filteredData, lines])
 
   const yDomainRight = useMemo(() => {
-    if (!yAxisRight) return ["auto", "auto"] as const
+    if (!yAxisRight) return [0, 100] as const
     const rightLines = lines.filter((l) => l.yAxisId === "right")
     const values: number[] = filteredData.flatMap((d) =>
       rightLines.flatMap((l) => {
@@ -152,26 +147,74 @@ export function BBGLineChart({
         return typeof v === "number" ? [v] : []
       })
     )
-    if (values.length === 0) return ["auto", "auto"] as const
+    if (values.length === 0) return [0, 100] as const
     const min = Math.min(...values)
     const max = Math.max(...values)
     const pad = Math.max((max - min) * 0.05, Math.abs(max) * 0.02)
     return [min - pad, max + pad] as const
   }, [filteredData, lines, yAxisRight])
 
-  // Overrides manuales de escala
-  const [scaleMin, setScaleMin] = useState("")
-  const [scaleMax, setScaleMax] = useState("")
-  const isOverriding = scaleMin !== "" || scaleMax !== ""
+  // Y drag-to-scale state
+  const [yOverride, setYOverride] = useState<{ min: number; max: number } | null>(null)
+  const yDragRef = useRef<{ startY: number; startMin: number; startMax: number } | null>(null)
+  const chartWrapperRef = useRef<HTMLDivElement>(null)
 
-  const effectiveDomainLeft = useMemo((): [number | string, number | string] => {
-    const uMin = scaleMin !== "" ? parseFloat(scaleMin) : null
-    const uMax = scaleMax !== "" ? parseFloat(scaleMax) : null
-    return [
-      uMin !== null && !isNaN(uMin) ? uMin : yDomainLeft[0],
-      uMax !== null && !isNaN(uMax) ? uMax : yDomainLeft[1],
-    ]
-  }, [yDomainLeft, scaleMin, scaleMax])
+  const effectiveDomainLeft = useMemo((): [number, number] => {
+    if (yOverride) return [yOverride.min, yOverride.max]
+    return [yDomainLeft[0], yDomainLeft[1]]
+  }, [yDomainLeft, yOverride])
+
+  // Reset Y override when range or data changes (auto-rescale)
+  // Only reset if user hasn't explicitly set it
+  const prevRangeRef = useRef(range)
+  useEffect(() => {
+    if (prevRangeRef.current !== range) {
+      setYOverride(null)
+      prevRangeRef.current = range
+    }
+  }, [range])
+
+  const startYDrag = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    const domain = yOverride ?? { min: yDomainLeft[0], max: yDomainLeft[1] }
+    yDragRef.current = { startY: e.clientY, startMin: domain.min, startMax: domain.max }
+
+    const onMove = (ev: MouseEvent) => {
+      if (!yDragRef.current) return
+      const dy = ev.clientY - yDragRef.current.startY
+      const span = yDragRef.current.startMax - yDragRef.current.startMin
+      const center = (yDragRef.current.startMax + yDragRef.current.startMin) / 2
+      // drag down → expand range (zoom out); drag up → compress (zoom in)
+      const factor = Math.max(0.05, 1 + dy * 0.005)
+      const newSpan = span * factor
+      setYOverride({ min: center - newSpan / 2, max: center + newSpan / 2 })
+    }
+    const onUp = () => {
+      yDragRef.current = null
+      window.removeEventListener("mousemove", onMove)
+      window.removeEventListener("mouseup", onUp)
+    }
+    window.addEventListener("mousemove", onMove)
+    window.addEventListener("mouseup", onUp)
+  }, [yDomainLeft, yOverride])
+
+  // Wheel zoom on chart — attached as non-passive to allow preventDefault
+  useEffect(() => {
+    const el = chartWrapperRef.current
+    if (!el) return
+    const handler = (e: WheelEvent) => {
+      e.preventDefault()
+      setYOverride((prev) => {
+        const base = prev ?? { min: yDomainLeft[0], max: yDomainLeft[1] }
+        const factor = e.deltaY > 0 ? 1.08 : 0.925
+        const center = (base.max + base.min) / 2
+        const newSpan = (base.max - base.min) * factor
+        return { min: center - newSpan / 2, max: center + newSpan / 2 }
+      })
+    }
+    el.addEventListener("wheel", handler, { passive: false })
+    return () => el.removeEventListener("wheel", handler)
+  }, [yDomainLeft])
 
   return (
     <div className="bbg-panel">
@@ -202,45 +245,16 @@ export function BBGLineChart({
             >{l.name}</button>
           ))}
           {enableLineToggle && <span style={{ width: 1, height: 12, background: "#222", margin: "0 2px" }} />}
-          <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-            <span style={{ fontSize: "9px", color: "#444", letterSpacing: 1 }}>Y:</span>
-            <input
-              type="number"
-              placeholder={typeof yDomainLeft[0] === "number" ? String(Math.round(yDomainLeft[0] as number)) : "min"}
-              value={scaleMin}
-              onChange={(e) => setScaleMin(e.target.value)}
+          {yOverride && (
+            <button
+              onClick={() => setYOverride(null)}
+              title="Resetear escala Y"
               style={{
-                width: 52, fontSize: "9px", background: "#0d0d0d",
-                border: `1px solid ${scaleMin ? "#FFA028" : "#333"}`,
-                color: scaleMin ? "#FFA028" : "#666",
-                padding: "1px 4px", borderRadius: 2, outline: "none",
+                fontSize: "9px", padding: "1px 6px", background: "transparent",
+                border: "1px solid #FFA02866", color: "#FFA028", cursor: "pointer", borderRadius: 2,
               }}
-            />
-            <span style={{ fontSize: "9px", color: "#333" }}>–</span>
-            <input
-              type="number"
-              placeholder={typeof yDomainLeft[1] === "number" ? String(Math.round(yDomainLeft[1] as number)) : "max"}
-              value={scaleMax}
-              onChange={(e) => setScaleMax(e.target.value)}
-              style={{
-                width: 52, fontSize: "9px", background: "#0d0d0d",
-                border: `1px solid ${scaleMax ? "#FFA028" : "#333"}`,
-                color: scaleMax ? "#FFA028" : "#666",
-                padding: "1px 4px", borderRadius: 2, outline: "none",
-              }}
-            />
-            {isOverriding && (
-              <button
-                onClick={() => { setScaleMin(""); setScaleMax("") }}
-                style={{
-                  fontSize: "9px", padding: "1px 5px", background: "transparent",
-                  border: "1px solid #555", color: "#888", cursor: "pointer", borderRadius: 2,
-                }}
-              >
-                AUTO
-              </button>
-            )}
-          </div>
+            >AUTO</button>
+          )}
           {enableDateRange && (
             <>
               <span style={{ width: 1, height: 12, background: "#222", margin: "0 2px" }} />
@@ -260,7 +274,23 @@ export function BBGLineChart({
           )}
         </div>
       </div>
-      <div style={{ padding: "4px 4px 0 0" }}>
+
+      <div ref={chartWrapperRef} style={{ padding: "4px 4px 0 0", position: "relative" }}>
+        {/* Y-axis drag zone overlay */}
+        <div
+          onMouseDown={startYDrag}
+          onDoubleClick={() => setYOverride(null)}
+          title="Arrastrá ↕ para ajustar escala Y · rueda para zoom · doble clic para auto"
+          style={{
+            position: "absolute",
+            left: 0, top: 0,
+            width: 54, bottom: 26,
+            cursor: "ns-resize",
+            zIndex: 10,
+            borderLeft: yOverride ? "2px solid #FFA02855" : "2px solid transparent",
+            transition: "border-color 0.2s",
+          }}
+        />
         <ResponsiveContainer width="100%" height={height}>
           <LineChart data={filteredData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid stroke="#1a1a1a" strokeDasharray="3 3" />

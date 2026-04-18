@@ -58,6 +58,27 @@ const RSS_FEEDS: RSSFeed[] = [
   { url: "https://riotimesonline.com/feed/",                       source: "Rio Times",      region: "internacional", category: "economía",  country: "brasil",        lang: "en" },
 ]
 
+const BLOCKED_TERMS: string[] = [
+  // Fútbol / deportes
+  "fútbol", "futbol", "gol de ", "goles", "cancha", "penales",
+  "arquero", "delantero", "mediocampista", "hinchada",
+  "boca juniors", "river plate", "san lorenzo", "vélez sarsfield",
+  "selección argentina de", "premier league", "champions league",
+  "nfl", "fórmula 1", "formula 1", "roland garros", "wimbledon",
+  // Entretenimiento / farándula
+  "farándula", "chimento", "telenovela", "reality show",
+  "gran hermano", "wanda nara", "pampita", "icardi",
+  "reggaeton", "cumbia villera",
+  // Frases tabloides
+  "las mejores fotos de", "mirá las imágenes de",
+  " viral ", "sorprendió a todos", "crimen pasional",
+]
+
+function isBlocked(title: string): boolean {
+  const lower = title.toLowerCase()
+  return BLOCKED_TERMS.some((term) => lower.includes(term.toLowerCase()))
+}
+
 // Detección de categoría por keywords en el título
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   finanzas:    ["bolsa", "acciones", "bonos", "bursátil", "merval", "cedear", "dólar", "dolar", "tasas", "bcra", "rofex", "letras", "inflación", "inflacion", "tasa"],
@@ -101,6 +122,7 @@ function extractItems(xml: string, feed: RSSFeed): RSSItem[] {
     const cleanLink  = link.trim()
     if (!cleanTitle || !cleanLink) continue
     if (isNonLatinScript(cleanTitle)) continue   // descarta cirílico, árabe, chino, etc.
+    if (isBlocked(cleanTitle)) continue          // descarta deportes, farándula, tabloides
 
     items.push({
       id:          Buffer.from(cleanLink).toString("base64").slice(0, 20),
@@ -121,7 +143,7 @@ function extractItems(xml: string, feed: RSSFeed): RSSItem[] {
 // Cache por instancia (secundario — el CDN de Vercel es la capa primaria)
 let _cache: { items: RSSItem[]; ts: number } | null = null
 // Versión del cache — cambiar para forzar invalidación
-const CACHE_VERSION = 2
+const CACHE_VERSION = 3
 const INSTANCE_TTL = 5 * 60 * 1000
 
 export async function GET() {

@@ -92,10 +92,10 @@ export function LiveSection() {
                   background: "#000000bb", padding: "2px 6px",
                   display: "flex", alignItems: "center", gap: 4,
                 }}>
-                  <span style={{ fontSize: 9, color: "#555", flexShrink: 0 }}>{idx + 1}</span>
+                  <span style={{ fontSize: 9, color: "#888", flexShrink: 0 }}>{idx + 1}</span>
                   <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#FF433D", display: "inline-block", flexShrink: 0 }} />
                   <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", color: "#FF433D", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ch.label}</span>
-                  <span style={{ fontSize: 9, color: "#555" }}>{ch.country}</span>
+                  <span style={{ fontSize: 9, color: "#888" }}>{ch.country}</span>
                   <button
                     onClick={() => toggleMute(ch.id)}
                     title={muted[ch.id] ? "Activar audio" : "Silenciar"}
@@ -119,7 +119,7 @@ export function LiveSection() {
 
           {/* Editor de canal */}
           <div style={{ background: "#050505", borderTop: "1px solid #1a1a1a", padding: "6px 10px", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 9, color: "#444", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>Reemplazar canal</span>
+            <span style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>Reemplazar canal</span>
 
             <select
               value={selectedSlot}

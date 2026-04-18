@@ -78,7 +78,7 @@ function KPI({ label, value, unit, valueColor = "#fff", sub }: { label: string; 
       <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace" }}>{label}</div>
       <div style={{ fontSize: 20, fontWeight: 700, color: valueColor, fontFamily: "monospace", lineHeight: 1 }}>{value ?? "—"}</div>
       {unit && <div style={{ fontSize: 8, color: "#bbb", fontFamily: "monospace" }}>{unit}</div>}
-      {sub && <div style={{ fontSize: 8, color: "#666", fontFamily: "monospace" }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 8, color: "#999", fontFamily: "monospace" }}>{sub}</div>}
     </div>
   )
 }
@@ -92,7 +92,7 @@ function SectionTitle({ title }: { title: string }) {
 }
 
 function Loading() {
-  return <div style={{ padding: 40, textAlign: "center", color: "#555", fontFamily: "monospace", fontSize: 10 }}>Cargando…</div>
+  return <div style={{ padding: 40, textAlign: "center", color: "#888", fontFamily: "monospace", fontSize: 10 }}>Cargando…</div>
 }
 
 const tooltipStyle = {
@@ -128,7 +128,7 @@ function AccionesView() {
   }, [])
 
   if (loading) return <Loading />
-  if (!data) return <div style={{ padding: 40, color: "#555", fontFamily: "monospace", fontSize: 10 }}>Sin datos</div>
+  if (!data) return <div style={{ padding: 40, color: "#888", fontFamily: "monospace", fontSize: 10 }}>Sin datos</div>
 
   const allStocks = cat === "all"
     ? Object.values(data.byCategory).flat()
@@ -191,7 +191,7 @@ function AccionesView() {
               <thead>
                 <tr style={{ borderBottom: "1px solid #1a1a1a" }}>
                   {["Ticker", "Sector", "Último", "Var. %", "Volumen"].map(h => (
-                    <th key={h} style={{ padding: "4px 8px", color: "#555", textAlign: h === "Ticker" || h === "Sector" ? "left" : "right", fontWeight: 400 }}>{h}</th>
+                    <th key={h} style={{ padding: "4px 8px", color: "#888", textAlign: h === "Ticker" || h === "Sector" ? "left" : "right", fontWeight: 400 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -199,12 +199,12 @@ function AccionesView() {
                 {withPrice.map((s, i) => (
                   <tr key={i} style={{ borderBottom: "1px solid #0d0d0d" }}>
                     <td style={{ padding: "3px 8px", color: "#FFA028", fontWeight: 700 }}>{s.ticker}</td>
-                    <td style={{ padding: "3px 8px", color: "#555" }}>{s.category}</td>
+                    <td style={{ padding: "3px 8px", color: "#888" }}>{s.category}</td>
                     <td style={{ padding: "3px 8px", color: "#fff", textAlign: "right" }}>{fmtNum(s.lastPrice, 2)}</td>
                     <td style={{ padding: "3px 8px", color: changeColor(s.change1D), textAlign: "right", fontWeight: 700 }}>
                       {s.change1D != null ? `${s.change1D >= 0 ? "+" : ""}${fmtNum(s.change1D, 2)}%` : "—"}
                     </td>
-                    <td style={{ padding: "3px 8px", color: "#555", textAlign: "right" }}>
+                    <td style={{ padding: "3px 8px", color: "#888", textAlign: "right" }}>
                       {s.volume != null ? fmtNum(s.volume / 1e6, 2) + "M" : "—"}
                     </td>
                   </tr>
@@ -320,7 +320,7 @@ function BonosView() {
                 <thead>
                   <tr style={{ borderBottom: "1px solid #1a1a1a" }}>
                     {["Ticker", "Ley", "Vto.", "Precio", "Paridad", "TIR", "Duration"].map(h => (
-                      <th key={h} style={{ padding: "4px 6px", color: "#555", textAlign: h === "Ticker" || h === "Ley" ? "left" : "right", fontWeight: 400 }}>{h}</th>
+                      <th key={h} style={{ padding: "4px 6px", color: "#888", textAlign: h === "Ticker" || h === "Ley" ? "left" : "right", fontWeight: 400 }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -328,7 +328,7 @@ function BonosView() {
                   {bonos.map((b, i) => (
                     <tr key={i} style={{ borderBottom: "1px solid #0d0d0d" }}>
                       <td style={{ padding: "3px 6px", color: "#FFA028", fontWeight: 700 }}>{b.ticker}</td>
-                      <td style={{ padding: "3px 6px", color: "#555" }}>{b.ley}</td>
+                      <td style={{ padding: "3px 6px", color: "#888" }}>{b.ley}</td>
                       <td style={{ padding: "3px 6px", color: "#888" }}>{b.vencimiento?.slice(0, 7)}</td>
                       <td style={{ padding: "3px 6px", color: "#fff", textAlign: "right" }}>{b.precio != null ? fmtNum(b.precio, 2) : "—"}</td>
                       <td style={{ padding: "3px 6px", textAlign: "right", color: b.paridad != null && b.paridad < 50 ? "#FF433D" : "#4AF6C3" }}>
@@ -370,7 +370,7 @@ function BonosView() {
                   <thead>
                     <tr style={{ borderBottom: "1px solid #1a1a1a" }}>
                       {["Ticker", "Tipo", "Vto.", "Días", "Precio", "TEM", "TEA"].map(h => (
-                        <th key={h} style={{ padding: "4px 6px", color: "#555", fontWeight: 400, textAlign: h === "Ticker" || h === "Tipo" ? "left" : "right" }}>{h}</th>
+                        <th key={h} style={{ padding: "4px 6px", color: "#888", fontWeight: 400, textAlign: h === "Ticker" || h === "Tipo" ? "left" : "right" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -378,7 +378,7 @@ function BonosView() {
                     {lecaps.sort((a, b) => a.diasVencimiento - b.diasVencimiento).map((l, i) => (
                       <tr key={i} style={{ borderBottom: "1px solid #0d0d0d" }}>
                         <td style={{ padding: "3px 6px", color: "#FFA028", fontWeight: 700 }}>{l.ticker}</td>
-                        <td style={{ padding: "3px 6px", color: "#555" }}>{l.tipo}</td>
+                        <td style={{ padding: "3px 6px", color: "#888" }}>{l.tipo}</td>
                         <td style={{ padding: "3px 6px", color: "#888" }}>{l.vencimiento}</td>
                         <td style={{ padding: "3px 6px", color: "#888", textAlign: "right" }}>{l.diasVencimiento}</td>
                         <td style={{ padding: "3px 6px", color: "#fff", textAlign: "right" }}>{l.precio != null ? fmtNum(l.precio, 2) : "—"}</td>
@@ -432,7 +432,7 @@ function RofexView() {
 
   if (loading) return <Loading />
   if (!data.length) return (
-    <div style={{ padding: 40, textAlign: "center", color: "#555", fontFamily: "monospace", fontSize: 9 }}>
+    <div style={{ padding: 40, textAlign: "center", color: "#888", fontFamily: "monospace", fontSize: 9 }}>
       Sin datos ROFEX — Matba API no disponible · verificar conectividad
     </div>
   )
@@ -492,7 +492,7 @@ function RofexView() {
           <thead>
             <tr style={{ borderBottom: "1px solid #1a1a1a" }}>
               {["Posición", "Vencimiento", "Precio", "Dev. Acum.", "Dev. Mensual", "TNA", "CFT"].map(h => (
-                <th key={h} style={{ padding: "4px 8px", color: "#555", textAlign: h === "Posición" || h === "Vencimiento" ? "left" : "right", fontWeight: 400 }}>{h}</th>
+                <th key={h} style={{ padding: "4px 8px", color: "#888", textAlign: h === "Posición" || h === "Vencimiento" ? "left" : "right", fontWeight: 400 }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -611,7 +611,7 @@ function PlazoFijoView() {
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       {/* Toggle modo */}
       <div style={{ padding: "8px 14px", background: "#050505", borderBottom: "1px solid #111", display: "flex", gap: 4, alignItems: "center" }}>
-        <span style={{ fontSize: 8, color: "#555", fontFamily: "monospace", marginRight: 8 }}>TIPO:</span>
+        <span style={{ fontSize: 8, color: "#888", fontFamily: "monospace", marginRight: 8 }}>TIPO:</span>
         {([["ars", "Pesos (TNA)"], ["uva", "UVA (CER)"], ["usd", "Dólares (TNA)"]] as [PFMode, string][]).map(([k, label]) => (
           <button key={k} onClick={() => setMode(k)} style={{
             fontSize: 9, fontFamily: "monospace", padding: "3px 12px", borderRadius: 20, cursor: "pointer",
@@ -698,7 +698,7 @@ function PlazoFijoView() {
             {/* Info panel */}
             <div style={{ background: "#080808", border: "1px solid #111", padding: 16, fontFamily: "monospace" }}>
               <div style={{ fontSize: 9, color: "#aaa", marginBottom: 12 }}>¿Cuándo conviene el PF UVA?</div>
-              <div style={{ fontSize: 8, color: "#555", lineHeight: 1.8 }}>
+              <div style={{ fontSize: 8, color: "#888", lineHeight: 1.8 }}>
                 <div>• <span style={{ color: "#fff" }}>El PF UVA ajusta por CER (inflación)</span></div>
                 <div>• Si inflación mensual &gt; {fmtNum(tem)}% (TEM tasa fija) → <span style={{ color: "#4AF6C3" }}>conviene UVA</span></div>
                 <div>• Si inflación mensual &lt; {fmtNum(tem)}% → <span style={{ color: "#FF433D" }}>conviene tasa fija</span></div>
@@ -709,7 +709,7 @@ function PlazoFijoView() {
             </div>
             {/* Comparación visual */}
             <div style={{ background: "#080808", border: "1px solid #111", padding: 16 }}>
-              <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace", marginBottom: 8 }}>Rendimiento mensual comparado</div>
+              <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", marginBottom: 8 }}>Rendimiento mensual comparado</div>
               <div style={{ display: "flex", gap: 12, alignItems: "flex-end", height: 140 }}>
                 {[
                   { label: "Tasa Fija (TEM)", value: tem, color: "#FFA028" },
@@ -721,7 +721,7 @@ function PlazoFijoView() {
                     <div key={item.label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: item.color, fontFamily: "monospace" }}>{fmtNum(item.value)}%</div>
                       <div style={{ width: "100%", height: h, background: item.color, opacity: 0.7, borderRadius: "2px 2px 0 0" }} />
-                      <div style={{ fontSize: 7, color: "#555", fontFamily: "monospace", textAlign: "center" }}>{item.label}</div>
+                      <div style={{ fontSize: 7, color: "#888", fontFamily: "monospace", textAlign: "center" }}>{item.label}</div>
                     </div>
                   )
                 })}
@@ -743,7 +743,7 @@ function PlazoFijoView() {
               <Bar dataKey="tna" fill="#4FC3F7" radius={[0, 2, 2, 0]} />
             </BarChart>
           </ResponsiveContainer>
-          <div style={{ marginTop: 12, padding: 10, background: "#080808", border: "1px solid #1a1a1a", fontFamily: "monospace", fontSize: 8, color: "#555" }}>
+          <div style={{ marginTop: 12, padding: 10, background: "#080808", border: "1px solid #1a1a1a", fontFamily: "monospace", fontSize: 8, color: "#888" }}>
             ⚠️ Las tasas de PF en USD en Argentina son históricamente muy bajas. Alternativas: ON en USD (BYMA), bonos soberanos o FCI Money Market USD.
           </div>
         </div>
@@ -1018,7 +1018,7 @@ function CommoditiesView() {
                   <div style={{ fontSize: 16, fontWeight: 700, color: isActive ? "#fff" : "#444", marginTop: 2, lineHeight: 1 }}>
                     {q ? `$${fmtUSD(q.precio, item.decimals)}` : "—"}
                   </div>
-                  <div style={{ fontSize: 8, color: "#555", marginTop: 1 }}>{item.unit}</div>
+                  <div style={{ fontSize: 8, color: "#888", marginTop: 1 }}>{item.unit}</div>
                   <div style={{ fontSize: 9, color: q ? changeColor(q.variacion_pct) : "#333", marginTop: 2, fontWeight: 700 }}>
                     {q ? `${q.variacion_pct >= 0 ? "+" : ""}${fmtUSD(q.variacion_pct, 2)}%` : "—"}
                   </div>
@@ -1032,7 +1032,7 @@ function CommoditiesView() {
 
       {/* Controles período */}
       <div style={{ padding: "6px 14px", background: "#050505", borderBottom: "1px solid #111", display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 8, color: "#555", fontFamily: "monospace" }}>
+        <span style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>
           {isMulti ? "% variación desde inicio del período" : `Precio en ${COMM_ALL.find(c => c.key === [...selected][0])?.unit ?? "USD"}`}
         </span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
@@ -1050,7 +1050,7 @@ function CommoditiesView() {
       {/* Gráfico */}
       <div style={{ padding: 16, background: "#050505" }}>
         {loadingKeys.size > 0
-          ? <div style={{ height: 300, display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: 9, fontFamily: "monospace" }}>Cargando…</div>
+          ? <div style={{ height: 300, display: "flex", alignItems: "center", justifyContent: "center", color: "#888", fontSize: 9, fontFamily: "monospace" }}>Cargando…</div>
           : (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={chartData} margin={{ top: 8, right: 20, left: 10, bottom: 4 }}>
@@ -1098,7 +1098,7 @@ function CommoditiesView() {
           <span style={{ fontSize: 14, fontWeight: 700, color: "#FFA028", fontFamily: "monospace" }}>
             ${fmtUSD(snap.brent.precio - snap.petroleo.precio, 2)} USD/bbl
           </span>
-          <span style={{ fontSize: 8, color: "#555", fontFamily: "monospace" }}>
+          <span style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>
             Brent ${fmtUSD(snap.brent.precio, 2)} · WTI ${fmtUSD(snap.petroleo.precio, 2)}
           </span>
         </div>
@@ -1117,7 +1117,7 @@ function CommoditiesView() {
                   <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", marginTop: 2 }}>
                     {g.disponible != null ? `$${fmtUSD(g.disponible, 0)}` : "—"}
                   </div>
-                  <div style={{ fontSize: 8, color: "#555", marginTop: 1 }}>{g.unidad}</div>
+                  <div style={{ fontSize: 8, color: "#888", marginTop: 1 }}>{g.unidad}</div>
                   {g.fobOficial != null && (
                     <div style={{ fontSize: 8, color: "#888", marginTop: 2 }}>
                       FOB: ${fmtUSD(g.fobOficial, 0)} · Ret: {g.retencion}%
@@ -1127,7 +1127,7 @@ function CommoditiesView() {
               )
             })}
           </div>
-          <div style={{ fontSize: 7, color: "#444", marginTop: 4, fontFamily: "monospace" }}>
+          <div style={{ fontSize: 7, color: "#888", marginTop: 4, fontFamily: "monospace" }}>
             {agroLocal.source} · FOB teórico = disponible × (1 − retención%) − gastos portuarios ~$15/tn
           </div>
         </div>
@@ -1256,7 +1256,7 @@ function MundoView() {
                   <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1 }}>{MUNDO_LABELS[k]}</div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", marginTop: 2 }}>
                     {q ? fmtNum(q.precio, k === "us10y" ? 3 : 2) : "—"}
-                    <span style={{ fontSize: 8, color: "#555", marginLeft: 4 }}>{MUNDO_UNITS[k]}</span>
+                    <span style={{ fontSize: 8, color: "#888", marginLeft: 4 }}>{MUNDO_UNITS[k]}</span>
                   </div>
                   <div style={{ fontSize: 9, color: q ? changeColor(q.variacion_pct) : "#555", marginTop: 1, fontWeight: 700 }}>
                     {q ? `${q.variacion_pct >= 0 ? "+" : ""}${fmtNum(q.variacion_pct, 2)}%` : "—"}
@@ -1283,7 +1283,7 @@ function MundoView() {
             ))}
           </div>
         </div>
-        {loadingHist ? <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: 9, fontFamily: "monospace" }}>Cargando…</div> : (
+        {loadingHist ? <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: "#888", fontSize: 9, fontFamily: "monospace" }}>Cargando…</div> : (
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={hist.map(([d, v]) => ({ fecha: d, valor: v }))} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
               <defs>
@@ -1315,7 +1315,7 @@ function MundoView() {
               <Line type="monotone" dataKey="yield" stroke="#4AF6C3" strokeWidth={2} dot={{ r: 3, fill: "#4AF6C3" }} isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
-          <div style={{ fontSize: 7, color: "#555", marginTop: 4, fontFamily: "monospace" }}>
+          <div style={{ fontSize: 7, color: "#888", marginTop: 4, fontFamily: "monospace" }}>
             {ustCurve.map(p => `${p.label}: ${fmtNum(p.yield, 2)}%`).join(" · ")}
           </div>
         </div>
@@ -1340,16 +1340,16 @@ function MundoView() {
                     {daysUntil > 0 ? `en ${daysUntil}d` : daysUntil === 0 ? "HOY" : "pasado"}
                   </span>
                 </div>
-                <div style={{ fontSize: 8, color: "#666", marginTop: 1 }}>{e.empresa}</div>
-                <div style={{ fontSize: 8, color: "#444", marginTop: 2 }}>
+                <div style={{ fontSize: 8, color: "#999", marginTop: 1 }}>{e.empresa}</div>
+                <div style={{ fontSize: 8, color: "#888", marginTop: 2 }}>
                   {e.fecha} {e.afterHours ? "· after hours" : "· pre-market"}
                 </div>
-                <div style={{ fontSize: 7, color: "#333", marginTop: 1 }}>{e.sector}</div>
+                <div style={{ fontSize: 7, color: "#777", marginTop: 1 }}>{e.sector}</div>
               </div>
             )
           })}
         </div>
-        <div style={{ fontSize: 7, color: "#444", marginTop: 6, fontFamily: "monospace" }}>
+        <div style={{ fontSize: 7, color: "#888", marginTop: 6, fontFamily: "monospace" }}>
           Fechas orientativas — pueden variar. Verificar en earningswhispers.com
         </div>
       </div>
@@ -1443,7 +1443,7 @@ function CryptoView() {
                 color: !q ? "#333" : (["usdt","usdc"].includes(c.key) && Math.abs(q.variacion_pct) < 0.1) ? "#666" : changeColor(q.variacion_pct),
               }}>
                 {q ? `${q.variacion_pct >= 0 ? "+" : ""}${fmtUSD(q.variacion_pct, 2)}%` : "—"}
-                <span style={{ fontSize: 7, color: "#555", marginLeft: 3, fontWeight: 400 }}>1D</span>
+                <span style={{ fontSize: 7, color: "#888", marginLeft: 3, fontWeight: 400 }}>1D</span>
               </div>
               {isActive && <div style={{ width: "100%", height: 2, background: c.color, marginTop: 4, borderRadius: 1 }} />}
             </button>
@@ -1453,7 +1453,7 @@ function CryptoView() {
 
       {/* Controles */}
       <div style={{ padding: "6px 14px", background: "#050505", borderBottom: "1px solid #111", display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 8, color: "#555", fontFamily: "monospace" }}>Precio USD</span>
+        <span style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>Precio USD</span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
           {["1mo", "3mo", "6mo", "1y", "2y", "5y"].map(p => (
             <button key={p} onClick={() => setSelPeriod(p)} style={{
@@ -1470,7 +1470,7 @@ function CryptoView() {
       <div style={{ padding: 16, background: "#050505" }}>
         <SectionTitle title={`${sel.label} — precio USD`} />
         {loadingHist
-          ? <div style={{ height: 320, display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: 9, fontFamily: "monospace" }}>Cargando…</div>
+          ? <div style={{ height: 320, display: "flex", alignItems: "center", justifyContent: "center", color: "#888", fontSize: 9, fontFamily: "monospace" }}>Cargando…</div>
           : (
             <ResponsiveContainer width="100%" height={320}>
               <AreaChart data={chartData} margin={{ top: 8, right: 20, left: 10, bottom: 4 }}>
@@ -1511,7 +1511,7 @@ function CryptoView() {
                 <thead>
                   <tr style={{ borderBottom: "1px solid #1a1a1a" }}>
                     {["Exchange", "Compra", "Venta"].map(h => (
-                      <th key={h} style={{ padding: "3px 6px", color: "#555", fontWeight: 400, textAlign: h === "Exchange" ? "left" : "right" }}>{h}</th>
+                      <th key={h} style={{ padding: "3px 6px", color: "#888", fontWeight: 400, textAlign: h === "Exchange" ? "left" : "right" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1539,8 +1539,8 @@ function CryptoView() {
               <div style={{ fontSize: 48, fontWeight: 700, color: "#FFA028", fontFamily: "monospace", lineHeight: 1 }}>
                 {fmtNum(dominance, 1)}%
               </div>
-              <div style={{ fontSize: 8, color: "#555", fontFamily: "monospace" }}>% del market cap total cripto</div>
-              <div style={{ fontSize: 7, color: "#444", fontFamily: "monospace" }}>CoinGecko</div>
+              <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>% del market cap total cripto</div>
+              <div style={{ fontSize: 7, color: "#888", fontFamily: "monospace" }}>CoinGecko</div>
             </div>
           )}
         </div>

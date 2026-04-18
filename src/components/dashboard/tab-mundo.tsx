@@ -14,6 +14,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, AreaChart, Area,
 } from "recharts"
+import { InfoTooltip } from "@/components/ui/info-tooltip"
+import { GLOSSARY } from "@/lib/glossary"
 
 function SubTabs({ tabs, active, onChange }: { tabs: { key: string; label: string }[]; active: string; onChange: (k: string) => void }) {
   return (
@@ -47,8 +49,8 @@ function ElectricidadMundialView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando datos de electricidad...</div>
-  if (!data || data.length === 0) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos disponibles.</div>
+  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando datos de electricidad...</div>
+  if (!data || data.length === 0) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Sin datos disponibles.</div>
 
   const lines = [
     { key: "China",                  name: "China",     color: "#FF433D" },
@@ -70,7 +72,7 @@ function ElectricidadMundialView() {
         yAxisLabel="TWh"
         defaultRange="all"
       />
-      <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
         Fuente: Our World in Data — Ember / Energy Institute Statistical Review · Licencia CC BY 4.0
       </div>
     </div>
@@ -116,8 +118,8 @@ function PetroleoView() {
       .catch(() => setLoading(false))
   }, [dataType])
 
-  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando datos de petróleo...</div>
-  if (!data) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos disponibles.</div>
+  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando datos de petróleo...</div>
+  if (!data) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Sin datos disponibles.</div>
 
   const lines = Array.from(selectedCountries)
     .map((country) => ({
@@ -224,7 +226,7 @@ function PetroleoView() {
         yAxisLabel={config.label}
         defaultRange="all"
       />
-      <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
         Fuente: {config.source}
       </div>
     </div>
@@ -254,8 +256,8 @@ function PolymarketView() {
       .catch(() => setLoading(false))
   }, [categoria])
 
-  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando mercados de predicción...</div>
-  if (!data) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos disponibles.</div>
+  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando mercados de predicción...</div>
+  if (!data) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Sin datos disponibles.</div>
 
   return (
     <div>
@@ -315,7 +317,7 @@ function PolymarketView() {
                   <div style={{ color: "#FFA028", fontWeight: 600, marginBottom: 4, fontSize: 10, lineHeight: "1.3" }}>
                     {market.question}
                   </div>
-                  <div style={{ color: "#666", fontSize: 8, marginBottom: 4 }}>
+                  <div style={{ color: "#999", fontSize: 8, marginBottom: 4 }}>
                     {market.category} · Vence: {new Date(market.endDate).toLocaleDateString("es-AR")}
                   </div>
                 </div>
@@ -360,7 +362,7 @@ function PolymarketView() {
           })}
         </div>
 
-        <div style={{ padding: "4px 8px", fontSize: 8, color: "#333", borderTop: "1px solid #111", background: "#0a0a0a" }}>
+        <div style={{ padding: "4px 8px", fontSize: 8, color: "#777", borderTop: "1px solid #111", background: "#0a0a0a" }}>
           Fuente: Polymarket CLOB API · Odds implícitas en tiempo real · Mayor volumen = mayor confianza en el mercado
         </div>
       </div>
@@ -381,8 +383,8 @@ function IAView() {
       .catch(() => setLoading(false))
   }, [segmento])
 
-  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando datos de IA...</div>
-  if (!data) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos disponibles.</div>
+  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando datos de IA...</div>
+  if (!data) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Sin datos disponibles.</div>
 
   return (
     <div>
@@ -448,7 +450,7 @@ function IAView() {
               </tbody>
             </table>
           </div>
-          <div style={{ padding: "4px 8px", fontSize: 8, color: "#333", borderTop: "1px solid #111", background: "#0a0a0a" }}>
+          <div style={{ padding: "4px 8px", fontSize: 8, color: "#777", borderTop: "1px solid #111", background: "#0a0a0a" }}>
             MMLU: General Knowledge | HumanEval: Code | GSM8K: Math | MATH: Advanced Math
           </div>
         </div>
@@ -471,7 +473,7 @@ function IAView() {
                 {model.tags && model.tags.length > 0 && (
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                     {model.tags.slice(0, 3).map((tag: string) => (
-                      <span key={tag} style={{ background: "#1a1a1a", padding: "2px 6px", fontSize: 7, color: "#666", borderRadius: 2 }}>
+                      <span key={tag} style={{ background: "#1a1a1a", padding: "2px 6px", fontSize: 7, color: "#999", borderRadius: 2 }}>
                         {tag}
                       </span>
                     ))}
@@ -480,7 +482,7 @@ function IAView() {
               </div>
             ))}
           </div>
-          <div style={{ padding: "4px 8px", fontSize: 8, color: "#333", borderTop: "1px solid #111", background: "#0a0a0a" }}>
+          <div style={{ padding: "4px 8px", fontSize: 8, color: "#777", borderTop: "1px solid #111", background: "#0a0a0a" }}>
             Fuente: Hugging Face Hub API · Datos: modelos con tag 'gpt' ordenados por descargas
           </div>
         </div>
@@ -567,8 +569,8 @@ function SojaView() {
     }
   }, [segmento])
 
-  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando datos de soja...</div>
-  if (!data) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos disponibles.</div>
+  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando datos de soja...</div>
+  if (!data) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Sin datos disponibles.</div>
 
   const isPrecio = segmento === "precio"
   const lines = isPrecio
@@ -652,7 +654,7 @@ function SojaView() {
         yAxisLabel={segmento === "produccion" ? "Millones de toneladas" : "USD/bushel"}
         defaultRange="all"
       />
-      <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
         Fuente: {segmento === "produccion" ? "Our World in Data (FAO)" : "Yahoo Finance — Contrato ZS=F"}
       </div>
     </div>
@@ -679,8 +681,8 @@ function MacroComparadaView() {
       .catch(() => setLoading(false))
   }, [indicador])
 
-  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando macro comparada...</div>
-  if (!rawData || Object.keys(rawData).length === 0) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Sin datos disponibles.</div>
+  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando macro comparada...</div>
+  if (!rawData || Object.keys(rawData).length === 0) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Sin datos disponibles.</div>
 
   // Transform { ARG: [["2023", 133.5], ...] } → [{ date: "2023-01-01", Argentina: 133.5, ... }]
   const yearMap: Record<string, Record<string, unknown>> = {}
@@ -740,7 +742,7 @@ function MacroComparadaView() {
         yAxisLabel="%"
         defaultRange="all"
       />
-      <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
         Fuente: World Bank Open Data · Licencia CC BY 4.0
       </div>
     </div>
@@ -808,8 +810,9 @@ function QuoteCard({
         flex: "1 1 80px",
       }}
     >
-      <div style={{ fontSize: 9, color: selected ? "#FFA028" : "#666", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+      <div style={{ fontSize: 9, color: selected ? "#FFA028" : "#666", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, display: "flex", alignItems: "center", gap: 2 }}>
         {TICKER_LABELS[nombre] ?? nombre.toUpperCase()}
+        {(() => { const lbl = TICKER_LABELS[nombre] ?? nombre.toUpperCase(); const g = GLOSSARY[lbl]; return g ? <InfoTooltip text={g.text} source={g.source} url={g.url} position="bottom" /> : null })()}
       </div>
       <div style={{ fontSize: 14, fontFamily: "monospace", fontWeight: 700, color: "#fff" }}>
         {data?.precio != null ? data.precio.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "—"}
@@ -877,13 +880,13 @@ function KPI({
         flex: "1 1 160px",
       }}
     >
-      <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+      <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
         {label}
       </div>
       <div style={{ fontSize: 20, fontWeight: 700, color: valueColor ?? "#FFA028", fontFamily: "monospace" }}>
         {value ?? "—"}
       </div>
-      <div style={{ fontSize: 9, color: "#444", marginTop: 2 }}>{unit}</div>
+      <div style={{ fontSize: 9, color: "#888", marginTop: 2 }}>{unit}</div>
       {var1 != null && (
         <div style={{ fontSize: 10, color: varColor(var1), marginTop: 4 }}>
           {varSign(var1)}{fmtNum(var1)}% {var1Label}
@@ -1051,7 +1054,7 @@ function PoblacionSerieChart({ country, selectedYear }: { country: string; selec
     <div className="bbg-panel" style={{ marginTop: 8 }}>
       <div className="bbg-panel-header">POBLACIÓN TOTAL — EVOLUCIÓN 1950–2100</div>
       {loading ? (
-        <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11 }}>Cargando serie de población...</div>
+        <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11 }}>Cargando serie de población...</div>
       ) : (
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={serie} margin={{ top: 8, right: 20, left: 10, bottom: 4 }}>
@@ -1111,7 +1114,7 @@ function PiramidesView() {
 
           {/* Selector de país */}
           <div>
-            <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>País</div>
+            <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>País</div>
             <select
               value={country}
               onChange={e => setCountry(e.target.value)}
@@ -1123,7 +1126,7 @@ function PiramidesView() {
 
           {/* Selector de año */}
           <div style={{ flex: "1 1 200px" }}>
-            <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+            <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
               Año:&nbsp;
               <span style={{ color: year > 2025 ? "#FFA028" : "#4AF6C3", fontWeight: 700, fontFamily: "monospace" }}>{year}</span>
               {year > 2025 && <span style={{ color: "#FFA028", marginLeft: 6 }}>· PROYECCIÓN ONU</span>}
@@ -1133,14 +1136,14 @@ function PiramidesView() {
               onChange={e => setYear(Number(e.target.value))}
               style={{ width: "100%", accentColor: "#FFA028", cursor: "pointer" }}
             />
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#444", marginTop: 2 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#888", marginTop: 2 }}>
               <span>1950</span><span>2025</span><span>2100</span>
             </div>
           </div>
 
           {/* Accesos rápidos de año */}
           <div>
-            <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Acceso rápido</div>
+            <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Acceso rápido</div>
             <div style={{ display: "flex", gap: 2 }}>
               {[1950, 1975, 2000, 2025, 2050, 2075, 2100].map(y => (
                 <button key={y} onClick={() => setYear(y)} style={{
@@ -1161,7 +1164,7 @@ function PiramidesView() {
                 { label: "Mujeres", value: `${(meta.total_f / 1e6).toFixed(1)}M`, color: "#F48FB1" },
               ].map(s => (
                 <div key={s.label} style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 8, color: "#555", textTransform: "uppercase" }}>{s.label}</div>
+                  <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase" }}>{s.label}</div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: s.color, fontFamily: "monospace" }}>{s.value}</div>
                 </div>
               ))}
@@ -1177,16 +1180,16 @@ function PiramidesView() {
           {meta?.proyeccion && <span style={{ fontSize: 8, fontWeight: 400, color: "#FFA028", marginLeft: 8 }}>· PROYECCIÓN ONU</span>}
         </div>
         {loading ? (
-          <div style={{ padding: 40, color: "#555", textAlign: "center", fontSize: 11 }}>Cargando pirámide de {paisName}...</div>
+          <div style={{ padding: 40, color: "#888", textAlign: "center", fontSize: 11 }}>Cargando pirámide de {paisName}...</div>
         ) : data.length > 0 ? (
           <>
             <PyramidChart data={data} height={480} />
-            <div style={{ padding: "4px 12px 8px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+            <div style={{ padding: "4px 12px 8px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
               Fuente: populationpyramid.net · UN World Population Prospects 2024 · Años &gt;2025 = proyecciones ONU · Código de país: {country}
             </div>
           </>
         ) : (
-          <div style={{ padding: 40, color: "#444", textAlign: "center", fontSize: 11 }}>Sin datos disponibles para {paisName} {year}</div>
+          <div style={{ padding: 40, color: "#888", textAlign: "center", fontSize: 11 }}>Sin datos disponibles para {paisName} {year}</div>
         )}
       </div>
 
@@ -1208,8 +1211,8 @@ function DesigualdadView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Cargando indicadores de desigualdad...</div>
-  if (!data) return <div style={{ padding: 12, color: "#444", fontSize: 11 }}>Sin datos disponibles</div>
+  if (loading) return <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Cargando indicadores de desigualdad...</div>
+  if (!data) return <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Sin datos disponibles</div>
 
   const giniUltimo    = data.gini_arg[data.gini_arg.length - 1]
   const giniMin       = data.gini_arg.reduce((a, b) => b[1] < a[1] ? b : a, data.gini_arg[0])
@@ -1249,7 +1252,7 @@ function DesigualdadView() {
             lines={[{ key: "gini", name: "Gini", color: "#FFA028" }]}
             height={240} yAxisLabel="Índice Gini" formatValue={v => fmtNum(v, 1)} defaultRange="all" showZeroLine={false} />
         </div>
-        <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+        <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
           CEDLAS con base en EPH/INDEC · Empalme metodológico entre encuestas · Cobertura urbana · vía Argendata/Fundar (CC BY-NC-ND 4.0)
         </div>
       </>)}
@@ -1283,7 +1286,7 @@ function DesigualdadView() {
             })}
           </div>
         </div>
-        <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111", marginTop: 4 }}>
+        <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111", marginTop: 4 }}>
           SEDLAC/Banco Mundial · Snapshot de último año disponible por país · vía Argendata/Fundar (CC BY-NC-ND 4.0)
         </div>
       </>)}
@@ -1303,7 +1306,7 @@ function DesigualdadView() {
             ]}
             height={240} yAxisLabel="%" formatValue={v => `${fmtNum(v, 1)}%`} defaultRange="all" />
         </div>
-        <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+        <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
           Def. productiva: empleo en unidades de baja productividad · Def. legal: sin aportes al sistema previsional ·
           SEDLAC/Banco Mundial con base en EPH · vía Argendata/Fundar (CC BY-NC-ND 4.0)
         </div>
@@ -1360,7 +1363,7 @@ export function TabMundo() {
   }, [selectedTicker, fetchHistorico])
 
   if (loading) {
-    return <div style={{ padding: 24, color: "#555", fontSize: 11, textAlign: "center" }}>Cargando mercados...</div>
+    return <div style={{ padding: 24, color: "#888", fontSize: 11, textAlign: "center" }}>Cargando mercados...</div>
   }
 
   const label = TICKER_LABELS[selectedTicker] ?? selectedTicker.toUpperCase()
@@ -1371,7 +1374,7 @@ export function TabMundo() {
       <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between" }}>
         <span>MERCADOS MUNDIALES — YAHOO FINANCE / OWID</span>
         {lastUpdate && mundoTab === "mercados" && (
-          <span style={{ color: "#444", fontWeight: 400 }}>
+          <span style={{ color: "#888", fontWeight: 400 }}>
             UPD {new Date(lastUpdate).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
           </span>
         )}
@@ -1401,7 +1404,7 @@ export function TabMundo() {
       {/* Groups */}
       {Object.entries(GRUPOS).map(([grupo, tickers]) => (
         <div key={grupo} style={{ marginBottom: 1 }}>
-          <div style={{ padding: "3px 8px", background: "#0a0a0a", fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid #111" }}>
+          <div style={{ padding: "3px 8px", background: "#0a0a0a", fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid #111" }}>
             {grupo}
           </div>
           <div style={{ display: "flex", gap: 1, flexWrap: "wrap", background: "#111", padding: 1, overflowX: "auto" }}>
@@ -1420,7 +1423,7 @@ export function TabMundo() {
 
       {/* Historical series */}
       <div style={{ background: "#060606", border: "1px solid #1a1a1a", margin: 1 }}>
-        <div style={{ padding: "4px 8px", background: "#0d0d0d", borderBottom: "1px solid #111", fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>
+        <div style={{ padding: "4px 8px", background: "#0d0d0d", borderBottom: "1px solid #111", fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1 }}>
           {label} — Serie histórica (1 año) ·{" "}
           {selectedData?.precio != null ? selectedData.precio.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "—"}{" "}
           <span style={{ color: (selectedData?.variacion_pct ?? 0) >= 0 ? "#4AF6C3" : "#FF433D" }}>
@@ -1430,15 +1433,15 @@ export function TabMundo() {
           </span>
         </div>
         {histLoading ? (
-          <div style={{ padding: 16, color: "#555", fontSize: 11, textAlign: "center" }}>Cargando histórico...</div>
+          <div style={{ padding: 16, color: "#888", fontSize: 11, textAlign: "center" }}>Cargando histórico...</div>
         ) : historico && historico.length > 0 ? (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  <th style={{ padding: "3px 8px", fontSize: 9, color: "#555", textAlign: "left", borderBottom: "1px solid #111" }}>Fecha</th>
-                  <th style={{ padding: "3px 8px", fontSize: 9, color: "#555", textAlign: "right", borderBottom: "1px solid #111" }}>Precio</th>
-                  <th style={{ padding: "3px 8px", fontSize: 9, color: "#555", textAlign: "right", borderBottom: "1px solid #111" }}>Var % (vs anterior)</th>
+                  <th style={{ padding: "3px 8px", fontSize: 9, color: "#888", textAlign: "left", borderBottom: "1px solid #111" }}>Fecha</th>
+                  <th style={{ padding: "3px 8px", fontSize: 9, color: "#888", textAlign: "right", borderBottom: "1px solid #111" }}>Precio</th>
+                  <th style={{ padding: "3px 8px", fontSize: 9, color: "#888", textAlign: "right", borderBottom: "1px solid #111" }}>Var % (vs anterior)</th>
                 </tr>
               </thead>
               <tbody>
@@ -1465,7 +1468,7 @@ export function TabMundo() {
             </table>
           </div>
         ) : (
-          <div style={{ padding: 12, color: "#555", fontSize: 11 }}>Sin datos históricos disponibles.</div>
+          <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Sin datos históricos disponibles.</div>
         )}
       </div>
       </>)}

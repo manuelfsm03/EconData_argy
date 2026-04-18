@@ -123,7 +123,7 @@ export function CommandPalette({ isOpen, onClose, onNavigate }: CommandPalettePr
       >
         {/* Input */}
         <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid #1a1a1a", padding: "10px 14px", gap: 10 }}>
-          <span style={{ color: "#444", fontSize: 14 }}>🔍</span>
+          <span style={{ color: "#888", fontSize: 14 }}>🔍</span>
           <input
             ref={inputRef}
             value={query}
@@ -134,13 +134,13 @@ export function CommandPalette({ isOpen, onClose, onNavigate }: CommandPalettePr
               color: "#fff", fontSize: 13, fontFamily: "monospace",
             }}
           />
-          <span style={{ fontSize: 9, color: "#333", border: "1px solid #222", padding: "2px 5px", fontFamily: "monospace" }}>ESC</span>
+          <span style={{ fontSize: 9, color: "#777", border: "1px solid #333", padding: "2px 5px", fontFamily: "monospace" }}>ESC</span>
         </div>
 
         {/* Results */}
         <div>
           {filtered.length === 0 && (
-            <div style={{ padding: "16px 14px", fontSize: 11, color: "#444", fontFamily: "monospace", textAlign: "center" }}>
+            <div style={{ padding: "16px 14px", fontSize: 11, color: "#888", fontFamily: "monospace", textAlign: "center" }}>
               Sin resultados para &ldquo;{query}&rdquo;
             </div>
           )}
@@ -161,7 +161,7 @@ export function CommandPalette({ isOpen, onClose, onNavigate }: CommandPalettePr
                   {highlight(item.label)}
                 </div>
                 {item.description && (
-                  <div style={{ fontSize: 9, color: "#444", marginTop: 2, fontFamily: "monospace" }}>
+                  <div style={{ fontSize: 9, color: "#888", marginTop: 2, fontFamily: "monospace" }}>
                     {item.description}
                   </div>
                 )}
@@ -183,8 +183,8 @@ export function CommandPalette({ isOpen, onClose, onNavigate }: CommandPalettePr
         {/* Footer */}
         <div style={{ padding: "6px 14px", borderTop: "1px solid #111", display: "flex", gap: 12 }}>
           {[["↑↓", "navegar"], ["↵", "ir"], ["ESC", "cerrar"]].map(([key, label]) => (
-            <span key={key} style={{ fontSize: 8, color: "#333", fontFamily: "monospace" }}>
-              <span style={{ color: "#555" }}>{key}</span> {label}
+            <span key={key} style={{ fontSize: 8, color: "#777", fontFamily: "monospace" }}>
+              <span style={{ color: "#aaa" }}>{key}</span> {label}
             </span>
           ))}
         </div>

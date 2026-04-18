@@ -254,7 +254,7 @@ function StrokeSankeyChart({
         return (
           <div style={{ position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)", background: "#1A1A1A", border: "1px solid #333", borderRadius: 6, padding: "8px 16px", fontSize: 10, color: "#E0E0E0", pointerEvents: "none", zIndex: 100, whiteSpace: "nowrap", boxShadow: "0 4px 20px rgba(0,0,0,0.6)", fontFamily: "inherit" }}>
             <span style={{ color: lk.source.color, fontWeight: 700 }}>{lk.source.name}</span>
-            <span style={{ color: "#555", margin: "0 8px" }}>→</span>
+            <span style={{ color: "#888", margin: "0 8px" }}>→</span>
             <span style={{ color: lk.target.color, fontWeight: 700 }}>{lk.target.name}</span>
             <span style={{ color: "#FFA028", marginLeft: 12, fontWeight: 700 }}>{formatValue(lk.value)}</span>
           </div>
@@ -297,7 +297,7 @@ function BreakdownTable({ getValue, total, period }: {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>{["Impuesto / Concepto", "Monto ARS", "% Total", ""].map(h => (
-              <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "#555", textAlign: h === "Impuesto / Concepto" ? "left" : "right", borderBottom: "1px solid #1a1a1a" }}>{h}</th>
+              <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "#888", textAlign: h === "Impuesto / Concepto" ? "left" : "right", borderBottom: "1px solid #1a1a1a" }}>{h}</th>
             ))}</tr>
           </thead>
           <tbody>
@@ -321,7 +321,7 @@ function BreakdownTable({ getValue, total, period }: {
                   </tr>
                   {note && (
                     <tr key={`${i}-note`} style={{ borderBottom: "1px solid #0d0d0d" }}>
-                      <td colSpan={4} style={{ padding: "1px 8px 5px 22px", fontSize: 9, color: "#444", fontStyle: "italic" }}>
+                      <td colSpan={4} style={{ padding: "1px 8px 5px 22px", fontSize: 9, color: "#888", fontStyle: "italic" }}>
                         ↳ {note}
                       </td>
                     </tr>
@@ -332,7 +332,7 @@ function BreakdownTable({ getValue, total, period }: {
             <tr style={{ borderTop: "1px solid #333" }}>
               <td style={{ padding: "5px 8px", fontSize: 10, fontWeight: 700, color: "#FFA028" }}>TOTAL RECAUDACIÓN</td>
               <td style={{ padding: "5px 8px", fontSize: 10, textAlign: "right", fontFamily: "monospace", color: "#FFA028", fontWeight: 700 }}>{fmtM(total)}</td>
-              <td style={{ padding: "5px 8px", fontSize: 10, textAlign: "right", color: "#555" }}>100.0%</td>
+              <td style={{ padding: "5px 8px", fontSize: 10, textAlign: "right", color: "#888" }}>100.0%</td>
               <td />
             </tr>
           </tbody>
@@ -350,9 +350,9 @@ function KPI({ label, value, unit, var1, var1Label, var2, var2Label, valueColor 
 }) {
   return (
     <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "10px 14px", flex: "1 1 160px" }}>
-      <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 20, fontWeight: 700, color: valueColor ?? "#FFA028", fontFamily: "monospace" }}>{value ?? "—"}</div>
-      <div style={{ fontSize: 9, color: "#444", marginTop: 2 }}>{unit}</div>
+      <div style={{ fontSize: 9, color: "#888", marginTop: 2 }}>{unit}</div>
       {var1 != null && <div style={{ fontSize: 10, color: varColor(var1), marginTop: 4 }}>{varSign(var1)}{fmtNum(var1)}% {var1Label}</div>}
       {var2 != null && <div style={{ fontSize: 10, color: varColor(var2) }}>{varSign(var2)}{fmtNum(var2)}% {var2Label}</div>}
     </div>
@@ -480,8 +480,8 @@ export function FiscalSankeyView() {
     [...new Set((fiscalData.recaudacion ?? []).map(([d]) => d.slice(0, 4)))]
       .sort((a, b) => b.localeCompare(a))
 
-  if (loading)     return <div style={{ padding: 48, color: "#555", fontSize: 11, textAlign: "center" }}>Cargando datos fiscales...</div>
-  if (!fiscalData) return <div style={{ padding: 24, color: "#444", fontSize: 11 }}>Sin datos disponibles</div>
+  if (loading)     return <div style={{ padding: 48, color: "#888", fontSize: 11, textAlign: "center" }}>Cargando datos fiscales...</div>
+  if (!fiscalData) return <div style={{ padding: 24, color: "#888", fontSize: 11 }}>Sin datos disponibles</div>
 
   // ── Valores mensuales ───────────────────────────────────────────────────────
   const iva          = getValue("rec_iva")
@@ -636,7 +636,7 @@ export function FiscalSankeyView() {
       {/* ── Header ── */}
       <div style={{ background: "linear-gradient(180deg,#111 0%,#0A0A0A 100%)", borderBottom: "1px solid #1A1A1A", padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <div>
-          <div style={{ fontSize: 9, color: "#555", letterSpacing: 2, textTransform: "uppercase" }}>Sector Público Nacional · Flujo Fiscal</div>
+          <div style={{ fontSize: 9, color: "#888", letterSpacing: 2, textTransform: "uppercase" }}>Sector Público Nacional · Flujo Fiscal</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: "#FFA028", marginTop: 2 }}>ANÁLISIS FISCAL — {periodLabel}</div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -685,9 +685,9 @@ export function FiscalSankeyView() {
               { label: resFinanciero !== 0 ? "RESULTADO FINANCIERO" : "RESULTADO FINANCIERO (est.)", value: resFinanciero !== 0 ? resFinanciero : flujo.totalIngresos - flujo.totalGastos, color: (resFinanciero !== 0 ? resFinanciero : flujo.totalIngresos - flujo.totalGastos) >= 0 ? "#4AF6C3" : "#FF433D" },
             ].map(({ label, value, color }) => (
               <div key={label} style={{ background: "#0D0D0D", padding: "10px 14px" }}>
-                <div style={{ fontSize: 9, color: "#555", letterSpacing: 1.5, textTransform: "uppercase" }}>{label}</div>
+                <div style={{ fontSize: 9, color: "#888", letterSpacing: 1.5, textTransform: "uppercase" }}>{label}</div>
                 <div style={{ fontSize: 18, fontWeight: 700, color, marginTop: 2, fontFamily: "inherit" }}>{fmtFull(value)}</div>
-                <div style={{ fontSize: 9, color: "#444", marginTop: 1 }}>$ millones</div>
+                <div style={{ fontSize: 9, color: "#888", marginTop: 1 }}>$ millones</div>
               </div>
             ))}
           </div>
@@ -713,7 +713,7 @@ export function FiscalSankeyView() {
                           <tr key={name} style={{ borderBottom: note ? "none" : "1px solid #151515" }}>
                             <td style={{ padding: "3px 0", fontSize: 10, color: INCOME_COLORS[name] ?? "#888" }}>{name}</td>
                             <td style={{ padding: "3px 0", fontSize: 10, color: "#E0E0E0", textAlign: "right" }}>{fmtFull(value)}</td>
-                            <td style={{ padding: "3px 0 3px 8px", fontSize: 9, color: "#555", textAlign: "right", width: 44 }}>{((value / flujo.totalIngresos) * 100).toFixed(1)}%</td>
+                            <td style={{ padding: "3px 0 3px 8px", fontSize: 9, color: "#888", textAlign: "right", width: 44 }}>{((value / flujo.totalIngresos) * 100).toFixed(1)}%</td>
                             <td style={{ padding: "3px 0 3px 6px", width: 60 }}>
                               <div style={{ height: 4, borderRadius: 2, background: "#1A1A1A" }}>
                                 <div style={{ height: 4, borderRadius: 2, background: INCOME_COLORS[name] ?? "#888", width: `${(value / flujo.totalIngresos) * 100}%`, opacity: 0.7 }} />
@@ -722,7 +722,7 @@ export function FiscalSankeyView() {
                           </tr>
                           {note && (
                             <tr key={`${name}-note`} style={{ borderBottom: "1px solid #151515" }}>
-                              <td colSpan={4} style={{ padding: "1px 0 4px 0", fontSize: 8, color: "#3a3a3a", fontStyle: "italic" }}>
+                              <td colSpan={4} style={{ padding: "1px 0 4px 0", fontSize: 8, color: "#777", fontStyle: "italic" }}>
                                 ↳ {note}
                               </td>
                             </tr>
@@ -741,7 +741,7 @@ export function FiscalSankeyView() {
                   <tr key={name} style={{ borderBottom: "1px solid #151515" }}>
                     <td style={{ padding: "3px 0", fontSize: 10, color: EXPENSE_COLORS[name] ?? "#888" }}>{name}</td>
                     <td style={{ padding: "3px 0", fontSize: 10, color: "#E0E0E0", textAlign: "right" }}>{fmtFull(value)}</td>
-                    <td style={{ padding: "3px 0 3px 8px", fontSize: 9, color: "#555", textAlign: "right", width: 44 }}>{((value / flujo.totalGastos) * 100).toFixed(1)}%</td>
+                    <td style={{ padding: "3px 0 3px 8px", fontSize: 9, color: "#888", textAlign: "right", width: 44 }}>{((value / flujo.totalGastos) * 100).toFixed(1)}%</td>
                     <td style={{ padding: "3px 0 3px 6px", width: 60 }}>
                       <div style={{ height: 4, borderRadius: 2, background: "#1A1A1A" }}>
                         <div style={{ height: 4, borderRadius: 2, background: EXPENSE_COLORS[name] ?? "#888", width: `${(value / flujo.totalGastos) * 100}%`, opacity: 0.7 }} />
@@ -753,8 +753,8 @@ export function FiscalSankeyView() {
             </div>
           </div>
           <div style={{ padding: "7px 14px", borderTop: "1px solid #1A1A1A", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 4 }}>
-            <div style={{ fontSize: 8, color: "#333" }}>FUENTE: ARCA · apis.datos.gob.ar · datasets 172 / 378 / 379 / 452</div>
-            <div style={{ fontSize: 8, color: "#333" }}>⚠ Gastos: proporciones estimadas (Presupuesto Abierto). Ingresos: datos reales ARCA.</div>
+            <div style={{ fontSize: 8, color: "#777" }}>FUENTE: ARCA · apis.datos.gob.ar · datasets 172 / 378 / 379 / 452</div>
+            <div style={{ fontSize: 8, color: "#777" }}>⚠ Gastos: proporciones estimadas (Presupuesto Abierto). Ingresos: datos reales ARCA.</div>
           </div>
         </div>
       )}
@@ -772,7 +772,7 @@ export function FiscalSankeyView() {
             leftColor="#4AF6C3" centerColor="#FFA028" rightColor="#4FC3F7"
           />
           <BreakdownTable getValue={getValue} total={totalRec} period={period} />
-          <div style={{ padding: "6px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+          <div style={{ padding: "6px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
             Fuente: ARCA · apis.datos.gob.ar · datasets 172 / 452 · Distribución federal: Ley 23548 (simplificada)
           </div>
         </div>
@@ -789,7 +789,7 @@ export function FiscalSankeyView() {
             leftLabel="← FUENTES" centerLabel="TESORO" rightLabel="GASTOS →"
             leftColor="#4AF6C3" centerColor="#FFA028" rightColor="#FF433D"
           />
-          <div style={{ padding: "6px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+          <div style={{ padding: "6px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
             Fuente: ARCA · apis.datos.gob.ar · datasets 172 / 452 · Gastos: proporciones aproximadas del Presupuesto vigente
           </div>
         </div>
@@ -806,7 +806,7 @@ export function FiscalSankeyView() {
             leftLabel="← INGRESOS" centerLabel="SPN" rightLabel="USOS →"
             leftColor="#4AF6C3" centerColor="#4AF6C3" rightColor="#FF433D"
           />
-          <div style={{ padding: "6px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+          <div style={{ padding: "6px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
             Fuente: ARCA · apis.datos.gob.ar · Esquema Ahorro-Inversión-Financiamiento (Sec. de Hacienda)
           </div>
         </div>
@@ -824,9 +824,9 @@ export function FiscalSankeyView() {
               { label: "SUPERÁVIT ESTIMADO", value: flujoA.superavit,     color: flujoA.superavit > 0 ? "#4AF6C3" : "#555" },
             ].map(({ label, value, color }) => (
               <div key={label} style={{ background: "#0D0D0D", padding: "10px 14px" }}>
-                <div style={{ fontSize: 9, color: "#555", letterSpacing: 1.5, textTransform: "uppercase" }}>{label}</div>
+                <div style={{ fontSize: 9, color: "#888", letterSpacing: 1.5, textTransform: "uppercase" }}>{label}</div>
                 <div style={{ fontSize: 18, fontWeight: 700, color, marginTop: 2, fontFamily: "inherit" }}>{fmtFull(value)}</div>
-                <div style={{ fontSize: 9, color: "#444", marginTop: 1 }}>$ millones · {annualYear}</div>
+                <div style={{ fontSize: 9, color: "#888", marginTop: 1 }}>$ millones · {annualYear}</div>
               </div>
             ))}
           </div>
@@ -842,7 +842,7 @@ export function FiscalSankeyView() {
           <div className="bbg-panel" style={{ marginTop: 8 }}>
             <div className="bbg-panel-header">
               RESULTADO PRIMARIO — EVOLUCIÓN ANUAL
-              <span style={{ fontSize: 8, fontWeight: 400, color: "#555", marginLeft: 8 }}>acumulado por año · base caja</span>
+              <span style={{ fontSize: 8, fontWeight: 400, color: "#888", marginLeft: 8 }}>acumulado por año · base caja</span>
             </div>
             <div style={{ padding: "12px 8px 4px" }}>
               <ResponsiveContainer width="100%" height={200}>
@@ -874,8 +874,8 @@ export function FiscalSankeyView() {
           </div>
 
           <div style={{ padding: "7px 14px", borderTop: "1px solid #1A1A1A", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 4 }}>
-            <div style={{ fontSize: 8, color: "#333" }}>FUENTE: ARCA · apis.datos.gob.ar · datasets 172 / 378 / 379 / 452</div>
-            <div style={{ fontSize: 8, color: "#333" }}>⚠ Gastos anuales: proporciones estimadas. Resultado primario: suma de flujos mensuales.</div>
+            <div style={{ fontSize: 8, color: "#777" }}>FUENTE: ARCA · apis.datos.gob.ar · datasets 172 / 378 / 379 / 452</div>
+            <div style={{ fontSize: 8, color: "#777" }}>⚠ Gastos anuales: proporciones estimadas. Resultado primario: suma de flujos mensuales.</div>
           </div>
         </div>
       )}

@@ -266,6 +266,22 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     url: "https://www.argentina.gob.ar/cnv",
   },
 
+  YTM: {
+    text: "Yield to Maturity — Rendimiento al Vencimiento. Tasa de retorno anualizada si se compra el bono al precio actual y se mantiene hasta el vencimiento, reinvirtiendo todos los cupones. Equivalente a la TIR en inglés.",
+    source: "BYMA",
+    url: "https://www.byma.com.ar/",
+  },
+  EMBI: {
+    text: "Emerging Markets Bond Index. Índice de JP Morgan que mide el spread (sobretasa) que pagan los bonos soberanos de mercados emergentes sobre los Treasuries de EEUU. El EMBI+ Argentina es el indicador de riesgo país más utilizado.",
+    source: "J.P. Morgan",
+    url: "https://www.jpmorgan.com/insights/research/emerging-markets-research",
+  },
+  LECAP: {
+    text: "Letra de Capitalización del Tesoro argentino. Instrumento de deuda a corto plazo emitido por la Secretaría de Finanzas que capitaliza intereses (no paga cupones). Compite directamente con el plazo fijo bancario.",
+    source: "Secretaría de Finanzas",
+    url: "https://www.argentina.gob.ar/economia/finanzas",
+  },
+
   // ── Renta Variable ───────────────────────────────────────────────────────────
   MERVAL: {
     text: "Índice bursátil de referencia de la Bolsa de Buenos Aires. Mide el desempeño de las empresas de mayor capitalización y liquidez que cotizan en BYMA.",

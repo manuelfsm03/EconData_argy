@@ -112,7 +112,7 @@ export function PriceTicker() {
             whiteSpace: "nowrap",
           }}
         >
-          <span style={{ fontSize: 9, color: "#555", letterSpacing: 1, textTransform: "uppercase", fontFamily: "monospace" }}>
+          <span style={{ fontSize: 9, color: "#888", letterSpacing: 1, textTransform: "uppercase", fontFamily: "monospace" }}>
             {item.label}
           </span>
           <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", fontFamily: "monospace" }}>

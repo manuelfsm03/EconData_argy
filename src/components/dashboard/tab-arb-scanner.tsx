@@ -241,7 +241,7 @@ export function TabArbScanner() {
               </div>
             ))}
           {arbData.filter(d => d.spreadPercent >= 1.0).length === 0 && (
-            <div style={{ padding: "16px", textAlign: "center", color: "#666" }}>
+            <div style={{ padding: "16px", textAlign: "center", color: "#999" }}>
               No hay oportunidades destacadas
               <br />
               <span style={{ fontSize: "10px" }}>(Spread &lt; 1.0%)</span>
@@ -272,7 +272,7 @@ export function TabArbScanner() {
               <span>&lt; 0.5% Normal</span>
             </div>
           </div>
-          <div style={{ marginTop: "12px", paddingTop: "8px", borderTop: "1px solid #333", color: "#666", fontSize: "10px" }}>
+          <div style={{ marginTop: "12px", paddingTop: "8px", borderTop: "1px solid #333", color: "#999", fontSize: "10px" }}>
             Actualización automática cada 30 segundos
             {lastUpdate && (
               <div>Última: {lastUpdate.toLocaleTimeString("es-AR")}</div>
@@ -288,7 +288,7 @@ export function TabArbScanner() {
           display: "flex", 
           alignItems: "center", 
           justifyContent: "center",
-          color: "#666",
+          color: "#999",
           fontSize: "11px"
         }}>
           <div style={{ textAlign: "center" }}>

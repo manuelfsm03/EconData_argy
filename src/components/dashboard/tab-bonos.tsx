@@ -16,6 +16,8 @@ import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LineChart, Line, ReferenceLine, Legend,
 } from "recharts"
+import { InfoTooltip } from "@/components/ui/info-tooltip"
+import { GLOSSARY } from "@/lib/glossary"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -147,7 +149,7 @@ function BondRow({ bond, onClick, selected }: { bond: SovereignBond; onClick: ()
       <td style={{ padding: "5px 8px", fontSize: 11, color: changeColor(bond.change1D), textAlign: "right", fontFamily: "monospace" }}>
         {fmtPctChange(bond.change1D)}
       </td>
-      <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", textAlign: "right" }}>
+      <td style={{ padding: "5px 8px", fontSize: 10, color: "#888", textAlign: "right" }}>
         {bond.vencimiento.slice(0, 7)}
       </td>
     </tr>
@@ -166,7 +168,7 @@ function BondGroup({ title, bonds, color, selectedTicker, onSelect }: {
       <div style={{ padding: "4px 8px", background: "#0d0d0d", borderBottom: `2px solid ${color}`, borderTop: "1px solid #1a1a1a" }}>
         <span style={{ fontSize: 10, color, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>{title}</span>
         {totalOut > 0 && (
-          <span style={{ fontSize: 9, color: "#444", marginLeft: 8 }}>
+          <span style={{ fontSize: 9, color: "#888", marginLeft: 8 }}>
             ${totalOut.toFixed(1)}B outstanding
           </span>
         )}
@@ -176,7 +178,7 @@ function BondGroup({ title, bonds, color, selectedTicker, onSelect }: {
           <tr>
             {["Ticker", "Precio", "YTM", "Dur", "1D%", "Vto"].map((h, i) => (
               <th key={h} style={{
-                padding: "3px 8px", fontSize: 9, color: "#555",
+                padding: "3px 8px", fontSize: 9, color: "#888",
                 textAlign: i === 0 ? "left" : "right",
                 borderBottom: "1px solid #1a1a1a",
               }}>{h}</th>
@@ -194,7 +196,7 @@ function BondGroup({ title, bonds, color, selectedTicker, onSelect }: {
           ))}
           {/* Weighted average row */}
           <tr style={{ background: "#0a0a0a", borderTop: "1px solid #222" }}>
-            <td style={{ padding: "4px 8px", fontSize: 9, color: "#555", fontStyle: "italic" }}>W.Avg</td>
+            <td style={{ padding: "4px 8px", fontSize: 9, color: "#888", fontStyle: "italic" }}>W.Avg</td>
             <td colSpan={2} style={{ padding: "4px 8px", fontSize: 11, color: color, textAlign: "right", fontFamily: "monospace", fontWeight: 700 }}>
               {wavgTir != null ? wavgTir.toFixed(2) + "%" : "—"}
             </td>
@@ -213,11 +215,11 @@ function DetailPanel({ bond, onClose }: { bond: SovereignBond; onClose: () => vo
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
         <div>
           <span style={{ fontSize: 14, fontWeight: 700, color: "#FFA028" }}>{bond.ticker}</span>
-          <span style={{ fontSize: 10, color: "#666", marginLeft: 8 }}>{bond.nombre}</span>
+          <span style={{ fontSize: 10, color: "#999", marginLeft: 8 }}>{bond.nombre}</span>
           <span style={{ fontSize: 9, color: bond.ley === "NY" ? "#4488ff" : "#888", marginLeft: 8,
             background: "#111", padding: "1px 6px", borderRadius: 2 }}>{bond.ley} LAW</span>
         </div>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 14 }}>✕</button>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 14 }}>✕</button>
       </div>
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", background: "#111", padding: 1 }}>
         {[
@@ -231,9 +233,9 @@ function DetailPanel({ bond, onClose }: { bond: SovereignBond; onClose: () => vo
           { label: "VN Residual", value: fmtPct(bond.vnResidual), unit: "% orig" },
         ].map((kpi) => (
           <div key={kpi.label} style={{ flex: "1 1 120px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "8px 10px" }}>
-            <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>{kpi.label}</div>
+            <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>{kpi.label}</div>
             <div style={{ fontSize: 18, fontFamily: "monospace", fontWeight: 700, color: kpi.color ?? "#FFA028" }}>{kpi.value}</div>
-            {kpi.unit && <div style={{ fontSize: 9, color: "#444" }}>{kpi.unit}</div>}
+            {kpi.unit && <div style={{ fontSize: 9, color: "#888" }}>{kpi.unit}</div>}
           </div>
         ))}
       </div>
@@ -264,7 +266,7 @@ function SnapshotView({ bonds }: { bonds: SovereignBond[] }) {
         </div>
       )}
 
-      <div style={{ padding: "4px 8px", fontSize: 9, color: "#333", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 8px", fontSize: 9, color: "#777", borderTop: "1px solid #111" }}>
         TIR: Newton-Raphson · Precios: api-merval (real-time) · Flujos: prospectos MECON
       </div>
     </div>
@@ -315,7 +317,7 @@ function SovereignCurve({ bonds }: { bonds: SovereignBond[] }) {
   const allData = [...nyData, ...arData]
   if (allData.length === 0) {
     return (
-      <div style={{ padding: 32, textAlign: "center", color: "#555", fontSize: 11 }}>
+      <div style={{ padding: 32, textAlign: "center", color: "#888", fontSize: 11 }}>
         No hay datos de YTM + Duration disponibles. Ejecutar seed de bonos y esperar que se calculen las TIRs.
       </div>
     )
@@ -328,7 +330,7 @@ function SovereignCurve({ bonds }: { bonds: SovereignBond[] }) {
 
   return (
     <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 4px 8px 0" }}>
-      <div style={{ padding: "0 12px 8px", fontSize: 9, color: "#555" }}>
+      <div style={{ padding: "0 12px 8px", fontSize: 9, color: "#888" }}>
         Curva soberana — YTM (%) vs Duration Modificada (años) · Puntos por encima de la curva = mayor rendimiento para igual duration
       </div>
       <ResponsiveContainer width="100%" height={340}>
@@ -399,7 +401,7 @@ function BondHeatmap({ bonds }: { bonds: SovereignBond[] }) {
 
   return (
     <div>
-      <div style={{ padding: "6px 12px", fontSize: 9, color: "#555" }}>
+      <div style={{ padding: "6px 12px", fontSize: 9, color: "#888" }}>
         Tamaño proporcional al outstanding · Verde = suba · Rojo = baja
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "0 1px 1px" }}>
@@ -429,7 +431,7 @@ function BondHeatmap({ bonds }: { bonds: SovereignBond[] }) {
                 <div style={{ fontSize: 9, color: tirColor(bond.tir), marginTop: 2 }}>
                   YTM: {fmtPct(bond.tir)}
                 </div>
-                <div style={{ fontSize: 9, color: "#444", marginTop: 1 }}>
+                <div style={{ fontSize: 9, color: "#888", marginTop: 1 }}>
                   {out > 0 ? `$${out.toFixed(1)}B` : ""}
                   {bond.ley === "NY" ? " · NY" : " · AR"}
                 </div>
@@ -438,7 +440,7 @@ function BondHeatmap({ bonds }: { bonds: SovereignBond[] }) {
           )
         })}
       </div>
-      <div style={{ padding: "4px 8px", fontSize: 9, color: "#333", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 8px", fontSize: 9, color: "#777", borderTop: "1px solid #111" }}>
         Outstanding: fuentes MECON · Variaciones: cierre anterior vs último precio
       </div>
     </div>
@@ -457,7 +459,7 @@ function LecapsScreener() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Cargando LECAPs...</div>
+  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando LECAPs...</div>
 
   const lecaps = instrumentos.filter((i) => i.tipo === "LECAP")
   const boncaps = instrumentos.filter((i) => i.tipo === "BONCAP")
@@ -471,7 +473,7 @@ function LecapsScreener() {
         <thead>
           <tr>
             {["Ticker", "Vencimiento", "Días", "Precio", "TEM", "TEA", "TIR anual"].map((h, i) => (
-              <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "#555", textAlign: i === 0 ? "left" : "right", borderBottom: "1px solid #1a1a1a" }}>
+              <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "#888", textAlign: i === 0 ? "left" : "right", borderBottom: "1px solid #1a1a1a" }}>
                 {h}
               </th>
             ))}
@@ -508,7 +510,7 @@ function LecapsScreener() {
     <div>
       <Section title="LECAPs — Letras del Tesoro Capitalizables" items={lecaps} />
       <Section title="BONCAPs — Bonos del Tesoro Capitalizables" items={boncaps} />
-      <div style={{ padding: "4px 8px", fontSize: 9, color: "#333", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 8px", fontSize: 9, color: "#777", borderTop: "1px solid #111" }}>
         Precios: actualización diaria via ByMA · Ordenados por vencimiento · TIR: compuesto continuo vs VN
       </div>
     </div>
@@ -534,7 +536,7 @@ function RpTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
     <div style={{ background: "#0d0d0d", border: "1px solid #333", padding: "8px 12px", fontSize: 11 }}>
-      <div style={{ color: "#666", fontSize: 9, marginBottom: 4 }}>{label}</div>
+      <div style={{ color: "#999", fontSize: 9, marginBottom: 4 }}>{label}</div>
       {payload.map((p: { name: string; value: number; color: string }) => (
         <div key={p.name} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
           <span style={{ color: p.color }}>{p.name}</span>
@@ -557,7 +559,7 @@ function RiesgoPaisView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 16, color: "#555", fontSize: 11 }}>Calculando riesgo país...</div>
+  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Calculando riesgo país...</div>
 
   const bps = data?.actual?.riesgoPaisBps
   const color = bpsColor(bps ?? null)
@@ -579,32 +581,32 @@ function RiesgoPaisView() {
       {/* KPI strip */}
       <div style={{ display: "flex", gap: 1, background: "#111", padding: 1, flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 180px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "14px 16px" }}>
-          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Riesgo País EMBI+</div>
+          <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, display: "flex", alignItems: "center", gap: 2 }}>Riesgo País EMBI+<InfoTooltip text={GLOSSARY["RIESGO PAÍS"].text} source={GLOSSARY["RIESGO PAÍS"].source} url={GLOSSARY["RIESGO PAÍS"].url} position="bottom" /></div>
           <div style={{ fontSize: 36, fontWeight: 700, color, fontFamily: "monospace" }}>
             {bps != null ? bps.toLocaleString("es-AR") : "—"}
           </div>
-          <div style={{ fontSize: 10, color: "#444" }}>basis points</div>
+          <div style={{ fontSize: 10, color: "#888" }}>basis points</div>
         </div>
         <div style={{ flex: "1 1 120px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "14px 16px" }}>
-          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Var. 1 semana</div>
+          <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Var. 1 semana</div>
           <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "monospace", color: changeColor(data?.actual?.var1w ? -data.actual.var1w : null) }}>
             {data?.actual?.var1w != null ? (data.actual.var1w >= 0 ? "+" : "") + data.actual.var1w.toFixed(0) + " bps" : "—"}
           </div>
         </div>
         <div style={{ flex: "1 1 120px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "14px 16px" }}>
-          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Var. 1 mes</div>
+          <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Var. 1 mes</div>
           <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "monospace", color: changeColor(data?.actual?.var1m ? -data.actual.var1m : null) }}>
             {data?.actual?.var1m != null ? (data.actual.var1m >= 0 ? "+" : "") + data.actual.var1m.toFixed(0) + " bps" : "—"}
           </div>
         </div>
         <div style={{ flex: "1 1 120px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "14px 16px" }}>
-          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>US 10Y</div>
+          <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, display: "flex", alignItems: "center", gap: 2 }}>US 10Y<InfoTooltip text={GLOSSARY["US 10Y"].text} source={GLOSSARY["US 10Y"].source} url={GLOSSARY["US 10Y"].url} position="bottom" /></div>
           <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "monospace", color: "#888" }}>
             {data?.actual?.us10y != null ? data.actual.us10y.toFixed(2) + "%" : "—"}
           </div>
         </div>
         <div style={{ flex: "1 1 120px", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "14px 16px" }}>
-          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>TIR GD30</div>
+          <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, display: "flex", alignItems: "center", gap: 2 }}>TIR GD30<InfoTooltip text={GLOSSARY["TIR"].text} source={GLOSSARY["TIR"].source} url={GLOSSARY["TIR"].url} position="bottom" /></div>
           <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "monospace", color: "#FFA028" }}>
             {data?.actual?.arTir != null ? data.actual.arTir.toFixed(2) + "%" : "—"}
           </div>
@@ -625,7 +627,7 @@ function RiesgoPaisView() {
       {/* Histórico chart */}
       <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", marginTop: 1 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 8px", borderBottom: "1px solid #1a1a1a" }}>
-          <span style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>EMBI+ Histórico</span>
+          <span style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1 }}>EMBI+ Histórico</span>
           <div style={{ display: "flex", gap: 2 }}>
             {(["6m", "1y", "2y", "5y", "max"] as const).map((p) => (
               <button key={p} onClick={() => setPeriod(p)} style={{
@@ -669,7 +671,7 @@ function RiesgoPaisView() {
           <thead>
             <tr>
               {["Bono", "Outstanding", "Ponderación"].map((h, i) => (
-                <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "#555", textAlign: i === 0 ? "left" : "right", borderBottom: "1px solid #1a1a1a" }}>{h}</th>
+                <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "#888", textAlign: i === 0 ? "left" : "right", borderBottom: "1px solid #1a1a1a" }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -696,7 +698,7 @@ function RiesgoPaisView() {
           <thead>
             <tr>
               {["País", "Moneda", "EMBI+ (bps)"].map((h, i) => (
-                <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "#555", textAlign: i > 1 ? "right" : "left", borderBottom: "1px solid #1a1a1a" }}>{h}</th>
+                <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "#888", textAlign: i > 1 ? "right" : "left", borderBottom: "1px solid #1a1a1a" }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -704,7 +706,7 @@ function RiesgoPaisView() {
             {Object.entries(data?.regionales ?? {}).map(([pais, r], i) => (
               <tr key={pais} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
                 <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: "#FFA028", textTransform: "capitalize" }}>{pais}</td>
-                <td style={{ padding: "5px 8px", fontSize: 10, color: "#666" }}>{r.moneda}</td>
+                <td style={{ padding: "5px 8px", fontSize: 10, color: "#999" }}>{r.moneda}</td>
                 <td style={{ padding: "5px 8px", fontSize: 14, fontFamily: "monospace", fontWeight: 700, color: bpsColor(r.bps ?? null), textAlign: "right" }}>
                   {r.bps?.toLocaleString("es-AR") ?? "—"}
                 </td>
@@ -714,7 +716,7 @@ function RiesgoPaisView() {
         </table>
       </div>
 
-      <div style={{ padding: "4px 8px", fontSize: 9, color: "#333", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 8px", fontSize: 9, color: "#777", borderTop: "1px solid #111" }}>
         Fuente EMBI+: argentinadatos.com · US 10Y: Yahoo Finance · Comparativos: estimaciones históricas
       </div>
     </div>
@@ -781,9 +783,9 @@ export function TabBonos() {
 
   if (loading) {
     return (
-      <div style={{ padding: 32, textAlign: "center", color: "#555", fontSize: 11 }}>
+      <div style={{ padding: 32, textAlign: "center", color: "#888", fontSize: 11 }}>
         Cargando datos de bonos soberanos...
-        <div style={{ fontSize: 9, color: "#333", marginTop: 8 }}>
+        <div style={{ fontSize: 9, color: "#777", marginTop: 8 }}>
           Si es la primera vez: <code style={{ color: "#FFA028" }}>npx ts-node prisma/seed-bonds.ts</code>
         </div>
       </div>

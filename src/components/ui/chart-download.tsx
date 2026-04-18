@@ -108,7 +108,7 @@ export function ChartDownload({ csvData, filename, chartRef }: ChartDownloadProp
         disabled={loading}
         style={{
           background: "none", border: "1px solid #222", borderRadius: 3,
-          color: "#555", cursor: "pointer", fontFamily: "monospace",
+          color: "#888", cursor: "pointer", fontFamily: "monospace",
           fontSize: 9, letterSpacing: 0.5, padding: "3px 8px",
           transition: "color 0.1s, border-color 0.1s",
         }}
@@ -155,7 +155,7 @@ export function ChartDownload({ csvData, filename, chartRef }: ChartDownloadProp
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#1a1a1a" }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none" }}
               >
-                ↓ PNG <span style={{ fontSize: 8, color: "#555" }}>lapizarra.ar</span>
+                ↓ PNG <span style={{ fontSize: 8, color: "#888" }}>lapizarra.ar</span>
               </button>
             )}
           </div>

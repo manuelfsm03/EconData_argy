@@ -250,7 +250,7 @@ export function MercuryFeed() {
                     {expandedId === item.id && (
                       <div style={{ color: "#888888", fontSize: "10px", marginTop: "4px", lineHeight: "1.4" }}>
                         {item.content}
-                        <div style={{ marginTop: "8px", color: "#555" }}>
+                        <div style={{ marginTop: "8px", color: "#888" }}>
                           Sentimiento: <span style={{ color: sentiment.color }}>{sentiment.label}</span> | 
                           Score: {(item.sentiment_score * 100).toFixed(1)}%
                         </div>

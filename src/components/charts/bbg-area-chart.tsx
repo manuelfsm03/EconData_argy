@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
@@ -55,10 +55,10 @@ function fmtDateFull(dateStr: string): string {
 
 function filterDataByRange(data: Record<string, unknown>[], range: DateRange): Record<string, unknown>[] {
   if (range === "all" || data.length === 0) return data
-  
+
   const now = new Date()
   const cutoff = new Date()
-  
+
   switch (range) {
     case "1w": cutoff.setDate(now.getDate() - 7); break
     case "1m": cutoff.setMonth(now.getMonth() - 1); break
@@ -68,7 +68,7 @@ function filterDataByRange(data: Record<string, unknown>[], range: DateRange): R
     case "ytd": cutoff.setMonth(0); cutoff.setDate(1); break
     default: return data
   }
-  
+
   return data.filter(d => {
     const dateStr = d.date as string
     if (!dateStr) return false
@@ -93,12 +93,11 @@ export function BBGAreaChart({
 }: BBGAreaChartProps) {
   const [range, setRange] = useState<DateRange>(defaultRange)
   const fmt = formatValue || compactNum
-  
+
   const filteredData = useMemo(() => {
     return filterDataByRange(data, range)
   }, [data, range])
 
-  // Dominio Y ajustado a los datos visibles + padding
   const yDomain = useMemo(() => {
     const values: number[] = filteredData.flatMap((d) =>
       areas.flatMap((a) => {
@@ -106,26 +105,72 @@ export function BBGAreaChart({
         return typeof v === "number" ? [v] : []
       })
     )
-    if (values.length === 0) return ["auto", "auto"] as const
+    if (values.length === 0) return [0, 100] as const
     const min = Math.min(...values)
     const max = Math.max(...values)
     const pad = Math.max((max - min) * 0.05, Math.abs(max) * 0.02)
     return [min - pad, max + pad] as const
   }, [filteredData, areas])
 
-  // Override manual de escala
-  const [scaleMin, setScaleMin] = useState("")
-  const [scaleMax, setScaleMax] = useState("")
-  const isOverriding = scaleMin !== "" || scaleMax !== ""
+  // Y drag-to-scale state
+  const [yOverride, setYOverride] = useState<{ min: number; max: number } | null>(null)
+  const yDragRef = useRef<{ startY: number; startMin: number; startMax: number } | null>(null)
+  const chartWrapperRef = useRef<HTMLDivElement>(null)
 
-  const effectiveDomain = useMemo((): [number | string, number | string] => {
-    const uMin = scaleMin !== "" ? parseFloat(scaleMin) : null
-    const uMax = scaleMax !== "" ? parseFloat(scaleMax) : null
-    return [
-      uMin !== null && !isNaN(uMin) ? uMin : yDomain[0],
-      uMax !== null && !isNaN(uMax) ? uMax : yDomain[1],
-    ]
-  }, [yDomain, scaleMin, scaleMax])
+  const effectiveDomain = useMemo((): [number, number] => {
+    if (yOverride) return [yOverride.min, yOverride.max]
+    return [yDomain[0], yDomain[1]]
+  }, [yDomain, yOverride])
+
+  // Reset Y override when range changes
+  const prevRangeRef = useRef(range)
+  useEffect(() => {
+    if (prevRangeRef.current !== range) {
+      setYOverride(null)
+      prevRangeRef.current = range
+    }
+  }, [range])
+
+  const startYDrag = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    const domain = yOverride ?? { min: yDomain[0], max: yDomain[1] }
+    yDragRef.current = { startY: e.clientY, startMin: domain.min, startMax: domain.max }
+
+    const onMove = (ev: MouseEvent) => {
+      if (!yDragRef.current) return
+      const dy = ev.clientY - yDragRef.current.startY
+      const span = yDragRef.current.startMax - yDragRef.current.startMin
+      const center = (yDragRef.current.startMax + yDragRef.current.startMin) / 2
+      const factor = Math.max(0.05, 1 + dy * 0.005)
+      const newSpan = span * factor
+      setYOverride({ min: center - newSpan / 2, max: center + newSpan / 2 })
+    }
+    const onUp = () => {
+      yDragRef.current = null
+      window.removeEventListener("mousemove", onMove)
+      window.removeEventListener("mouseup", onUp)
+    }
+    window.addEventListener("mousemove", onMove)
+    window.addEventListener("mouseup", onUp)
+  }, [yDomain, yOverride])
+
+  // Wheel zoom — non-passive to allow preventDefault
+  useEffect(() => {
+    const el = chartWrapperRef.current
+    if (!el) return
+    const handler = (e: WheelEvent) => {
+      e.preventDefault()
+      setYOverride((prev) => {
+        const base = prev ?? { min: yDomain[0], max: yDomain[1] }
+        const factor = e.deltaY > 0 ? 1.08 : 0.925
+        const center = (base.max + base.min) / 2
+        const newSpan = (base.max - base.min) * factor
+        return { min: center - newSpan / 2, max: center + newSpan / 2 }
+      })
+    }
+    el.addEventListener("wheel", handler, { passive: false })
+    return () => el.removeEventListener("wheel", handler)
+  }, [yDomain])
 
   return (
     <div className="bbg-panel">
@@ -142,45 +187,16 @@ export function BBGAreaChart({
           )}
         </span>
         <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
-          <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-            <span style={{ fontSize: "9px", color: "#444", letterSpacing: 1 }}>Y:</span>
-            <input
-              type="number"
-              placeholder={typeof yDomain[0] === "number" ? String(Math.round(yDomain[0] as number)) : "min"}
-              value={scaleMin}
-              onChange={(e) => setScaleMin(e.target.value)}
+          {yOverride && (
+            <button
+              onClick={() => setYOverride(null)}
+              title="Resetear escala Y"
               style={{
-                width: 52, fontSize: "9px", background: "#0d0d0d",
-                border: `1px solid ${scaleMin ? "#FFA028" : "#333"}`,
-                color: scaleMin ? "#FFA028" : "#666",
-                padding: "1px 4px", borderRadius: 2, outline: "none",
+                fontSize: "9px", padding: "1px 6px", background: "transparent",
+                border: "1px solid #FFA02866", color: "#FFA028", cursor: "pointer", borderRadius: 2,
               }}
-            />
-            <span style={{ fontSize: "9px", color: "#333" }}>–</span>
-            <input
-              type="number"
-              placeholder={typeof yDomain[1] === "number" ? String(Math.round(yDomain[1] as number)) : "max"}
-              value={scaleMax}
-              onChange={(e) => setScaleMax(e.target.value)}
-              style={{
-                width: 52, fontSize: "9px", background: "#0d0d0d",
-                border: `1px solid ${scaleMax ? "#FFA028" : "#333"}`,
-                color: scaleMax ? "#FFA028" : "#666",
-                padding: "1px 4px", borderRadius: 2, outline: "none",
-              }}
-            />
-            {isOverriding && (
-              <button
-                onClick={() => { setScaleMin(""); setScaleMax("") }}
-                style={{
-                  fontSize: "9px", padding: "1px 5px", background: "transparent",
-                  border: "1px solid #555", color: "#888", cursor: "pointer", borderRadius: 2,
-                }}
-              >
-                AUTO
-              </button>
-            )}
-          </div>
+            >AUTO</button>
+          )}
           {enableDateRange && (
             <div style={{ display: "flex", gap: "2px" }}>
               {RANGE_OPTIONS.map((opt) => (
@@ -204,7 +220,23 @@ export function BBGAreaChart({
           )}
         </div>
       </div>
-      <div style={{ padding: "4px 4px 0 0" }}>
+
+      <div ref={chartWrapperRef} style={{ padding: "4px 4px 0 0", position: "relative" }}>
+        {/* Y-axis drag zone overlay */}
+        <div
+          onMouseDown={startYDrag}
+          onDoubleClick={() => setYOverride(null)}
+          title="Arrastrá ↕ para ajustar escala Y · rueda para zoom · doble clic para auto"
+          style={{
+            position: "absolute",
+            left: 0, top: 0,
+            width: 54, bottom: 26,
+            cursor: "ns-resize",
+            zIndex: 10,
+            borderLeft: yOverride ? "2px solid #FFA02855" : "2px solid transparent",
+            transition: "border-color 0.2s",
+          }}
+        />
         <ResponsiveContainer width="100%" height={height}>
           <AreaChart data={filteredData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
             <defs>

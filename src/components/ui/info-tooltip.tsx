@@ -33,7 +33,7 @@ export function InfoTooltip({ text, source, url, position = "top" }: InfoTooltip
           borderRadius: "50%",
           background: "transparent",
           border: "1px solid #2a2a2a",
-          color: "#444",
+          color: "#888",
           fontSize: 8,
           cursor: url ? "pointer" : "default",
           display: "inline-flex",
@@ -66,7 +66,7 @@ export function InfoTooltip({ text, source, url, position = "top" }: InfoTooltip
         >
           <p style={{ fontSize: 10, color: "#cccccc", lineHeight: 1.6, margin: 0 }}>{text}</p>
           {source && (
-            <p style={{ fontSize: 9, color: "#555", margin: "5px 0 0", fontStyle: "italic" }}>
+            <p style={{ fontSize: 9, color: "#888", margin: "5px 0 0", fontStyle: "italic" }}>
               Fuente: {source}
             </p>
           )}

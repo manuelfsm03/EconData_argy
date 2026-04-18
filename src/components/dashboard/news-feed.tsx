@@ -56,6 +56,195 @@ interface NewsTableProps {
   onMore: () => void
 }
 
+function getDayKey(pubDate: string): string {
+  const d = new Date(pubDate)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
+// Prioridad de categorías para seleccionar las más importantes del día
+const CAT_PRIORITY: Record<string, number> = {
+  economía: 1, finanzas: 2, comercio: 3, energía: 4, commodities: 5, política: 6,
+}
+
+function pickTopItems(items: RSSItem[], n: number): RSSItem[] {
+  // Deduplicar por fuente (max 1 por fuente), luego priorizar por categoría
+  const seen = new Set<string>()
+  const deduped = items.filter((item) => {
+    if (seen.has(item.source)) return false
+    seen.add(item.source)
+    return true
+  })
+  return deduped
+    .sort((a, b) => (CAT_PRIORITY[a.category] ?? 9) - (CAT_PRIORITY[b.category] ?? 9))
+    .slice(0, n)
+}
+
+const WEEKDAYS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"]
+const MONTHS_ES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"]
+
+function CalendarTimelineView({ items, loading }: { items: RSSItem[]; loading: boolean }) {
+  const today = new Date()
+  const [navYear, setNavYear]   = useState(today.getFullYear())
+  const [navMonth, setNavMonth] = useState(today.getMonth()) // 0-indexed
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 200, color: "#888", fontSize: 11, fontFamily: "monospace" }}>
+        CARGANDO NOTICIAS...
+      </div>
+    )
+  }
+
+  // Group items by day key
+  const grouped = items.reduce<Record<string, RSSItem[]>>((acc, item) => {
+    const key = getDayKey(item.pubDate)
+    if (!acc[key]) acc[key] = []
+    acc[key].push(item)
+    return acc
+  }, {})
+
+  // Build calendar grid for the displayed month
+  const firstDay = new Date(navYear, navMonth, 1)
+  const lastDay  = new Date(navYear, navMonth + 1, 0)
+  const startDow = firstDay.getDay() // 0=Sun
+  const totalDays = lastDay.getDate()
+
+  // Fill cells: leading empty + day cells + trailing empty
+  const cells: (number | null)[] = [
+    ...Array(startDow).fill(null),
+    ...Array.from({ length: totalDays }, (_, i) => i + 1),
+  ]
+  // Pad to complete last row
+  while (cells.length % 7 !== 0) cells.push(null)
+
+  const todayKey = getDayKey(today.toISOString())
+  const monthLabel = `${MONTHS_ES[navMonth].toUpperCase()} ${navYear}`
+
+  const prevMonth = () => {
+    if (navMonth === 0) { setNavYear(y => y - 1); setNavMonth(11) }
+    else setNavMonth(m => m - 1)
+  }
+  const nextMonth = () => {
+    if (navMonth === 11) { setNavYear(y => y + 1); setNavMonth(0) }
+    else setNavMonth(m => m + 1)
+  }
+
+  const CELL_H = 120
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      {/* Month navigation */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "8px 16px", borderBottom: "1px solid #1a1a1a", background: "#080808", flexShrink: 0,
+      }}>
+        <button onClick={prevMonth} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 16, padding: "0 8px" }}>‹</button>
+        <span style={{ fontSize: 12, fontFamily: "monospace", fontWeight: 700, color: "#FFA028", letterSpacing: "0.1em" }}>
+          {monthLabel}
+        </span>
+        <button onClick={nextMonth} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 16, padding: "0 8px" }}>›</button>
+      </div>
+
+      {/* Weekday headers */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: "1px solid #1a1a1a", background: "#060606", flexShrink: 0 }}>
+        {WEEKDAYS.map((d) => (
+          <div key={d} style={{ textAlign: "center", padding: "5px 0", fontSize: 9, fontFamily: "monospace", color: "#555", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div style={{ flex: 1, overflowY: "auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
+          {cells.map((day, idx) => {
+            if (day === null) {
+              return (
+                <div key={`empty-${idx}`} style={{
+                  minHeight: CELL_H, borderRight: "1px solid #111", borderBottom: "1px solid #111",
+                  background: "#050505",
+                }} />
+              )
+            }
+
+            const cellKey = `${navYear}-${String(navMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+            const isToday = cellKey === todayKey
+            const dayItems = grouped[cellKey] ?? []
+            const top = pickTopItems(dayItems, 3)
+
+            return (
+              <div key={cellKey} style={{
+                minHeight: CELL_H,
+                borderRight: "1px solid #111",
+                borderBottom: "1px solid #111",
+                background: isToday ? "#0d0800" : "#000",
+                padding: "6px 7px",
+                position: "relative",
+                verticalAlign: "top",
+              }}>
+                {/* Day number */}
+                <div style={{ textAlign: "right", marginBottom: 5 }}>
+                  {isToday ? (
+                    <span style={{
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      width: 20, height: 20, borderRadius: "50%",
+                      background: "#FFA028", color: "#000",
+                      fontSize: 10, fontFamily: "monospace", fontWeight: 700,
+                    }}>{day}</span>
+                  ) : (
+                    <span style={{ fontSize: 10, fontFamily: "monospace", color: "#555" }}>{day}</span>
+                  )}
+                </div>
+
+                {/* Top news items */}
+                {top.map((item, i) => {
+                  const cat = CATEGORIES.find((c) => c.key === item.category)
+                  const color = cat?.color ?? "#888"
+                  return (
+                    <a
+                      key={item.id + i}
+                      href={item.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={item.title}
+                      style={{
+                        display: "flex", alignItems: "flex-start", gap: 4,
+                        marginBottom: 4, textDecoration: "none",
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget.querySelector("span.ttl") as HTMLElement).style.color = "#FFA028" }}
+                      onMouseLeave={(e) => { (e.currentTarget.querySelector("span.ttl") as HTMLElement).style.color = "#ccc" }}
+                    >
+                      <span style={{
+                        width: 5, height: 5, borderRadius: "50%", background: color,
+                        flexShrink: 0, marginTop: 3,
+                      }} />
+                      <span className="ttl" style={{
+                        fontSize: 9, lineHeight: 1.35, color: "#ccc",
+                        overflow: "hidden", display: "-webkit-box",
+                        WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+                        transition: "color 0.1s",
+                      }}>
+                        {item.title}
+                      </span>
+                    </a>
+                  )
+                })}
+
+                {/* Overflow count */}
+                {dayItems.length > 3 && (
+                  <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace", marginTop: 2 }}>
+                    +{dayItems.length - 3} más
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CategoryBadge({ category }: { category: string }) {
   const cat = CATEGORIES.find((c) => c.key === category)
   if (!cat || cat.key === "todos") return null
@@ -169,6 +358,7 @@ export function NewsFeed() {
   const [moreAR, setMoreAR]         = useState(0)
   const [moreIN, setMoreIN]         = useState(0)
   const [country, setCountry]       = useState("todos")
+  const [viewMode, setViewMode]     = useState<"lista" | "calendario">("lista")
 
   const fetchRSS = useCallback(async () => {
     setLoading(true)
@@ -195,6 +385,10 @@ export function NewsFeed() {
   const internacional = filtered
     .filter((i) => i.region === "internacional")
     .filter((i) => country === "todos" || i.country === country)
+
+  const timelineItems = [...filtered]
+    .filter((i) => country === "todos" || i.region === "argentina" || i.country === country)
+    .sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime())
 
   const activeCat = CATEGORIES.find((c) => c.key === category)
 
@@ -238,13 +432,37 @@ export function NewsFeed() {
             </button>
           )
         })}
-        <span style={{ marginLeft: "auto", color: "#333", fontSize: 10, fontFamily: "monospace" }}>
+        <span style={{ marginLeft: "auto", color: "#777", fontSize: 10, fontFamily: "monospace" }}>
           {filtered.length} noticias
         </span>
+        <span style={{ width: 1, height: 14, background: "#222", flexShrink: 0 }} />
+        {(["lista", "calendario"] as const).map((mode) => (
+          <button
+            key={mode}
+            onClick={() => setViewMode(mode)}
+            style={{
+              fontSize: 9, padding: "3px 8px",
+              textTransform: "uppercase", letterSpacing: 1,
+              border: "none",
+              background: viewMode === mode ? "#FFA028" : "transparent",
+              color: viewMode === mode ? "#000" : "#555",
+              cursor: "pointer", fontFamily: "monospace", borderRadius: 2,
+            }}
+          >
+            {mode === "lista" ? "≡ LISTA" : "📅 CALENDARIO"}
+          </button>
+        ))}
       </div>
 
+      {/* Calendar view */}
+      {viewMode === "calendario" && (
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", background: "#000" }}>
+          <CalendarTimelineView items={timelineItems} loading={loading} />
+        </div>
+      )}
+
       {/* Dos columnas: Argentina | Internacional */}
-      <div style={{ display: "flex", gap: 1, background: "#111111", flex: 1, minHeight: 0 }}>
+      {viewMode === "lista" && <div style={{ display: "flex", gap: 1, background: "#111111", flex: 1, minHeight: 0 }}>
         {/* Argentina */}
         <div style={{ flex: 1, minWidth: 0, background: "#000000", overflow: "hidden", display: "flex", flexDirection: "column" }}>
           <div
@@ -321,7 +539,7 @@ export function NewsFeed() {
             />
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* EN VIVO */}
       <LiveSection />

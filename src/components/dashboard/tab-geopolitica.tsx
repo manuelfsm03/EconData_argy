@@ -117,7 +117,7 @@ function GeoIndicatorCard({ nombre, label, data }: { nombre: string; label: stri
   const pos = (data?.variacion_pct ?? 0) >= 0
   return (
     <div style={{ background: "#060606", border: "1px solid #1a1a1a", padding: "8px 10px", flex: "1 1 100px" }}>
-      <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 14, fontFamily: "monospace", fontWeight: 700, color: "#fff" }}>
         {data?.precio != null ? data.precio.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "—"}
       </div>
@@ -161,11 +161,11 @@ function NewsCard({ item }: { item: NewsItem }) {
         >
           {item.category}
         </span>
-        <span style={{ fontSize: 9, color: "#555" }}>{item.source}</span>
-        <span style={{ fontSize: 9, color: "#333", marginLeft: "auto" }}>{item.region}</span>
+        <span style={{ fontSize: 9, color: "#888" }}>{item.source}</span>
+        <span style={{ fontSize: 9, color: "#777", marginLeft: "auto" }}>{item.region}</span>
       </div>
       <div style={{ fontSize: 12, color: "#ccc", lineHeight: 1.4 }}>{item.title}</div>
-      {item.pub && <div style={{ fontSize: 9, color: "#444", marginTop: 4 }}>{item.pub}</div>}
+      {item.pub && <div style={{ fontSize: 9, color: "#888", marginTop: 4 }}>{item.pub}</div>}
     </a>
   )
 }
@@ -223,7 +223,7 @@ export function TabGeopolitica() {
 
   if (loading) {
     return (
-      <div style={{ padding: 24, color: "#555", fontSize: 11, textAlign: "center" }}>
+      <div style={{ padding: 24, color: "#888", fontSize: 11, textAlign: "center" }}>
         Cargando noticias geopolíticas (BBC, Al Jazeera, Infobae, Ámbito...)
       </div>
     )
@@ -263,14 +263,14 @@ export function TabGeopolitica() {
       <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between" }}>
         <span>🌎 GEOPOLÍTICA &amp; CONTEXTO GLOBAL</span>
         {lastUpdate && (
-          <span style={{ color: "#444", fontWeight: 400 }}>
+          <span style={{ color: "#888", fontWeight: 400 }}>
             UPD {new Date(lastUpdate).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
           </span>
         )}
       </div>
 
       {/* Key indicators */}
-      <div style={{ padding: "3px 8px", background: "#0a0a0a", fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid #111" }}>
+      <div style={{ padding: "3px 8px", background: "#0a0a0a", fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid #111" }}>
         Indicadores clave
       </div>
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", background: "#111", padding: 1 }}>
@@ -294,7 +294,7 @@ export function TabGeopolitica() {
           </div>
           {/* Country filters */}
           <div style={{ padding: "4px 8px", display: "flex", gap: 4, flexWrap: "wrap", background: "#0a0a0a", borderBottom: "1px solid #111" }}>
-            <span style={{ fontSize: 9, color: "#444", alignSelf: "center" }}>PAÍS:</span>
+            <span style={{ fontSize: 9, color: "#888", alignSelf: "center" }}>PAÍS:</span>
             <FilterBtn active={countryFilter === null} onClick={() => setCountryFilter(null)}>Todos</FilterBtn>
             {COUNTRIES.map((c) => (
               <FilterBtn key={c.key} active={countryFilter === c.key} onClick={() => setCountryFilter(countryFilter === c.key ? null : c.key)}>
@@ -305,26 +305,26 @@ export function TabGeopolitica() {
 
           <div style={{ maxHeight: 600, overflowY: "auto", padding: 1, background: "#0a0a0a" }}>
             {filtered.length === 0 ? (
-              <div style={{ padding: 16, color: "#555", fontSize: 11 }}>
+              <div style={{ padding: 16, color: "#888", fontSize: 11 }}>
                 {items.length === 0 ? "Cargando noticias..." : "Sin resultados para este filtro."}
               </div>
             ) : (
               filtered.map((n, i) => <NewsCard key={i} item={n} />)
             )}
           </div>
-          <div style={{ padding: "3px 8px", fontSize: 9, color: "#333", borderTop: "1px solid #111" }}>
+          <div style={{ padding: "3px 8px", fontSize: 9, color: "#777", borderTop: "1px solid #111" }}>
             {filtered.length} noticias · BBC, Al Jazeera, France24, Infobae, Ámbito, Cronista
           </div>
         </div>
 
         {/* Impact panel */}
         <div>
-          <div style={{ padding: "4px 8px", background: "#0a0a0a", fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid #111" }}>
+          <div style={{ padding: "4px 8px", background: "#0a0a0a", fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid #111" }}>
             Impacto Argentina
           </div>
           <div style={{ maxHeight: 600, overflowY: "auto" }}>
             {impacts.length === 0 ? (
-              <div style={{ padding: 12, color: "#555", fontSize: 11 }}>
+              <div style={{ padding: 12, color: "#888", fontSize: 11 }}>
                 Sin alertas destacadas. Mercados en rango normal.
               </div>
             ) : (
@@ -343,7 +343,7 @@ export function TabGeopolitica() {
                     <div style={{ fontWeight: 600, fontSize: 11, color: s.color }}>
                       {s.icon} {rule.title}
                     </div>
-                    <div style={{ fontSize: 10, color: "#666", marginTop: 4, lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 10, color: "#999", marginTop: 4, lineHeight: 1.5 }}>
                       {rule.detail}
                     </div>
                   </div>

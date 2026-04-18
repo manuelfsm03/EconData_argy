@@ -39,10 +39,10 @@ function FinanzasPlaceholder() {
       <div style={{ fontSize: 9, color: "#CE93D8", letterSpacing: 3, textTransform: "uppercase" }}>
         FINANZAS — RAMA PISTA
       </div>
-      <div style={{ fontSize: 8, color: "#333", marginTop: 12 }}>
+      <div style={{ fontSize: 8, color: "#777", marginTop: 12 }}>
         Tipo de Cambio · ROFEX · Renta Fija · Renta Variable
       </div>
-      <div style={{ fontSize: 8, color: "#222", marginTop: 8 }}>
+      <div style={{ fontSize: 8, color: "#888", marginTop: 8 }}>
         En desarrollo por Luca Pistarelli (branch: Pista)
       </div>
     </div>
@@ -58,14 +58,14 @@ function TabBCRALazy({ initialSubtab }: { initialSubtab?: string | null }) {
     import("./tab-bcra")
       .then((m) => setComponent(() => m.TabBCRA))
       .catch(() => setComponent(() => () => (
-        <div style={{ padding: 40, textAlign: "center", fontFamily: "monospace", color: "#333", fontSize: 9 }}>
+        <div style={{ padding: 40, textAlign: "center", fontFamily: "monospace", color: "#777", fontSize: 9 }}>
           BCRA — ERROR AL CARGAR
         </div>
       )))
   }, [])
 
   if (!Component) return (
-    <div style={{ padding: 40, textAlign: "center", fontFamily: "monospace", color: "#333", fontSize: 9 }}>
+    <div style={{ padding: 40, textAlign: "center", fontFamily: "monospace", color: "#777", fontSize: 9 }}>
       BCRA — CARGANDO...
     </div>
   )
@@ -139,7 +139,7 @@ export function Dashboard() {
           </span>
         </div>
         {/* Fecha */}
-        <span style={{ fontSize: 8, color: "#2a2a2a", fontFamily: "monospace" }}>
+        <span style={{ fontSize: 8, color: "#999", fontFamily: "monospace" }}>
           {dateStr}
         </span>
       </div>
@@ -169,8 +169,8 @@ export function Dashboard() {
             marginBottom: 10,
           }}
         >
-          <Search size={13} strokeWidth={1.8} style={{ color: "#444", flexShrink: 0 }} />
-          <span style={{ fontSize: 10, color: "#333", fontFamily: "monospace", flex: 1 }}>
+          <Search size={13} strokeWidth={1.8} style={{ color: "#888", flexShrink: 0 }} />
+          <span style={{ fontSize: 10, color: "#777", fontFamily: "monospace", flex: 1 }}>
             Buscar indicador, sección...
           </span>
           <span style={{
