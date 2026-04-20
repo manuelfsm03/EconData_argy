@@ -19,6 +19,8 @@ import { FiscalSankeyView } from "./fiscal-sankey"
 import { DownloadCSV } from "../ui/download-csv"
 import { ChartDownload } from "../ui/chart-download"
 import { SectionMeta } from "../ui/help-tooltip"
+import { InfoTooltip } from "../ui/info-tooltip"
+import { GLOSSARY } from "@/lib/glossary"
 import {
   BarChart, Bar, Cell, LineChart, Line,
   ComposedChart,
@@ -4367,18 +4369,27 @@ function SenorejaView() {
       {/* KPI row */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "#050505", borderBottom: "1px solid #111" }}>
         <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "10px 14px", flex: "1 1 140px" }}>
-          <div style={kpiLabel}>α Cagan estimado</div>
+          <div style={kpiLabel}>
+            α Cagan estimado
+            <InfoTooltip text={GLOSSARY["ALPHA CAGAN"].text} source={GLOSSARY["ALPHA CAGAN"].source} url={GLOSSARY["ALPHA CAGAN"].url} position="bottom" />
+          </div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#FFA028", fontFamily: "monospace" }}>{fmtNum(params.alpha, 3)}</div>
           <div style={kpiUnit}>semi-elasticidad dinero</div>
           <div style={{ fontSize: 9, color: "#bbb", marginTop: 2 }}>R² = {fmtNum(params.r2, 3)}</div>
         </div>
         <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "10px 14px", flex: "1 1 140px" }}>
-          <div style={kpiLabel}>π* óptima (Laffer)</div>
+          <div style={kpiLabel}>
+            π* óptima (Laffer)
+            <InfoTooltip text={GLOSSARY["PI STAR"].text} source={GLOSSARY["PI STAR"].source} url={GLOSSARY["PI STAR"].url} position="bottom" />
+          </div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#4AF6C3", fontFamily: "monospace" }}>{fmtNum(params.pi_star_pct, 1)}%</div>
           <div style={kpiUnit}>inflación anual de max señoreaje</div>
         </div>
         <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "10px 14px", flex: "1 1 140px" }}>
-          <div style={kpiLabel}>Señoreaje máx. teórico</div>
+          <div style={kpiLabel}>
+            Señoreaje máx. teórico
+            <InfoTooltip text={GLOSSARY["SEÑOREAJE"].text} source={GLOSSARY["SEÑOREAJE"].source} url={GLOSSARY["SEÑOREAJE"].url} position="bottom" />
+          </div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#4AF6C3", fontFamily: "monospace" }}>{fmtNum(params.s_max / 1000, 0)}B</div>
           <div style={kpiUnit}>millones ARS reales (base)</div>
         </div>
@@ -4405,8 +4416,9 @@ function SenorejaView() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "#111" }}>
         {/* Señoreaje histórico anual */}
         <div style={{ background: "#050505", padding: 16 }}>
-          <div style={{ fontSize: 10, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>
+          <div style={{ fontSize: 10, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, display: "flex", alignItems: "center" }}>
             Señoreaje Anual Histórico
+            <InfoTooltip text={GLOSSARY["SEÑOREAJE"].text} source={GLOSSARY["SEÑOREAJE"].source} url={GLOSSARY["SEÑOREAJE"].url} position="bottom" />
           </div>
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={barData} margin={{ top: 8, right: hasPbi ? 44 : 12, left: 0, bottom: 4 }}>
@@ -4435,8 +4447,9 @@ function SenorejaView() {
 
         {/* Curva de Laffer */}
         <div style={{ background: "#050505", padding: 16 }}>
-          <div style={{ fontSize: 10, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>
+          <div style={{ fontSize: 10, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, display: "flex", alignItems: "center" }}>
             Curva de Laffer Monetaria
+            <InfoTooltip text={GLOSSARY["CURVA DE LAFFER MONETARIA"].text} source={GLOSSARY["CURVA DE LAFFER MONETARIA"].source} url={GLOSSARY["CURVA DE LAFFER MONETARIA"].url} position="bottom" />
           </div>
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
@@ -4484,8 +4497,9 @@ function SenorejaView() {
 
         {/* Saldos reales M/P */}
         <div style={{ background: "#050505", padding: 16 }}>
-          <div style={{ fontSize: 10, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>
+          <div style={{ fontSize: 10, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, display: "flex", alignItems: "center" }}>
             Saldos Reales M/P (Base Monetaria)
+            <InfoTooltip text={GLOSSARY["SALDOS REALES"].text} source={GLOSSARY["SALDOS REALES"].source} url={GLOSSARY["SALDOS REALES"].url} position="bottom" />
           </div>
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={serie_anual} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
@@ -4510,8 +4524,9 @@ function SenorejaView() {
 
         {/* Inflación anual observada */}
         <div style={{ background: "#050505", padding: 16 }}>
-          <div style={{ fontSize: 10, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>
+          <div style={{ fontSize: 10, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, display: "flex", alignItems: "center" }}>
             Inflación Anual Observada
+            <InfoTooltip text={GLOSSARY["MODELO CAGAN"].text} source={GLOSSARY["MODELO CAGAN"].source} url={GLOSSARY["MODELO CAGAN"].url} position="bottom" />
           </div>
           <ResponsiveContainer width="100%" height={240}>
             <ComposedChart data={serie_anual} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>

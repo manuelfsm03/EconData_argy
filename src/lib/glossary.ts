@@ -330,4 +330,34 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     source: "CME Group",
     url: "https://www.cmegroup.com/markets/metals/precious/gold.html",
   },
+  SEÑOREAJE: {
+    text: "Ingreso real que obtiene el Estado al emitir dinero. Se calcula como π × (M/P): la tasa de inflación multiplicada por los saldos monetarios reales. Es esencialmente un impuesto implícito sobre quienes mantienen pesos.",
+    source: "Banco Mundial / BCRA",
+    url: "https://www.bcra.gob.ar/PublicacionesEstadisticas/Principales_variables.asp",
+  },
+  "MODELO CAGAN": {
+    text: "Modelo de demanda de dinero propuesto por Philip Cagan (1956) para estudiar hiperinflaciones. Postula que la demanda real de dinero cae exponencialmente con la inflación esperada: M/P = k · e^(−α·π), donde α es la semi-elasticidad.",
+    source: "Cagan, P. (1956). The Monetary Dynamics of Hyperinflation.",
+    url: "https://www.nber.org/books-and-chapters/studies-quantity-theory-money",
+  },
+  "CURVA DE LAFFER MONETARIA": {
+    text: "Relación entre inflación y señoreaje: a inflaciones bajas, más emisión genera más ingresos reales; pero al superar π* (la tasa óptima), la destrucción de saldos reales supera la ganancia por emisión y el señoreaje cae. Tiene forma de campana.",
+    source: "Modelo Cagan (1956)",
+    url: "https://www.nber.org/books-and-chapters/studies-quantity-theory-money",
+  },
+  "PI STAR": {
+    text: "Tasa de inflación que maximiza el señoreaje según el modelo Cagan. Se calcula como π* = 1/α, donde α es la semi-elasticidad estimada. Inflaciones superiores a π* destruyen los saldos reales más rápido de lo que la emisión genera ingresos.",
+    source: "Modelo Cagan (1956)",
+    url: "https://www.nber.org/books-and-chapters/studies-quantity-theory-money",
+  },
+  "SALDOS REALES": {
+    text: "Valor real de la base monetaria: M/P, es decir, los pesos en circulación deflactados por el nivel de precios. Mide el poder adquisitivo del dinero emitido. Su caída persistente indica que la inflación erosiona la demanda de moneda local.",
+    source: "BCRA / INDEC",
+    url: "https://www.bcra.gob.ar/PublicacionesEstadisticas/Principales_variables.asp",
+  },
+  "ALPHA CAGAN": {
+    text: "Semi-elasticidad de la demanda de dinero respecto a la inflación (α) en el modelo Cagan. Indica cuánto cae el logaritmo de los saldos reales por cada punto porcentual adicional de inflación. Se estima por MCO sobre datos anuales históricos.",
+    source: "Modelo Cagan (1956)",
+    url: "https://www.nber.org/books-and-chapters/studies-quantity-theory-money",
+  },
 }
