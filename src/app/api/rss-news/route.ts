@@ -58,25 +58,87 @@ const RSS_FEEDS: RSSFeed[] = [
   { url: "https://riotimesonline.com/feed/",                       source: "Rio Times",      region: "internacional", category: "economía",  country: "brasil",        lang: "en" },
 ]
 
-const BLOCKED_TERMS: string[] = [
-  // Fútbol / deportes
-  "fútbol", "futbol", "gol de ", "goles", "cancha", "penales",
-  "arquero", "delantero", "mediocampista", "hinchada",
-  "boca juniors", "river plate", "san lorenzo", "vélez sarsfield",
-  "selección argentina de", "premier league", "champions league",
-  "nfl", "fórmula 1", "formula 1", "roland garros", "wimbledon",
-  // Entretenimiento / farándula
-  "farándula", "chimento", "telenovela", "reality show",
-  "gran hermano", "wanda nara", "pampita", "icardi",
-  "reggaeton", "cumbia villera",
-  // Frases tabloides
-  "las mejores fotos de", "mirá las imágenes de",
-  " viral ", "sorprendió a todos", "crimen pasional",
+// Filtro POSITIVO: el título debe contener al menos un término relevante
+const RELEVANT_TERMS: string[] = [
+  // ── Macro / economía (ES) ──
+  "economía", "economia", "económico", "economico", "económica", "economica",
+  "pbi", "gdp", "producto bruto", "crecimiento", "recesión", "recesion",
+  "inflación", "inflacion", "deflación", "deflacion", "ipc", "ipcm", "cpi",
+  "precio", "precios", "costo", "costos", "tarifas", "tarifa",
+  "salario", "salarios", "sueldo", "sueldos", "empleo", "desempleo",
+  "pobreza", "indigencia", "canasta", "ingresos",
+  "exportación", "exportaciones", "importación", "importaciones",
+  "balanza comercial", "balanza de pagos", "superávit", "deficit", "déficit",
+  "presupuesto", "fiscal", "impuesto", "impuestos", "recaudación", "recaudacion",
+  "gasto público", "deuda pública", "deuda externa", "deuda soberana",
+  "emisión monetaria", "base monetaria", "circulante", "agregados monetarios",
+  "reservas", "reservas internacionales", "oro", "divisas",
+  "producción", "industria", "industrial", "manufactura",
+  "construcción", "construccion", "actividad económica",
+  "emae", "indec", "bcra", "anses", "afip", "arca", "tesoro", "hacienda",
+  // ── Finanzas / mercados (ES) ──
+  "mercado", "mercados", "bolsa", "bolsas", "bursátil", "bursatil",
+  "acciones", "acción", "accion", "título", "titulo", "valores",
+  "bonos", "bono", "deuda", "letra", "letras", "lebac", "lecap", "letes",
+  "dólar", "dolar", "blue", "ccl", "mep", "oficial", "paralelo", "divisa",
+  "tipo de cambio", "brecha cambiaria", "cepo", "cepo cambiario",
+  "tasa de interés", "tasa de interes", "tasa", "tasas", "rendimiento",
+  "riesgo país", "riesgo pais", "spread", "embi",
+  "merval", "cedear", "s&p", "nasdaq", "dow jones", "nikkei", "ftse",
+  "rofex", "caucion", "caución", "repo", "swap",
+  "banco", "bancos", "entidad financiera", "crédito", "credito", "préstamo",
+  "inversión", "inversion", "inversor", "inversores", "fondo", "fondos",
+  "hedge fund", "fci", "fed", "bce", "banco central",
+  "bitcoin", "criptomoneda", "cripto", "blockchain",
+  "petróleo", "petroleo", "brent", "wti", "crudo", "gas natural",
+  "soja", "maíz", "maiz", "trigo", "girasol", "agro", "campo", "granos",
+  "litio", "minería", "mineria", "ypf", "vaca muerta", "shale",
+  "energía", "energia", "electricidad", "nafta", "combustible",
+  "fmi", "banco mundial", "bid", "caf", "g20", "g7", "ocde", "omc",
+  "arancel", "aranceles", "comercio exterior", "aduana", "sanción", "sanciones",
+  // ── Política (ES) ──
+  "gobierno", "gobernador", "presidente", "presidenta", "ministro", "ministra",
+  "ministerio", "secretaría", "secretaria", "decreto", "resolución", "resoluciones",
+  "congreso", "senado", "diputados", "legislativo", "ley ", "proyecto de ley",
+  "elección", "elecciones", "votación", "votacion", "candidato", "campaña",
+  "milei", "kicillof", "massa", "macri", "kirchner",
+  "oposición", "oposicion", "coalición", "bloque", "partido político",
+  "reforma", "ajuste", "plan económico", "medida económica",
+  // ── Geopolítica (ES + EN) ──
+  "guerra", "conflicto", "invasión", "invasion", "ataque", "bombardeo",
+  "ucrania", "rusia", "gaza", "israel", "irán", "iran", "china", "eeuu",
+  "trump", "biden", "zelensky", "putin", "xi jinping",
+  "otan", "nato", "onu", "un ", "consejo de seguridad",
+  "diplomacia", "tratado", "acuerdo bilateral", "alianza", "tensión geopolítica",
+  "sanction", "sanctions", "embargo",
+  // ── Macro / economía (EN) ──
+  "economy", "economic", "economics", "gdp", "growth", "recession",
+  "inflation", "deflation", "price", "prices", "wage", "wages",
+  "employment", "unemployment", "jobless", "payroll",
+  "budget", "deficit", "surplus", "debt", "spending", "revenue", "tax",
+  "trade", "tariff", "tariffs", "export", "import", "current account",
+  "monetary", "fiscal", "treasury", "central bank", "interest rate",
+  "federal reserve", "imf", "world bank", "ecb",
+  // ── Finanzas / mercados (EN) ──
+  "market", "markets", "stock", "bonds", "yield", "spread",
+  "dollar", "exchange rate", "currency", "forex",
+  "investment", "investor", "fund", "hedge", "equity", "commodity",
+  "oil", "crude", "gold", "silver", "copper", "wheat", "corn", "soybean",
+  "bank", "banking", "credit", "loan", "lending", "mortgage",
+  "crypto", "bitcoin", "blockchain",
+  // ── Política / Geopolítica (EN) ──
+  "government", "president", "minister", "parliament", "congress", "senate",
+  "election", "vote", "policy", "reform", "regulation",
+  "war", "conflict", "invasion", "sanctions", "diplomacy", "treaty",
+  "nato", "united nations", "security council",
 ]
 
-function isBlocked(title: string): boolean {
+// Compilar en Set lowercase para O(1) lookup parcial
+const RELEVANT_SET = RELEVANT_TERMS.map((t) => t.toLowerCase())
+
+function isRelevant(title: string): boolean {
   const lower = title.toLowerCase()
-  return BLOCKED_TERMS.some((term) => lower.includes(term.toLowerCase()))
+  return RELEVANT_SET.some((term) => lower.includes(term))
 }
 
 // Detección de categoría por keywords en el título
@@ -122,7 +184,7 @@ function extractItems(xml: string, feed: RSSFeed): RSSItem[] {
     const cleanLink  = link.trim()
     if (!cleanTitle || !cleanLink) continue
     if (isNonLatinScript(cleanTitle)) continue   // descarta cirílico, árabe, chino, etc.
-    if (isBlocked(cleanTitle)) continue          // descarta deportes, farándula, tabloides
+    if (!isRelevant(cleanTitle)) continue        // solo economía, finanzas, política, geopolítica
 
     items.push({
       id:          Buffer.from(cleanLink).toString("base64").slice(0, 20),
@@ -143,7 +205,7 @@ function extractItems(xml: string, feed: RSSFeed): RSSItem[] {
 // Cache por instancia (secundario — el CDN de Vercel es la capa primaria)
 let _cache: { items: RSSItem[]; ts: number } | null = null
 // Versión del cache — cambiar para forzar invalidación
-const CACHE_VERSION = 3
+const CACHE_VERSION = 4
 const INSTANCE_TTL = 5 * 60 * 1000
 
 export async function GET() {
