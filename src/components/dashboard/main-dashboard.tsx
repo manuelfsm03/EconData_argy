@@ -111,76 +111,47 @@ export function Dashboard() {
     .toUpperCase()
 
   return (
-    <div style={{ background: "#000", minHeight: "100vh", overflowX: "hidden" }}>
+    <div style={{ background: "#121214", minHeight: "100vh", overflowX: "hidden" }}>
 
-      {/* ── FILA 1: Barra superior — solo Logo + Fecha ────────────────────────── */}
-      <div style={{
-        background: "#080808",
-        borderBottom: "1px solid #161616",
-        height: 40,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "0 20px",
-      }}>
-        {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{
-            color: "#FFA028", fontWeight: 800, fontSize: 13,
-            letterSpacing: 2.5, fontFamily: "monospace",
-          }}>
-            LA PIZARRA
-          </span>
-          <span style={{
-            fontSize: 9, color: "#FFA02860", fontFamily: "monospace",
-            borderLeft: "1px solid #222", paddingLeft: 8,
-          }}>
-            .ar
-          </span>
-        </div>
-        {/* Fecha */}
-        <span style={{ fontSize: 8, color: "#999", fontFamily: "monospace" }}>
-          {dateStr}
-        </span>
-      </div>
-
-      {/* ── FILA 2: TickerTape full-width ────────────────────────────────────── */}
+      {/* ── FILA 1: TickerTape ───────────────────────────────────────────────── */}
       <TickerTape />
 
-      {/* ── FILA 3: Área centrada — Buscador + Tabs ──────────────────────────── */}
+      {/* ── FILA 2: TopBar horizontal — Logo + Tabs + Search + Fecha ─────────── */}
       <div style={{
-        background: "#050505",
-        borderBottom: "1px solid #111",
-        padding: "10px 16px",
+        background: "#121214",
+        borderBottom: "1px solid #2A2A2F",
+        height: 56,
         display: "flex",
-        flexDirection: "column",
         alignItems: "center",
+        padding: "0 24px",
+        gap: 24,
+        position: "sticky",
+        top: 0,
+        zIndex: 50,
       }}>
-        {/* Buscador */}
-        <button
-          onClick={() => setSearchOpen(true)}
-          title="Buscar indicador (tecla /)"
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            width: "100%", maxWidth: 440,
-            background: "#0a0a0a", border: "1px solid #1e1e1e",
-            borderRadius: 6, cursor: "text",
-            padding: "7px 12px", textAlign: "left",
-            marginBottom: 10,
-          }}
-        >
-          <Search size={13} strokeWidth={1.8} style={{ color: "#888", flexShrink: 0 }} />
-          <span style={{ fontSize: 10, color: "#777", fontFamily: "monospace", flex: 1 }}>
-            Buscar indicador, sección...
-          </span>
+        {/* Logo */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <div style={{
+            width: 30, height: 30, borderRadius: 8,
+            background: "#FFA028",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}>
+            <span style={{ fontWeight: 800, fontSize: 15, color: "#121214", fontFamily: "var(--font-ui)", lineHeight: 1 }}>L</span>
+          </div>
           <span style={{
-            fontSize: 9, color: "#222", fontFamily: "monospace",
-            background: "#111", padding: "1px 5px", borderRadius: 3,
-          }}>/</span>
-        </button>
+            fontSize: 15, fontWeight: 600, color: "#F5F3EE",
+            letterSpacing: -0.2, fontFamily: "var(--font-ui)",
+          }}>
+            La Pizarra
+          </span>
+        </div>
 
-        {/* Tabs centrados — pill style */}
-        <div style={{ display: "flex", gap: 6, alignItems: "center", paddingBottom: 10 }}>
+        {/* Separador */}
+        <div style={{ width: 1, height: 20, background: "#2A2A2F", flexShrink: 0 }} />
+
+        {/* Tabs — underline style */}
+        <div style={{ display: "flex", alignItems: "stretch", height: "100%", gap: 2 }}>
           {MAIN_TABS.map(({ key, label, Icon }) => {
             const active = activeTab === key
             return (
@@ -189,33 +160,61 @@ export function Dashboard() {
                 onClick={() => setActiveTab(key)}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
-                  padding: "5px 14px",
-                  fontSize: 12,
-                  fontWeight: active ? 600 : 400,
-                  color: active ? "#FFA028" : "#888",
-                  background: active ? "rgba(255,160,40,0.08)" : "transparent",
-                  border: active ? "1px solid rgba(255,160,40,0.4)" : "1px solid #2a2a2a",
-                  borderRadius: 20,
+                  padding: "0 14px",
+                  fontSize: 13, fontWeight: active ? 600 : 400,
+                  color: active ? "#F5F3EE" : "#A8A49D",
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: active ? "2px solid #FFA028" : "2px solid transparent",
                   cursor: "pointer",
                   whiteSpace: "nowrap",
-                  transition: "all 0.15s",
-                  fontFamily: "monospace",
+                  transition: "color 0.15s, border-color 0.15s",
+                  fontFamily: "var(--font-ui)",
                 }}
+                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.color = "#F5F3EE" }}
+                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.color = "#A8A49D" }}
               >
-                <Icon
-                  size={13}
-                  strokeWidth={active ? 2.2 : 1.6}
-                  style={{ color: active ? "#FFA028" : "#555" }}
-                />
+                <Icon size={14} strokeWidth={active ? 2.2 : 1.6} />
                 {label}
               </button>
             )
           })}
         </div>
+
+        <div style={{ flex: 1 }} />
+
+        {/* Buscador */}
+        <button
+          onClick={() => setSearchOpen(true)}
+          title="Buscar indicador (tecla /)"
+          style={{
+            display: "flex", alignItems: "center", gap: 8,
+            width: 260, height: 34,
+            background: "#1A1A1D", border: "1px solid #2A2A2F",
+            borderRadius: 8, cursor: "text",
+            padding: "0 12px", textAlign: "left",
+            flexShrink: 0,
+          }}
+        >
+          <Search size={13} strokeWidth={1.8} style={{ color: "#5F5C56", flexShrink: 0 }} />
+          <span style={{ fontSize: 12, color: "#5F5C56", fontFamily: "var(--font-ui)", flex: 1 }}>
+            Buscar indicador…
+          </span>
+          <span style={{
+            fontSize: 10, color: "#5F5C56", fontFamily: "var(--font-data)",
+            background: "#222226", padding: "1px 5px", borderRadius: 4,
+            border: "1px solid #2A2A2F",
+          }}>/</span>
+        </button>
+
+        {/* Fecha */}
+        <span style={{ fontSize: 11, color: "#5F5C56", fontFamily: "var(--font-data)", flexShrink: 0 }}>
+          {dateStr}
+        </span>
       </div>
 
       {/* ── CONTENIDO ───────────────────────────────────────────────────────── */}
-      <div style={{ maxWidth: 1400, margin: "0 auto" }}>
+      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 8px" }}>
         {activeTab === "resumen"   && <TabResumen onNavigate={handleNavigate} />}
         {activeTab === "finanzas"  && <TabFinanzas />}
         {activeTab === "macro"     && <TabMacro initialSubtab={macroSubtab} />}
