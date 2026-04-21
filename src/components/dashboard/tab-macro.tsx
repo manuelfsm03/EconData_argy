@@ -133,32 +133,26 @@ function MiniTable({ title, rows }: { title: string; rows: { label: string; valu
 
 function SubTabs({ tabs, active, onChange }: { tabs: { key: string; label: string }[]; active: string; onChange: (k: string) => void }) {
   return (
-    <div style={{
-      display: "flex", gap: 0, overflowX: "auto", scrollbarWidth: "none",
-      padding: "0 24px", background: "#1A1A1D",
-      borderBottom: "1px solid #2A2A2F",
-    }}>
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", padding: "10px 14px", background: "#050505", borderBottom: "1px solid #111" }}>
       {tabs.map((t) => (
         <button
           key={t.key}
           onClick={() => onChange(t.key)}
           style={{
-            background: "transparent",
-            color: active === t.key ? "#F5F3EE" : "#A8A49D",
-            border: "none",
-            outline: "none",
-            borderBottom: active === t.key ? "2px solid #FFA028" : "2px solid transparent",
-            marginBottom: "-1px",
-            padding: "12px 16px",
-            fontSize: 12,
+            background: active === t.key ? "rgba(255,160,40,0.08)" : "transparent",
+            color: active === t.key ? "#FFA028" : "#888",
+            border: active === t.key ? "1px solid rgba(255,160,40,0.4)" : "1px solid #2a2a2a",
+            borderRadius: 20,
+            padding: "5px 14px",
+            fontSize: 10,
             fontWeight: active === t.key ? 600 : 400,
+            textTransform: "uppercase",
+            letterSpacing: 1,
             cursor: "pointer",
             whiteSpace: "nowrap",
-            transition: "color 0.15s, border-color 0.15s",
-            fontFamily: "var(--font-ui)",
+            transition: "all 0.15s",
+            fontFamily: "monospace",
           }}
-          onMouseEnter={e => { if (active !== t.key) (e.currentTarget as HTMLElement).style.color = "#F5F3EE" }}
-          onMouseLeave={e => { if (active !== t.key) (e.currentTarget as HTMLElement).style.color = "#A8A49D" }}
         >
           {t.label}
         </button>
@@ -4581,7 +4575,7 @@ export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
   const [activeTab, setActiveTab] = useState(initialSubtab ?? "emae")
 
   return (
-    <div style={{ background: "#121214", minHeight: "calc(100vh - 92px)" }}>
+    <div>
       <SubTabs tabs={MACRO_TABS} active={activeTab} onChange={setActiveTab} />
       {activeTab === "emae"        && <EmaeView />}
       {activeTab === "ipc"         && <IpcView />}

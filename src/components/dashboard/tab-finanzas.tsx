@@ -45,23 +45,22 @@ const FIN_TABS = [
 function SubTabs({ active, onChange }: { active: string; onChange: (k: string) => void }) {
   return (
     <div style={{
-      background: "#1A1A1D", borderBottom: "1px solid #2A2A2F",
-      display: "flex", alignItems: "stretch", padding: "0 24px",
-      gap: 0, overflowX: "auto", scrollbarWidth: "none",
+      background: "#050505", borderBottom: "1px solid #111",
+      display: "flex", alignItems: "center", padding: "10px 14px",
+      gap: 6, flexWrap: "wrap",
     }}>
       {FIN_TABS.map(t => {
         const isActive = active === t.key
         return (
           <button key={t.key} onClick={() => onChange(t.key)} style={{
             display: "flex", alignItems: "center", gap: 6,
-            background: "transparent", border: "none", outline: "none",
-            borderBottom: isActive ? "2px solid #FFA028" : "2px solid transparent",
-            marginBottom: "-1px", cursor: "pointer", padding: "12px 16px",
-            whiteSpace: "nowrap", transition: "color 0.15s, border-color 0.15s",
-            fontFamily: "var(--font-ui)",
+            background: isActive ? "rgba(255,160,40,0.08)" : "transparent",
+            border: isActive ? "1px solid rgba(255,160,40,0.4)" : "1px solid #2a2a2a",
+            borderRadius: 20, cursor: "pointer", padding: "5px 14px",
+            whiteSpace: "nowrap", transition: "all 0.15s", fontFamily: "monospace",
           }}>
-            <span style={{ fontSize: 12, color: isActive ? "#F5F3EE" : "#A8A49D", fontWeight: 700 }}>{t.icon}</span>
-            <span style={{ fontSize: 12, color: isActive ? "#F5F3EE" : "#A8A49D", fontWeight: isActive ? 600 : 400, fontFamily: "var(--font-ui)" }}>
+            <span style={{ fontSize: 11, color: isActive ? "#FFA028" : "#555", fontWeight: 700 }}>{t.icon}</span>
+            <span style={{ fontSize: 10, color: isActive ? "#FFA028" : "#888", fontWeight: isActive ? 600 : 400, letterSpacing: 0.5, textTransform: "uppercase" }}>
               {t.label}
             </span>
           </button>
