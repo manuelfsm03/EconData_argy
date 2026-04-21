@@ -193,7 +193,7 @@ export function BBGAreaChart({
               title="Resetear escala Y"
               style={{
                 fontSize: "9px", padding: "1px 6px", background: "transparent",
-                border: "1px solid #FFA02866", color: "#FFA028", cursor: "pointer", borderRadius: 2,
+                border: "1px solid #FFA02866", color: "var(--amber)", cursor: "pointer", borderRadius: 2,
               }}
             >AUTO</button>
           )}
@@ -207,8 +207,8 @@ export function BBGAreaChart({
                     fontSize: "9px",
                     padding: "2px 6px",
                     border: "none",
-                    background: range === opt.value ? "#FFA028" : "transparent",
-                    color: range === opt.value ? "#000" : "#888",
+                    background: range === opt.value ? "var(--amber)" : "transparent",
+                    color: range === opt.value ? "var(--bg)" : "var(--text-dim)",
                     cursor: "pointer",
                     borderRadius: "2px",
                   }}
@@ -247,24 +247,24 @@ export function BBGAreaChart({
                 </linearGradient>
               ))}
             </defs>
-            <CartesianGrid stroke="#1a1a1a" strokeDasharray="3 3" />
+            <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
             <XAxis
               dataKey="date" tickFormatter={fmtDateShort}
-              tick={{ fill: "#555555", fontSize: 9 }}
-              axisLine={{ stroke: "#333333" }}
+              tick={{ fill: "var(--text-mute)", fontSize: 9 }}
+              axisLine={{ stroke: "var(--border-hi)" }}
               tickLine={false}
               interval="preserveStartEnd"
             />
             <YAxis
               domain={effectiveDomain}
-              tick={{ fill: "#555555", fontSize: 9 }}
-              axisLine={{ stroke: "#333333" }}
+              tick={{ fill: "var(--text-mute)", fontSize: 9 }}
+              axisLine={{ stroke: "var(--border-hi)" }}
               tickLine={false}
               tickFormatter={fmt}
-              label={yAxisLabel ? { value: yAxisLabel, angle: -90, position: "insideLeft", fill: "#555555", fontSize: 9 } : undefined}
+              label={yAxisLabel ? { value: yAxisLabel, angle: -90, position: "insideLeft", fill: "var(--text-mute)", fontSize: 9 } : undefined}
             />
             <Tooltip
-              contentStyle={{ background: "#0a0a0a", border: "1px solid #333333", fontSize: "10px", color: "#FFA028" }}
+              contentStyle={{ background: "var(--bg-elev)", border: "1px solid var(--border-hi)", fontSize: "10px", color: "var(--amber)" }}
               labelFormatter={(label) => fmtDateFull(String(label))}
               formatter={(value: unknown, name: unknown) => [fmt(Number(value)), String(name)]}
             />

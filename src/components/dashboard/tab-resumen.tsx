@@ -24,15 +24,15 @@ function pct(v: number | null | undefined, dec = 1): string {
 }
 
 function varColor(v: number | null | undefined): string {
-  if (v == null) return "#555"
-  return v >= 0 ? "#4AF6C3" : "#FF433D"
+  if (v == null) return "var(--text-mute)"
+  return v >= 0 ? "var(--positive)" : "var(--negative)"
 }
 
 function brechaColor(b: number): string {
-  if (b < 15) return "#4AF6C3"   // verde
+  if (b < 15) return "var(--positive)"   // verde
   if (b < 40) return "#FFD700"   // amarillo
-  if (b < 80) return "#FFA028"   // naranja
-  return "#FF433D"               // rojo
+  if (b < 80) return "var(--amber)"   // naranja
+  return "var(--negative)"               // rojo
 }
 
 function fmtTime(d: string): string {
@@ -57,20 +57,20 @@ function KPICard({
   return (
     <div style={{
       flex: "1 1 0",
-      background: "#0a0a0a",
-      border: "1px solid #1a1a1a",
+      background: "var(--bg-elev)",
+      border: "1px solid var(--border)",
       padding: "12px 16px",
       minWidth: 0,
     }}>
-      <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+      <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
         {label}
       </div>
-      <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "monospace", color: accent ?? "#FFA028", lineHeight: 1 }}>
+      <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "var(--font-data)", color: accent ?? "var(--amber)", lineHeight: 1 }}>
         {value}
       </div>
-      {unit && <div style={{ fontSize: 9, color: "#888", marginTop: 3 }}>{unit}</div>}
+      {unit && <div style={{ fontSize: 9, color: "var(--text-dim)", marginTop: 3 }}>{unit}</div>}
       {sub1 && (
-        <div style={{ fontSize: 11, color: sub1Color ?? "#888", marginTop: 6 }}>{sub1}</div>
+        <div style={{ fontSize: 11, color: sub1Color ?? "var(--text-dim)", marginTop: 6 }}>{sub1}</div>
       )}
       {sub2 && (
         <div style={{ fontSize: 11, color: sub2Color ?? "#666" }}>{sub2}</div>
@@ -91,8 +91,8 @@ interface TCEntry {
 }
 
 const TC_LINES = [
-  { key: "blue"      as keyof Omit<TCEntry,"date">, label: "Blue",      color: "#4AF6C3" },
-  { key: "ccl"       as keyof Omit<TCEntry,"date">, label: "CCL",       color: "#FFA028" },
+  { key: "blue"      as keyof Omit<TCEntry,"date">, label: "Blue",      color: "var(--positive)" },
+  { key: "ccl"       as keyof Omit<TCEntry,"date">, label: "CCL",       color: "var(--amber)" },
   { key: "mep"       as keyof Omit<TCEntry,"date">, label: "MEP",       color: "#FFD700" },
   { key: "mayorista" as keyof Omit<TCEntry,"date">, label: "Mayorista", color: "#888888" },
   { key: "oficial"   as keyof Omit<TCEntry,"date">, label: "Oficial",   color: "#aaaaaa" },
@@ -112,7 +112,7 @@ function TCStrip({ onNavigate }: { onNavigate: NavigateFn }) {
   }, [])
 
   if (loading) return (
-    <div style={{ padding: "20px 16px", color: "#888", fontSize: 11 }}>Cargando tipos de cambio...</div>
+    <div style={{ padding: "20px 16px", color: "var(--text-dim)", fontSize: 11 }}>Cargando tipos de cambio...</div>
   )
 
   const latest = data[data.length - 1]
@@ -130,7 +130,7 @@ function TCStrip({ onNavigate }: { onNavigate: NavigateFn }) {
   return (
     <div>
       {/* TC KPIs */}
-      <div style={{ display: "flex", gap: 1, background: "#111", padding: 1 }}>
+      <div style={{ display: "flex", gap: 1, background: "var(--bg-elev-2)", padding: 1 }}>
         {TC_LINES.map((l) => {
           const cur = latest?.[l.key]
           const prv = prev?.[l.key]
@@ -142,22 +142,22 @@ function TCStrip({ onNavigate }: { onNavigate: NavigateFn }) {
               title="Ver en BCRA"
               style={{
                 flex: "1 1 0",
-                background: "#0a0a0a",
-                border: "1px solid #1a1a1a",
+                background: "var(--bg-elev)",
+                border: "1px solid var(--border)",
                 padding: "12px 16px",
                 cursor: "pointer",
                 transition: "border-color 0.15s",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#333")}
-              onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1a1a1a")}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--border-hi)")}
+              onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
             >
-              <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "flex", alignItems: "center" }}>
+              <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "flex", alignItems: "center" }}>
                 {l.label}
                 {GLOSSARY[l.label.toUpperCase()] && (
                   <InfoTooltip text={GLOSSARY[l.label.toUpperCase()].text} source={GLOSSARY[l.label.toUpperCase()].source} url={GLOSSARY[l.label.toUpperCase()].url} position="bottom" />
                 )}
               </div>
-              <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "monospace", color: l.color, lineHeight: 1 }}>
+              <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "var(--font-data)", color: l.color, lineHeight: 1 }}>
                 {cur ? `$${fmt(cur)}` : "—"}
               </div>
               {delta != null && (
@@ -171,7 +171,7 @@ function TCStrip({ onNavigate }: { onNavigate: NavigateFn }) {
       </div>
 
       {/* Brecha */}
-      <div style={{ display: "flex", gap: 1, background: "#111", padding: 1, marginTop: 1 }}>
+      <div style={{ display: "flex", gap: 1, background: "var(--bg-elev-2)", padding: 1, marginTop: 1 }}>
         {[
           { label: "Brecha Blue / Oficial", value: brechaBlue },
           { label: "Brecha CCL / Oficial",  value: brechaCCL  },
@@ -182,8 +182,8 @@ function TCStrip({ onNavigate }: { onNavigate: NavigateFn }) {
             title="Ver en BCRA"
             style={{
               flex: "1 1 0",
-              background: "#0a0a0a",
-              border: "1px solid #1a1a1a",
+              background: "var(--bg-elev)",
+              border: "1px solid var(--border)",
               padding: "10px 16px",
               display: "flex",
               alignItems: "center",
@@ -191,18 +191,18 @@ function TCStrip({ onNavigate }: { onNavigate: NavigateFn }) {
               cursor: "pointer",
               transition: "border-color 0.15s",
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#333")}
-            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1a1a1a")}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--border-hi)")}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
           >
             <div>
-              <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+              <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
                 {b.label}
               </div>
               <div style={{
                 fontSize: 32,
                 fontWeight: 900,
-                fontFamily: "monospace",
-                color: b.value != null ? brechaColor(b.value) : "#555",
+                fontFamily: "var(--font-data)",
+                color: b.value != null ? brechaColor(b.value) : "var(--text-mute)",
                 lineHeight: 1,
               }}>
                 {b.value != null ? b.value.toFixed(1) + "%" : "—"}
@@ -251,13 +251,13 @@ function IPCBlock({ onNavigate }: { onNavigate: NavigateFn }) {
   }, [])
 
   const hoverStyle = (e: React.MouseEvent<HTMLDivElement>, enter: boolean) => {
-    e.currentTarget.style.borderColor = enter ? "#333" : "#1a1a1a"
+    e.currentTarget.style.borderColor = enter ? "var(--border-hi)" : "var(--border)"
   }
 
   if (loading) return (
-    <div style={{ flex: "1 1 0", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px" }}>
-      <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1 }}>INFLACIÓN</div>
-      <div style={{ color: "#777", fontSize: 11, marginTop: 8 }}>Cargando...</div>
+    <div style={{ flex: "1 1 0", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 16px" }}>
+      <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1 }}>INFLACIÓN</div>
+      <div style={{ color: "var(--text-mute)", fontSize: 11, marginTop: 8 }}>Cargando...</div>
     </div>
   )
 
@@ -267,20 +267,20 @@ function IPCBlock({ onNavigate }: { onNavigate: NavigateFn }) {
       title="Ver IPC en Macro"
       onMouseEnter={(e) => hoverStyle(e, true)}
       onMouseLeave={(e) => hoverStyle(e, false)}
-      style={{ flex: "1 1 0", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px", cursor: "pointer", transition: "border-color 0.15s" }}
+      style={{ flex: "1 1 0", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 16px", cursor: "pointer", transition: "border-color 0.15s" }}
     >
-      <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "flex", alignItems: "center", gap: 2 }}>
+      <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "flex", alignItems: "center", gap: 2 }}>
         IPC — {periodo || "inflación"}
         <InfoTooltip text={GLOSSARY["IPC"].text} source={GLOSSARY["IPC"].source} url={GLOSSARY["IPC"].url} position="bottom" />
       </div>
-      <div style={{ fontSize: 32, fontWeight: 900, fontFamily: "monospace", color: "#FF433D", lineHeight: 1 }}>
+      <div style={{ fontSize: 32, fontWeight: 900, fontFamily: "var(--font-data)", color: "var(--negative)", lineHeight: 1 }}>
         {mensual != null ? mensual.toFixed(1) + "%" : "—"}
       </div>
-      <div style={{ fontSize: 9, color: "#888", marginTop: 3 }}>variación mensual</div>
+      <div style={{ fontSize: 9, color: "var(--text-dim)", marginTop: 3 }}>variación mensual</div>
       {interanual != null && (
         <div style={{ marginTop: 10 }}>
-          <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1 }}>Interanual</div>
-          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "monospace", color: "#FF433D" }}>
+          <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1 }}>Interanual</div>
+          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "var(--font-data)", color: "var(--negative)" }}>
             {interanual.toFixed(1)}%
           </div>
         </div>
@@ -310,16 +310,16 @@ function RiesgoPaisBlock({ onNavigate }: { onNavigate: NavigateFn }) {
       .catch(() => setLoading(false))
   }, [])
 
-  const color = bps == null ? "#555"
-    : bps > 1500 ? "#FF433D"
-    : bps > 800  ? "#FFA028"
+  const color = bps == null ? "var(--text-mute)"
+    : bps > 1500 ? "var(--negative)"
+    : bps > 800  ? "var(--amber)"
     : bps > 400  ? "#FFD700"
-    : "#4AF6C3"
+    : "var(--positive)"
 
   if (loading) return (
-    <div style={{ flex: "1 1 0", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px" }}>
-      <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1 }}>RIESGO PAÍS</div>
-      <div style={{ color: "#777", fontSize: 11, marginTop: 8 }}>Cargando...</div>
+    <div style={{ flex: "1 1 0", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 16px" }}>
+      <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1 }}>RIESGO PAÍS</div>
+      <div style={{ color: "var(--text-mute)", fontSize: 11, marginTop: 8 }}>Cargando...</div>
     </div>
   )
 
@@ -327,16 +327,16 @@ function RiesgoPaisBlock({ onNavigate }: { onNavigate: NavigateFn }) {
     <div
       onClick={() => onNavigate("macro", "riesgo")}
       title="Ver Riesgo País en Macro"
-      onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#333")}
-      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1a1a1a")}
-      style={{ flex: "1 1 0", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px", cursor: "pointer", transition: "border-color 0.15s" }}
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--border-hi)")}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
+      style={{ flex: "1 1 0", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 16px", cursor: "pointer", transition: "border-color 0.15s" }}
     >
-      <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "flex", alignItems: "center", gap: 2 }}>
+      <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "flex", alignItems: "center", gap: 2 }}>
         Riesgo País — EMBI+
         <InfoTooltip text={GLOSSARY["RIESGO PAÍS"].text} source={GLOSSARY["RIESGO PAÍS"].source} url={GLOSSARY["RIESGO PAÍS"].url} position="bottom" />
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ fontSize: 32, fontWeight: 900, fontFamily: "monospace", color, lineHeight: 1 }}>
+        <div style={{ fontSize: 32, fontWeight: 900, fontFamily: "var(--font-data)", color, lineHeight: 1 }}>
           {bps != null ? fmt(bps) : "—"}
         </div>
         {bps != null && (
@@ -346,20 +346,20 @@ function RiesgoPaisBlock({ onNavigate }: { onNavigate: NavigateFn }) {
           }} />
         )}
       </div>
-      <div style={{ fontSize: 9, color: "#888", marginTop: 3 }}>puntos básicos</div>
+      <div style={{ fontSize: 9, color: "var(--text-dim)", marginTop: 3 }}>puntos básicos</div>
       <div style={{ marginTop: 10, display: "flex", gap: 16 }}>
         {var1w != null && (
           <div>
-            <div style={{ fontSize: 9, color: "#888" }}>Semanal</div>
-            <div style={{ fontSize: 13, fontFamily: "monospace", color: varColor(-var1w) }}>
+            <div style={{ fontSize: 9, color: "var(--text-dim)" }}>Semanal</div>
+            <div style={{ fontSize: 13, fontFamily: "var(--font-data)", color: varColor(-var1w) }}>
               {var1w > 0 ? "+" : ""}{fmt(var1w)} bps
             </div>
           </div>
         )}
         {var1m != null && (
           <div>
-            <div style={{ fontSize: 9, color: "#888" }}>Mensual</div>
-            <div style={{ fontSize: 13, fontFamily: "monospace", color: varColor(-var1m) }}>
+            <div style={{ fontSize: 9, color: "var(--text-dim)" }}>Mensual</div>
+            <div style={{ fontSize: 13, fontFamily: "var(--font-data)", color: varColor(-var1m) }}>
               {var1m > 0 ? "+" : ""}{fmt(var1m)} bps
             </div>
           </div>
@@ -383,9 +383,9 @@ function ReservasBadlarBlock({ onNavigate }: { onNavigate: NavigateFn }) {
   const resDelta = reservas != null && resPrev != null ? reservas - resPrev : null
 
   if (loading) return (
-    <div style={{ flex: "1 1 0", background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px" }}>
-      <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1 }}>RESERVAS / BADLAR</div>
-      <div style={{ color: "#777", fontSize: 11, marginTop: 8 }}>Cargando...</div>
+    <div style={{ flex: "1 1 0", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 16px" }}>
+      <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1 }}>RESERVAS / BADLAR</div>
+      <div style={{ color: "var(--text-mute)", fontSize: 11, marginTop: 8 }}>Cargando...</div>
     </div>
   )
 
@@ -395,15 +395,15 @@ function ReservasBadlarBlock({ onNavigate }: { onNavigate: NavigateFn }) {
       <div
         onClick={() => onNavigate("bcra", null, "reservas")}
         title="Ver Reservas en BCRA"
-        onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#333")}
-        onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1a1a1a")}
-        style={{ flex: 1, background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px", cursor: "pointer", transition: "border-color 0.15s" }}
+        onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--border-hi)")}
+        onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
+        style={{ flex: 1, background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 16px", cursor: "pointer", transition: "border-color 0.15s" }}
       >
-        <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "flex", alignItems: "center", gap: 2 }}>
+        <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "flex", alignItems: "center", gap: 2 }}>
           Reservas BCRA
           <InfoTooltip text={GLOSSARY["RESERVAS"].text} source={GLOSSARY["RESERVAS"].source} url={GLOSSARY["RESERVAS"].url} position="bottom" />
         </div>
-        <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "monospace", color: "#4AF6C3", lineHeight: 1 }}>
+        <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "var(--font-data)", color: "var(--positive)", lineHeight: 1 }}>
           {reservas != null ? `USD ${fmt(reservas / 1000, 1)}B` : "—"}
         </div>
         {resDelta != null && (
@@ -416,18 +416,18 @@ function ReservasBadlarBlock({ onNavigate }: { onNavigate: NavigateFn }) {
       <div
         onClick={() => onNavigate("bcra", null, "plazofijo")}
         title="Ver Tasas en BCRA"
-        onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#333")}
-        onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1a1a1a")}
-        style={{ flex: 1, background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px", cursor: "pointer", transition: "border-color 0.15s" }}
+        onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--border-hi)")}
+        onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
+        style={{ flex: 1, background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 16px", cursor: "pointer", transition: "border-color 0.15s" }}
       >
-        <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "flex", alignItems: "center", gap: 2 }}>
+        <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "flex", alignItems: "center", gap: 2 }}>
           Tasa BADLAR
           <InfoTooltip text={GLOSSARY["BADLAR"].text} source={GLOSSARY["BADLAR"].source} url={GLOSSARY["BADLAR"].url} position="bottom" />
         </div>
-        <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "monospace", color: "#FFA028", lineHeight: 1 }}>
+        <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "var(--font-data)", color: "var(--amber)", lineHeight: 1 }}>
           {badlar != null ? badlar.toFixed(1) + "%" : "—"}
         </div>
-        <div style={{ fontSize: 9, color: "#888", marginTop: 3 }}>tasa nominal anual</div>
+        <div style={{ fontSize: 9, color: "var(--text-dim)", marginTop: 3 }}>tasa nominal anual</div>
       </div>
     </div>
   )
@@ -445,8 +445,8 @@ interface RSSItem {
 }
 
 const CAT_COLORS: Record<string, string> = {
-  economía:    "#4FC3F7",
-  finanzas:    "#FFD54F",
+  economía:    "var(--sky)",
+  finanzas:    "var(--yellow)",
   política:    "#ce93d8",
   comercio:    "#4488ff",
   energía:     "#ffaa00",
@@ -465,34 +465,34 @@ function HeadlinesBlock({ onNavigate }: { onNavigate: NavigateFn }) {
   }, [])
 
   return (
-    <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a" }}>
+    <div style={{ background: "var(--bg-elev)", border: "1px solid var(--border)" }}>
       <div
         onClick={() => onNavigate("noticias", null)}
         title="Ver todas las noticias"
-        style={{ padding: "8px 16px", borderBottom: "1px solid #1a1a1a", fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+        style={{ padding: "8px 16px", borderBottom: "1px solid var(--border)", fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}
       >
         <span>Últimas noticias</span>
-        <span style={{ color: "#777", fontSize: 9 }}>Ver todas →</span>
+        <span style={{ color: "var(--text-mute)", fontSize: 9 }}>Ver todas →</span>
       </div>
       {loading && (
-        <div style={{ padding: "16px", color: "#777", fontSize: 11 }}>Cargando...</div>
+        <div style={{ padding: "16px", color: "var(--text-mute)", fontSize: 11 }}>Cargando...</div>
       )}
       {items.map((item, i) => {
-        const catColor = CAT_COLORS[item.category] ?? "#555"
+        const catColor = CAT_COLORS[item.category] ?? "var(--text-mute)"
         return (
           <div key={item.id + i} style={{
             display: "flex",
             alignItems: "baseline",
             gap: 10,
             padding: "10px 16px",
-            borderBottom: "1px solid #0d0d0d",
-            background: i % 2 === 0 ? "#000" : "#060606",
+            borderBottom: "1px solid var(--bg-elev-2)",
+            background: i % 2 === 0 ? "var(--bg)" : "var(--bg)",
           }}>
-            <span style={{ fontSize: 10, color: "#FFA028", fontFamily: "monospace", flexShrink: 0 }}>
+            <span style={{ fontSize: 10, color: "var(--amber)", fontFamily: "var(--font-data)", flexShrink: 0 }}>
               {fmtTime(item.pubDate)}
             </span>
             <span style={{
-              fontSize: 9, fontFamily: "monospace", fontWeight: 700,
+              fontSize: 9, fontFamily: "var(--font-data)", fontWeight: 700,
               textTransform: "uppercase", color: catColor,
               border: `1px solid ${catColor}44`, borderRadius: 10,
               padding: "1px 6px", flexShrink: 0,
@@ -522,14 +522,14 @@ export function TabResumen({ onNavigate }: { onNavigate: NavigateFn }) {
 
       {/* Fila 1: Tipos de cambio + Brecha */}
       <section>
-        <div style={{ fontSize: 9, color: "#777", textTransform: "uppercase", letterSpacing: 2, marginBottom: 6 }}>
+        <div style={{ fontSize: 9, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: 2, marginBottom: 6 }}>
           Tipos de cambio
         </div>
         <TCStrip onNavigate={onNavigate} />
       </section>
 
       {/* Fila 2: IPC + Riesgo País + Reservas/Badlar */}
-      <section style={{ display: "flex", gap: 1, background: "#111", padding: 1 }}>
+      <section style={{ display: "flex", gap: 1, background: "var(--bg-elev-2)", padding: 1 }}>
         <IPCBlock onNavigate={onNavigate} />
         <RiesgoPaisBlock onNavigate={onNavigate} />
         <ReservasBadlarBlock onNavigate={onNavigate} />

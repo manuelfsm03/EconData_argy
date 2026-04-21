@@ -54,12 +54,12 @@ export function BBGDataTable({ data, columns, title, maxRows }: BBGDataTableProp
           </thead>
           <tbody>
             {rows.map((row, i) => (
-              <tr key={i} style={{ background: i % 2 === 0 ? "#000000" : "#060606" }}>
+              <tr key={i} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg)" }}>
                 <td style={{ color: "#999999", fontSize: "10px" }}>
                   {fmtDate(String(row.date))}
                 </td>
                 {columns.map((col) => (
-                  <td key={col.key} className="text-right" style={{ color: "#FFFFFF", fontWeight: 600 }}>
+                  <td key={col.key} className="text-right" style={{ color: "var(--text)", fontWeight: 600 }}>
                     {fmtCell(row[col.key], col.format, col.currency)}
                   </td>
                 ))}

@@ -26,10 +26,10 @@ export function TabMarketData() {
       {hasError && (
         <div style={{ 
           background: "#1a0a0a", 
-          borderBottom: "1px solid #333",
+          borderBottom: "1px solid var(--border-hi)",
           padding: "8px 12px",
           fontSize: "11px",
-          color: "#FF433D",
+          color: "var(--negative)",
         }}>
           ⚠️ Error cargando datos del BCRA — verificá la conexión a la API
         </div>
@@ -50,33 +50,33 @@ export function TabMarketData() {
             </tr>
           </thead>
           <tbody>
-            <tr style={{ background: "#000000" }}>
-              <td style={{ color: "#FFA028", fontWeight: 600 }}>TC MINORISTA</td>
-              <td className="text-right" style={{ color: "#FFFFFF", fontWeight: 600 }}>{fmtVal(latest?.tc_minorista)}</td>
-              <td style={{ color: "#FFA028", fontWeight: 600 }}>BADLAR</td>
-              <td className="text-right" style={{ color: "#4AF6C3", fontWeight: 600 }}>{latest?.badlar ? fmtVal(latest.badlar) + "%" : "-"}</td>
-              <td style={{ color: "#FFA028", fontWeight: 600 }}>RESERVAS</td>
-              <td className="text-right" style={{ color: "#4AF6C3", fontWeight: 600 }}>USD {fmtVal(latestRes?.reservas)}</td>
+            <tr style={{ background: "var(--bg)" }}>
+              <td style={{ color: "var(--amber)", fontWeight: 600 }}>TC MINORISTA</td>
+              <td className="text-right" style={{ color: "var(--text)", fontWeight: 600 }}>{fmtVal(latest?.tc_minorista)}</td>
+              <td style={{ color: "var(--amber)", fontWeight: 600 }}>BADLAR</td>
+              <td className="text-right" style={{ color: "var(--positive)", fontWeight: 600 }}>{latest?.badlar ? fmtVal(latest.badlar) + "%" : "-"}</td>
+              <td style={{ color: "var(--amber)", fontWeight: 600 }}>RESERVAS</td>
+              <td className="text-right" style={{ color: "var(--positive)", fontWeight: 600 }}>USD {fmtVal(latestRes?.reservas)}</td>
             </tr>
-            <tr style={{ background: "#060606" }}>
-              <td style={{ color: "#FFA028", fontWeight: 600 }}>TC MAYORISTA</td>
-              <td className="text-right" style={{ color: "#FFFFFF", fontWeight: 600 }}>{fmtVal(latest?.tc_mayorista)}</td>
-              <td style={{ color: "#FFA028", fontWeight: 600 }}>TM20</td>
+            <tr style={{ background: "var(--bg)" }}>
+              <td style={{ color: "var(--amber)", fontWeight: 600 }}>TC MAYORISTA</td>
+              <td className="text-right" style={{ color: "var(--text)", fontWeight: 600 }}>{fmtVal(latest?.tc_mayorista)}</td>
+              <td style={{ color: "var(--amber)", fontWeight: 600 }}>TM20</td>
               <td className="text-right" style={{ color: "#FFD700", fontWeight: 600 }}>{latest?.tm20 ? fmtVal(latest.tm20) + "%" : "-"}</td>
-              <td style={{ color: "#FFA028", fontWeight: 600 }}>CER</td>
-              <td className="text-right" style={{ color: "#FFFFFF", fontWeight: 600 }}>{fmtVal(latestIdx?.cer)}</td>
+              <td style={{ color: "var(--amber)", fontWeight: 600 }}>CER</td>
+              <td className="text-right" style={{ color: "var(--text)", fontWeight: 600 }}>{fmtVal(latestIdx?.cer)}</td>
             </tr>
-            <tr style={{ background: "#000000" }}>
-              <td style={{ color: "#FFA028", fontWeight: 600 }}>SPREAD MIN/MAY</td>
-              <td className="text-right" style={{ color: "#FF433D", fontWeight: 600 }}>
+            <tr style={{ background: "var(--bg)" }}>
+              <td style={{ color: "var(--amber)", fontWeight: 600 }}>SPREAD MIN/MAY</td>
+              <td className="text-right" style={{ color: "var(--negative)", fontWeight: 600 }}>
                 {latest?.tc_minorista && latest?.tc_mayorista
                   ? ((Number(latest.tc_minorista) / Number(latest.tc_mayorista) - 1) * 100).toFixed(2) + "%"
                   : "-"}
               </td>
-              <td style={{ color: "#FFA028", fontWeight: 600 }}>DEP 30D</td>
+              <td style={{ color: "var(--amber)", fontWeight: 600 }}>DEP 30D</td>
               <td className="text-right" style={{ color: "#0068FF", fontWeight: 600 }}>{latest?.depositos_30d ? fmtVal(latest.depositos_30d) + "%" : "-"}</td>
-              <td style={{ color: "#FFA028", fontWeight: 600 }}>UVA</td>
-              <td className="text-right" style={{ color: "#FFFFFF", fontWeight: 600 }}>{fmtVal(latestIdx?.uva)}</td>
+              <td style={{ color: "var(--amber)", fontWeight: 600 }}>UVA</td>
+              <td className="text-right" style={{ color: "var(--text)", fontWeight: 600 }}>{fmtVal(latestIdx?.uva)}</td>
             </tr>
           </tbody>
         </table>
@@ -88,7 +88,7 @@ export function TabMarketData() {
           <BBGLineChart
             title="TIPO DE CAMBIO MAYORISTA (3M)"
             data={rates.data}
-            lines={[{ key: "tc_mayorista", name: "TC Mayorista", color: "#FFFFFF" }]}
+            lines={[{ key: "tc_mayorista", name: "TC Mayorista", color: "var(--text)" }]}
             yAxisLabel="ARS"
           />
         </BBGChartPanel>
@@ -97,7 +97,7 @@ export function TabMarketData() {
           <BBGLineChart
             title="BADLAR BANCOS PRIVADOS (3M)"
             data={rates.data}
-            lines={[{ key: "badlar", name: "BADLAR", color: "#FFA028" }]}
+            lines={[{ key: "badlar", name: "BADLAR", color: "var(--amber)" }]}
             yAxisLabel="%"
             formatValue={(v) => v.toFixed(1) + "%"}
           />
@@ -107,7 +107,7 @@ export function TabMarketData() {
           <BBGLineChart
             title="RESERVAS INTERNACIONALES (3M)"
             data={reserves.data}
-            lines={[{ key: "reservas", name: "Reservas", color: "#4AF6C3" }]}
+            lines={[{ key: "reservas", name: "Reservas", color: "var(--positive)" }]}
             yAxisLabel="MM USD"
           />
         </BBGChartPanel>

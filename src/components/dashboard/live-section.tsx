@@ -71,35 +71,35 @@ export function LiveSection() {
   }
 
   return (
-    <div style={{ borderTop: "1px solid #1a1a1a" }}>
+    <div style={{ borderTop: "1px solid var(--border)" }}>
       {/* Header */}
       <div
         className="bbg-panel-header"
         style={{ display: "flex", alignItems: "center", gap: 8 }}
       >
-        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#FF433D", display: "inline-block", boxShadow: "0 0 6px #FF433D" }} />
+        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--negative)", display: "inline-block", boxShadow: "0 0 6px var(--negative)" }} />
         EN VIVO
       </div>
 
       <>
           {/* Grid de canales */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gridTemplateRows: "repeat(2, 150px)", gap: 1, background: "#111" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gridTemplateRows: "repeat(2, 150px)", gap: 1, background: "var(--bg-elev-2)" }}>
             {channels.map((ch, idx) => (
-              <div key={ch.id + ch.videoId} style={{ position: "relative", background: "#000" }}>
+              <div key={ch.id + ch.videoId} style={{ position: "relative", background: "var(--bg)" }}>
                 {/* Label + mute button */}
                 <div style={{
                   position: "absolute", top: 0, left: 0, right: 0, zIndex: 1,
                   background: "#000000bb", padding: "2px 6px",
                   display: "flex", alignItems: "center", gap: 4,
                 }}>
-                  <span style={{ fontSize: 9, color: "#888", flexShrink: 0 }}>{idx + 1}</span>
-                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#FF433D", display: "inline-block", flexShrink: 0 }} />
-                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", color: "#FF433D", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ch.label}</span>
-                  <span style={{ fontSize: 9, color: "#888" }}>{ch.country}</span>
+                  <span style={{ fontSize: 9, color: "var(--text-dim)", flexShrink: 0 }}>{idx + 1}</span>
+                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--negative)", display: "inline-block", flexShrink: 0 }} />
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", color: "var(--negative)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ch.label}</span>
+                  <span style={{ fontSize: 9, color: "var(--text-dim)" }}>{ch.country}</span>
                   <button
                     onClick={() => toggleMute(ch.id)}
                     title={muted[ch.id] ? "Activar audio" : "Silenciar"}
-                    style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", padding: "0 2px", fontSize: 11, lineHeight: 1, color: muted[ch.id] ? "#555" : "#4AF6C3" }}
+                    style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", padding: "0 2px", fontSize: 11, lineHeight: 1, color: muted[ch.id] ? "var(--text-mute)" : "var(--positive)" }}
                   >
                     {muted[ch.id] ? "🔇" : "🔊"}
                   </button>
@@ -118,13 +118,13 @@ export function LiveSection() {
           </div>
 
           {/* Editor de canal */}
-          <div style={{ background: "#050505", borderTop: "1px solid #1a1a1a", padding: "6px 10px", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>Reemplazar canal</span>
+          <div style={{ background: "var(--bg)", borderTop: "1px solid var(--border)", padding: "6px 10px", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>Reemplazar canal</span>
 
             <select
               value={selectedSlot}
               onChange={(e) => setSelectedSlot(e.target.value)}
-              style={{ background: "#0a0a0a", border: "1px solid #222", color: "#888", fontSize: 9, padding: "2px 6px" }}
+              style={{ background: "var(--bg-elev)", border: "1px solid var(--border)", color: "var(--text-dim)", fontSize: 9, padding: "2px 6px" }}
             >
               {channels.map((ch, i) => (
                 <option key={ch.id} value={i}>{i + 1} — {ch.label}</option>
@@ -135,24 +135,24 @@ export function LiveSection() {
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               placeholder="URL o ID de YouTube"
-              style={{ flex: 1, minWidth: 160, background: "#0a0a0a", border: "1px solid #222", color: "#ccc", fontSize: 9, padding: "3px 8px" }}
+              style={{ flex: 1, minWidth: 160, background: "var(--bg-elev)", border: "1px solid var(--border)", color: "#ccc", fontSize: 9, padding: "3px 8px" }}
             />
 
             <input
               value={labelInput}
               onChange={(e) => setLabelInput(e.target.value)}
               placeholder="Nombre (opcional)"
-              style={{ width: 110, background: "#0a0a0a", border: "1px solid #222", color: "#ccc", fontSize: 9, padding: "3px 8px" }}
+              style={{ width: 110, background: "var(--bg-elev)", border: "1px solid var(--border)", color: "#ccc", fontSize: 9, padding: "3px 8px" }}
             />
 
             <button
               onClick={handleReplace}
-              style={{ background: "#0d0d0d", border: "1px solid #333", color: "#FFA028", fontSize: 9, padding: "3px 10px", cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}
+              style={{ background: "var(--bg-elev-2)", border: "1px solid var(--border-hi)", color: "var(--amber)", fontSize: 9, padding: "3px 10px", cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}
             >
               Aplicar
             </button>
 
-            {error && <span style={{ fontSize: 9, color: "#FF433D" }}>{error}</span>}
+            {error && <span style={{ fontSize: 9, color: "var(--negative)" }}>{error}</span>}
           </div>
       </>
     </div>

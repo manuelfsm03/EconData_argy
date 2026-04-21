@@ -14,7 +14,7 @@
     "scrape:bcra": "tsx -e \"import { BCRAScraper } from './src/scrapers/bcra'; new BCRAScraper().run().then(console.log)\""
   },
   "dependencies": {
-    "@prisma/client": "5.22.0",
+    "@prisma/client": "^5.22.0",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
     "class-variance-authority": "^0.7.1",

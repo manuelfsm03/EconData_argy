@@ -46,7 +46,7 @@ export function DataTable<T extends object>({
             {data.map((row, idx) => (
               <tr
                 key={idx}
-                style={{ background: idx % 2 === 0 ? "#000000" : "#060606" }}
+                style={{ background: idx % 2 === 0 ? "var(--bg)" : "var(--bg)" }}
               >
                 {columns.map((col) => {
                   const keyStr = col.key.toString()

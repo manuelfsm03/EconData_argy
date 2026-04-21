@@ -32,8 +32,8 @@ export function InfoTooltip({ text, source, url, position = "top" }: InfoTooltip
           height: 13,
           borderRadius: "50%",
           background: "transparent",
-          border: "1px solid #2a2a2a",
-          color: "#888",
+          border: "1px solid var(--border)",
+          color: "var(--text-dim)",
           fontSize: 8,
           cursor: url ? "pointer" : "default",
           display: "inline-flex",
@@ -56,17 +56,17 @@ export function InfoTooltip({ text, source, url, position = "top" }: InfoTooltip
             position: "absolute",
             ...posStyle,
             width: 260,
-            background: "#0d0d0d",
-            border: "1px solid #2a2a2a",
+            background: "var(--bg-elev)",
+            border: "1px solid var(--border)",
             padding: "9px 11px",
             zIndex: 9999,
             boxShadow: "0 6px 24px rgba(0,0,0,0.9)",
             pointerEvents: "none",
           }}
         >
-          <p style={{ fontSize: 10, color: "#cccccc", lineHeight: 1.6, margin: 0 }}>{text}</p>
+          <p style={{ fontSize: 10, color: "var(--text)", lineHeight: 1.6, margin: 0 }}>{text}</p>
           {source && (
-            <p style={{ fontSize: 9, color: "#888", margin: "5px 0 0", fontStyle: "italic" }}>
+            <p style={{ fontSize: 9, color: "var(--text-dim)", margin: "5px 0 0", fontStyle: "italic" }}>
               Fuente: {source}
             </p>
           )}

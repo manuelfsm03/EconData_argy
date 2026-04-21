@@ -19,15 +19,25 @@ export const metadata: Metadata = {
   description: "Dashboard macroeconómico argentino — tipos de cambio, inflación, BCRA, deuda y más",
 };
 
+const themeInitScript = `
+  (function() {
+    try {
+      var t = localStorage.getItem('lp-theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    } catch(e) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  })();
+`;
+
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es" className="dark">
+    <html lang="es" data-theme="dark" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className={`${ibmPlexMono.variable} ${inter.variable}`}>
         {children}

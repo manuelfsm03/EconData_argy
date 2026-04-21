@@ -18,10 +18,10 @@ export function TabReservas() {
       {hasError && (
         <div className="col-span-3" style={{ 
           background: "#1a0a0a", 
-          borderBottom: "1px solid #333",
+          borderBottom: "1px solid var(--border-hi)",
           padding: "8px 12px",
           fontSize: "11px",
-          color: "#FF433D",
+          color: "var(--negative)",
         }}>
           ⚠️ Error cargando datos del BCRA — verificá la conexión a la API
         </div>
@@ -33,7 +33,7 @@ export function TabReservas() {
           title="RESERVAS BCRA — NIVEL"
           glossaryKey="RESERVAS"
           data={reservas.data}
-          areas={[{ key: "reservas", name: "Reservas", color: "#4AF6C3" }]}
+          areas={[{ key: "reservas", name: "Reservas", color: "var(--positive)" }]}
           yAxisLabel="MM USD"
         />
       </BBGChartPanel>
@@ -43,7 +43,7 @@ export function TabReservas() {
           title="BASE MONETARIA — NIVEL"
           glossaryKey="BASE MONETARIA"
           data={baseMon.data}
-          areas={[{ key: "base_monetaria", name: "Base Monetaria", color: "#FFA028" }]}
+          areas={[{ key: "base_monetaria", name: "Base Monetaria", color: "var(--amber)" }]}
           yAxisLabel="MM ARS"
         />
       </BBGChartPanel>

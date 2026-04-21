@@ -53,10 +53,10 @@ function generateArbData(): ArbOpportunity[] {
 }
 
 function getSpreadColor(spreadPercent: number): string {
-  if (spreadPercent >= 1.5) return "#FF433D" // Red - high opportunity
-  if (spreadPercent >= 1.0) return "#FFA028" // Orange - medium
+  if (spreadPercent >= 1.5) return "var(--negative)" // Red - high opportunity
+  if (spreadPercent >= 1.0) return "var(--amber)" // Orange - medium
   if (spreadPercent >= 0.5) return "#FFD700" // Yellow - low
-  return "#4AF6C3" // Green - normal
+  return "var(--positive)" // Green - normal
 }
 
 function getSpreadBg(spreadPercent: number): string {
@@ -106,11 +106,11 @@ export function TabArbScanner() {
         <div className="p-2">
           <table style={{ width: "100%", fontSize: "11px" }}>
             <thead>
-              <tr style={{ borderBottom: "1px solid #333" }}>
-                <th style={{ textAlign: "left", padding: "4px", color: "#888" }}>Mercado</th>
-                <th style={{ textAlign: "right", padding: "4px", color: "#888" }}>Compra</th>
-                <th style={{ textAlign: "right", padding: "4px", color: "#888" }}>Venta</th>
-                <th style={{ textAlign: "right", padding: "4px", color: "#888" }}>Spread</th>
+              <tr style={{ borderBottom: "1px solid var(--border-hi)" }}>
+                <th style={{ textAlign: "left", padding: "4px", color: "var(--text-dim)" }}>Mercado</th>
+                <th style={{ textAlign: "right", padding: "4px", color: "var(--text-dim)" }}>Compra</th>
+                <th style={{ textAlign: "right", padding: "4px", color: "var(--text-dim)" }}>Venta</th>
+                <th style={{ textAlign: "right", padding: "4px", color: "var(--text-dim)" }}>Spread</th>
               </tr>
             </thead>
             <tbody>
@@ -118,13 +118,13 @@ export function TabArbScanner() {
                 <tr 
                   key={row.id} 
                   style={{ 
-                    background: i % 2 === 0 ? "#000" : "#060606",
+                    background: i % 2 === 0 ? "var(--bg)" : "var(--bg)",
                     backgroundColor: getSpreadBg(row.spreadPercent),
                   }}
                 >
-                  <td style={{ padding: "4px", color: "#FFA028", fontWeight: 600 }}>{row.exchange}</td>
-                  <td style={{ textAlign: "right", padding: "4px", color: "#fff" }}>{formatCurrency(row.buy)}</td>
-                  <td style={{ textAlign: "right", padding: "4px", color: "#fff" }}>{formatCurrency(row.sell)}</td>
+                  <td style={{ padding: "4px", color: "var(--amber)", fontWeight: 600 }}>{row.exchange}</td>
+                  <td style={{ textAlign: "right", padding: "4px", color: "var(--text)" }}>{formatCurrency(row.buy)}</td>
+                  <td style={{ textAlign: "right", padding: "4px", color: "var(--text)" }}>{formatCurrency(row.sell)}</td>
                   <td style={{ textAlign: "right", padding: "4px", color: getSpreadColor(row.spreadPercent), fontWeight: 600 }}>
                     {row.spreadPercent.toFixed(2)}%
                     {row.spreadPercent >= 1.5 && " 🔥"}
@@ -141,11 +141,11 @@ export function TabArbScanner() {
         <div className="p-2">
           <table style={{ width: "100%", fontSize: "11px" }}>
             <thead>
-              <tr style={{ borderBottom: "1px solid #333" }}>
-                <th style={{ textAlign: "left", padding: "4px", color: "#888" }}>Exchange</th>
-                <th style={{ textAlign: "right", padding: "4px", color: "#888" }}>Compra</th>
-                <th style={{ textAlign: "right", padding: "4px", color: "#888" }}>Venta</th>
-                <th style={{ textAlign: "right", padding: "4px", color: "#888" }}>Spread</th>
+              <tr style={{ borderBottom: "1px solid var(--border-hi)" }}>
+                <th style={{ textAlign: "left", padding: "4px", color: "var(--text-dim)" }}>Exchange</th>
+                <th style={{ textAlign: "right", padding: "4px", color: "var(--text-dim)" }}>Compra</th>
+                <th style={{ textAlign: "right", padding: "4px", color: "var(--text-dim)" }}>Venta</th>
+                <th style={{ textAlign: "right", padding: "4px", color: "var(--text-dim)" }}>Spread</th>
               </tr>
             </thead>
             <tbody>
@@ -153,13 +153,13 @@ export function TabArbScanner() {
                 <tr 
                   key={row.id}
                   style={{ 
-                    background: i % 2 === 0 ? "#000" : "#060606",
+                    background: i % 2 === 0 ? "var(--bg)" : "var(--bg)",
                     backgroundColor: getSpreadBg(row.spreadPercent),
                   }}
                 >
-                  <td style={{ padding: "4px", color: "#FFA028", fontWeight: 600 }}>{row.exchange}</td>
-                  <td style={{ textAlign: "right", padding: "4px", color: "#fff" }}>{formatCurrency(row.buy)}</td>
-                  <td style={{ textAlign: "right", padding: "4px", color: "#fff" }}>{formatCurrency(row.sell)}</td>
+                  <td style={{ padding: "4px", color: "var(--amber)", fontWeight: 600 }}>{row.exchange}</td>
+                  <td style={{ textAlign: "right", padding: "4px", color: "var(--text)" }}>{formatCurrency(row.buy)}</td>
+                  <td style={{ textAlign: "right", padding: "4px", color: "var(--text)" }}>{formatCurrency(row.sell)}</td>
                   <td style={{ textAlign: "right", padding: "4px", color: getSpreadColor(row.spreadPercent), fontWeight: 600 }}>
                     {row.spreadPercent.toFixed(2)}%
                     {row.spreadPercent >= 1.5 && " 🔥"}
@@ -176,11 +176,11 @@ export function TabArbScanner() {
         <div className="p-2">
           <table style={{ width: "100%", fontSize: "11px" }}>
             <thead>
-              <tr style={{ borderBottom: "1px solid #333" }}>
-                <th style={{ textAlign: "left", padding: "4px", color: "#888" }}>Exchange</th>
-                <th style={{ textAlign: "right", padding: "4px", color: "#888" }}>Compra</th>
-                <th style={{ textAlign: "right", padding: "4px", color: "#888" }}>Venta</th>
-                <th style={{ textAlign: "right", padding: "4px", color: "#888" }}>Spread</th>
+              <tr style={{ borderBottom: "1px solid var(--border-hi)" }}>
+                <th style={{ textAlign: "left", padding: "4px", color: "var(--text-dim)" }}>Exchange</th>
+                <th style={{ textAlign: "right", padding: "4px", color: "var(--text-dim)" }}>Compra</th>
+                <th style={{ textAlign: "right", padding: "4px", color: "var(--text-dim)" }}>Venta</th>
+                <th style={{ textAlign: "right", padding: "4px", color: "var(--text-dim)" }}>Spread</th>
               </tr>
             </thead>
             <tbody>
@@ -188,13 +188,13 @@ export function TabArbScanner() {
                 <tr 
                   key={row.id}
                   style={{ 
-                    background: i % 2 === 0 ? "#000" : "#060606",
+                    background: i % 2 === 0 ? "var(--bg)" : "var(--bg)",
                     backgroundColor: getSpreadBg(row.spreadPercent),
                   }}
                 >
-                  <td style={{ padding: "4px", color: "#4AF6C3", fontWeight: 600 }}>{row.exchange}</td>
-                  <td style={{ textAlign: "right", padding: "4px", color: "#fff" }}>{formatCurrency(row.buy)}</td>
-                  <td style={{ textAlign: "right", padding: "4px", color: "#fff" }}>{formatCurrency(row.sell)}</td>
+                  <td style={{ padding: "4px", color: "var(--positive)", fontWeight: 600 }}>{row.exchange}</td>
+                  <td style={{ textAlign: "right", padding: "4px", color: "var(--text)" }}>{formatCurrency(row.buy)}</td>
+                  <td style={{ textAlign: "right", padding: "4px", color: "var(--text)" }}>{formatCurrency(row.sell)}</td>
                   <td style={{ textAlign: "right", padding: "4px", color: getSpreadColor(row.spreadPercent), fontWeight: 600 }}>
                     {row.spreadPercent.toFixed(2)}%
                     {row.spreadPercent >= 1.5 && " 🔥"}
@@ -222,26 +222,26 @@ export function TabArbScanner() {
                   alignItems: "center",
                   padding: "8px",
                   marginBottom: "4px",
-                  background: i % 2 === 0 ? "#000" : "#060606",
+                  background: i % 2 === 0 ? "var(--bg)" : "var(--bg)",
                   borderLeft: `3px solid ${getSpreadColor(row.spreadPercent)}`,
                 }}
               >
                 <div>
-                  <span style={{ color: "#FFA028", fontWeight: 600, fontSize: "12px" }}>{row.exchange}</span>
-                  <span style={{ color: "#888", fontSize: "10px", marginLeft: "8px" }}>{row.type}</span>
+                  <span style={{ color: "var(--amber)", fontWeight: 600, fontSize: "12px" }}>{row.exchange}</span>
+                  <span style={{ color: "var(--text-dim)", fontSize: "10px", marginLeft: "8px" }}>{row.type}</span>
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ color: getSpreadColor(row.spreadPercent), fontWeight: 600, fontSize: "14px" }}>
                     {row.spreadPercent.toFixed(2)}%
                   </div>
-                  <div style={{ color: "#888", fontSize: "9px" }}>
+                  <div style={{ color: "var(--text-dim)", fontSize: "9px" }}>
                     ${formatCurrency(row.buy)} / ${formatCurrency(row.sell)}
                   </div>
                 </div>
               </div>
             ))}
           {arbData.filter(d => d.spreadPercent >= 1.0).length === 0 && (
-            <div style={{ padding: "16px", textAlign: "center", color: "#999" }}>
+            <div style={{ padding: "16px", textAlign: "center", color: "var(--text-dim)" }}>
               No hay oportunidades destacadas
               <br />
               <span style={{ fontSize: "10px" }}>(Spread &lt; 1.0%)</span>
@@ -253,14 +253,14 @@ export function TabArbScanner() {
       {/* Legend Panel */}
       <BBGChartPanel title="LEyenda" loading={false} error={null}>
         <div className="p-2" style={{ fontSize: "11px" }}>
-          <div style={{ marginBottom: "8px", color: "#888" }}>Indicadores de Spread:</div>
+          <div style={{ marginBottom: "8px", color: "var(--text-dim)" }}>Indicadores de Spread:</div>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ color: "#FF433D" }}>●</span>
+              <span style={{ color: "var(--negative)" }}>●</span>
               <span>&gt;= 1.5% Alta oportunidad 🔥</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ color: "#FFA028" }}>●</span>
+              <span style={{ color: "var(--amber)" }}>●</span>
               <span>&gt;= 1.0% Oportunidad</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -268,11 +268,11 @@ export function TabArbScanner() {
               <span>&gt;= 0.5% Moderado</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ color: "#4AF6C3" }}>●</span>
+              <span style={{ color: "var(--positive)" }}>●</span>
               <span>&lt; 0.5% Normal</span>
             </div>
           </div>
-          <div style={{ marginTop: "12px", paddingTop: "8px", borderTop: "1px solid #333", color: "#999", fontSize: "10px" }}>
+          <div style={{ marginTop: "12px", paddingTop: "8px", borderTop: "1px solid var(--border-hi)", color: "var(--text-dim)", fontSize: "10px" }}>
             Actualización automática cada 30 segundos
             {lastUpdate && (
               <div>Última: {lastUpdate.toLocaleTimeString("es-AR")}</div>
@@ -288,7 +288,7 @@ export function TabArbScanner() {
           display: "flex", 
           alignItems: "center", 
           justifyContent: "center",
-          color: "#999",
+          color: "var(--text-dim)",
           fontSize: "11px"
         }}>
           <div style={{ textAlign: "center" }}>

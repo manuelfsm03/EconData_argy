@@ -31,7 +31,7 @@ export function TabPlazosFijos() {
           title="PLAZOS FIJOS PRIVADOS ARS — NIVEL"
           glossaryKey="TASA PLAZO FIJO"
           data={plazosFijos.data}
-          areas={[{ key: "plazos_fijos", name: "Plazos Fijos", color: "#4AF6C3" }]}
+          areas={[{ key: "plazos_fijos", name: "Plazos Fijos", color: "var(--positive)" }]}
           yAxisLabel="MM ARS"
         />
       </BBGChartPanel>
@@ -42,7 +42,7 @@ export function TabPlazosFijos() {
           glossaryKey="BADLAR"
           data={rates.data}
           lines={[
-            { key: "badlar", name: "BADLAR", color: "#FFA028" },
+            { key: "badlar", name: "BADLAR", color: "var(--amber)" },
             { key: "depositos_30d", name: "Dep 30d", color: "#0068FF" },
           ]}
           yAxisLabel="Tasa %"
@@ -57,7 +57,7 @@ export function TabPlazosFijos() {
           data={rates.data}
           lines={[
             { key: "tm20", name: "TM20", color: "#FFD700" },
-            { key: "badlar", name: "BADLAR", color: "#FFA028" },
+            { key: "badlar", name: "BADLAR", color: "var(--amber)" },
           ]}
           yAxisLabel="Tasa %"
           formatValue={(v) => v.toFixed(1) + "%"}
@@ -71,8 +71,8 @@ export function TabPlazosFijos() {
           glossaryKey="COMPONENTES DEPOSITOS"
           data={deposits.data}
           lines={[
-            { key: "depositos_cc", name: "Cta Cte", color: "#4AF6C3" },
-            { key: "cajas_ahorro", name: "Cajas Ahorro", color: "#FFA028" },
+            { key: "depositos_cc", name: "Cta Cte", color: "var(--positive)" },
+            { key: "cajas_ahorro", name: "Cajas Ahorro", color: "var(--amber)" },
             { key: "plazos_fijos", name: "Plazos Fijos", color: "#0068FF" },
           ]}
           yAxisLabel="MM ARS"
@@ -84,7 +84,7 @@ export function TabPlazosFijos() {
           title="RATIO BADLAR / DEPOSITOS 30D"
           glossaryKey="RATIO BADLAR"
           data={ratioData}
-          lines={[{ key: "ratio", name: "BADLAR/Dep30d", color: "#FF433D" }]}
+          lines={[{ key: "ratio", name: "BADLAR/Dep30d", color: "var(--negative)" }]}
           yAxisLabel="Ratio"
           formatValue={(v) => v.toFixed(2)}
         />
@@ -95,7 +95,7 @@ export function TabPlazosFijos() {
           title="IPC — VARIACION INTERANUAL"
           glossaryKey="IPC INTERANUAL"
           data={ipc.data}
-          lines={[{ key: "ipc_interanual", name: "IPC Interanual", color: "#FF433D" }]}
+          lines={[{ key: "ipc_interanual", name: "IPC Interanual", color: "var(--negative)" }]}
           yAxisLabel="%"
           formatValue={(v) => v.toFixed(1) + "%"}
         />

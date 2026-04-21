@@ -33,20 +33,20 @@ interface KPIProps {
   unit?: string
   valueColor?: string
 }
-function KPI({ label, value, unit, valueColor = "#fff" }: KPIProps) {
+function KPI({ label, value, unit, valueColor = "var(--text)" }: KPIProps) {
   return (
     <div style={{
-      flex: "1 1 160px", padding: "10px 14px", background: "#080808",
-      border: "1px solid #111", display: "flex", flexDirection: "column", gap: 4,
+      flex: "1 1 160px", padding: "10px 14px", background: "var(--bg-row-alt)",
+      border: "1px solid var(--bg-elev-2)", display: "flex", flexDirection: "column", gap: 4,
     }}>
-      <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace" }}>
+      <div style={{ fontSize: 8, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "var(--font-data)" }}>
         {label}
       </div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: valueColor, fontFamily: "monospace", lineHeight: 1 }}>
+      <div style={{ fontSize: 22, fontWeight: 700, color: valueColor, fontFamily: "var(--font-data)", lineHeight: 1 }}>
         {value ?? "—"}
       </div>
       {unit && (
-        <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>{unit}</div>
+        <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>{unit}</div>
       )}
     </div>
   )
@@ -71,8 +71,8 @@ interface SubTabsProps {
 function SubTabs({ active, onChange }: SubTabsProps) {
   return (
     <div style={{
-      background: "#050505",
-      borderBottom: "1px solid #111",
+      background: "var(--bg)",
+      borderBottom: "1px solid var(--bg-elev-2)",
       display: "flex",
       alignItems: "center",
       padding: "10px 14px",
@@ -90,19 +90,19 @@ function SubTabs({ active, onChange }: SubTabsProps) {
               alignItems: "center",
               gap: 6,
               background: isActive ? "rgba(255,160,40,0.08)" : "transparent",
-              border: isActive ? "1px solid rgba(255,160,40,0.4)" : "1px solid #2a2a2a",
+              border: isActive ? "1px solid rgba(255,160,40,0.4)" : "1px solid var(--border)",
               borderRadius: 20,
               cursor: "pointer",
               padding: "5px 14px",
               whiteSpace: "nowrap",
               transition: "all 0.15s",
-              fontFamily: "monospace",
+              fontFamily: "var(--font-data)",
             }}
           >
             <span style={{
               fontSize: 11,
-              color: isActive ? "#FFA028" : "#555",
-              fontFamily: "monospace",
+              color: isActive ? "var(--amber)" : "var(--text-mute)",
+              fontFamily: "var(--font-data)",
               fontWeight: 700,
               lineHeight: 1,
             }}>
@@ -110,8 +110,8 @@ function SubTabs({ active, onChange }: SubTabsProps) {
             </span>
             <span style={{
               fontSize: 10,
-              fontFamily: "monospace",
-              color: isActive ? "#FFA028" : "#888",
+              fontFamily: "var(--font-data)",
+              color: isActive ? "var(--amber)" : "var(--text-dim)",
               fontWeight: isActive ? 600 : 400,
               letterSpacing: 0.5,
               textTransform: "uppercase" as const,
@@ -141,7 +141,7 @@ function PlazoFijoView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando tasas...</div>
+  if (loading) return <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>Cargando tasas...</div>
 
   const badlarUlt = data?.badlar?.at(-1)?.valor
   const tm20Ult   = data?.tm20?.at(-1)?.valor
@@ -171,45 +171,45 @@ function PlazoFijoView() {
   return (
     <div>
       <SectionMeta title="Tasas — Plazo Fijo" help="BADLAR = tasa promedio de depósitos a plazo fijo mayores a $1 millón en bancos privados. Referencia para rendimientos de inversión minorista. TM20 = tasa por depósitos mayores a $20 millones. TPM = Tasa de Política Monetaria del BCRA." source="BCRA API" />
-      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
         <KPI label="BADLAR Bancos Privados" value={badlarUlt != null ? `${fmtNum(badlarUlt, 2)}%` : null}
-          unit="TNA · Var 7 BCRA API" valueColor="#FFA028" />
+          unit="TNA · Var 7 BCRA API" valueColor="var(--amber)" />
         <KPI label="TM20 Bancos Privados"   value={tm20Ult   != null ? `${fmtNum(tm20Ult, 2)}%` : null}
-          unit="TNA · Var 8 BCRA API" valueColor="#4AF6C3" />
+          unit="TNA · Var 8 BCRA API" valueColor="var(--positive)" />
         <KPI label="Tasa de Política Mon."  value={tpmUlt    != null ? `${fmtNum(tpmUlt, 2)}%` : null}
-          unit="TPM · Var 6 BCRA API" valueColor="#4FC3F7" />
+          unit="TPM · Var 6 BCRA API" valueColor="var(--sky)" />
         <KPI label="Depósitos 30d"          value={pf30Ult   != null ? `${fmtNum(pf30Ult, 2)}%` : null}
           unit="TNA · Var 12 BCRA API" valueColor="#CE93D8" />
       </div>
       <div style={{ padding: "8px 12px 0" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-          <div style={{ fontSize: 9, color: "#4AF6C3", letterSpacing: 1.5, fontFamily: "monospace" }}>
+          <div style={{ fontSize: 9, color: "var(--positive)", letterSpacing: 1.5, fontFamily: "var(--font-data)" }}>
             EVOLUCIÓN TASAS — ÚLTIMOS 96 REGISTROS
           </div>
           <DownloadCSV data={chartData} filename="tasas-bcra" />
         </div>
         <ResponsiveContainer width="100%" height={240}>
           <AreaChart data={chartData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#111" />
-            <XAxis dataKey="fecha" tick={{ fontSize: 8, fill: "#555", fontFamily: "monospace" }}
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--bg-elev-2)" />
+            <XAxis dataKey="fecha" tick={{ fontSize: 8, fill: "var(--text-mute)", fontFamily: "var(--font-data)" }}
               tickFormatter={d => d?.slice(0, 7) ?? ""} interval="preserveStartEnd" />
-            <YAxis tick={{ fontSize: 8, fill: "#555", fontFamily: "monospace" }} tickFormatter={v => `${v}%`} />
-            <Tooltip contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontFamily: "monospace", fontSize: 10 }}
+            <YAxis tick={{ fontSize: 8, fill: "var(--text-mute)", fontFamily: "var(--font-data)" }} tickFormatter={v => `${v}%`} />
+            <Tooltip contentStyle={{ background: "var(--bg-elev)", border: "1px solid var(--border)", fontFamily: "var(--font-data)", fontSize: 10 }}
               formatter={(v: unknown) => [`${fmtNum(v as number, 2)}%`]} />
-            <Legend wrapperStyle={{ fontSize: 9, fontFamily: "monospace" }} />
-            <Area type="monotone" dataKey="BADLAR" stroke="#FFA028" fill="#FFA02820" strokeWidth={1.5} dot={false} />
-            <Area type="monotone" dataKey="TPM"    stroke="#4FC3F7" fill="#4FC3F720" strokeWidth={1.5} dot={false} />
+            <Legend wrapperStyle={{ fontSize: 9, fontFamily: "var(--font-data)" }} />
+            <Area type="monotone" dataKey="BADLAR" stroke="var(--amber)" fill="#FFA02820" strokeWidth={1.5} dot={false} />
+            <Area type="monotone" dataKey="TPM"    stroke="var(--sky)" fill="#4FC3F720" strokeWidth={1.5} dot={false} />
             <Area type="monotone" dataKey="PF30"   stroke="#CE93D8" fill="#CE93D820" strokeWidth={1.5} dot={false} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
       {tableSrc.length > 0 && (
         <div style={{ padding: "10px 12px", overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 9 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-data)", fontSize: 9 }}>
             <thead>
-              <tr style={{ borderBottom: "1px solid #222" }}>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
                 {["Fecha", "BADLAR", "TPM", "Dep. 30d"].map(h => (
-                  <th key={h} style={{ padding: "4px 8px", color: "#888", textAlign: "right", fontWeight: 400 }}>{h}</th>
+                  <th key={h} style={{ padding: "4px 8px", color: "var(--text-dim)", textAlign: "right", fontWeight: 400 }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -218,17 +218,17 @@ function PlazoFijoView() {
                 const tpmVal  = data?.tpm?.find(x => x.fecha === r.fecha)?.valor
                 const pf30Val = data?.pf30?.find(x => x.fecha === r.fecha)?.valor
                 return (
-                  <tr key={r.fecha} style={{ borderBottom: "1px solid #0d0d0d" }}>
-                    <td style={{ padding: "3px 8px", color: "#999" }}>{fmtDate(r.fecha)}</td>
-                    <td style={{ padding: "3px 8px", color: "#FFA028", textAlign: "right" }}>{fmtNum(r.valor, 2)}%</td>
-                    <td style={{ padding: "3px 8px", color: "#4FC3F7", textAlign: "right" }}>{tpmVal  != null ? `${fmtNum(tpmVal, 2)}%`  : "—"}</td>
+                  <tr key={r.fecha} style={{ borderBottom: "1px solid var(--bg-elev-2)" }}>
+                    <td style={{ padding: "3px 8px", color: "var(--text-dim)" }}>{fmtDate(r.fecha)}</td>
+                    <td style={{ padding: "3px 8px", color: "var(--amber)", textAlign: "right" }}>{fmtNum(r.valor, 2)}%</td>
+                    <td style={{ padding: "3px 8px", color: "var(--sky)", textAlign: "right" }}>{tpmVal  != null ? `${fmtNum(tpmVal, 2)}%`  : "—"}</td>
                     <td style={{ padding: "3px 8px", color: "#CE93D8", textAlign: "right" }}>{pf30Val != null ? `${fmtNum(pf30Val, 2)}%` : "—"}</td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
-          <div style={{ fontSize: 8, color: "#777", marginTop: 4 }}>
+          <div style={{ fontSize: 8, color: "var(--text-mute)", marginTop: 4 }}>
             Fuente: BCRA API v4.0 · api.bcra.gob.ar · Variables 7 (BADLAR), 8 (TM20), 6 (TPM), 12 (Dep. 30d)
           </div>
         </div>
@@ -263,7 +263,7 @@ function AgregadosView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando agregados monetarios...</div>
+  if (loading) return <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>Cargando agregados monetarios...</div>
 
   // Últimos valores
   const baseUlt     = data?.base?.at(-1)?.valor
@@ -325,19 +325,19 @@ function AgregadosView() {
   return (
     <div>
       <SectionMeta title="Agregados Monetarios" help="M1 = dinero en circulación + depósitos a la vista. M2 = M1 + cajas de ahorro. M3 = M2 + depósitos a plazo. Base Monetaria = pasivos monetarios del BCRA (billetes + reservas bancarias)." source="BCRA API" />
-      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
         <KPI label="Base Monetaria"
           value={fmt(baseUlt)}
           unit={iaBase != null ? `i.a.: ${iaBase >= 0 ? "+" : ""}${fmtNum(iaBase, 1)}% · Var 15` : "Var 15 BCRA API"}
-          valueColor="#FFA028" />
+          valueColor="var(--amber)" />
         <KPI label="Circulación Monetaria"
           value={fmt(circUlt)}
           unit="Sin encajes · Var 16 BCRA API"
-          valueColor="#4AF6C3" />
+          valueColor="var(--positive)" />
         <KPI label="M1  (Billetes + Depósitos Vista)"
           value={fmt(m1Ult)}
           unit="Vars 17 + 21 BCRA API"
-          valueColor="#4FC3F7" />
+          valueColor="var(--sky)" />
         <KPI label="M2  (M1 + Cajas de Ahorro)"
           value={fmt(m2Ult)}
           unit="Vars 17 + 21 + 22 BCRA API"
@@ -345,33 +345,33 @@ function AgregadosView() {
         <KPI label="M3  (M2 + Plazos Fijos)"
           value={fmt(m3Ult)}
           unit="Vars 17 + 21 + 22 + 23 BCRA API"
-          valueColor="#FFD54F" />
+          valueColor="var(--yellow)" />
       </div>
 
       <div style={{ padding: "8px 12px 0" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-          <div style={{ fontSize: 9, color: "#4AF6C3", letterSpacing: 1.5, fontFamily: "monospace" }}>
+          <div style={{ fontSize: 9, color: "var(--positive)", letterSpacing: 1.5, fontFamily: "var(--font-data)" }}>
             AGREGADOS MONETARIOS — ÚLTIMOS 36 MESES (BILLONES ARS)
           </div>
           <DownloadCSV data={chartData} filename="agregados-monetarios-bcra" />
         </div>
         <ResponsiveContainer width="100%" height={260}>
           <AreaChart data={chartData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#111" />
-            <XAxis dataKey="fecha" tick={{ fontSize: 8, fill: "#555", fontFamily: "monospace" }}
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--bg-elev-2)" />
+            <XAxis dataKey="fecha" tick={{ fontSize: 8, fill: "var(--text-mute)", fontFamily: "var(--font-data)" }}
               tickFormatter={d => d?.slice(0, 7) ?? ""} interval="preserveStartEnd" />
-            <YAxis tick={{ fontSize: 8, fill: "#555", fontFamily: "monospace" }}
+            <YAxis tick={{ fontSize: 8, fill: "var(--text-mute)", fontFamily: "var(--font-data)" }}
               tickFormatter={v => `$${typeof v === "number" ? v.toFixed(0) : v}B`} />
-            <Tooltip contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontFamily: "monospace", fontSize: 10 }}
+            <Tooltip contentStyle={{ background: "var(--bg-elev)", border: "1px solid var(--border)", fontFamily: "var(--font-data)", fontSize: 10 }}
               formatter={(v: unknown) => [`$${fmtNum(v as number, 2)}B`]} />
-            <Legend wrapperStyle={{ fontSize: 9, fontFamily: "monospace" }} />
-            <Area type="monotone" dataKey="M3"   stroke="#FFD54F" fill="#FFD54F15" strokeWidth={1}   dot={false} />
+            <Legend wrapperStyle={{ fontSize: 9, fontFamily: "var(--font-data)" }} />
+            <Area type="monotone" dataKey="M3"   stroke="var(--yellow)" fill="#FFD54F15" strokeWidth={1}   dot={false} />
             <Area type="monotone" dataKey="M2"   stroke="#CE93D8" fill="#CE93D815" strokeWidth={1.5} dot={false} />
-            <Area type="monotone" dataKey="M1"   stroke="#4FC3F7" fill="#4FC3F715" strokeWidth={1.5} dot={false} />
-            <Area type="monotone" dataKey="Base" stroke="#FFA028" fill="#FFA02820" strokeWidth={2}   dot={false} />
+            <Area type="monotone" dataKey="M1"   stroke="var(--sky)" fill="#4FC3F715" strokeWidth={1.5} dot={false} />
+            <Area type="monotone" dataKey="Base" stroke="var(--amber)" fill="#FFA02820" strokeWidth={2}   dot={false} />
           </AreaChart>
         </ResponsiveContainer>
-        <div style={{ fontSize: 8, color: "#777", marginTop: 4 }}>
+        <div style={{ fontSize: 8, color: "var(--text-mute)", marginTop: 4 }}>
           Fuente: BCRA API v4.0 · api.bcra.gob.ar ·
           M1 = Billetes (var 17) + Dep. vista (var 21) ·
           M2 = M1 + Cajas ahorro (var 22) ·
@@ -399,7 +399,7 @@ function ReservasView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando reservas...</div>
+  if (loading) return <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>Cargando reservas...</div>
 
   const ult = data?.ultima
   const chartData = data?.netas?.slice(-24) ?? []
@@ -407,17 +407,17 @@ function ReservasView() {
   return (
     <div>
       <SectionMeta title="Reservas Internacionales" help="Reservas internacionales brutas del BCRA en USD. Las reservas netas excluyen encajes en moneda extranjera, el swap con China y las obligaciones de corto plazo con el FMI y otros acreedores." source="BCRA API" />
-      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
         <KPI label="Reservas Brutas"
           value={ult?.brutas != null ? `USD ${fmtNum(ult.brutas / 1e3, 2)}B` : null}
           unit={ult?.var_semanal_brutas != null
             ? `Var. semanal: ${ult.var_semanal_brutas >= 0 ? "+" : ""}${fmtNum(ult.var_semanal_brutas, 0)}M · Var 1 BCRA API`
             : `Fecha: ${ult?.fecha ?? "—"} · Var 1 BCRA API`}
-          valueColor="#FFA028" />
+          valueColor="var(--amber)" />
         <KPI label="Reservas Netas"
           value={ult?.netas != null ? `USD ${fmtNum(ult.netas / 1e3, 2)}B` : null}
           unit="Metodología F. Machado"
-          valueColor={ult?.netas != null ? (ult.netas >= 0 ? "#4AF6C3" : "#FF433D") : "#555"} />
+          valueColor={ult?.netas != null ? (ult.netas >= 0 ? "var(--positive)" : "var(--negative)") : "var(--text-mute)"} />
         <KPI label="Diferencia (B − N)"
           value={ult?.brutas != null && ult?.netas != null
             ? `USD ${fmtNum((ult.brutas - ult.netas) / 1e3, 2)}B`
@@ -427,24 +427,24 @@ function ReservasView() {
       </div>
       {chartData.length > 0 && (
         <div style={{ padding: "8px 12px 0" }}>
-          <div style={{ fontSize: 9, color: "#4AF6C3", letterSpacing: 1.5, marginBottom: 4, fontFamily: "monospace" }}>
+          <div style={{ fontSize: 9, color: "var(--positive)", letterSpacing: 1.5, marginBottom: 4, fontFamily: "var(--font-data)" }}>
             RESERVAS BRUTAS vs. NETAS — ÚLTIMOS 24 MESES (USD millones)
           </div>
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={chartData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#111" />
-              <XAxis dataKey="fecha" tick={{ fontSize: 8, fill: "#555", fontFamily: "monospace" }}
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--bg-elev-2)" />
+              <XAxis dataKey="fecha" tick={{ fontSize: 8, fill: "var(--text-mute)", fontFamily: "var(--font-data)" }}
                 tickFormatter={d => d?.slice(0, 7) ?? ""} interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 8, fill: "#555", fontFamily: "monospace" }}
+              <YAxis tick={{ fontSize: 8, fill: "var(--text-mute)", fontFamily: "var(--font-data)" }}
                 tickFormatter={v => `${(Number(v) / 1e3).toFixed(0)}B`} />
-              <Tooltip contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontFamily: "monospace", fontSize: 10 }}
+              <Tooltip contentStyle={{ background: "var(--bg-elev)", border: "1px solid var(--border)", fontFamily: "var(--font-data)", fontSize: 10 }}
                 formatter={(v: unknown) => [`USD ${fmtNum(v as number, 0)}M`]} />
-              <Legend wrapperStyle={{ fontSize: 9, fontFamily: "monospace" }} />
-              <Area type="monotone" dataKey="brutas" name="Brutas" stroke="#FFA028" fill="#FFA02815" strokeWidth={1.5} dot={false} />
-              <Area type="monotone" dataKey="netas"  name="Netas"  stroke="#4AF6C3" fill="#4AF6C315" strokeWidth={1.5} dot={false} />
+              <Legend wrapperStyle={{ fontSize: 9, fontFamily: "var(--font-data)" }} />
+              <Area type="monotone" dataKey="brutas" name="Brutas" stroke="var(--amber)" fill="#FFA02815" strokeWidth={1.5} dot={false} />
+              <Area type="monotone" dataKey="netas"  name="Netas"  stroke="var(--positive)" fill="#4AF6C315" strokeWidth={1.5} dot={false} />
             </AreaChart>
           </ResponsiveContainer>
-          <div style={{ fontSize: 8, color: "#777", marginTop: 4 }}>
+          <div style={{ fontSize: 8, color: "var(--text-mute)", marginTop: 4 }}>
             Brutas: Var 1 BCRA API · Netas: argentinadatos.com + metodología F. Machado
           </div>
         </div>
@@ -471,46 +471,46 @@ function ComprasView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando compras/ventas...</div>
+  if (loading) return <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>Cargando compras/ventas...</div>
 
   const r = data?.resumen
   const chartData = (data?.datos ?? []).map(row => ({
     ...row,
-    color: row.monto >= 0 ? "#4AF6C3" : "#FF433D",
+    color: row.monto >= 0 ? "var(--positive)" : "var(--negative)",
   }))
   const tableData = (data?.datos ?? []).slice(-20).reverse()
 
   return (
     <div>
       <SectionMeta title="Compras BCRA — MULC" help="Intervenciones del BCRA en el mercado cambiario (Mercado Único y Libre de Cambios). Compras netas (+) aumentan reservas; ventas netas (-) las reducen. El acumulado anual refleja la posición compradora/vendedora del año." source="BCRA · argentinadatos.com" />
-      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
         <KPI label="Posición Mes Actual"
           value={r?.mes_actual != null ? `USD ${fmtNum(Math.abs(r.mes_actual), 0)}M` : null}
           unit={r?.mes_actual != null ? (r.mes_actual >= 0 ? "Comprador neto" : "Vendedor neto") : ""}
-          valueColor={r?.mes_actual != null ? (r.mes_actual >= 0 ? "#4AF6C3" : "#FF433D") : "#555"} />
+          valueColor={r?.mes_actual != null ? (r.mes_actual >= 0 ? "var(--positive)" : "var(--negative)") : "var(--text-mute)"} />
         <KPI label="Acumulado Anual"
           value={r?.acumulado_anual != null ? `USD ${fmtNum(Math.abs(r.acumulado_anual), 0)}M` : null}
           unit={r?.acumulado_anual != null ? (r.acumulado_anual >= 0 ? "Compras netas" : "Ventas netas") : ""}
-          valueColor={r?.acumulado_anual != null ? (r.acumulado_anual >= 0 ? "#4AF6C3" : "#FF433D") : "#555"} />
+          valueColor={r?.acumulado_anual != null ? (r.acumulado_anual >= 0 ? "var(--positive)" : "var(--negative)") : "var(--text-mute)"} />
         <KPI label="Mayor Compra (período)"
           value={r?.mayor_compra_periodo != null ? `USD ${fmtNum(r.mayor_compra_periodo, 0)}M` : null}
-          unit="Máxima compra diaria" valueColor="#4AF6C3" />
+          unit="Máxima compra diaria" valueColor="var(--positive)" />
       </div>
 
       {chartData.length > 0 && (
         <div style={{ padding: "8px 12px 0" }}>
-          <div style={{ fontSize: 9, color: "#4AF6C3", letterSpacing: 1.5, marginBottom: 4, fontFamily: "monospace" }}>
+          <div style={{ fontSize: 9, color: "var(--positive)", letterSpacing: 1.5, marginBottom: 4, fontFamily: "var(--font-data)" }}>
             COMPRAS / VENTAS BCRA EN EL MULC — ÚLTIMAS 30 RUEDAS (USD millones)
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chartData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#111" vertical={false} />
-              <XAxis dataKey="fecha" tick={{ fontSize: 7, fill: "#555", fontFamily: "monospace" }}
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--bg-elev-2)" vertical={false} />
+              <XAxis dataKey="fecha" tick={{ fontSize: 7, fill: "var(--text-mute)", fontFamily: "var(--font-data)" }}
                 tickFormatter={d => d?.slice(5) ?? ""} interval={4} />
-              <YAxis tick={{ fontSize: 8, fill: "#555", fontFamily: "monospace" }} tickFormatter={v => `${v}M`} />
-              <Tooltip contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontFamily: "monospace", fontSize: 10 }}
+              <YAxis tick={{ fontSize: 8, fill: "var(--text-mute)", fontFamily: "var(--font-data)" }} tickFormatter={v => `${v}M`} />
+              <Tooltip contentStyle={{ background: "var(--bg-elev)", border: "1px solid var(--border)", fontFamily: "var(--font-data)", fontSize: 10 }}
                 formatter={(v: unknown) => [`USD ${fmtNum(v as number, 0)}M`]} />
-              <Bar dataKey="monto" name="USD M" fill="#4AF6C3" />
+              <Bar dataKey="monto" name="USD M" fill="var(--positive)" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -518,31 +518,31 @@ function ComprasView() {
 
       {tableData.length > 0 && (
         <div style={{ padding: "10px 12px", overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 9 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-data)", fontSize: 9 }}>
             <thead>
-              <tr style={{ borderBottom: "1px solid #222" }}>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
                 {["Fecha", "Monto (USD M)", "Acum. Mensual (USD M)"].map(h => (
-                  <th key={h} style={{ padding: "4px 8px", color: "#888", textAlign: "right", fontWeight: 400 }}>{h}</th>
+                  <th key={h} style={{ padding: "4px 8px", color: "var(--text-dim)", textAlign: "right", fontWeight: 400 }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {tableData.map(row => (
-                <tr key={row.fecha} style={{ borderBottom: "1px solid #0d0d0d" }}>
-                  <td style={{ padding: "3px 8px", color: "#999" }}>{fmtDate(row.fecha)}</td>
+                <tr key={row.fecha} style={{ borderBottom: "1px solid var(--bg-elev-2)" }}>
+                  <td style={{ padding: "3px 8px", color: "var(--text-dim)" }}>{fmtDate(row.fecha)}</td>
                   <td style={{ padding: "3px 8px", textAlign: "right",
-                    color: row.monto >= 0 ? "#4AF6C3" : "#FF433D", fontWeight: 700 }}>
+                    color: row.monto >= 0 ? "var(--positive)" : "var(--negative)", fontWeight: 700 }}>
                     {row.monto >= 0 ? "+" : ""}{fmtNum(row.monto, 0)}
                   </td>
                   <td style={{ padding: "3px 8px", textAlign: "right",
-                    color: row.acumulado_mensual >= 0 ? "#4AF6C3" : "#FF433D" }}>
+                    color: row.acumulado_mensual >= 0 ? "var(--positive)" : "var(--negative)" }}>
                     {row.acumulado_mensual >= 0 ? "+" : ""}{fmtNum(row.acumulado_mensual, 0)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <div style={{ fontSize: 8, color: "#777", marginTop: 4 }}>
+          <div style={{ fontSize: 8, color: "var(--text-mute)", marginTop: 4 }}>
             Fuente: argentinadatos.com · MULC — Mercado Único y Libre de Cambios · Positivo = BCRA comprador
           </div>
         </div>
@@ -589,7 +589,7 @@ function REMView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando REM...</div>
+  if (loading) return <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>Cargando REM...</div>
 
   // Datos para el gráfico histórico (inflación 12M y dólar proyectado)
   const chartData = serie.map(r => ({
@@ -619,21 +619,21 @@ function REMView() {
       {/* KPIs del último relevamiento */}
       {kpis && (
         <>
-          <div style={{ padding: "4px 12px 2px", fontSize: 8, color: "#888", fontFamily: "monospace", letterSpacing: 1.5 }}>
+          <div style={{ padding: "4px 12px 2px", fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", letterSpacing: 1.5 }}>
             PROYECCIONES A 12 MESES — {fechaLabel.toUpperCase()}
           </div>
-          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
             <KPI
               label="Inflación 12M"
               value={kpis.inflacion_12m != null ? `${fmtNum(kpis.inflacion_12m, 1)}%` : null}
               unit="% acum. próx. 12 meses · mediana analistas"
-              valueColor={kpis.inflacion_12m != null ? (kpis.inflacion_12m > 50 ? "#FF433D" : kpis.inflacion_12m > 25 ? "#FFA028" : "#4AF6C3") : "#555"}
+              valueColor={kpis.inflacion_12m != null ? (kpis.inflacion_12m > 50 ? "var(--negative)" : kpis.inflacion_12m > 25 ? "var(--amber)" : "var(--positive)") : "var(--text-mute)"}
             />
             <KPI
               label="Inflación 24M"
               value={kpis.inflacion_24m != null ? `${fmtNum(kpis.inflacion_24m, 1)}%` : null}
               unit="% acum. próx. 24 meses · mediana"
-              valueColor="#FFA028"
+              valueColor="var(--amber)"
             />
             <KPI
               label="IPC Núcleo 12M"
@@ -645,7 +645,7 @@ function REMView() {
               label="Dólar proyectado"
               value={kpis.dolar_12m != null ? `$${Math.round(kpis.dolar_12m).toLocaleString("es-AR")}` : null}
               unit="ARS/USD en 12 meses · mediana"
-              valueColor="#4FC3F7"
+              valueColor="var(--sky)"
             />
             <KPI
               label="Tasa interés 12M"
@@ -657,7 +657,7 @@ function REMView() {
               label="Tasa real 12M"
               value={kpis.tasa_real_12m != null ? `${kpis.tasa_real_12m >= 0 ? "+" : ""}${fmtNum(kpis.tasa_real_12m, 2)}%` : null}
               unit="Fisher: ((1+tasa)/(1+inflac)-1)×100"
-              valueColor={kpis.tasa_real_12m != null ? (kpis.tasa_real_12m > 0 ? "#4AF6C3" : "#FF433D") : "#555"}
+              valueColor={kpis.tasa_real_12m != null ? (kpis.tasa_real_12m > 0 ? "var(--positive)" : "var(--negative)") : "var(--text-mute)"}
             />
           </div>
         </>
@@ -670,8 +670,8 @@ function REMView() {
             title="INFLACIÓN PROYECTADA — EVOLUCIÓN DEL CONSENSO"
             data={chartData}
             lines={[
-              { key: "inf12",  name: "Inflación 12M",    color: "#FF433D" },
-              { key: "inf24",  name: "Inflación 24M",    color: "#FFA028", dashed: true },
+              { key: "inf12",  name: "Inflación 12M",    color: "var(--negative)" },
+              { key: "inf24",  name: "Inflación 24M",    color: "var(--amber)", dashed: true },
               { key: "nuc12",  name: "Núcleo 12M",       color: "#CE93D8" },
               { key: "tasa12", name: "Tasa interés 12M", color: "#FFD700", dashed: true },
             ]}
@@ -683,7 +683,7 @@ function REMView() {
             enableLineToggle={true}
             formatValue={(v) => `${v.toFixed(1)}%`}
           />
-          <div style={{ fontSize: 8, color: "#777", padding: "2px 4px" }}>
+          <div style={{ fontSize: 8, color: "var(--text-mute)", padding: "2px 4px" }}>
             Fuente: BCRA · REM · Medianas del consenso de analistas privados
           </div>
         </div>
@@ -695,7 +695,7 @@ function REMView() {
           <BBGLineChart
             title="TIPO DE CAMBIO PROYECTADO A 12 MESES (ARS/USD)"
             data={chartDolar}
-            lines={[{ key: "usd12", name: "Dólar 12M", color: "#4FC3F7" }]}
+            lines={[{ key: "usd12", name: "Dólar 12M", color: "var(--sky)" }]}
             height={160}
             yAxisLabel="ARS/USD"
             showZeroLine={false}
@@ -703,7 +703,7 @@ function REMView() {
             enableDateRange={true}
             formatValue={(v) => `$${Math.round(v).toLocaleString("es-AR")}`}
           />
-          <div style={{ fontSize: 8, color: "#777", padding: "2px 4px" }}>
+          <div style={{ fontSize: 8, color: "var(--text-mute)", padding: "2px 4px" }}>
             Mediana de analistas del REM. No es una predicción oficial del BCRA.
           </div>
         </div>
@@ -713,7 +713,7 @@ function REMView() {
       {serie.length > 0 && (
         <div style={{ padding: "4px 12px 12px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, fontFamily: "monospace" }}>
+            <div style={{ fontSize: 9, color: "var(--amber)", letterSpacing: 1.5, fontFamily: "var(--font-data)" }}>
               HISTORIAL — ÚLTIMOS 12 RELEVAMIENTOS
             </div>
             <DownloadCSV
@@ -734,7 +734,7 @@ function REMView() {
               <thead>
                 <tr>
                   {["Relevamiento", "Inflac. 12M", "Inflac. 24M", "Núcleo 12M", "USD 12M", "Tasa 12M", "Tasa Real"].map(h => (
-                    <th key={h} style={{ padding: "4px 8px", fontSize: 8, color: "#888", textAlign: h === "Relevamiento" ? "left" : "right", borderBottom: "1px solid #1a1a1a", whiteSpace: "nowrap" }}>
+                    <th key={h} style={{ padding: "4px 8px", fontSize: 8, color: "var(--text-dim)", textAlign: h === "Relevamiento" ? "left" : "right", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" }}>
                       {h}
                     </th>
                   ))}
@@ -742,26 +742,26 @@ function REMView() {
               </thead>
               <tbody>
                 {serie.slice(-12).reverse().map((r, i) => (
-                  <tr key={r.fecha} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
-                    <td style={{ padding: "4px 8px", color: "#FFA028", fontFamily: "monospace", fontSize: 10 }}>{r.fecha}</td>
-                    <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace", color: r.inflacion_12m != null && r.inflacion_12m > 50 ? "#FF433D" : "#FFA028" }}>
+                  <tr key={r.fecha} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg-row-alt)" }}>
+                    <td style={{ padding: "4px 8px", color: "var(--amber)", fontFamily: "var(--font-data)", fontSize: 10 }}>{r.fecha}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "var(--font-data)", color: r.inflacion_12m != null && r.inflacion_12m > 50 ? "var(--negative)" : "var(--amber)" }}>
                       {r.inflacion_12m != null ? `${r.inflacion_12m.toFixed(1)}%` : "—"}
                     </td>
-                    <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace", color: "#888" }}>
+                    <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "var(--font-data)", color: "var(--text-dim)" }}>
                       {r.inflacion_24m != null ? `${r.inflacion_24m.toFixed(1)}%` : "—"}
                     </td>
-                    <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace", color: "#CE93D8" }}>
+                    <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "var(--font-data)", color: "#CE93D8" }}>
                       {r.nucleo_12m != null ? `${r.nucleo_12m.toFixed(1)}%` : "—"}
                     </td>
-                    <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace", color: "#4FC3F7" }}>
+                    <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "var(--font-data)", color: "var(--sky)" }}>
                       {r.dolar_12m != null ? `$${Math.round(r.dolar_12m).toLocaleString("es-AR")}` : "—"}
                     </td>
-                    <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace", color: "#FFD700" }}>
+                    <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "var(--font-data)", color: "#FFD700" }}>
                       {r.tasa_12m != null ? `${r.tasa_12m.toFixed(1)}%` : "—"}
                     </td>
                     <td style={{
-                      padding: "4px 8px", textAlign: "right", fontFamily: "monospace",
-                      color: r.tasa_real_12m != null ? (r.tasa_real_12m > 0 ? "#4AF6C3" : "#FF433D") : "#555",
+                      padding: "4px 8px", textAlign: "right", fontFamily: "var(--font-data)",
+                      color: r.tasa_real_12m != null ? (r.tasa_real_12m > 0 ? "var(--positive)" : "var(--negative)") : "var(--text-mute)",
                     }}>
                       {r.tasa_real_12m != null ? `${r.tasa_real_12m >= 0 ? "+" : ""}${r.tasa_real_12m.toFixed(2)}%` : "—"}
                     </td>
@@ -774,7 +774,7 @@ function REMView() {
       )}
 
       {!kpis && serie.length === 0 && (
-        <div style={{ padding: 24, color: "#888", fontSize: 11, textAlign: "center", fontFamily: "monospace" }}>
+        <div style={{ padding: 24, color: "var(--text-dim)", fontSize: 11, textAlign: "center", fontFamily: "var(--font-data)" }}>
           Sin datos disponibles. El Excel del BCRA puede estar temporalmente inaccesible.
         </div>
       )}
@@ -786,10 +786,10 @@ function REMView() {
 
 const TASAS_CFG = [
   { key: "tamar",     label: "TAMAR",        sub: "Tasa mayorista bancos privados",    color: "#CE93D8" },
-  { key: "badlar",    label: "BADLAR",        sub: "Dep. >$1M, 30-35 días",            color: "#FFA028" },
-  { key: "dep30",     label: "Dep. 30d",      sub: "Promedio todas las entidades",      color: "#4FC3F7" },
-  { key: "adelantos", label: "Adelantos CC",  sub: "Descubierto cta. cte.",             color: "#FF433D" },
-  { key: "prestamos", label: "Prést. Pers.",  sub: "Créditos al consumo",               color: "#4AF6C3" },
+  { key: "badlar",    label: "BADLAR",        sub: "Dep. >$1M, 30-35 días",            color: "var(--amber)" },
+  { key: "dep30",     label: "Dep. 30d",      sub: "Promedio todas las entidades",      color: "var(--sky)" },
+  { key: "adelantos", label: "Adelantos CC",  sub: "Descubierto cta. cte.",             color: "var(--negative)" },
+  { key: "prestamos", label: "Prést. Pers.",  sub: "Créditos al consumo",               color: "var(--positive)" },
 ] as const
 
 type TasaKey = typeof TASAS_CFG[number]["key"]
@@ -816,13 +816,13 @@ function TasasView() {
   }, [])
 
   if (loading) return (
-    <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>
+    <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>
       Cargando tasas de referencia...
     </div>
   )
 
   if (!data) return (
-    <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>
+    <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>
       Error al cargar datos.
     </div>
   )
@@ -888,25 +888,25 @@ function TasasView() {
       />
 
       {/* ── KPI cards ── */}
-      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
         {TASAS_CFG.map(t => {
           const s = stats[t.key]
           return (
             <div key={t.key} style={{
               flex: "1 1 160px", padding: "10px 14px",
-              background: "#080808", border: "1px solid #111",
+              background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)",
             }}>
-              <div style={{ fontSize: 9, color: t.color, fontFamily: "monospace", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" as const }}>
+              <div style={{ fontSize: 9, color: t.color, fontFamily: "var(--font-data)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" as const }}>
                 {t.label}
               </div>
-              <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", marginBottom: 6 }}>
+              <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", marginBottom: 6 }}>
                 {t.sub}
               </div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: "#fff", fontFamily: "monospace", lineHeight: 1 }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-data)", lineHeight: 1 }}>
                 {s.last != null ? `${fmtNum(s.last)}%` : "—"}
               </div>
               {s.delta != null && (
-                <div style={{ fontSize: 9, color: s.delta >= 0 ? "#FF433D" : "#4AF6C3", fontFamily: "monospace", marginTop: 4 }}>
+                <div style={{ fontSize: 9, color: s.delta >= 0 ? "var(--negative)" : "var(--positive)", fontFamily: "var(--font-data)", marginTop: 4 }}>
                   {s.delta >= 0 ? "+" : ""}{fmtNum(s.delta)} pp vs mes ant.
                 </div>
               )}
@@ -916,8 +916,8 @@ function TasasView() {
       </div>
 
       {/* ── Gráfico comparativo ── */}
-      <div style={{ padding: "10px 12px 0", borderTop: "1px solid #111" }}>
-        <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", letterSpacing: 1.5, marginBottom: 6, textTransform: "uppercase" as const }}>
+      <div style={{ padding: "10px 12px 0", borderTop: "1px solid var(--bg-elev-2)" }}>
+        <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", letterSpacing: 1.5, marginBottom: 6, textTransform: "uppercase" as const }}>
           Evolución comparativa
         </div>
         <div ref={chartRef}>
@@ -939,16 +939,16 @@ function TasasView() {
       </div>
 
       {/* ── TNA vs TEA ── */}
-      <div style={{ padding: "10px 12px", borderTop: "1px solid #111" }}>
-        <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", letterSpacing: 1.5, marginBottom: 8, textTransform: "uppercase" as const }}>
+      <div style={{ padding: "10px 12px", borderTop: "1px solid var(--bg-elev-2)" }}>
+        <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", letterSpacing: 1.5, marginBottom: 8, textTransform: "uppercase" as const }}>
           TNA vs TEA · Simulación $1.000.000
         </div>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 9 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-data)", fontSize: 9 }}>
             <thead>
-              <tr style={{ borderBottom: "1px solid #222" }}>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
                 {["Tasa", "TNA", "TEA", "Rend. 30 días", "Rend. 365 días"].map(h => (
-                  <th key={h} style={{ padding: "5px 10px", color: "#888", textAlign: "right", fontWeight: 400, whiteSpace: "nowrap" as const }}>
+                  <th key={h} style={{ padding: "5px 10px", color: "var(--text-dim)", textAlign: "right", fontWeight: 400, whiteSpace: "nowrap" as const }}>
                     {h}
                   </th>
                 ))}
@@ -959,14 +959,14 @@ function TasasView() {
                 const tna = stats[t.key].last
                 if (tna == null) return null
                 return (
-                  <tr key={t.key} style={{ borderBottom: "1px solid #0d0d0d" }}>
+                  <tr key={t.key} style={{ borderBottom: "1px solid var(--bg-elev-2)" }}>
                     <td style={{ padding: "5px 10px", color: t.color, fontWeight: 700 }}>{t.label}</td>
                     <td style={{ padding: "5px 10px", color: "#ccc", textAlign: "right" }}>{fmtNum(tna)}%</td>
-                    <td style={{ padding: "5px 10px", color: "#FFA028", textAlign: "right" }}>{fmtNum(tea(tna))}%</td>
-                    <td style={{ padding: "5px 10px", color: "#4AF6C3", textAlign: "right" }}>
+                    <td style={{ padding: "5px 10px", color: "var(--amber)", textAlign: "right" }}>{fmtNum(tea(tna))}%</td>
+                    <td style={{ padding: "5px 10px", color: "var(--positive)", textAlign: "right" }}>
                       ${rend30(tna).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </td>
-                    <td style={{ padding: "5px 10px", color: "#4AF6C3", textAlign: "right" }}>
+                    <td style={{ padding: "5px 10px", color: "var(--positive)", textAlign: "right" }}>
                       ${rend365(tna).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </td>
                   </tr>
@@ -974,23 +974,23 @@ function TasasView() {
               })}
             </tbody>
           </table>
-          <div style={{ fontSize: 8, color: "#777", fontFamily: "monospace", marginTop: 4 }}>
+          <div style={{ fontSize: 8, color: "var(--text-mute)", fontFamily: "var(--font-data)", marginTop: 4 }}>
             Simulación teórica sobre $1.000.000. TEA = (1 + TNA/12)^12 − 1. Rend. 30d = Capital × TNA × 30/365.
           </div>
         </div>
       </div>
 
       {/* ── Estadísticas por tasa ── */}
-      <div style={{ padding: "10px 12px", borderTop: "1px solid #111" }}>
-        <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", letterSpacing: 1.5, marginBottom: 8, textTransform: "uppercase" as const }}>
+      <div style={{ padding: "10px 12px", borderTop: "1px solid var(--bg-elev-2)" }}>
+        <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", letterSpacing: 1.5, marginBottom: 8, textTransform: "uppercase" as const }}>
           Estadísticas — Últimos 12 meses
         </div>
         <div style={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           {TASAS_CFG.map(t => {
             const s = stats[t.key]
             return (
-              <div key={t.key} style={{ flex: "1 1 140px", padding: "8px 12px", background: "#070707", border: "1px solid #111" }}>
-                <div style={{ fontSize: 9, color: t.color, fontWeight: 700, fontFamily: "monospace", marginBottom: 6 }}>{t.label}</div>
+              <div key={t.key} style={{ flex: "1 1 140px", padding: "8px 12px", background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)" }}>
+                <div style={{ fontSize: 9, color: t.color, fontWeight: 700, fontFamily: "var(--font-data)", marginBottom: 6 }}>{t.label}</div>
                 {([
                   ["Actual",        s.last   != null ? `${fmtNum(s.last)}%`   : "—"],
                   ["Máximo",        s.max    != null ? `${fmtNum(s.max)}%`    : "—"],
@@ -998,8 +998,8 @@ function TasasView() {
                   ["Var. (pp)",     s.var1y  != null ? `${fmtNum(s.var1y)} pp` : "—"],
                 ] as [string, string][]).map(([lbl, val]) => (
                   <div key={lbl} style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                    <span style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>{lbl}</span>
-                    <span style={{ fontSize: 8, color: lbl === "Actual" ? "#fff" : "#888", fontFamily: "monospace" }}>{val}</span>
+                    <span style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>{lbl}</span>
+                    <span style={{ fontSize: 8, color: lbl === "Actual" ? "var(--text)" : "var(--text-dim)", fontFamily: "var(--font-data)" }}>{val}</span>
                   </div>
                 ))}
               </div>
@@ -1009,18 +1009,18 @@ function TasasView() {
       </div>
 
       {/* ── Tabla de datos ── */}
-      <div style={{ padding: "10px 12px", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "10px 12px", borderTop: "1px solid var(--bg-elev-2)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-          <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", letterSpacing: 1.5, textTransform: "uppercase" as const }}>
+          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", letterSpacing: 1.5, textTransform: "uppercase" as const }}>
             Tabla de datos
           </div>
           <DownloadCSV data={csvData} filename="tasas-referencia-bcra" />
         </div>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 9 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-data)", fontSize: 9 }}>
             <thead>
-              <tr style={{ borderBottom: "1px solid #222" }}>
-                <th style={{ padding: "4px 10px", color: "#888", textAlign: "left", fontWeight: 400 }}>Fecha</th>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                <th style={{ padding: "4px 10px", color: "var(--text-dim)", textAlign: "left", fontWeight: 400 }}>Fecha</th>
                 {TASAS_CFG.map(t => (
                   <th key={t.key} style={{ padding: "4px 10px", color: t.color, textAlign: "right", fontWeight: 600 }}>
                     {t.label}
@@ -1030,8 +1030,8 @@ function TasasView() {
             </thead>
             <tbody>
               {tableDates.slice(0, showRows).map(f => (
-                <tr key={f} style={{ borderBottom: "1px solid #0a0a0a" }}>
-                  <td style={{ padding: "3px 10px", color: "#999" }}>{fmtDate(f)}</td>
+                <tr key={f} style={{ borderBottom: "1px solid var(--bg-elev)" }}>
+                  <td style={{ padding: "3px 10px", color: "var(--text-dim)" }}>{fmtDate(f)}</td>
                   {TASAS_CFG.map(t => {
                     const val = data[t.key]?.find(r => r.fecha === f)?.valor
                     return (
@@ -1050,14 +1050,14 @@ function TasasView() {
             onClick={() => setShowRows(n => n + 30)}
             style={{
               marginTop: 8, width: "100%", padding: "6px", background: "none",
-              border: "1px solid #1a1a1a", borderRadius: 3, color: "#888",
-              fontFamily: "monospace", fontSize: 9, cursor: "pointer",
+              border: "1px solid var(--border)", borderRadius: 3, color: "var(--text-dim)",
+              fontFamily: "var(--font-data)", fontSize: 9, cursor: "pointer",
             }}
           >
             Mostrar más ({tableDates.length - showRows} restantes)
           </button>
         )}
-        <div style={{ fontSize: 8, color: "#777", fontFamily: "monospace", marginTop: 6 }}>
+        <div style={{ fontSize: 8, color: "var(--text-mute)", fontFamily: "var(--font-data)", marginTop: 6 }}>
           Fuente: BCRA API v4.0 · Variables 44 (TAMAR), 7 (BADLAR), 12 (Dep. 30d), 13 (Adelantos CC), 14 (Prést. Pers.)
         </div>
       </div>
@@ -1074,8 +1074,8 @@ export function TabBCRA({ initialSubtab }: { initialSubtab?: string | null }) {
     <div>
       {/* Header */}
       <div style={{
-        fontSize: 9, color: "#4AF6C3", letterSpacing: 2, fontFamily: "monospace",
-        background: "#060606", borderBottom: "1px solid #111",
+        fontSize: 9, color: "var(--positive)", letterSpacing: 2, fontFamily: "var(--font-data)",
+        background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)",
         padding: "5px 14px", textTransform: "uppercase",
         display: "flex", alignItems: "center", gap: 8,
       }}>

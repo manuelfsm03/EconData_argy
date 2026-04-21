@@ -78,8 +78,8 @@ const PERIODS: { value: Period; label: string }[] = [
 ]
 
 const TC_LINES: { key: string; name: string; color: string }[] = [
-  { key: "blue",      name: "Blue",      color: "#4AF6C3" },
-  { key: "ccl",       name: "CCL",       color: "#FFA028" },
+  { key: "blue",      name: "Blue",      color: "var(--positive)" },
+  { key: "ccl",       name: "CCL",       color: "var(--amber)" },
   { key: "mep",       name: "MEP",       color: "#FFD700" },
   { key: "oficial",   name: "Oficial",   color: "#aaaaaa" },
   { key: "mayorista", name: "Mayorista", color: "#666666" },
@@ -105,7 +105,7 @@ const fmtDateFull = (d: string) => {
 }
 
 const varColor = (v: number | null | undefined) =>
-  v == null ? "#888" : v > 0 ? "#4AF6C3" : v < 0 ? "#FF433D" : "#888"
+  v == null ? "var(--text-dim)" : v > 0 ? "var(--positive)" : v < 0 ? "var(--negative)" : "var(--text-dim)"
 
 // ─── Crawling peg (fases 1 y 2) ──────────────────────────────────────────────
 
@@ -255,8 +255,8 @@ function computeForecast(
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
-      background: "#0d0d0d", borderBottom: "1px solid #1a1a1a", borderTop: "1px solid #1a1a1a",
-      padding: "3px 12px", fontSize: 9, color: "#888",
+      background: "var(--bg-elev-2)", borderBottom: "1px solid var(--border)", borderTop: "1px solid var(--border)",
+      padding: "3px 12px", fontSize: 9, color: "var(--text-dim)",
       textTransform: "uppercase", letterSpacing: "0.12em",
     }}>
       {children}
@@ -279,8 +279,8 @@ function TCRatesTable({ dolares }: { dolares: DolarResponse | null }) {
     venta: number | null; compra: number | null
     variacion: number | null; brecha: number | null
   }[] = [
-    { key: "blue",      label: "Blue",          color: "#4AF6C3", venta: r?.blue?.venta ?? null,              compra: r?.blue?.compra ?? null,              variacion: r?.blue?.variacion           ?? null, brecha: s?.brechaBlueOficial ?? null },
-    { key: "ccl",       label: "CCL",           color: "#FFA028", venta: r?.contadoconliqui?.venta ?? null,   compra: r?.contadoconliqui?.compra ?? null,   variacion: r?.contadoconliqui?.variacion ?? null, brecha: s?.brechaCclOficial  ?? null },
+    { key: "blue",      label: "Blue",          color: "var(--positive)", venta: r?.blue?.venta ?? null,              compra: r?.blue?.compra ?? null,              variacion: r?.blue?.variacion           ?? null, brecha: s?.brechaBlueOficial ?? null },
+    { key: "ccl",       label: "CCL",           color: "var(--amber)", venta: r?.contadoconliqui?.venta ?? null,   compra: r?.contadoconliqui?.compra ?? null,   variacion: r?.contadoconliqui?.variacion ?? null, brecha: s?.brechaCclOficial  ?? null },
     { key: "mep",       label: "MEP / Bolsa",   color: "#FFD700", venta: mepVenta,                            compra: r?.bolsa?.compra ?? null,              variacion: r?.bolsa?.variacion          ?? null, brecha: s?.brechaMepOficial  ?? null },
     { key: "oficial",   label: "Oficial BNA",   color: "#aaaaaa", venta: oficial,                             compra: r?.oficial?.compra ?? null,            variacion: r?.oficial?.variacion        ?? null, brecha: null },
     { key: "mayorista", label: "Mayorista",     color: "#777777", venta: r?.mayorista?.venta ?? null,         compra: null,                                  variacion: null,                                  brecha: null },
@@ -302,7 +302,7 @@ function TCRatesTable({ dolares }: { dolares: DolarResponse | null }) {
       </thead>
       <tbody>
         {rows.map((row, i) => (
-          <tr key={row.key} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
+          <tr key={row.key} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg)" }}>
             <td style={{ color: row.color, fontWeight: 700 }}>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
                 {row.label}
@@ -310,12 +310,12 @@ function TCRatesTable({ dolares }: { dolares: DolarResponse | null }) {
                   <InfoTooltip text={GLOSSARY[row.key.toUpperCase()].text} source={GLOSSARY[row.key.toUpperCase()].source} url={GLOSSARY[row.key.toUpperCase()].url} position="bottom" />
                 )}
               </span>
-              {row.badge && <span style={{ fontSize: 8, color: "#FFA028", marginLeft: 6, border: "1px solid #FFA02833", padding: "0 3px" }}>{row.badge}</span>}
+              {row.badge && <span style={{ fontSize: 8, color: "var(--amber)", marginLeft: 6, border: "1px solid #FFA02833", padding: "0 3px" }}>{row.badge}</span>}
             </td>
-            <td className="num" style={{ color: "#fff", fontWeight: 600 }}>{fmtARS(row.venta)}</td>
-            <td className="num" style={{ color: "#999" }}>{fmtARS(row.compra)}</td>
+            <td className="num" style={{ color: "var(--text)", fontWeight: 600 }}>{fmtARS(row.venta)}</td>
+            <td className="num" style={{ color: "var(--text-dim)" }}>{fmtARS(row.compra)}</td>
             <td className="num" style={{ color: varColor(row.variacion) }}>{fmtPct(row.variacion)}</td>
-            <td className="num" style={{ color: "#888" }}>{row.brecha != null ? fmtPct(row.brecha) : "—"}</td>
+            <td className="num" style={{ color: "var(--text-dim)" }}>{row.brecha != null ? fmtPct(row.brecha) : "—"}</td>
           </tr>
         ))}
       </tbody>
@@ -337,15 +337,15 @@ function InternacionalTable({ data }: { data: InternacionalData | null }) {
       <thead>
         <tr>
           <th>Par</th>
-          <th style={{ color: "#888" }}>Descripción</th>
+          <th style={{ color: "var(--text-dim)" }}>Descripción</th>
           <th className="num">Último</th>
           <th className="num">1D %</th>
         </tr>
       </thead>
       <tbody>
         {rows.map((row, i) => (
-          <tr key={row.label} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
-            <td style={{ color: "#4FC3F7", fontWeight: 700 }}>
+          <tr key={row.label} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg)" }}>
+            <td style={{ color: "var(--sky)", fontWeight: 700 }}>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
                 {row.label}
                 {GLOSSARY[row.label] && (
@@ -353,8 +353,8 @@ function InternacionalTable({ data }: { data: InternacionalData | null }) {
                 )}
               </span>
             </td>
-            <td style={{ color: "#888" }}>{row.desc}</td>
-            <td className="num" style={{ color: "#fff", fontWeight: 600 }}>
+            <td style={{ color: "var(--text-dim)" }}>{row.desc}</td>
+            <td className="num" style={{ color: "var(--text)", fontWeight: 600 }}>
               {row.val != null ? row.val.toFixed(row.dec) : "—"}
             </td>
             <td className="num" style={{ color: varColor(row.chg) }}>
@@ -371,7 +371,7 @@ function InternacionalTable({ data }: { data: InternacionalData | null }) {
 
 function RofexTable({ futures }: { futures: RofexFuture[] }) {
   if (!futures.length) return (
-    <div style={{ padding: "10px 12px", fontSize: 10, color: "#888" }}>
+    <div style={{ padding: "10px 12px", fontSize: 10, color: "var(--text-dim)" }}>
       Sin datos ROFEX — los futuros se cargan vía cron o POST /api/rofex
     </div>
   )
@@ -388,12 +388,12 @@ function RofexTable({ futures }: { futures: RofexFuture[] }) {
       </thead>
       <tbody>
         {futures.map((f, i) => (
-          <tr key={f.id} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
-            <td style={{ color: "#FFA028", fontWeight: 700 }}>{f.maturityLabel ?? f.position}</td>
+          <tr key={f.id} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg)" }}>
+            <td style={{ color: "var(--amber)", fontWeight: 700 }}>{f.maturityLabel ?? f.position}</td>
             <td className="num bbg-white">{fmtARS(f.price)}</td>
             <td className="num" style={{ color: varColor(f.devaluation) }}>{fmtPct(f.devaluation)}</td>
-            <td className="num" style={{ color: "#999" }}>{fmtPct(f.monthlyDevaluation)}</td>
-            <td className="num" style={{ color: "#4FC3F7" }}>{f.tna != null ? f.tna.toFixed(1) + "%" : "—"}</td>
+            <td className="num" style={{ color: "var(--text-dim)" }}>{fmtPct(f.monthlyDevaluation)}</td>
+            <td className="num" style={{ color: "var(--sky)" }}>{f.tna != null ? f.tna.toFixed(1) + "%" : "—"}</td>
           </tr>
         ))}
       </tbody>
@@ -405,7 +405,7 @@ function RofexTable({ futures }: { futures: RofexFuture[] }) {
 
 function LecapTable({ instruments }: { instruments: CapInstrument[] }) {
   if (!instruments.length) return (
-    <div style={{ padding: "10px 12px", fontSize: 10, color: "#888" }}>
+    <div style={{ padding: "10px 12px", fontSize: 10, color: "var(--text-dim)" }}>
       Sin datos LECAPs — ejecutar seed de instrumentos
     </div>
   )
@@ -425,14 +425,14 @@ function LecapTable({ instruments }: { instruments: CapInstrument[] }) {
       </thead>
       <tbody>
         {instruments.map((inst, i) => (
-          <tr key={inst.ticker} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
+          <tr key={inst.ticker} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg)" }}>
             <td style={{ color: "#FFD700", fontWeight: 700 }}>{inst.ticker}</td>
-            <td style={{ color: "#888" }}>{inst.tipo}</td>
-            <td style={{ color: "#888" }}>{fmtDateFull(inst.vencimiento)}</td>
-            <td className="num" style={{ color: "#999" }}>{inst.diasVencimiento}</td>
+            <td style={{ color: "var(--text-dim)" }}>{inst.tipo}</td>
+            <td style={{ color: "var(--text-dim)" }}>{fmtDateFull(inst.vencimiento)}</td>
+            <td className="num" style={{ color: "var(--text-dim)" }}>{inst.diasVencimiento}</td>
             <td className="num bbg-white">{inst.precio?.toFixed(2) ?? "—"}</td>
             <td className="num bbg-positive">{inst.tem != null ? inst.tem.toFixed(2) + "%" : "—"}</td>
-            <td className="num" style={{ color: "#999" }}>{inst.tea != null ? inst.tea.toFixed(1) + "%" : "—"}</td>
+            <td className="num" style={{ color: "var(--text-dim)" }}>{inst.tea != null ? inst.tea.toFixed(1) + "%" : "—"}</td>
             <td className="num" style={{ color: "#A78BFA", fontWeight: 600 }}>{fmtARS(inst.tcImplicito)}</td>
           </tr>
         ))}
@@ -449,12 +449,12 @@ function ChartTooltip({ active, payload, label }: any) {
   const entries = payload.filter((p: { value: number }) => p.value != null)
   if (!entries.length) return null
   return (
-    <div style={{ background: "#0a0a0a", border: "1px solid #333", padding: "8px 12px", fontSize: 10 }}>
-      <div style={{ color: "#888", marginBottom: 4, fontSize: 9 }}>{fmtDateFull(label)}</div>
+    <div style={{ background: "var(--bg-elev)", border: "1px solid var(--border-hi)", padding: "8px 12px", fontSize: 10 }}>
+      <div style={{ color: "var(--text-dim)", marginBottom: 4, fontSize: 9 }}>{fmtDateFull(label)}</div>
       {entries.map((p: { name: string; value: number; color: string }) => (
         <div key={p.name} style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
           <span style={{ color: p.color }}>{p.name}</span>
-          <span style={{ color: "#fff" }}>{fmtARS(p.value)}</span>
+          <span style={{ color: "var(--text)" }}>{fmtARS(p.value)}</span>
         </div>
       ))}
     </div>
@@ -470,8 +470,8 @@ function ToggleBtn({ active, color, onClick, children }: {
     <button onClick={onClick} style={{
       fontSize: 9, padding: "2px 8px", cursor: "pointer",
       background: active ? color + "18" : "transparent",
-      border: `1px solid ${active ? color : "#2a2a2a"}`,
-      color: active ? color : "#444",
+      border: `1px solid ${active ? color : "var(--border)"}`,
+      color: active ? color : "var(--text-mute)",
       textTransform: "uppercase", letterSpacing: "0.05em",
     }}>
       {children}
@@ -593,20 +593,20 @@ function ChartSection({
   return (
     <div>
       {/* Controles período */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "5px 12px", borderBottom: "1px solid #1a1a1a", alignItems: "center" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "5px 12px", borderBottom: "1px solid var(--border)", alignItems: "center" }}>
         <div style={{ display: "flex", gap: 1 }}>
           {PERIODS.map(p => (
             <button key={p.value} onClick={() => setPeriod(p.value)} style={{
               fontSize: 9, padding: "2px 8px", cursor: "pointer",
-              background: period === p.value ? "#FFA028" : "transparent",
-              color: period === p.value ? "#000" : "#555",
-              border: `1px solid ${period === p.value ? "#FFA028" : "#2a2a2a"}`,
+              background: period === p.value ? "var(--amber)" : "transparent",
+              color: period === p.value ? "var(--bg)" : "var(--text-mute)",
+              border: `1px solid ${period === p.value ? "var(--amber)" : "var(--border)"}`,
               fontWeight: period === p.value ? 700 : 400,
             }}>{p.label}</button>
           ))}
         </div>
 
-        <div style={{ width: 1, height: 14, background: "#222" }} />
+        <div style={{ width: 1, height: 14, background: "var(--border)" }} />
 
         {TC_LINES.map(l => (
           <ToggleBtn key={l.key} active={visibles.has(l.key)} color={l.color} onClick={() => toggleLine(l.key)}>
@@ -616,14 +616,14 @@ function ChartSection({
       </div>
 
       {/* Controles bandas */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "4px 12px", borderBottom: "1px solid #1a1a1a", alignItems: "center" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "4px 12px", borderBottom: "1px solid var(--border)", alignItems: "center" }}>
         {/* Fases históricas */}
-        <span style={{ fontSize: 8, color: "#777", textTransform: "uppercase", letterSpacing: "0.08em" }}>Bandas:</span>
+        <span style={{ fontSize: 8, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Bandas:</span>
         <ToggleBtn active={showFase1} color="#818CF8" onClick={() => setShowFase1(v => !v)}>F1 2%</ToggleBtn>
         <ToggleBtn active={showFase2} color="#06B6D4" onClick={() => setShowFase2(v => !v)}>F2 1%</ToggleBtn>
         <ToggleBtn active={showBandas} color="#22C55E" onClick={() => setShowBandas(v => !v)}>F3 IPC</ToggleBtn>
 
-        <div style={{ width: 1, height: 14, background: "#222" }} />
+        <div style={{ width: 1, height: 14, background: "var(--border)" }} />
 
         {/* Forecast */}
         <ToggleBtn active={showForecast} color="#A78BFA" onClick={() => setShowForecast(v => !v)}>Forecast</ToggleBtn>
@@ -635,8 +635,8 @@ function ChartSection({
                 <button key={m} onClick={() => setFcastMode(m)} style={{
                   fontSize: 9, padding: "2px 7px", cursor: "pointer",
                   background: fcastMode === m ? "#A78BFA22" : "transparent",
-                  border: `1px solid ${fcastMode === m ? "#A78BFA" : "#2a2a2a"}`,
-                  color: fcastMode === m ? "#A78BFA" : "#444",
+                  border: `1px solid ${fcastMode === m ? "#A78BFA" : "var(--border)"}`,
+                  color: fcastMode === m ? "#A78BFA" : "var(--text-mute)",
                 }}>
                   {m === "neutral" ? "REM med." : m === "rem_top10" ? "REM top10" : "Manual"}
                 </button>
@@ -644,11 +644,11 @@ function ChartSection({
               {fcastMode === "manual" && (
                 <input type="number" min={0} max={20} step={0.1} value={manualRate}
                   onChange={e => setManualRate(parseFloat(e.target.value) || 0)}
-                  style={{ width: 46, padding: "2px 4px", fontSize: 9, background: "#111", border: "1px solid #333", color: "#fff", marginLeft: 4 }}
+                  style={{ width: 46, padding: "2px 4px", fontSize: 9, background: "var(--bg-elev-2)", border: "1px solid var(--border-hi)", color: "var(--text)", marginLeft: 4 }}
                 />
               )}
             </div>
-            <div style={{ fontSize: 8, color: "#777", display: "flex", gap: 8 }}>
+            <div style={{ fontSize: 8, color: "var(--text-mute)", display: "flex", gap: 8 }}>
               <span style={{ color: "#4AF6C388" }}>· bull +1pp</span>
               <span style={{ color: "#A78BFA88" }}>· neutral</span>
               <span style={{ color: "#FF433D88" }}>· bear −1pp</span>
@@ -656,25 +656,25 @@ function ChartSection({
           </>
         )}
 
-        <div style={{ width: 1, height: 14, background: "#222", marginLeft: "auto" }} />
-        <ToggleBtn active={showRofex} color="#FFA028" onClick={() => setShowRofex(v => !v)}>ROFEX</ToggleBtn>
+        <div style={{ width: 1, height: 14, background: "var(--border)", marginLeft: "auto" }} />
+        <ToggleBtn active={showRofex} color="var(--amber)" onClick={() => setShowRofex(v => !v)}>ROFEX</ToggleBtn>
         <ToggleBtn active={showLecap} color="#A78BFA" onClick={() => setShowLecap(v => !v)}>LECAP breaks</ToggleBtn>
       </div>
 
       {loading ? (
-        <div style={{ padding: 24, textAlign: "center", color: "#888", fontSize: 10 }}>Cargando histórico...</div>
+        <div style={{ padding: 24, textAlign: "center", color: "var(--text-dim)", fontSize: 10 }}>Cargando histórico...</div>
       ) : (
         <div style={{ padding: "6px 4px 0 0" }}>
           <ResponsiveContainer width="100%" height={380}>
             <ComposedChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-              <CartesianGrid stroke="#111" strokeDasharray="3 3" />
+              <CartesianGrid stroke="var(--bg-elev-2)" strokeDasharray="3 3" />
               <XAxis dataKey="date" tickFormatter={fmtDateShort}
-                tick={{ fill: "#444", fontSize: 9 }} axisLine={{ stroke: "#222" }} tickLine={false}
+                tick={{ fill: "var(--text-mute)", fontSize: 9 }} axisLine={{ stroke: "var(--border)" }} tickLine={false}
                 interval="preserveStartEnd" />
-              <YAxis tick={{ fill: "#444", fontSize: 9 }} axisLine={{ stroke: "#222" }} tickLine={false}
+              <YAxis tick={{ fill: "var(--text-mute)", fontSize: 9 }} axisLine={{ stroke: "var(--border)" }} tickLine={false}
                 tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`} width={44} />
               <Tooltip content={<ChartTooltip />} />
-              <ReferenceLine x={todayStr} stroke="#333" strokeDasharray="4 2" label={{ value: "hoy", fill: "#333", fontSize: 8, position: "top" }} />
+              <ReferenceLine x={todayStr} stroke="var(--border-hi)" strokeDasharray="4 2" label={{ value: "hoy", fill: "var(--border-hi)", fontSize: 8, position: "top" }} />
 
               {/* Series TC históricas */}
               {TC_LINES.filter(l => visibles.has(l.key)).map(l => (
@@ -704,22 +704,22 @@ function ChartSection({
               {showForecast && <>
                 <Line dataKey={fcastKeys!.inf} name="Fcst inf" stroke="#A78BFA" dot={false} strokeWidth={1} strokeDasharray="5 3" connectNulls />
                 <Line dataKey={fcastKeys!.sup} name="Fcst sup" stroke="#A78BFA" dot={false} strokeWidth={1} strokeDasharray="5 3" connectNulls />
-                <Line dataKey="fBullInf" name="Bull inf" stroke="#4AF6C3" dot={false} strokeWidth={1} strokeDasharray="3 4" connectNulls />
-                <Line dataKey="fBullSup" name="Bull sup" stroke="#4AF6C3" dot={false} strokeWidth={1} strokeDasharray="3 4" connectNulls />
-                <Line dataKey="fBearInf" name="Bear inf" stroke="#FF433D" dot={false} strokeWidth={1} strokeDasharray="3 4" connectNulls />
-                <Line dataKey="fBearSup" name="Bear sup" stroke="#FF433D" dot={false} strokeWidth={1} strokeDasharray="3 4" connectNulls />
+                <Line dataKey="fBullInf" name="Bull inf" stroke="var(--positive)" dot={false} strokeWidth={1} strokeDasharray="3 4" connectNulls />
+                <Line dataKey="fBullSup" name="Bull sup" stroke="var(--positive)" dot={false} strokeWidth={1} strokeDasharray="3 4" connectNulls />
+                <Line dataKey="fBearInf" name="Bear inf" stroke="var(--negative)" dot={false} strokeWidth={1} strokeDasharray="3 4" connectNulls />
+                <Line dataKey="fBearSup" name="Bear sup" stroke="var(--negative)" dot={false} strokeWidth={1} strokeDasharray="3 4" connectNulls />
               </>}
 
               {/* Overlay puntos ROFEX */}
               {showRofex && (
-                <Line dataKey="rofexDot" name="ROFEX" stroke="#FFA028" strokeWidth={0}
-                  dot={{ fill: "#FFA028", r: 5, stroke: "#000", strokeWidth: 1 }} connectNulls={false} />
+                <Line dataKey="rofexDot" name="ROFEX" stroke="var(--amber)" strokeWidth={0}
+                  dot={{ fill: "var(--amber)", r: 5, stroke: "var(--bg)", strokeWidth: 1 }} connectNulls={false} />
               )}
 
               {/* Overlay puntos LECAPs */}
               {showLecap && (
                 <Line dataKey="lecapDot" name="LECAP" stroke="#A78BFA" strokeWidth={0}
-                  dot={{ fill: "#A78BFA", r: 5, stroke: "#000", strokeWidth: 1 }} connectNulls={false} />
+                  dot={{ fill: "#A78BFA", r: 5, stroke: "var(--bg)", strokeWidth: 1 }} connectNulls={false} />
               )}
             </ComposedChart>
           </ResponsiveContainer>
@@ -727,7 +727,7 @@ function ChartSection({
       )}
 
       {/* Leyenda fases */}
-      <div style={{ padding: "4px 12px", fontSize: 8, color: "#2a2a2a", borderTop: "1px solid #111", display: "flex", gap: 16, flexWrap: "wrap" }}>
+      <div style={{ padding: "4px 12px", fontSize: 8, color: "var(--border)", borderTop: "1px solid var(--bg-elev-2)", display: "flex", gap: 16, flexWrap: "wrap" }}>
         <span style={{ color: "#818CF855" }}>━ F1 crawl 2% (feb 2024 – ene 2025)</span>
         <span style={{ color: "#06B6D455" }}>━ F2 crawl 1% (feb – abr 2025)</span>
         <span style={{ color: "#22C55E55" }}>━ piso F3 · </span><span style={{ color: "#EF444455" }}>━ techo F3 (IPC[t-2], desde 14/abr/2025)</span>
@@ -781,7 +781,7 @@ export function TabTiposCambio() {
     return (
       <div className="bbg-panel">
         <div className="bbg-panel-header">TIPOS DE CAMBIO</div>
-        <div style={{ padding: 32, textAlign: "center", color: "#888", fontSize: 10 }}>Cargando datos...</div>
+        <div style={{ padding: 32, textAlign: "center", color: "var(--text-dim)", fontSize: 10 }}>Cargando datos...</div>
       </div>
     )
   }
@@ -791,10 +791,10 @@ export function TabTiposCambio() {
       <div className="bbg-panel-header">TIPOS DE CAMBIO</div>
 
       {/* ── Layout principal: gráfico izquierda / datos derecha ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "55% 45%", borderBottom: "1px solid #1a1a1a" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "55% 45%", borderBottom: "1px solid var(--border)" }}>
 
         {/* ── COLUMNA IZQUIERDA: Gráfico histórico + bandas ── */}
-        <div style={{ borderRight: "1px solid #1a1a1a" }}>
+        <div style={{ borderRight: "1px solid var(--border)" }}>
           <SectionLabel>Evolución histórica · Bandas (3 fases) · Forecast</SectionLabel>
           <ChartSection
             tcData={tcData} rofexData={rofex} lecapData={lecaps}
@@ -818,7 +818,7 @@ export function TabTiposCambio() {
       <SectionLabel>Breakevens LECAPs — TC implícito vs CCL</SectionLabel>
       <LecapTable instruments={lecaps} />
 
-      <div style={{ padding: "3px 12px", fontSize: 8, color: "#2a2a2a", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "3px 12px", fontSize: 8, color: "var(--border)", borderTop: "1px solid var(--bg-elev-2)" }}>
         TC locales: DolarAPI · Histórico: ArgentinaDatos · Internacional: Yahoo Finance · ROFEX: MatbaRofex · LECAPs: ByMA
       </div>
     </div>

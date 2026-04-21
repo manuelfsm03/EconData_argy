@@ -44,19 +44,19 @@ export function PriceChart({ data, series, title, height = 250, yAxisFormat = "c
       <div style={{ padding: "4px 0" }}>
         <ResponsiveContainer width="100%" height={height}>
           <LineChart data={formattedData} margin={{ top: 8, right: 16, left: 8, bottom: 4 }}>
-            <CartesianGrid strokeDasharray="2 4" stroke="#1a1a1a" />
+            <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" />
             <XAxis
               dataKey="date"
-              stroke="#555555"
+              stroke="var(--text-mute)"
               fontSize={9}
               tickLine={false}
-              axisLine={{ stroke: "#333333" }}
+              axisLine={{ stroke: "var(--border-hi)" }}
             />
             <YAxis
-              stroke="#555555"
+              stroke="var(--text-mute)"
               fontSize={9}
               tickLine={false}
-              axisLine={{ stroke: "#333333" }}
+              axisLine={{ stroke: "var(--border-hi)" }}
               tickFormatter={(value) =>
                 yAxisFormat === "percentage"
                   ? `${(value * 100).toFixed(1)}%`
@@ -65,13 +65,13 @@ export function PriceChart({ data, series, title, height = 250, yAxisFormat = "c
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: "#0a0a0a",
-                border: "1px solid #333333",
+                backgroundColor: "var(--bg-elev)",
+                border: "1px solid var(--border-hi)",
                 borderRadius: "0",
                 fontSize: "10px",
                 fontFamily: "inherit",
               }}
-              labelStyle={{ color: "#FFA028" }}
+              labelStyle={{ color: "var(--amber)" }}
               itemStyle={{ padding: 0 }}
               formatter={(value) => {
                 const num = value as number

@@ -154,7 +154,7 @@ const BADGE_STYLES: Record<string, { bg: string; color: string }> = {
 
 const fp  = (v: number, d = 2) => v.toFixed(d)
 const fpc = (v: number)        => (v >= 0 ? "+" : "") + v.toFixed(2) + "%"
-const vc  = (v: number)        => v > 0 ? "#4AF6C3" : v < 0 ? "#FF433D" : "#888"
+const vc  = (v: number)        => v > 0 ? "var(--positive)" : v < 0 ? "var(--negative)" : "var(--text-dim)"
 
 // Polynomial regression degree 3 (normal equations + Gaussian elimination)
 function polyRegress(pts: {x: number; y: number}[], deg: number): (x: number) => number {
@@ -214,7 +214,7 @@ function useSortable<T>(data: T[], defaultCol: keyof T, defaultDir: "asc"|"desc"
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function Badge({ tipo }: { tipo: string }) {
-  const s = BADGE_STYLES[tipo] ?? { bg: "#222", color: "#888" }
+  const s = BADGE_STYLES[tipo] ?? { bg: "var(--border)", color: "var(--text-dim)" }
   return (
     <span style={{ background: s.bg, color: s.color, padding: "1px 5px", fontSize: 8, marginLeft: 5, verticalAlign: "middle", letterSpacing: "0.04em" }}>
       {tipo}
@@ -223,7 +223,7 @@ function Badge({ tipo }: { tipo: string }) {
 }
 
 function SortIcon({ active, dir }: { active: boolean; dir: "asc"|"desc" }) {
-  return <span style={{ color: active ? "#FFA028" : "#333", fontSize: 8 }}>{active ? (dir === "asc" ? " ▲" : " ▼") : " ⇅"}</span>
+  return <span style={{ color: active ? "var(--amber)" : "var(--border-hi)", fontSize: 8 }}>{active ? (dir === "asc" ? " ▲" : " ▼") : " ⇅"}</span>
 }
 
 function MainTabs({ active, onChange }: { active: MainTab; onChange: (t: MainTab) => void }) {
@@ -234,13 +234,13 @@ function MainTabs({ active, onChange }: { active: MainTab; onChange: (t: MainTab
     { key: "graficos", label: "Gráficos" },
   ]
   return (
-    <div style={{ display: "flex", borderBottom: "2px solid #1a1a1a" }}>
+    <div style={{ display: "flex", borderBottom: "2px solid var(--border)" }}>
       {tabs.map(t => (
         <button key={t.key} onClick={() => onChange(t.key)} style={{
-          background: active === t.key ? "#111" : "transparent",
-          color: active === t.key ? "#FFA028" : "#555",
+          background: active === t.key ? "var(--bg-elev-2)" : "transparent",
+          color: active === t.key ? "var(--amber)" : "var(--text-mute)",
           border: "none",
-          borderBottom: `2px solid ${active === t.key ? "#FFA028" : "transparent"}`,
+          borderBottom: `2px solid ${active === t.key ? "var(--amber)" : "transparent"}`,
           padding: "7px 18px", fontSize: 10,
           textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer",
           marginBottom: -2,
@@ -254,13 +254,13 @@ function SubTabs<T extends string>({ tabs, active, onChange }: {
   tabs: { key: T; label: string }[]; active: T; onChange: (t: T) => void
 }) {
   return (
-    <div style={{ display: "flex", borderBottom: "1px solid #1a1a1a", background: "#060606" }}>
+    <div style={{ display: "flex", borderBottom: "1px solid var(--border)", background: "var(--bg)" }}>
       {tabs.map(t => (
         <button key={t.key} onClick={() => onChange(t.key)} style={{
           background: "transparent",
-          color: active === t.key ? "#fff" : "#444",
+          color: active === t.key ? "var(--text)" : "var(--text-mute)",
           border: "none",
-          borderBottom: `1px solid ${active === t.key ? "#fff" : "transparent"}`,
+          borderBottom: `1px solid ${active === t.key ? "var(--text)" : "transparent"}`,
           padding: "5px 14px", fontSize: 9,
           textTransform: "uppercase", letterSpacing: "0.06em", cursor: "pointer",
           marginBottom: -1,
@@ -271,7 +271,7 @@ function SubTabs<T extends string>({ tabs, active, onChange }: {
 }
 
 function SectionNote({ children }: { children: React.ReactNode }) {
-  return <div style={{ padding: "3px 12px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>{children}</div>
+  return <div style={{ padding: "3px 12px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>{children}</div>
 }
 
 // ─── Th helper ────────────────────────────────────────────────────────────────
@@ -297,8 +297,8 @@ function BoncapSection() {
   )
   return (
     <>
-      <div style={{ padding: "4px 12px", background: "#0a0a0a", borderBottom: "1px solid #1a1a1a" }}>
-        <span style={{ fontSize: 9, color: "#888" }}>Capitalización al vencimiento · Liquidación T+1 · Precios ilustrativos</span>
+      <div style={{ padding: "4px 12px", background: "var(--bg-elev)", borderBottom: "1px solid var(--border)" }}>
+        <span style={{ fontSize: 9, color: "var(--text-dim)" }}>Capitalización al vencimiento · Liquidación T+1 · Precios ilustrativos</span>
       </div>
       <div style={{ overflowX: "auto" }}>
         <table>
@@ -319,17 +319,17 @@ function BoncapSection() {
           </thead>
           <tbody>
             {sorted.map((r, i) => (
-              <tr key={r.ticker} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
+              <tr key={r.ticker} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg)" }}>
                 <td style={{ fontWeight: 700 }}>{r.ticker}<Badge tipo={r.tipo} /></td>
-                <td className="num" style={{ color: "#fff" }}>{fp(r.pxDirty)}</td>
-                <td className="num" style={{ color: "#aaa" }}>{fp(r.pagoFinal)}</td>
-                <td className="num" style={{ color: "#999" }}>{r.dias}</td>
-                <td style={{ color: "#888" }}>{r.vto}</td>
+                <td className="num" style={{ color: "var(--text)" }}>{fp(r.pxDirty)}</td>
+                <td className="num" style={{ color: "var(--text-dim)" }}>{fp(r.pagoFinal)}</td>
+                <td className="num" style={{ color: "var(--text-dim)" }}>{r.dias}</td>
+                <td style={{ color: "var(--text-dim)" }}>{r.vto}</td>
                 <td className="num" style={{ color: vc(r.varPct) }}>{fpc(r.varPct)}</td>
-                <td className="num" style={{ color: "#aaa" }}>{fp(r.tna)}%</td>
-                <td className="num" style={{ color: "#aaa" }}>{fp(r.tea)}%</td>
-                <td className="num" style={{ color: "#aaa" }}>{fp(r.tem)}%</td>
-                <td className="num" style={{ color: "#FFA028", fontWeight: 700 }}>{fp(r.tir)}%</td>
+                <td className="num" style={{ color: "var(--text-dim)" }}>{fp(r.tna)}%</td>
+                <td className="num" style={{ color: "var(--text-dim)" }}>{fp(r.tea)}%</td>
+                <td className="num" style={{ color: "var(--text-dim)" }}>{fp(r.tem)}%</td>
+                <td className="num" style={{ color: "var(--amber)", fontWeight: 700 }}>{fp(r.tir)}%</td>
                 <td className="num" style={{ color: vc(r.volVar) }}>{fpc(r.volVar)}</td>
               </tr>
             ))}
@@ -365,13 +365,13 @@ function BoteSection() {
           </thead>
           <tbody>
             {sorted.map((r, i) => (
-              <tr key={r.ticker} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
+              <tr key={r.ticker} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg)" }}>
                 <td style={{ fontWeight: 700 }}>{r.ticker}<Badge tipo="BOTE" /></td>
-                <td style={{ color: "#888" }}>{r.vto}</td>
-                <td className="num" style={{ color: "#fff" }}>{fp(r.pxDirty)}</td>
-                <td style={{ color: "#FFA028" }}>{r.tnaDesc}</td>
-                <td className="num" style={{ color: "#aaa" }}>{fp(r.tea)}%</td>
-                <td className="num" style={{ color: "#aaa" }}>{fp(r.tem)}%</td>
+                <td style={{ color: "var(--text-dim)" }}>{r.vto}</td>
+                <td className="num" style={{ color: "var(--text)" }}>{fp(r.pxDirty)}</td>
+                <td style={{ color: "var(--amber)" }}>{r.tnaDesc}</td>
+                <td className="num" style={{ color: "var(--text-dim)" }}>{fp(r.tea)}%</td>
+                <td className="num" style={{ color: "var(--text-dim)" }}>{fp(r.tem)}%</td>
                 <td className="num" style={{ color: vc(r.volVar) }}>{fpc(r.volVar)}</td>
               </tr>
             ))}
@@ -406,13 +406,13 @@ function TamarSection() {
           </thead>
           <tbody>
             {sorted.map((r, i) => (
-              <tr key={r.ticker} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
+              <tr key={r.ticker} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg)" }}>
                 <td style={{ fontWeight: 700 }}>{r.ticker}<Badge tipo="TAMAR" /></td>
-                <td style={{ color: "#888" }}>{r.vto}</td>
-                <td className="num" style={{ color: "#fff" }}>{fp(r.pxDirty)}</td>
-                <td className="num" style={{ color: r.paridad < 90 ? "#FF433D" : r.paridad < 100 ? "#FFA028" : "#4AF6C3" }}>{fp(r.paridad, 1)}%</td>
-                <td className="num" style={{ color: "#aaa" }}>{fp(r.tea)}%</td>
-                <td className="num" style={{ color: "#aaa" }}>{fp(r.tem)}%</td>
+                <td style={{ color: "var(--text-dim)" }}>{r.vto}</td>
+                <td className="num" style={{ color: "var(--text)" }}>{fp(r.pxDirty)}</td>
+                <td className="num" style={{ color: r.paridad < 90 ? "var(--negative)" : r.paridad < 100 ? "var(--amber)" : "var(--positive)" }}>{fp(r.paridad, 1)}%</td>
+                <td className="num" style={{ color: "var(--text-dim)" }}>{fp(r.tea)}%</td>
+                <td className="num" style={{ color: "var(--text-dim)" }}>{fp(r.tem)}%</td>
               </tr>
             ))}
           </tbody>
@@ -446,13 +446,13 @@ function CERSection() {
           </thead>
           <tbody>
             {sorted.map((r, i) => (
-              <tr key={r.ticker} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
+              <tr key={r.ticker} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg)" }}>
                 <td style={{ fontWeight: 700 }}>{r.ticker}<Badge tipo="CER" /></td>
-                <td style={{ color: "#888" }}>{r.vto}</td>
-                <td className="num" style={{ color: "#fff" }}>{fp(r.pxDirty)}</td>
+                <td style={{ color: "var(--text-dim)" }}>{r.vto}</td>
+                <td className="num" style={{ color: "var(--text)" }}>{fp(r.pxDirty)}</td>
                 <td style={{ color: "#38bdf8" }}>{r.tnaDesc}</td>
-                <td className="num" style={{ color: "#aaa" }}>{fp(r.tea)}%</td>
-                <td className="num" style={{ color: "#888" }}>{fp(r.cerInicial)}</td>
+                <td className="num" style={{ color: "var(--text-dim)" }}>{fp(r.tea)}%</td>
+                <td className="num" style={{ color: "var(--text-dim)" }}>{fp(r.cerInicial)}</td>
               </tr>
             ))}
           </tbody>
@@ -487,14 +487,14 @@ function USDLSection() {
           </thead>
           <tbody>
             {sorted.map((r, i) => (
-              <tr key={r.ticker} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
+              <tr key={r.ticker} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg)" }}>
                 <td style={{ fontWeight: 700 }}>{r.ticker}<Badge tipo="USDL" /></td>
-                <td style={{ color: "#888" }}>{r.vto}</td>
-                <td className="num" style={{ color: "#fff" }}>{fp(r.pxDirty)}</td>
-                <td className="num" style={{ color: "#aaa" }}>{fp(r.tna)}%</td>
-                <td className="num" style={{ color: "#aaa" }}>{fp(r.tea)}%</td>
-                <td className="num" style={{ color: "#999" }}>{fp(r.durMod)}</td>
-                <td className="num" style={{ color: r.paridad < 90 ? "#FF433D" : r.paridad < 100 ? "#FFA028" : "#4AF6C3" }}>{fp(r.paridad, 1)}%</td>
+                <td style={{ color: "var(--text-dim)" }}>{r.vto}</td>
+                <td className="num" style={{ color: "var(--text)" }}>{fp(r.pxDirty)}</td>
+                <td className="num" style={{ color: "var(--text-dim)" }}>{fp(r.tna)}%</td>
+                <td className="num" style={{ color: "var(--text-dim)" }}>{fp(r.tea)}%</td>
+                <td className="num" style={{ color: "var(--text-dim)" }}>{fp(r.durMod)}</td>
+                <td className="num" style={{ color: r.paridad < 90 ? "var(--negative)" : r.paridad < 100 ? "var(--amber)" : "var(--positive)" }}>{fp(r.paridad, 1)}%</td>
               </tr>
             ))}
           </tbody>
@@ -515,19 +515,19 @@ function DualesSection() {
   )
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 12px", borderBottom: "1px solid #1a1a1a", background: "#060606" }}>
-        <span style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em" }}>Tramo:</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 12px", borderBottom: "1px solid var(--border)", background: "var(--bg)" }}>
+        <span style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Tramo:</span>
         {(["fija", "tamar"] as DualToggle[]).map(t => (
           <button key={t} onClick={() => setTramo(t)} style={{
             fontSize: 9, padding: "2px 10px", cursor: "pointer",
             background: tramo === t ? (t === "fija" ? "#f472b6" : "#c084fc") + "22" : "transparent",
-            border: `1px solid ${tramo === t ? (t === "fija" ? "#f472b6" : "#c084fc") : "#2a2a2a"}`,
-            color: tramo === t ? (t === "fija" ? "#f472b6" : "#c084fc") : "#555",
+            border: `1px solid ${tramo === t ? (t === "fija" ? "#f472b6" : "#c084fc") : "var(--border)"}`,
+            color: tramo === t ? (t === "fija" ? "#f472b6" : "#c084fc") : "var(--text-mute)",
           }}>
             {t === "fija" ? "Tasa Fija" : "TAMAR"}
           </button>
         ))}
-        <span style={{ fontSize: 8, color: "#777", marginLeft: 8 }}>El inversor cobra siempre el tramo dominante al vencimiento</span>
+        <span style={{ fontSize: 8, color: "var(--text-mute)", marginLeft: 8 }}>El inversor cobra siempre el tramo dominante al vencimiento</span>
       </div>
       <div style={{ overflowX: "auto" }}>
         <table>
@@ -548,14 +548,14 @@ function DualesSection() {
               const tea = tramo === "fija" ? r.teaFija : r.teaTamar
               const tem = tramo === "fija" ? r.temFija : r.temTamar
               return (
-                <tr key={r.ticker} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
+                <tr key={r.ticker} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg)" }}>
                   <td style={{ fontWeight: 700 }}>{r.ticker}<Badge tipo="DUAL" /></td>
-                  <td className="num" style={{ color: "#999" }}>{r.dias}</td>
-                  <td style={{ color: "#888" }}>{r.vto}</td>
-                  <td className="num" style={{ color: "#fff" }}>{fp(r.pxDirty)}</td>
-                  <td className="num" style={{ color: "#aaa" }}>{fp(tna)}%</td>
-                  <td className="num" style={{ color: "#aaa" }}>{fp(tea)}%</td>
-                  <td className="num" style={{ color: "#aaa" }}>{fp(tem)}%</td>
+                  <td className="num" style={{ color: "var(--text-dim)" }}>{r.dias}</td>
+                  <td style={{ color: "var(--text-dim)" }}>{r.vto}</td>
+                  <td className="num" style={{ color: "var(--text)" }}>{fp(r.pxDirty)}</td>
+                  <td className="num" style={{ color: "var(--text-dim)" }}>{fp(tna)}%</td>
+                  <td className="num" style={{ color: "var(--text-dim)" }}>{fp(tea)}%</td>
+                  <td className="num" style={{ color: "var(--text-dim)" }}>{fp(tem)}%</td>
                 </tr>
               )
             })}
@@ -594,15 +594,15 @@ function HardDolTable({ data, badge }: { data: HardDolRow[]; badge: string }) {
           </thead>
           <tbody>
             {sorted.map((r, i) => (
-              <tr key={r.ticker} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
+              <tr key={r.ticker} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg)" }}>
                 <td style={{ fontWeight: 700 }}>{r.ticker}<Badge tipo={badge} /></td>
-                <td style={{ color: "#888" }}>{r.vto}</td>
-                <td className="num" style={{ color: "#fff" }}>{fp(r.pxClean)}</td>
-                <td className="num" style={{ color: "#aaa" }}>{fp(r.pxDirty)}</td>
+                <td style={{ color: "var(--text-dim)" }}>{r.vto}</td>
+                <td className="num" style={{ color: "var(--text)" }}>{fp(r.pxClean)}</td>
+                <td className="num" style={{ color: "var(--text-dim)" }}>{fp(r.pxDirty)}</td>
                 <td className="num" style={{ color: vc(r.varPct) }}>{fpc(r.varPct)}</td>
-                <td className="num" style={{ color: "#FFA028", fontWeight: 700 }}>{fp(r.ytm)}%</td>
-                <td className="num" style={{ color: "#999" }}>{fp(r.durMod)}</td>
-                <td className="num" style={{ color: r.paridad < 60 ? "#FF433D" : r.paridad < 80 ? "#FFA028" : "#4AF6C3" }}>{fp(r.paridad, 1)}%</td>
+                <td className="num" style={{ color: "var(--amber)", fontWeight: 700 }}>{fp(r.ytm)}%</td>
+                <td className="num" style={{ color: "var(--text-dim)" }}>{fp(r.durMod)}</td>
+                <td className="num" style={{ color: r.paridad < 60 ? "var(--negative)" : r.paridad < 80 ? "var(--amber)" : "var(--positive)" }}>{fp(r.paridad, 1)}%</td>
                 <td className="num" style={{ color: vc(r.volVar) }}>{fpc(r.volVar)}</td>
                 <td className="num" style={{ color: "#14b8a6", fontWeight: 700 }}>{r.rp}</td>
               </tr>
@@ -624,31 +624,31 @@ function IntlSection() {
   )
 
   const ratingColor = (r: string) => {
-    if (r.startsWith("A")) return "#4AF6C3"
-    if (r.startsWith("BB")) return "#FFA028"
+    if (r.startsWith("A")) return "var(--positive)"
+    if (r.startsWith("BB")) return "var(--amber)"
     if (r.startsWith("B-") || r.startsWith("B+")) return "#FB7185"
-    if (r.startsWith("CCC") || r.startsWith("CC") || r.startsWith("C")) return "#FF433D"
-    return "#888"
+    if (r.startsWith("CCC") || r.startsWith("CC") || r.startsWith("C")) return "var(--negative)"
+    return "var(--text-dim)"
   }
 
   return (
     <>
       {/* UST Benchmark */}
-      <div style={{ padding: "4px 12px", background: "#0a0a0a", borderBottom: "1px solid #111" }}>
-        <span style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em" }}>Curva UST benchmark</span>
+      <div style={{ padding: "4px 12px", background: "var(--bg-elev)", borderBottom: "1px solid var(--bg-elev-2)" }}>
+        <span style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Curva UST benchmark</span>
       </div>
       <div style={{ display: "flex", gap: 1, padding: 1 }}>
         {UST_DATA.map(u => (
-          <div key={u.plazo} style={{ flex: "1 1 80px", background: "#040404", border: "1px solid #111", padding: "6px 10px" }}>
-            <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase", marginBottom: 2 }}>{u.plazo}</div>
+          <div key={u.plazo} style={{ flex: "1 1 80px", background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)", padding: "6px 10px" }}>
+            <div style={{ fontSize: 8, color: "var(--text-dim)", textTransform: "uppercase", marginBottom: 2 }}>{u.plazo}</div>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{fp(u.ytm)}%</div>
           </div>
         ))}
       </div>
 
       {/* EM / LATAM */}
-      <div style={{ padding: "4px 12px", background: "#0a0a0a", borderBottom: "1px solid #111", marginTop: 1 }}>
-        <span style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em" }}>Comparables EM · América Latina</span>
+      <div style={{ padding: "4px 12px", background: "var(--bg-elev)", borderBottom: "1px solid var(--bg-elev-2)", marginTop: 1 }}>
+        <span style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Comparables EM · América Latina</span>
       </div>
       <div style={{ overflowX: "auto" }}>
         <table>
@@ -666,15 +666,15 @@ function IntlSection() {
           </thead>
           <tbody>
             {sorted.map((r, i) => (
-              <tr key={r.ticker} style={{ background: i % 2 === 0 ? "#000" : "#060606" }}>
-                <td style={{ color: "#aaa" }}>{r.flag} {r.pais}</td>
+              <tr key={r.ticker} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg)" }}>
+                <td style={{ color: "var(--text-dim)" }}>{r.flag} {r.pais}</td>
                 <td style={{ fontWeight: 700, color: "#d9f99d" }}>{r.ticker}<Badge tipo="EM" /></td>
-                <td style={{ color: "#888" }}>{r.vto}</td>
-                <td className="num" style={{ color: "#FFA028", fontWeight: 700 }}>{fp(r.ytm)}%</td>
-                <td style={{ color: "#888" }}>{r.ustRef}</td>
+                <td style={{ color: "var(--text-dim)" }}>{r.vto}</td>
+                <td className="num" style={{ color: "var(--amber)", fontWeight: 700 }}>{fp(r.ytm)}%</td>
+                <td style={{ color: "var(--text-dim)" }}>{r.ustRef}</td>
                 <td className="num" style={{ color: "#14b8a6", fontWeight: 700 }}>{r.spreadBps}</td>
                 <td style={{ color: ratingColor(r.rating), fontWeight: 600 }}>{r.rating}</td>
-                <td className="num" style={{ color: "#fff" }}>{fp(r.pxClean)}</td>
+                <td className="num" style={{ color: "var(--text)" }}>{fp(r.pxClean)}</td>
               </tr>
             ))}
           </tbody>
@@ -730,9 +730,9 @@ function GraficosSection() {
     const d = payload[0]?.payload
     if (!d) return null
     return (
-      <div style={{ background: "#0a0a0a", border: "1px solid #333", padding: "6px 10px", fontSize: 10 }}>
-        <div style={{ color: "#888", fontSize: 9 }}>{d.t ?? ""}</div>
-        <div style={{ color: "#fff" }}>{d.x} días · {fp(d.y)}%</div>
+      <div style={{ background: "var(--bg-elev)", border: "1px solid var(--border-hi)", padding: "6px 10px", fontSize: 10 }}>
+        <div style={{ color: "var(--text-dim)", fontSize: 9 }}>{d.t ?? ""}</div>
+        <div style={{ color: "var(--text)" }}>{d.x} días · {fp(d.y)}%</div>
       </div>
     )
   }
@@ -740,55 +740,55 @@ function GraficosSection() {
   return (
     <div style={{ padding: "0" }}>
       {/* Controls */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "6px 12px", borderBottom: "1px solid #1a1a1a", alignItems: "center" }}>
-        <span style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: "0.08em" }}>Curvas:</span>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "6px 12px", borderBottom: "1px solid var(--border)", alignItems: "center" }}>
+        <span style={{ fontSize: 8, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Curvas:</span>
         {Object.entries(CURVE_DEFS).map(([id, { label, color }]) => (
           <button key={id} onClick={() => toggleCurve(id)} style={{
             fontSize: 9, padding: "2px 8px", cursor: "pointer",
             background: activeCurves.includes(id) ? color + "20" : "transparent",
-            border: `1px solid ${activeCurves.includes(id) ? color : "#2a2a2a"}`,
-            color: activeCurves.includes(id) ? color : "#444",
+            border: `1px solid ${activeCurves.includes(id) ? color : "var(--border)"}`,
+            color: activeCurves.includes(id) ? color : "var(--text-mute)",
           }}>{label}</button>
         ))}
-        <div style={{ width: 1, height: 14, background: "#222", marginLeft: 4 }} />
+        <div style={{ width: 1, height: 14, background: "var(--border)", marginLeft: 4 }} />
         <button onClick={() => setShowNS(v => !v)} style={{
           fontSize: 9, padding: "2px 8px", cursor: "pointer",
           background: showNS ? "#A78BFA20" : "transparent",
-          border: `1px solid ${showNS ? "#A78BFA" : "#2a2a2a"}`,
-          color: showNS ? "#A78BFA" : "#444",
+          border: `1px solid ${showNS ? "#A78BFA" : "var(--border)"}`,
+          color: showNS ? "#A78BFA" : "var(--text-mute)",
         }}>NS Proxy</button>
         <button onClick={() => setLogScale(v => !v)} style={{
           fontSize: 9, padding: "2px 8px", cursor: "pointer",
           background: logScale ? "#FFA02820" : "transparent",
-          border: `1px solid ${logScale ? "#FFA028" : "#2a2a2a"}`,
-          color: logScale ? "#FFA028" : "#444",
+          border: `1px solid ${logScale ? "var(--amber)" : "var(--border)"}`,
+          color: logScale ? "var(--amber)" : "var(--text-mute)",
         }}>Log X</button>
-        <span style={{ fontSize: 8, color: "#2a2a2a", marginLeft: "auto" }}>NS Proxy = regresión polinómica grado 3 (proxy Nelson-Siegel)</span>
+        <span style={{ fontSize: 8, color: "var(--border)", marginLeft: "auto" }}>NS Proxy = regresión polinómica grado 3 (proxy Nelson-Siegel)</span>
       </div>
 
       {/* Chart */}
       <div style={{ padding: "8px 4px 0 0" }}>
         <ResponsiveContainer width="100%" height={400}>
           <ComposedChart margin={{ top: 8, right: 20, left: 0, bottom: 0 }}>
-            <CartesianGrid stroke="#111" strokeDasharray="3 3" />
+            <CartesianGrid stroke="var(--bg-elev-2)" strokeDasharray="3 3" />
             <XAxis
               type="number" dataKey="x"
               scale={logScale ? "log" : "linear"}
               domain={["auto", "auto"]}
-              tick={{ fill: "#444", fontSize: 9 }} axisLine={{ stroke: "#222" }} tickLine={false}
+              tick={{ fill: "var(--text-mute)", fontSize: 9 }} axisLine={{ stroke: "var(--border)" }} tickLine={false}
               tickFormatter={(v: number) => v >= 365 ? `${(v/365).toFixed(1)}a` : `${v}d`}
-              label={{ value: "Días al vencimiento (T+1)", position: "insideBottom", fill: "#333", fontSize: 8, offset: -2 }}
+              label={{ value: "Días al vencimiento (T+1)", position: "insideBottom", fill: "var(--border-hi)", fontSize: 8, offset: -2 }}
             />
             <YAxis
               type="number" dataKey="y"
-              tick={{ fill: "#444", fontSize: 9 }} axisLine={{ stroke: "#222" }} tickLine={false}
+              tick={{ fill: "var(--text-mute)", fontSize: 9 }} axisLine={{ stroke: "var(--border)" }} tickLine={false}
               tickFormatter={(v: number) => `${v}%`} width={40}
-              label={{ value: "Rendimiento %", angle: -90, position: "insideLeft", fill: "#333", fontSize: 8 }}
+              label={{ value: "Rendimiento %", angle: -90, position: "insideLeft", fill: "var(--border-hi)", fontSize: 8 }}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend
-              wrapperStyle={{ fontSize: 9, color: "#888", paddingTop: 8 }}
-              formatter={(value: string) => <span style={{ color: "#888" }}>{value}</span>}
+              wrapperStyle={{ fontSize: 9, color: "var(--text-dim)", paddingTop: 8 }}
+              formatter={(value: string) => <span style={{ color: "var(--text-dim)" }}>{value}</span>}
             />
 
             {activeCurves.map(id => {
@@ -853,7 +853,7 @@ export function TabRentaFija() {
     <div className="bbg-panel">
       <div className="bbg-panel-header">
         RENTA FIJA
-        <span style={{ marginLeft: 12, fontSize: 9, color: "#888", fontWeight: 400 }}>
+        <span style={{ marginLeft: 12, fontSize: 9, color: "var(--text-dim)", fontWeight: 400 }}>
           datos ilustrativos — fase 1 · integración feed BYMA pendiente
         </span>
       </div>

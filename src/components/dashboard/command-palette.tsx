@@ -88,16 +88,16 @@ export function CommandPalette({ isOpen, onClose, onNavigate }: CommandPalettePr
     return (
       <>
         {text.slice(0, idx)}
-        <span style={{ color: "#FFA028", fontWeight: 700 }}>{text.slice(idx, idx + query.length)}</span>
+        <span style={{ color: "var(--amber)", fontWeight: 700 }}>{text.slice(idx, idx + query.length)}</span>
         {text.slice(idx + query.length)}
       </>
     )
   }
 
   const TAB_COLORS: Record<string, string> = {
-    macro: "#FFA028",
-    bcra: "#4AF6C3",
-    noticias: "#4FC3F7",
+    macro: "var(--amber)",
+    bcra: "var(--positive)",
+    noticias: "var(--sky)",
     finanzas: "#CE93D8",
   }
 
@@ -117,13 +117,13 @@ export function CommandPalette({ isOpen, onClose, onNavigate }: CommandPalettePr
         style={{
           position: "fixed", top: "20%", left: "50%", transform: "translateX(-50%)",
           width: "min(540px, 90vw)", zIndex: 1000,
-          background: "#0a0a0a", border: "1px solid #2a2a2a",
+          background: "var(--bg-elev)", border: "1px solid var(--border)",
           boxShadow: "0 20px 60px rgba(0,0,0,0.8)",
         }}
       >
         {/* Input */}
-        <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid #1a1a1a", padding: "10px 14px", gap: 10 }}>
-          <span style={{ color: "#888", fontSize: 14 }}>🔍</span>
+        <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid var(--border)", padding: "10px 14px", gap: 10 }}>
+          <span style={{ color: "var(--text-dim)", fontSize: 14 }}>🔍</span>
           <input
             ref={inputRef}
             value={query}
@@ -131,16 +131,16 @@ export function CommandPalette({ isOpen, onClose, onNavigate }: CommandPalettePr
             placeholder="Buscar indicador, sección..."
             style={{
               flex: 1, background: "none", border: "none", outline: "none",
-              color: "#fff", fontSize: 13, fontFamily: "monospace",
+              color: "var(--text)", fontSize: 13, fontFamily: "var(--font-data)",
             }}
           />
-          <span style={{ fontSize: 9, color: "#777", border: "1px solid #333", padding: "2px 5px", fontFamily: "monospace" }}>ESC</span>
+          <span style={{ fontSize: 9, color: "var(--text-mute)", border: "1px solid var(--border-hi)", padding: "2px 5px", fontFamily: "var(--font-data)" }}>ESC</span>
         </div>
 
         {/* Results */}
         <div>
           {filtered.length === 0 && (
-            <div style={{ padding: "16px 14px", fontSize: 11, color: "#888", fontFamily: "monospace", textAlign: "center" }}>
+            <div style={{ padding: "16px 14px", fontSize: 11, color: "var(--text-dim)", fontFamily: "var(--font-data)", textAlign: "center" }}>
               Sin resultados para &ldquo;{query}&rdquo;
             </div>
           )}
@@ -151,26 +151,26 @@ export function CommandPalette({ isOpen, onClose, onNavigate }: CommandPalettePr
               style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
                 padding: "8px 14px", cursor: "pointer",
-                background: i === selected ? "#111" : "transparent",
-                borderBottom: "1px solid #0d0d0d",
+                background: i === selected ? "var(--bg-elev-2)" : "transparent",
+                borderBottom: "1px solid var(--bg-elev-2)",
               }}
               onMouseEnter={() => setSelected(i)}
             >
               <div>
-                <div style={{ fontSize: 11, color: "#ccc", fontFamily: "monospace" }}>
+                <div style={{ fontSize: 11, color: "#ccc", fontFamily: "var(--font-data)" }}>
                   {highlight(item.label)}
                 </div>
                 {item.description && (
-                  <div style={{ fontSize: 9, color: "#888", marginTop: 2, fontFamily: "monospace" }}>
+                  <div style={{ fontSize: 9, color: "var(--text-dim)", marginTop: 2, fontFamily: "var(--font-data)" }}>
                     {item.description}
                   </div>
                 )}
               </div>
               <span
                 style={{
-                  fontSize: 8, fontFamily: "monospace", letterSpacing: 1, textTransform: "uppercase",
-                  color: TAB_COLORS[item.tab] ?? "#555",
-                  border: `1px solid ${TAB_COLORS[item.tab] ?? "#333"}33`,
+                  fontSize: 8, fontFamily: "var(--font-data)", letterSpacing: 1, textTransform: "uppercase",
+                  color: TAB_COLORS[item.tab] ?? "var(--text-mute)",
+                  border: `1px solid ${TAB_COLORS[item.tab] ?? "var(--border-hi)"}33`,
                   padding: "2px 5px",
                 }}
               >
@@ -181,10 +181,10 @@ export function CommandPalette({ isOpen, onClose, onNavigate }: CommandPalettePr
         </div>
 
         {/* Footer */}
-        <div style={{ padding: "6px 14px", borderTop: "1px solid #111", display: "flex", gap: 12 }}>
+        <div style={{ padding: "6px 14px", borderTop: "1px solid var(--bg-elev-2)", display: "flex", gap: 12 }}>
           {[["↑↓", "navegar"], ["↵", "ir"], ["ESC", "cerrar"]].map(([key, label]) => (
-            <span key={key} style={{ fontSize: 8, color: "#777", fontFamily: "monospace" }}>
-              <span style={{ color: "#aaa" }}>{key}</span> {label}
+            <span key={key} style={{ fontSize: 8, color: "var(--text-mute)", fontFamily: "var(--font-data)" }}>
+              <span style={{ color: "var(--text-dim)" }}>{key}</span> {label}
             </span>
           ))}
         </div>

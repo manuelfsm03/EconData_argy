@@ -29,8 +29,8 @@ const COUNTRIES = [
 
 const CATEGORIES = [
   { key: "todos",       label: "Todos",       color: "#888888" },
-  { key: "economía",    label: "Economía",    color: "#4FC3F7" },
-  { key: "finanzas",    label: "Finanzas",    color: "#FFD54F" },
+  { key: "economía",    label: "Economía",    color: "var(--sky)" },
+  { key: "finanzas",    label: "Finanzas",    color: "var(--yellow)" },
   { key: "política",    label: "Política",    color: "#ce93d8" },
   { key: "comercio",    label: "Comercio",    color: "#4488ff" },
   { key: "energía",     label: "Energía",     color: "#ffaa00" },
@@ -89,7 +89,7 @@ function CalendarTimelineView({ items, loading }: { items: RSSItem[]; loading: b
 
   if (loading) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 200, color: "#888", fontSize: 11, fontFamily: "monospace" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 200, color: "var(--text-dim)", fontSize: 11, fontFamily: "var(--font-data)" }}>
         CARGANDO NOTICIAS...
       </div>
     )
@@ -136,19 +136,19 @@ function CalendarTimelineView({ items, loading }: { items: RSSItem[]; loading: b
       {/* Month navigation */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "8px 16px", borderBottom: "1px solid #1a1a1a", background: "#080808", flexShrink: 0,
+        padding: "8px 16px", borderBottom: "1px solid var(--border)", background: "var(--bg-row-alt)", flexShrink: 0,
       }}>
-        <button onClick={prevMonth} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 16, padding: "0 8px" }}>‹</button>
-        <span style={{ fontSize: 12, fontFamily: "monospace", fontWeight: 700, color: "#FFA028", letterSpacing: "0.1em" }}>
+        <button onClick={prevMonth} style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 16, padding: "0 8px" }}>‹</button>
+        <span style={{ fontSize: 12, fontFamily: "var(--font-data)", fontWeight: 700, color: "var(--amber)", letterSpacing: "0.1em" }}>
           {monthLabel}
         </span>
-        <button onClick={nextMonth} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 16, padding: "0 8px" }}>›</button>
+        <button onClick={nextMonth} style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 16, padding: "0 8px" }}>›</button>
       </div>
 
       {/* Weekday headers */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: "1px solid #1a1a1a", background: "#060606", flexShrink: 0 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: "1px solid var(--border)", background: "var(--bg)", flexShrink: 0 }}>
         {WEEKDAYS.map((d) => (
-          <div key={d} style={{ textAlign: "center", padding: "5px 0", fontSize: 9, fontFamily: "monospace", color: "#555", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          <div key={d} style={{ textAlign: "center", padding: "5px 0", fontSize: 9, fontFamily: "var(--font-data)", color: "var(--text-mute)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
             {d}
           </div>
         ))}
@@ -161,8 +161,8 @@ function CalendarTimelineView({ items, loading }: { items: RSSItem[]; loading: b
             if (day === null) {
               return (
                 <div key={`empty-${idx}`} style={{
-                  minHeight: CELL_H, borderRight: "1px solid #111", borderBottom: "1px solid #111",
-                  background: "#050505",
+                  minHeight: CELL_H, borderRight: "1px solid var(--bg-elev-2)", borderBottom: "1px solid var(--bg-elev-2)",
+                  background: "var(--bg)",
                 }} />
               )
             }
@@ -175,9 +175,9 @@ function CalendarTimelineView({ items, loading }: { items: RSSItem[]; loading: b
             return (
               <div key={cellKey} style={{
                 minHeight: CELL_H,
-                borderRight: "1px solid #111",
-                borderBottom: "1px solid #111",
-                background: isToday ? "#0d0800" : "#000",
+                borderRight: "1px solid var(--bg-elev-2)",
+                borderBottom: "1px solid var(--bg-elev-2)",
+                background: isToday ? "#0d0800" : "var(--bg)",
                 padding: "6px 7px",
                 position: "relative",
                 verticalAlign: "top",
@@ -188,18 +188,18 @@ function CalendarTimelineView({ items, loading }: { items: RSSItem[]; loading: b
                     <span style={{
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
                       width: 20, height: 20, borderRadius: "50%",
-                      background: "#FFA028", color: "#000",
-                      fontSize: 10, fontFamily: "monospace", fontWeight: 700,
+                      background: "var(--amber)", color: "var(--bg)",
+                      fontSize: 10, fontFamily: "var(--font-data)", fontWeight: 700,
                     }}>{day}</span>
                   ) : (
-                    <span style={{ fontSize: 10, fontFamily: "monospace", color: "#555" }}>{day}</span>
+                    <span style={{ fontSize: 10, fontFamily: "var(--font-data)", color: "var(--text-mute)" }}>{day}</span>
                   )}
                 </div>
 
                 {/* Top news items */}
                 {top.map((item, i) => {
                   const cat = CATEGORIES.find((c) => c.key === item.category)
-                  const color = cat?.color ?? "#888"
+                  const color = cat?.color ?? "var(--text-dim)"
                   return (
                     <a
                       key={item.id + i}
@@ -211,7 +211,7 @@ function CalendarTimelineView({ items, loading }: { items: RSSItem[]; loading: b
                         display: "flex", alignItems: "flex-start", gap: 4,
                         marginBottom: 4, textDecoration: "none",
                       }}
-                      onMouseEnter={(e) => { (e.currentTarget.querySelector("span.ttl") as HTMLElement).style.color = "#FFA028" }}
+                      onMouseEnter={(e) => { (e.currentTarget.querySelector("span.ttl") as HTMLElement).style.color = "var(--amber)" }}
                       onMouseLeave={(e) => { (e.currentTarget.querySelector("span.ttl") as HTMLElement).style.color = "#ccc" }}
                     >
                       <span style={{
@@ -232,7 +232,7 @@ function CalendarTimelineView({ items, loading }: { items: RSSItem[]; loading: b
 
                 {/* Overflow count */}
                 {dayItems.length > 3 && (
-                  <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace", marginTop: 2 }}>
+                  <div style={{ fontSize: 8, color: "var(--text-mute)", fontFamily: "var(--font-data)", marginTop: 2 }}>
                     +{dayItems.length - 3} más
                   </div>
                 )}
@@ -252,7 +252,7 @@ function CategoryBadge({ category }: { category: string }) {
     <span style={{
       display: "inline-block",
       fontSize: 8,
-      fontFamily: "monospace",
+      fontFamily: "var(--font-data)",
       fontWeight: 700,
       textTransform: "uppercase",
       letterSpacing: 0.5,
@@ -287,12 +287,12 @@ function NewsTable({ rows, extra, loading, expandedId, onToggle, onMore }: NewsT
             <tr
               key={item.id + i}
               style={{
-                background: i % 2 === 0 ? "#000000" : "#060606",
+                background: i % 2 === 0 ? "var(--bg)" : "var(--bg)",
                 cursor: item.description ? "pointer" : "default",
               }}
               onClick={() => item.description && onToggle(item.id)}
             >
-              <td style={{ color: "#FFA028", fontSize: 12, verticalAlign: "top", paddingTop: 10, paddingBottom: 10 }}>
+              <td style={{ color: "var(--amber)", fontSize: 12, verticalAlign: "top", paddingTop: 10, paddingBottom: 10 }}>
                 {fmtTime(item.pubDate)}
               </td>
               <td style={{ color: "#0068FF", fontSize: 12, verticalAlign: "top", fontWeight: 500, paddingTop: 10, paddingBottom: 10 }}>
@@ -304,7 +304,7 @@ function NewsTable({ rows, extra, loading, expandedId, onToggle, onMore }: NewsT
                   href={item.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ color: "#FFFFFF", fontSize: 13, lineHeight: 1.5 }}
+                  style={{ color: "var(--text)", fontSize: 13, lineHeight: 1.5 }}
                   onClick={(e) => e.stopPropagation()}
                 >
                   {item.title}
@@ -320,7 +320,7 @@ function NewsTable({ rows, extra, loading, expandedId, onToggle, onMore }: NewsT
 
           {visible.length === 0 && (
             <tr>
-              <td colSpan={3} style={{ color: "#555555", textAlign: "center", padding: 20 }}>
+              <td colSpan={3} style={{ color: "var(--text-mute)", textAlign: "center", padding: 20 }}>
                 {loading ? "CARGANDO NOTICIAS..." : "SIN RESULTADOS"}
               </td>
             </tr>
@@ -329,7 +329,7 @@ function NewsTable({ rows, extra, loading, expandedId, onToggle, onMore }: NewsT
       </table>
 
       {remaining > 0 && (
-        <div style={{ padding: "6px 12px", borderTop: "1px solid #111111" }}>
+        <div style={{ padding: "6px 12px", borderTop: "1px solid var(--bg-elev-2)" }}>
           <button
             onClick={onMore}
             style={{
@@ -401,8 +401,8 @@ export function NewsFeed() {
           gap: 6,
           flexWrap: "wrap",
           padding: "10px 14px",
-          borderBottom: "1px solid #111",
-          background: "#050505",
+          borderBottom: "1px solid var(--bg-elev-2)",
+          background: "var(--bg)",
           alignItems: "center",
         }}
       >
@@ -418,24 +418,24 @@ export function NewsFeed() {
                 fontWeight: active ? 700 : 400,
                 textTransform: "uppercase",
                 letterSpacing: "0.05em",
-                border: active ? `1px solid ${cat.color}66` : "1px solid #2a2a2a",
+                border: active ? `1px solid ${cat.color}66` : "1px solid var(--border)",
                 borderRadius: 20,
                 background: active ? `${cat.color}18` : "transparent",
-                color: active ? cat.color : "#555",
+                color: active ? cat.color : "var(--text-mute)",
                 cursor: "pointer",
                 whiteSpace: "nowrap",
                 transition: "all 0.15s",
-                fontFamily: "monospace",
+                fontFamily: "var(--font-data)",
               }}
             >
               {cat.label}
             </button>
           )
         })}
-        <span style={{ marginLeft: "auto", color: "#777", fontSize: 10, fontFamily: "monospace" }}>
+        <span style={{ marginLeft: "auto", color: "var(--text-mute)", fontSize: 10, fontFamily: "var(--font-data)" }}>
           {filtered.length} noticias
         </span>
-        <span style={{ width: 1, height: 14, background: "#222", flexShrink: 0 }} />
+        <span style={{ width: 1, height: 14, background: "var(--border)", flexShrink: 0 }} />
         {(["lista", "calendario"] as const).map((mode) => (
           <button
             key={mode}
@@ -444,9 +444,9 @@ export function NewsFeed() {
               fontSize: 9, padding: "3px 8px",
               textTransform: "uppercase", letterSpacing: 1,
               border: "none",
-              background: viewMode === mode ? "#FFA028" : "transparent",
-              color: viewMode === mode ? "#000" : "#555",
-              cursor: "pointer", fontFamily: "monospace", borderRadius: 2,
+              background: viewMode === mode ? "var(--amber)" : "transparent",
+              color: viewMode === mode ? "var(--bg)" : "var(--text-mute)",
+              cursor: "pointer", fontFamily: "var(--font-data)", borderRadius: 2,
             }}
           >
             {mode === "lista" ? "≡ LISTA" : "📅 CALENDARIO"}
@@ -456,22 +456,22 @@ export function NewsFeed() {
 
       {/* Calendar view */}
       {viewMode === "calendario" && (
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", background: "#000" }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", background: "var(--bg)" }}>
           <CalendarTimelineView items={timelineItems} loading={loading} />
         </div>
       )}
 
       {/* Dos columnas: Argentina | Internacional */}
-      {viewMode === "lista" && <div style={{ display: "flex", gap: 1, background: "#111111", flex: 1, minHeight: 0 }}>
+      {viewMode === "lista" && <div style={{ display: "flex", gap: 1, background: "var(--bg-elev-2)", flex: 1, minHeight: 0 }}>
         {/* Argentina */}
-        <div style={{ flex: 1, minWidth: 0, background: "#000000", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1, minWidth: 0, background: "var(--bg)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
           <div
             className="bbg-panel-header"
             style={{ display: "flex", alignItems: "center", gap: 6 }}
           >
-            <span style={{ color: activeCat?.color ?? "#4FC3F7" }}>▐</span>
+            <span style={{ color: activeCat?.color ?? "var(--sky)" }}>▐</span>
             ARGENTINA
-            <span style={{ marginLeft: "auto", color: "#333333", fontWeight: 400 }}>
+            <span style={{ marginLeft: "auto", color: "var(--border-hi)", fontWeight: 400 }}>
               {argentina.length}
             </span>
           </div>
@@ -488,19 +488,19 @@ export function NewsFeed() {
         </div>
 
         {/* Internacional */}
-        <div style={{ flex: 1, minWidth: 0, background: "#000000", display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1, minWidth: 0, background: "var(--bg)", display: "flex", flexDirection: "column" }}>
           <div
             className="bbg-panel-header"
             style={{ display: "flex", alignItems: "center", gap: 6 }}
           >
-            <span style={{ color: activeCat?.color ?? "#FFA028" }}>▐</span>
+            <span style={{ color: activeCat?.color ?? "var(--amber)" }}>▐</span>
             INTERNACIONAL
-            <span style={{ marginLeft: "auto", color: "#333333", fontWeight: 400 }}>
+            <span style={{ marginLeft: "auto", color: "var(--border-hi)", fontWeight: 400 }}>
               {internacional.length}
             </span>
           </div>
           {/* Filtro por país — pill */}
-          <div style={{ display: "flex", gap: 4, padding: "8px 10px", borderBottom: "1px solid #111", flexWrap: "wrap", background: "#060606" }}>
+          <div style={{ display: "flex", gap: 4, padding: "8px 10px", borderBottom: "1px solid var(--bg-elev-2)", flexWrap: "wrap", background: "var(--bg)" }}>
             {COUNTRIES.map((c) => {
               const active = country === c.key
               return (
@@ -513,14 +513,14 @@ export function NewsFeed() {
                     fontWeight: active ? 600 : 400,
                     textTransform: "uppercase",
                     letterSpacing: "0.04em",
-                    border: active ? "1px solid rgba(255,160,40,0.4)" : "1px solid #2a2a2a",
+                    border: active ? "1px solid rgba(255,160,40,0.4)" : "1px solid var(--border)",
                     borderRadius: 20,
                     background: active ? "rgba(255,160,40,0.08)" : "transparent",
-                    color: active ? "#FFA028" : "#555",
+                    color: active ? "var(--amber)" : "var(--text-mute)",
                     cursor: "pointer",
                     whiteSpace: "nowrap",
                     transition: "all 0.15s",
-                    fontFamily: "monospace",
+                    fontFamily: "var(--font-data)",
                   }}
                 >
                   {c.label}

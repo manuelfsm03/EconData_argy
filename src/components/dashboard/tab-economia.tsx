@@ -55,25 +55,25 @@ function KPIBlock({
   return (
     <div
       style={{
-        background: "#0a0a0a",
-        border: "1px solid #1a1a1a",
+        background: "var(--bg-elev)",
+        border: "1px solid var(--border)",
         padding: "10px 14px",
         minWidth: 140,
       }}
     >
-      <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+      <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
         {label}
       </div>
-      <div style={{ fontSize: 20, fontWeight: 700, color: valueColor ?? "#FFA028", fontFamily: "monospace" }}>
+      <div style={{ fontSize: 20, fontWeight: 700, color: valueColor ?? "var(--amber)", fontFamily: "var(--font-data)" }}>
         {value ?? "—"}
       </div>
-      <div style={{ fontSize: 9, color: "#888", marginTop: 2 }}>{unit}</div>
+      <div style={{ fontSize: 9, color: "var(--text-dim)", marginTop: 2 }}>{unit}</div>
     </div>
   )
 }
 
 function DolarCard({ rate, oficial }: { rate: DolarRate; oficial: DolarRate | null }) {
-  const cfg = DOLAR_CONFIG[rate.casa] ?? { label: rate.nombre, color: "#888" }
+  const cfg = DOLAR_CONFIG[rate.casa] ?? { label: rate.nombre, color: "var(--text-dim)" }
   const brecha =
     rate.casa === "blue" && oficial?.venta && rate.venta
       ? ((rate.venta / oficial.venta - 1) * 100).toFixed(1)
@@ -82,26 +82,26 @@ function DolarCard({ rate, oficial }: { rate: DolarRate; oficial: DolarRate | nu
   return (
     <div
       style={{
-        background: "#060606",
+        background: "var(--bg)",
         borderTop: `2px solid ${cfg.color}`,
-        border: `1px solid #1a1a1a`,
+        border: `1px solid var(--border)`,
         borderTopColor: cfg.color,
         padding: "10px 12px",
       }}
     >
-      <div style={{ fontSize: 10, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+      <div style={{ fontSize: 10, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
         {cfg.label}
       </div>
       <div style={{ display: "flex", gap: 16 }}>
         <div>
-          <div style={{ fontSize: 9, color: "#888" }}>COMPRA</div>
-          <div style={{ fontSize: 15, color: "#ccc", fontFamily: "monospace", fontWeight: 600 }}>
+          <div style={{ fontSize: 9, color: "var(--text-dim)" }}>COMPRA</div>
+          <div style={{ fontSize: 15, color: "#ccc", fontFamily: "var(--font-data)", fontWeight: 600 }}>
             ${rate.compra?.toFixed(2) ?? "—"}
           </div>
         </div>
         <div>
-          <div style={{ fontSize: 9, color: "#888" }}>VENTA</div>
-          <div style={{ fontSize: 15, color: "#fff", fontFamily: "monospace", fontWeight: 700 }}>
+          <div style={{ fontSize: 9, color: "var(--text-dim)" }}>VENTA</div>
+          <div style={{ fontSize: 15, color: "var(--text)", fontFamily: "var(--font-data)", fontWeight: 700 }}>
             ${rate.venta?.toFixed(2) ?? "—"}
           </div>
         </div>
@@ -159,7 +159,7 @@ export function TabEconomia() {
 
   if (loading) {
     return (
-      <div style={{ padding: 24, color: "#888", fontSize: 12, textAlign: "center" }}>
+      <div style={{ padding: 24, color: "var(--text-dim)", fontSize: 12, textAlign: "center" }}>
         Cargando cotizaciones...
       </div>
     )
@@ -183,7 +183,7 @@ export function TabEconomia() {
       <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between" }}>
         <span>TIPOS DE CAMBIO — ARGENTINA</span>
         {lastUpdate && (
-          <span style={{ color: "#888", fontWeight: 400 }}>
+          <span style={{ color: "var(--text-dim)", fontWeight: 400 }}>
             UPD {new Date(lastUpdate).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
           </span>
         )}
@@ -195,7 +195,7 @@ export function TabEconomia() {
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
           gap: 1,
-          background: "#111",
+          background: "var(--bg-elev-2)",
           padding: 1,
         }}
       >
@@ -211,7 +211,7 @@ export function TabEconomia() {
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
           gap: 1,
-          background: "#111",
+          background: "var(--bg-elev-2)",
           padding: 1,
         }}
       >
@@ -219,14 +219,14 @@ export function TabEconomia() {
           label="Reservas Internacionales"
           value={reservas != null ? reservas.toLocaleString("es-AR") : null}
           unit="USD Millones"
-          valueColor="#4AF6C3"
+          valueColor="var(--positive)"
         />
         <KPIBlock
           label="Riesgo País (EMBI)"
           value={riesgoPais != null ? riesgoPais.toLocaleString("es-AR") : null}
           unit="bps"
           valueColor={
-            riesgoPais == null ? "#888" : riesgoPais > 1000 ? "#FF433D" : riesgoPais > 500 ? "#FFA028" : "#4AF6C3"
+            riesgoPais == null ? "var(--text-dim)" : riesgoPais > 1000 ? "var(--negative)" : riesgoPais > 500 ? "var(--amber)" : "var(--positive)"
           }
         />
         <KPIBlock
@@ -238,7 +238,7 @@ export function TabEconomia() {
       </div>
 
       {/* Source note */}
-      <div style={{ padding: "4px 8px", fontSize: 9, color: "#777", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 8px", fontSize: 9, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
         FUENTE: dolarapi.com · datos.gob.ar · estadisticasbcra.com (riesgo país requiere BCRA_TOKEN)
       </div>
     </div>

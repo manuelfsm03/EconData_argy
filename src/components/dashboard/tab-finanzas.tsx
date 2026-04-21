@@ -26,8 +26,8 @@ function fmtPct(v: number | null | undefined, decimals = 2): string {
 }
 
 function changeColor(v: number | null | undefined): string {
-  if (v == null) return "#888"
-  return v >= 0 ? "#4AF6C3" : "#FF433D"
+  if (v == null) return "var(--text-dim)"
+  return v >= 0 ? "var(--positive)" : "var(--negative)"
 }
 
 // ── Sub-tabs ───────────────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ const FIN_TABS = [
 function SubTabs({ active, onChange }: { active: string; onChange: (k: string) => void }) {
   return (
     <div style={{
-      background: "#050505", borderBottom: "1px solid #111",
+      background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)",
       display: "flex", alignItems: "center", padding: "10px 14px",
       gap: 6, flexWrap: "wrap",
     }}>
@@ -55,12 +55,12 @@ function SubTabs({ active, onChange }: { active: string; onChange: (k: string) =
           <button key={t.key} onClick={() => onChange(t.key)} style={{
             display: "flex", alignItems: "center", gap: 6,
             background: isActive ? "rgba(255,160,40,0.08)" : "transparent",
-            border: isActive ? "1px solid rgba(255,160,40,0.4)" : "1px solid #2a2a2a",
+            border: isActive ? "1px solid rgba(255,160,40,0.4)" : "1px solid var(--border)",
             borderRadius: 20, cursor: "pointer", padding: "5px 14px",
-            whiteSpace: "nowrap", transition: "all 0.15s", fontFamily: "monospace",
+            whiteSpace: "nowrap", transition: "all 0.15s", fontFamily: "var(--font-data)",
           }}>
-            <span style={{ fontSize: 11, color: isActive ? "#FFA028" : "#555", fontWeight: 700 }}>{t.icon}</span>
-            <span style={{ fontSize: 10, color: isActive ? "#FFA028" : "#888", fontWeight: isActive ? 600 : 400, letterSpacing: 0.5, textTransform: "uppercase" }}>
+            <span style={{ fontSize: 11, color: isActive ? "var(--amber)" : "var(--text-mute)", fontWeight: 700 }}>{t.icon}</span>
+            <span style={{ fontSize: 10, color: isActive ? "var(--amber)" : "var(--text-dim)", fontWeight: isActive ? 600 : 400, letterSpacing: 0.5, textTransform: "uppercase" }}>
               {t.label}
             </span>
           </button>
@@ -72,33 +72,33 @@ function SubTabs({ active, onChange }: { active: string; onChange: (k: string) =
 
 // ── KPI card ───────────────────────────────────────────────────────────────────
 
-function KPI({ label, value, unit, valueColor = "#fff", sub }: { label: string; value: string | null; unit?: string; valueColor?: string; sub?: string }) {
+function KPI({ label, value, unit, valueColor = "var(--text)", sub }: { label: string; value: string | null; unit?: string; valueColor?: string; sub?: string }) {
   return (
-    <div style={{ flex: "1 1 150px", padding: "10px 14px", background: "#080808", border: "1px solid #111", display: "flex", flexDirection: "column", gap: 3 }}>
-      <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace" }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 700, color: valueColor, fontFamily: "monospace", lineHeight: 1 }}>{value ?? "—"}</div>
-      {unit && <div style={{ fontSize: 8, color: "#bbb", fontFamily: "monospace" }}>{unit}</div>}
-      {sub && <div style={{ fontSize: 8, color: "#999", fontFamily: "monospace" }}>{sub}</div>}
+    <div style={{ flex: "1 1 150px", padding: "10px 14px", background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)", display: "flex", flexDirection: "column", gap: 3 }}>
+      <div style={{ fontSize: 8, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "var(--font-data)" }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: valueColor, fontFamily: "var(--font-data)", lineHeight: 1 }}>{value ?? "—"}</div>
+      {unit && <div style={{ fontSize: 8, color: "#bbb", fontFamily: "var(--font-data)" }}>{unit}</div>}
+      {sub && <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>{sub}</div>}
     </div>
   )
 }
 
 function SectionTitle({ title }: { title: string }) {
   return (
-    <div style={{ fontSize: 9, color: "#ccc", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 10, fontFamily: "monospace" }}>
+    <div style={{ fontSize: 9, color: "#ccc", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 10, fontFamily: "var(--font-data)" }}>
       {title}
     </div>
   )
 }
 
 function Loading() {
-  return <div style={{ padding: 40, textAlign: "center", color: "#888", fontFamily: "monospace", fontSize: 10 }}>Cargando…</div>
+  return <div style={{ padding: 40, textAlign: "center", color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 10 }}>Cargando…</div>
 }
 
 const tooltipStyle = {
-  contentStyle: { background: "#0a0a0a", border: "1px solid #222", fontSize: 10, color: "#fff" },
-  itemStyle: { color: "#fff" },
-  labelStyle: { color: "#aaa" },
+  contentStyle: { background: "var(--bg-elev)", border: "1px solid var(--border)", fontSize: 10, color: "var(--text)" },
+  itemStyle: { color: "var(--text)" },
+  labelStyle: { color: "var(--text-dim)" },
 }
 
 // ── ACCIONES ─────────────────────────────────────────────────────────────────
@@ -128,7 +128,7 @@ function AccionesView() {
   }, [])
 
   if (loading) return <Loading />
-  if (!data) return <div style={{ padding: 40, color: "#888", fontFamily: "monospace", fontSize: 10 }}>Sin datos</div>
+  if (!data) return <div style={{ padding: 40, color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 10 }}>Sin datos</div>
 
   const allStocks = cat === "all"
     ? Object.values(data.byCategory).flat()
@@ -142,41 +142,41 @@ function AccionesView() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       {/* KPIs */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "#050505", borderBottom: "1px solid #111" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
         <KPI label="Acciones con precio" value={String(mervalTotal)} unit="tickers activos" />
-        <KPI label="Mejor del día" value={top5Gain[0] ? top5Gain[0].ticker : null} valueColor="#4AF6C3"
+        <KPI label="Mejor del día" value={top5Gain[0] ? top5Gain[0].ticker : null} valueColor="var(--positive)"
           unit={top5Gain[0]?.change1D != null ? `+${fmtPct(top5Gain[0].change1D)}` : undefined} />
-        <KPI label="Peor del día" value={top5Loss[0] ? top5Loss[0].ticker : null} valueColor="#FF433D"
+        <KPI label="Peor del día" value={top5Loss[0] ? top5Loss[0].ticker : null} valueColor="var(--negative)"
           unit={top5Loss[0]?.change1D != null ? fmtPct(top5Loss[0].change1D) : undefined} />
-        <KPI label="Suben" value={String(withPrice.filter(s => (s.change1D ?? 0) > 0).length)} valueColor="#4AF6C3" unit="acciones" />
-        <KPI label="Bajan" value={String(withPrice.filter(s => (s.change1D ?? 0) < 0).length)} valueColor="#FF433D" unit="acciones" />
+        <KPI label="Suben" value={String(withPrice.filter(s => (s.change1D ?? 0) > 0).length)} valueColor="var(--positive)" unit="acciones" />
+        <KPI label="Bajan" value={String(withPrice.filter(s => (s.change1D ?? 0) < 0).length)} valueColor="var(--negative)" unit="acciones" />
       </div>
 
       {/* Filtro categorías */}
-      <div style={{ padding: "8px 14px", background: "#050505", borderBottom: "1px solid #111", display: "flex", gap: 4, flexWrap: "wrap" }}>
+      <div style={{ padding: "8px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)", display: "flex", gap: 4, flexWrap: "wrap" }}>
         {["all", ...data.categories].map(c => (
           <button key={c} onClick={() => setCat(c)} style={{
-            fontSize: 9, fontFamily: "monospace", padding: "3px 10px",
+            fontSize: 9, fontFamily: "var(--font-data)", padding: "3px 10px",
             background: cat === c ? "rgba(255,160,40,0.12)" : "transparent",
-            border: cat === c ? "1px solid rgba(255,160,40,0.4)" : "1px solid #1a1a1a",
-            color: cat === c ? "#FFA028" : "#666", borderRadius: 20, cursor: "pointer",
+            border: cat === c ? "1px solid rgba(255,160,40,0.4)" : "1px solid var(--border)",
+            color: cat === c ? "var(--amber)" : "#666", borderRadius: 20, cursor: "pointer",
           }}>{c === "all" ? "Todos" : c}</button>
         ))}
       </div>
 
       {/* Chart variaciones */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "#111" }}>
-        <div style={{ background: "#050505", padding: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "var(--bg-elev-2)" }}>
+        <div style={{ background: "var(--bg)", padding: 16 }}>
           <SectionTitle title="Top 10 variación diaria" />
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={[...top5Gain, ...top5Loss.reverse()].map(s => ({ ticker: s.ticker, pct: s.change1D ?? 0 }))} layout="vertical" margin={{ left: 10, right: 30 }}>
-              <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" horizontal={false} />
-              <XAxis type="number" stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${v.toFixed(1)}%`} />
-              <YAxis type="category" dataKey="ticker" stroke="#333" fontSize={9} tick={{ fill: "#aaa" }} width={60} />
+              <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" horizontal={false} />
+              <XAxis type="number" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v.toFixed(1)}%`} />
+              <YAxis type="category" dataKey="ticker" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} width={60} />
               <Tooltip {...tooltipStyle} formatter={(v: unknown) => [`${fmtNum(v as number, 2)}%`, "Variación"]} />
               <Bar dataKey="pct" radius={[0, 2, 2, 0]}>
                 {[...top5Gain, ...top5Loss.reverse()].map((s, i) => (
-                  <Cell key={i} fill={(s.change1D ?? 0) >= 0 ? "#4AF6C3" : "#FF433D"} />
+                  <Cell key={i} fill={(s.change1D ?? 0) >= 0 ? "var(--positive)" : "var(--negative)"} />
                 ))}
               </Bar>
             </BarChart>
@@ -184,27 +184,27 @@ function AccionesView() {
         </div>
 
         {/* Mapa de calor simplificado */}
-        <div style={{ background: "#050505", padding: 16 }}>
+        <div style={{ background: "var(--bg)", padding: 16 }}>
           <SectionTitle title="Screener" />
           <div style={{ overflowY: "auto", maxHeight: 260 }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 9 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-data)", fontSize: 9 }}>
               <thead>
-                <tr style={{ borderBottom: "1px solid #1a1a1a" }}>
+                <tr style={{ borderBottom: "1px solid var(--border)" }}>
                   {["Ticker", "Sector", "Último", "Var. %", "Volumen"].map(h => (
-                    <th key={h} style={{ padding: "4px 8px", color: "#888", textAlign: h === "Ticker" || h === "Sector" ? "left" : "right", fontWeight: 400 }}>{h}</th>
+                    <th key={h} style={{ padding: "4px 8px", color: "var(--text-dim)", textAlign: h === "Ticker" || h === "Sector" ? "left" : "right", fontWeight: 400 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {withPrice.map((s, i) => (
-                  <tr key={i} style={{ borderBottom: "1px solid #0d0d0d" }}>
-                    <td style={{ padding: "3px 8px", color: "#FFA028", fontWeight: 700 }}>{s.ticker}</td>
-                    <td style={{ padding: "3px 8px", color: "#888" }}>{s.category}</td>
-                    <td style={{ padding: "3px 8px", color: "#fff", textAlign: "right" }}>{fmtNum(s.lastPrice, 2)}</td>
+                  <tr key={i} style={{ borderBottom: "1px solid var(--bg-elev-2)" }}>
+                    <td style={{ padding: "3px 8px", color: "var(--amber)", fontWeight: 700 }}>{s.ticker}</td>
+                    <td style={{ padding: "3px 8px", color: "var(--text-dim)" }}>{s.category}</td>
+                    <td style={{ padding: "3px 8px", color: "var(--text)", textAlign: "right" }}>{fmtNum(s.lastPrice, 2)}</td>
                     <td style={{ padding: "3px 8px", color: changeColor(s.change1D), textAlign: "right", fontWeight: 700 }}>
                       {s.change1D != null ? `${s.change1D >= 0 ? "+" : ""}${fmtNum(s.change1D, 2)}%` : "—"}
                     </td>
-                    <td style={{ padding: "3px 8px", color: "#888", textAlign: "right" }}>
+                    <td style={{ padding: "3px 8px", color: "var(--text-dim)", textAlign: "right" }}>
                       {s.volume != null ? fmtNum(s.volume / 1e6, 2) + "M" : "—"}
                     </td>
                   </tr>
@@ -215,7 +215,7 @@ function AccionesView() {
         </div>
       </div>
 
-      <div style={{ padding: "6px 14px", fontSize: 8, color: "#888", borderTop: "1px solid #111", fontFamily: "monospace" }}>
+      <div style={{ padding: "6px 14px", fontSize: 8, color: "var(--text-dim)", borderTop: "1px solid var(--bg-elev-2)", fontFamily: "var(--font-data)" }}>
         Fuente: api-merval (Railway) · Precios en tiempo real BYMA 24hs
       </div>
     </div>
@@ -263,41 +263,41 @@ function BonosView() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       {/* KPIs */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "#050505", borderBottom: "1px solid #111" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
         <KPI label="Bonos soberanos" value={String(bonos.length)} unit="hard dollar" />
-        <KPI label="TIR promedio" value={avgTir != null ? fmtPct(avgTir) : null} valueColor="#FFA028" unit="yield to maturity" />
-        <KPI label="Paridad promedio" value={avgPar != null ? fmtPct(avgPar) : null} valueColor="#4AF6C3" unit="% del VN residual" />
+        <KPI label="TIR promedio" value={avgTir != null ? fmtPct(avgTir) : null} valueColor="var(--amber)" unit="yield to maturity" />
+        <KPI label="Paridad promedio" value={avgPar != null ? fmtPct(avgPar) : null} valueColor="var(--positive)" unit="% del VN residual" />
         <KPI label="LECAPs / BONCAPs" value={String(lecaps.length)} unit="instrumentos locales" />
       </div>
 
       {/* Selector */}
-      <div style={{ padding: "8px 14px", background: "#050505", borderBottom: "1px solid #111", display: "flex", gap: 4 }}>
+      <div style={{ padding: "8px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)", display: "flex", gap: 4 }}>
         {(["soberanos", "lecap"] as const).map(t => (
           <button key={t} onClick={() => setTab(t)} style={{
-            fontSize: 9, fontFamily: "monospace", padding: "3px 12px", borderRadius: 20, cursor: "pointer",
+            fontSize: 9, fontFamily: "var(--font-data)", padding: "3px 12px", borderRadius: 20, cursor: "pointer",
             background: tab === t ? "rgba(255,160,40,0.12)" : "transparent",
-            border: tab === t ? "1px solid rgba(255,160,40,0.4)" : "1px solid #1a1a1a",
-            color: tab === t ? "#FFA028" : "#666",
+            border: tab === t ? "1px solid rgba(255,160,40,0.4)" : "1px solid var(--border)",
+            color: tab === t ? "var(--amber)" : "#666",
           }}>{t === "soberanos" ? "Soberanos Hard Dollar" : "LECAP / BONCAP"}</button>
         ))}
       </div>
 
       {tab === "soberanos" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "#111" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "var(--bg-elev-2)" }}>
           {/* Curva de rendimientos */}
-          <div style={{ background: "#050505", padding: 16 }}>
+          <div style={{ background: "var(--bg)", padding: 16 }}>
             <SectionTitle title="Curva de rendimientos (TIR vs Duration)" />
             <ResponsiveContainer width="100%" height={260}>
               <ScatterChart margin={{ top: 8, right: 20, left: 0, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" />
-                <XAxis dataKey="dur" name="Duration" stroke="#333" fontSize={9} tick={{ fill: "#888" }} label={{ value: "Duration (años)", position: "insideBottom", offset: -10, fill: "#666", fontSize: 8 }} />
-                <YAxis dataKey="tir" name="TIR" stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${v}%`} />
-                <Tooltip {...tooltipStyle} cursor={{ stroke: "#333" }} content={({ active, payload }) => {
+                <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
+                <XAxis dataKey="dur" name="Duration" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} label={{ value: "Duration (años)", position: "insideBottom", offset: -10, fill: "#666", fontSize: 8 }} />
+                <YAxis dataKey="tir" name="TIR" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}%`} />
+                <Tooltip {...tooltipStyle} cursor={{ stroke: "var(--border-hi)" }} content={({ active, payload }) => {
                   if (!active || !payload?.length) return null
                   const d = payload[0]?.payload as { ticker: string; tir: number; dur: number; paridad: number }
                   return (
-                    <div style={{ background: "#0a0a0a", border: "1px solid #222", padding: "6px 10px", fontSize: 9, fontFamily: "monospace", color: "#fff" }}>
-                      <div style={{ color: "#FFA028", fontWeight: 700 }}>{d.ticker}</div>
+                    <div style={{ background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "6px 10px", fontSize: 9, fontFamily: "var(--font-data)", color: "var(--text)" }}>
+                      <div style={{ color: "var(--amber)", fontWeight: 700 }}>{d.ticker}</div>
                       <div>TIR: {fmtPct(d.tir)}</div>
                       <div>Duration: {fmtNum(d.dur, 2)} años</div>
                       <div>Paridad: {fmtPct(d.paridad)}</div>
@@ -306,36 +306,36 @@ function BonosView() {
                 }} />
                 <Scatter
                   data={bonos.filter(b => b.tir != null && b.durationMod != null).map(b => ({ ticker: b.ticker, tir: b.tir, dur: b.durationMod, paridad: b.paridad ?? 0 }))}
-                  fill="#FFA028"
+                  fill="var(--amber)"
                 />
               </ScatterChart>
             </ResponsiveContainer>
           </div>
 
           {/* Tabla soberanos */}
-          <div style={{ background: "#050505", padding: 16 }}>
+          <div style={{ background: "var(--bg)", padding: 16 }}>
             <SectionTitle title="Screener soberanos" />
             <div style={{ overflowY: "auto", maxHeight: 260 }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 9 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-data)", fontSize: 9 }}>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid #1a1a1a" }}>
+                  <tr style={{ borderBottom: "1px solid var(--border)" }}>
                     {["Ticker", "Ley", "Vto.", "Precio", "Paridad", "TIR", "Duration"].map(h => (
-                      <th key={h} style={{ padding: "4px 6px", color: "#888", textAlign: h === "Ticker" || h === "Ley" ? "left" : "right", fontWeight: 400 }}>{h}</th>
+                      <th key={h} style={{ padding: "4px 6px", color: "var(--text-dim)", textAlign: h === "Ticker" || h === "Ley" ? "left" : "right", fontWeight: 400 }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {bonos.map((b, i) => (
-                    <tr key={i} style={{ borderBottom: "1px solid #0d0d0d" }}>
-                      <td style={{ padding: "3px 6px", color: "#FFA028", fontWeight: 700 }}>{b.ticker}</td>
-                      <td style={{ padding: "3px 6px", color: "#888" }}>{b.ley}</td>
-                      <td style={{ padding: "3px 6px", color: "#888" }}>{b.vencimiento?.slice(0, 7)}</td>
-                      <td style={{ padding: "3px 6px", color: "#fff", textAlign: "right" }}>{b.precio != null ? fmtNum(b.precio, 2) : "—"}</td>
-                      <td style={{ padding: "3px 6px", textAlign: "right", color: b.paridad != null && b.paridad < 50 ? "#FF433D" : "#4AF6C3" }}>
+                    <tr key={i} style={{ borderBottom: "1px solid var(--bg-elev-2)" }}>
+                      <td style={{ padding: "3px 6px", color: "var(--amber)", fontWeight: 700 }}>{b.ticker}</td>
+                      <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{b.ley}</td>
+                      <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{b.vencimiento?.slice(0, 7)}</td>
+                      <td style={{ padding: "3px 6px", color: "var(--text)", textAlign: "right" }}>{b.precio != null ? fmtNum(b.precio, 2) : "—"}</td>
+                      <td style={{ padding: "3px 6px", textAlign: "right", color: b.paridad != null && b.paridad < 50 ? "var(--negative)" : "var(--positive)" }}>
                         {b.paridad != null ? fmtPct(b.paridad) : "—"}
                       </td>
-                      <td style={{ padding: "3px 6px", color: "#FFA028", textAlign: "right", fontWeight: 700 }}>{b.tir != null ? fmtPct(b.tir) : "—"}</td>
-                      <td style={{ padding: "3px 6px", color: "#888", textAlign: "right" }}>{b.durationMod != null ? fmtNum(b.durationMod, 2) : "—"}</td>
+                      <td style={{ padding: "3px 6px", color: "var(--amber)", textAlign: "right", fontWeight: 700 }}>{b.tir != null ? fmtPct(b.tir) : "—"}</td>
+                      <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{b.durationMod != null ? fmtNum(b.durationMod, 2) : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -346,16 +346,16 @@ function BonosView() {
       )}
 
       {tab === "lecap" && (
-        <div style={{ padding: 16, background: "#050505" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "#111", marginBottom: 1 }}>
+        <div style={{ padding: 16, background: "var(--bg)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "var(--bg-elev-2)", marginBottom: 1 }}>
             {/* Curva LECAP */}
-            <div style={{ background: "#050505", padding: 16 }}>
+            <div style={{ background: "var(--bg)", padding: 16 }}>
               <SectionTitle title="Curva LECAP / BONCAP — TEM vs plazo" />
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={lecaps.filter(l => l.tem != null).sort((a, b) => a.diasVencimiento - b.diasVencimiento).map(l => ({ label: l.ticker, dias: l.diasVencimiento, tem: l.tem }))} margin={{ top: 8, right: 20, left: 0, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" />
-                  <XAxis dataKey="dias" stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${v}d`} />
-                  <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${v}%`} />
+                  <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
+                  <XAxis dataKey="dias" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}d`} />
+                  <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}%`} />
                   <Tooltip {...tooltipStyle} formatter={(v: unknown) => [`${fmtNum(v as number, 2)}%`, "TEM"]} />
                   <Line type="monotone" dataKey="tem" stroke="#FFD700" strokeWidth={2} dot={{ r: 3, fill: "#FFD700" }} isAnimationActive={false} />
                 </LineChart>
@@ -363,27 +363,27 @@ function BonosView() {
             </div>
 
             {/* Tabla LECAP */}
-            <div style={{ background: "#050505", padding: 16 }}>
+            <div style={{ background: "var(--bg)", padding: 16 }}>
               <SectionTitle title="Detalle instrumentos" />
               <div style={{ overflowY: "auto", maxHeight: 240 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 9 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-data)", fontSize: 9 }}>
                   <thead>
-                    <tr style={{ borderBottom: "1px solid #1a1a1a" }}>
+                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
                       {["Ticker", "Tipo", "Vto.", "Días", "Precio", "TEM", "TEA"].map(h => (
-                        <th key={h} style={{ padding: "4px 6px", color: "#888", fontWeight: 400, textAlign: h === "Ticker" || h === "Tipo" ? "left" : "right" }}>{h}</th>
+                        <th key={h} style={{ padding: "4px 6px", color: "var(--text-dim)", fontWeight: 400, textAlign: h === "Ticker" || h === "Tipo" ? "left" : "right" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {lecaps.sort((a, b) => a.diasVencimiento - b.diasVencimiento).map((l, i) => (
-                      <tr key={i} style={{ borderBottom: "1px solid #0d0d0d" }}>
-                        <td style={{ padding: "3px 6px", color: "#FFA028", fontWeight: 700 }}>{l.ticker}</td>
-                        <td style={{ padding: "3px 6px", color: "#888" }}>{l.tipo}</td>
-                        <td style={{ padding: "3px 6px", color: "#888" }}>{l.vencimiento}</td>
-                        <td style={{ padding: "3px 6px", color: "#888", textAlign: "right" }}>{l.diasVencimiento}</td>
-                        <td style={{ padding: "3px 6px", color: "#fff", textAlign: "right" }}>{l.precio != null ? fmtNum(l.precio, 2) : "—"}</td>
+                      <tr key={i} style={{ borderBottom: "1px solid var(--bg-elev-2)" }}>
+                        <td style={{ padding: "3px 6px", color: "var(--amber)", fontWeight: 700 }}>{l.ticker}</td>
+                        <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{l.tipo}</td>
+                        <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{l.vencimiento}</td>
+                        <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{l.diasVencimiento}</td>
+                        <td style={{ padding: "3px 6px", color: "var(--text)", textAlign: "right" }}>{l.precio != null ? fmtNum(l.precio, 2) : "—"}</td>
                         <td style={{ padding: "3px 6px", color: "#FFD700", textAlign: "right", fontWeight: 700 }}>{l.tem != null ? fmtPct(l.tem) : "—"}</td>
-                        <td style={{ padding: "3px 6px", color: "#aaa", textAlign: "right" }}>{l.tea != null ? fmtPct(l.tea) : "—"}</td>
+                        <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{l.tea != null ? fmtPct(l.tea) : "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -394,7 +394,7 @@ function BonosView() {
         </div>
       )}
 
-      <div style={{ padding: "6px 14px", fontSize: 8, color: "#888", borderTop: "1px solid #111", fontFamily: "monospace" }}>
+      <div style={{ padding: "6px 14px", fontSize: 8, color: "var(--text-dim)", borderTop: "1px solid var(--bg-elev-2)", fontFamily: "var(--font-data)" }}>
         Fuente: base local + Rava Bursátil (precios) · TIR calculada por Newton-Raphson sobre flujos futuros
       </div>
     </div>
@@ -432,7 +432,7 @@ function RofexView() {
 
   if (loading) return <Loading />
   if (!data.length) return (
-    <div style={{ padding: 40, textAlign: "center", color: "#888", fontFamily: "monospace", fontSize: 9 }}>
+    <div style={{ padding: 40, textAlign: "center", color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 9 }}>
       Sin datos ROFEX — Matba API no disponible · verificar conectividad
     </div>
   )
@@ -444,39 +444,39 @@ function RofexView() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       {/* KPIs */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "#050505", borderBottom: "1px solid #111" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
         <KPI label="Posiciones activas" value={String(data.length)} unit="contratos en el mercado" />
-        <KPI label="Posición más cercana" value={nearFuture?.maturityLabel ?? null} valueColor="#FFA028"
+        <KPI label="Posición más cercana" value={nearFuture?.maturityLabel ?? null} valueColor="var(--amber)"
           unit={nearFuture ? `$${fmtNum(nearFuture.price, 2)} · Dev: ${fmtPct(nearFuture.devaluation)}` : undefined} />
-        <KPI label="Posición más lejana" value={farFuture?.maturityLabel ?? null} valueColor="#4AF6C3"
+        <KPI label="Posición más lejana" value={farFuture?.maturityLabel ?? null} valueColor="var(--positive)"
           unit={farFuture ? `$${fmtNum(farFuture.price, 2)} · Dev: ${fmtPct(farFuture.devaluation)}` : undefined} />
         <KPI label="Devaluación máxima impl." value={fmtPct(maxDev)} valueColor="#FF6B6B" unit="según ROFEX" />
       </div>
 
       {/* Charts */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "#111" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "var(--bg-elev-2)" }}>
         {/* Precios futuros */}
-        <div style={{ background: "#050505", padding: 16 }}>
+        <div style={{ background: "var(--bg)", padding: 16 }}>
           <SectionTitle title="Precio implícito USD/ARS por posición" />
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={data.map(d => ({ label: d.maturityLabel, price: d.price }))} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
-              <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" />
-              <XAxis dataKey="label" stroke="#333" fontSize={8} tick={{ fill: "#888" }} />
-              <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `$${Math.round(v)}`} />
+              <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
+              <XAxis dataKey="label" stroke="var(--border-hi)" fontSize={8} tick={{ fill: "var(--text-dim)" }} />
+              <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `$${Math.round(v)}`} />
               <Tooltip {...tooltipStyle} formatter={(v: unknown) => [`$${fmtNum(v as number, 2)}`, "Precio"]} />
-              <Bar dataKey="price" fill="#FFA028" radius={[2, 2, 0, 0]} opacity={0.85} />
+              <Bar dataKey="price" fill="var(--amber)" radius={[2, 2, 0, 0]} opacity={0.85} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* Devaluación implícita */}
-        <div style={{ background: "#050505", padding: 16 }}>
+        <div style={{ background: "var(--bg)", padding: 16 }}>
           <SectionTitle title="Devaluación implícita acumulada (%)" />
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={data.map(d => ({ label: d.maturityLabel, dev: d.devaluation, tna: d.tna }))} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
-              <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" />
-              <XAxis dataKey="label" stroke="#333" fontSize={8} tick={{ fill: "#888" }} />
-              <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${v}%`} />
+              <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
+              <XAxis dataKey="label" stroke="var(--border-hi)" fontSize={8} tick={{ fill: "var(--text-dim)" }} />
+              <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}%`} />
               <Tooltip {...tooltipStyle} formatter={(v: unknown, name: unknown) => [`${fmtNum(v as number, 2)}%`, name === "dev" ? "Devaluación acum." : "TNA"]} />
               <Area type="monotone" dataKey="dev" stroke="#FF6B6B" fill="#FF6B6B22" strokeWidth={2} name="dev" />
               <Line type="monotone" dataKey="tna" stroke="#FFD700" strokeWidth={1.5} strokeDasharray="4 4" dot={false} name="tna" />
@@ -486,33 +486,33 @@ function RofexView() {
       </div>
 
       {/* Tabla */}
-      <div style={{ padding: 16, background: "#050505", borderTop: "1px solid #111" }}>
+      <div style={{ padding: 16, background: "var(--bg)", borderTop: "1px solid var(--bg-elev-2)" }}>
         <SectionTitle title="Tabla de posiciones" />
-        <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 9 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-data)", fontSize: 9 }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid #1a1a1a" }}>
+            <tr style={{ borderBottom: "1px solid var(--border)" }}>
               {["Posición", "Vencimiento", "Precio", "Dev. Acum.", "Dev. Mensual", "TNA", "CFT"].map(h => (
-                <th key={h} style={{ padding: "4px 8px", color: "#888", textAlign: h === "Posición" || h === "Vencimiento" ? "left" : "right", fontWeight: 400 }}>{h}</th>
+                <th key={h} style={{ padding: "4px 8px", color: "var(--text-dim)", textAlign: h === "Posición" || h === "Vencimiento" ? "left" : "right", fontWeight: 400 }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {data.map((d, i) => (
-              <tr key={i} style={{ borderBottom: "1px solid #0d0d0d" }}>
-                <td style={{ padding: "3px 8px", color: "#FFA028", fontWeight: 700 }}>{d.maturityLabel}</td>
-                <td style={{ padding: "3px 8px", color: "#888" }}>{d.maturity?.slice(0, 10)}</td>
-                <td style={{ padding: "3px 8px", color: "#fff", textAlign: "right" }}>${fmtNum(d.price, 2)}</td>
+              <tr key={i} style={{ borderBottom: "1px solid var(--bg-elev-2)" }}>
+                <td style={{ padding: "3px 8px", color: "var(--amber)", fontWeight: 700 }}>{d.maturityLabel}</td>
+                <td style={{ padding: "3px 8px", color: "var(--text-dim)" }}>{d.maturity?.slice(0, 10)}</td>
+                <td style={{ padding: "3px 8px", color: "var(--text)", textAlign: "right" }}>${fmtNum(d.price, 2)}</td>
                 <td style={{ padding: "3px 8px", color: "#FF6B6B", textAlign: "right" }}>{fmtPct(d.devaluation)}</td>
-                <td style={{ padding: "3px 8px", color: "#aaa", textAlign: "right" }}>{fmtPct(d.monthlyDevaluation)}</td>
+                <td style={{ padding: "3px 8px", color: "var(--text-dim)", textAlign: "right" }}>{fmtPct(d.monthlyDevaluation)}</td>
                 <td style={{ padding: "3px 8px", color: "#FFD700", textAlign: "right" }}>{fmtPct(d.tna)}</td>
-                <td style={{ padding: "3px 8px", color: "#aaa", textAlign: "right" }}>{fmtPct(d.cft)}</td>
+                <td style={{ padding: "3px 8px", color: "var(--text-dim)", textAlign: "right" }}>{fmtPct(d.cft)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <div style={{ padding: "6px 14px", fontSize: 8, color: "#888", borderTop: "1px solid #111", fontFamily: "monospace" }}>
+      <div style={{ padding: "6px 14px", fontSize: 8, color: "var(--text-dim)", borderTop: "1px solid var(--bg-elev-2)", fontFamily: "var(--font-data)" }}>
         Fuente: {data[0]?.source === "matba" ? "Matba Rofex API (apicem.matbarofex.com.ar)" : "ROFEX DB (cron)"} · Actualización cada 5 min
       </div>
     </div>
@@ -610,18 +610,18 @@ function PlazoFijoView() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       {/* Toggle modo */}
-      <div style={{ padding: "8px 14px", background: "#050505", borderBottom: "1px solid #111", display: "flex", gap: 4, alignItems: "center" }}>
-        <span style={{ fontSize: 8, color: "#888", fontFamily: "monospace", marginRight: 8 }}>TIPO:</span>
+      <div style={{ padding: "8px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)", display: "flex", gap: 4, alignItems: "center" }}>
+        <span style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", marginRight: 8 }}>TIPO:</span>
         {([["ars", "Pesos (TNA)"], ["uva", "UVA (CER)"], ["usd", "Dólares (TNA)"]] as [PFMode, string][]).map(([k, label]) => (
           <button key={k} onClick={() => setMode(k)} style={{
-            fontSize: 9, fontFamily: "monospace", padding: "3px 12px", borderRadius: 20, cursor: "pointer",
+            fontSize: 9, fontFamily: "var(--font-data)", padding: "3px 12px", borderRadius: 20, cursor: "pointer",
             background: mode === k ? "rgba(255,160,40,0.12)" : "transparent",
-            border: mode === k ? "1px solid rgba(255,160,40,0.4)" : "1px solid #1a1a1a",
-            color: mode === k ? "#FFA028" : "#666",
+            border: mode === k ? "1px solid rgba(255,160,40,0.4)" : "1px solid var(--border)",
+            color: mode === k ? "var(--amber)" : "#666",
           }}>{label}</button>
         ))}
-        <div style={{ marginLeft: "auto", padding: "4px 10px", background: convieneTasaFija ? "#0d1f14" : "#1f0d0d", border: `1px solid ${convieneTasaFija ? "#4AF6C3" : "#FF433D"}22`, borderRadius: 6 }}>
-          <span style={{ fontSize: 8, color: convieneTasaFija ? "#4AF6C3" : "#FF433D", fontFamily: "monospace" }}>
+        <div style={{ marginLeft: "auto", padding: "4px 10px", background: convieneTasaFija ? "#0d1f14" : "#1f0d0d", border: `1px solid ${convieneTasaFija ? "var(--positive)" : "var(--negative)"}22`, borderRadius: 6 }}>
+          <span style={{ fontSize: 8, color: convieneTasaFija ? "var(--positive)" : "var(--negative)", fontFamily: "var(--font-data)" }}>
             {convieneTasaFija ? "▲ Conviene Tasa Fija hoy" : "▲ Conviene UVA hoy"}
           </span>
         </div>
@@ -629,62 +629,62 @@ function PlazoFijoView() {
 
       {/* KPIs */}
       {mode === "ars" && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "#050505", borderBottom: "1px solid #111" }}>
-          <KPI label="TNA promedio (BCRA)" value={`${fmtNum(tna)}%`} valueColor="#FFA028" unit="30 días · var 35" />
-          <KPI label="TEA equivalente"     value={`${fmtNum(tea)}%`} valueColor="#4AF6C3" unit="tasa efectiva anual" />
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
+          <KPI label="TNA promedio (BCRA)" value={`${fmtNum(tna)}%`} valueColor="var(--amber)" unit="30 días · var 35" />
+          <KPI label="TEA equivalente"     value={`${fmtNum(tea)}%`} valueColor="var(--positive)" unit="tasa efectiva anual" />
           <KPI label="TEM equivalente"     value={`${fmtNum(tem)}%`} valueColor="#FFD700" unit="tasa efectiva mensual" />
           <KPI label="Mayor tasa digital"  value="Mercado Pago / Ualá" valueColor="#CE93D8" unit="~37–38% TNA orientativo" />
         </div>
       )}
 
       {mode === "uva" && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "#050505", borderBottom: "1px solid #111" }}>
-          <KPI label="CER mensual estimado" value={`${fmtNum(INFO_UVA.cerMensual)}%`} valueColor="#FFA028" unit="inflación mensual orientativa" />
-          <KPI label="Spread bancario"       value={`+${fmtNum(INFO_UVA.spreadBancos)} ptos`} valueColor="#888" unit="sobre CER (promedio)" />
-          <KPI label="Rendimiento UVA total" value={`${fmtNum(uvaRendMensual)}% mensual`} valueColor="#4AF6C3" unit="CER + spread estimado" />
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
+          <KPI label="CER mensual estimado" value={`${fmtNum(INFO_UVA.cerMensual)}%`} valueColor="var(--amber)" unit="inflación mensual orientativa" />
+          <KPI label="Spread bancario"       value={`+${fmtNum(INFO_UVA.spreadBancos)} ptos`} valueColor="var(--text-dim)" unit="sobre CER (promedio)" />
+          <KPI label="Rendimiento UVA total" value={`${fmtNum(uvaRendMensual)}% mensual`} valueColor="var(--positive)" unit="CER + spread estimado" />
           <KPI label="TEA equivalente UVA"   value={`${fmtNum(uvaTEA)}%`} valueColor="#CE93D8" unit="si la inflación se mantiene constante" />
         </div>
       )}
 
       {mode === "usd" && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "#050505", borderBottom: "1px solid #111" }}>
-          <KPI label="Mayor TNA USD"  value="ICBC 1.0% TNA" valueColor="#FFA028" unit="depósito a 30 días en USD" />
-          <KPI label="Promedio USD"   value="~0.7% TNA" valueColor="#888" unit="sistema bancario AR" />
-          <KPI label="Nota"           value="Muy baja rentabilidad" valueColor="#FF433D" unit="tasas en USD casi nulas en AR" />
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
+          <KPI label="Mayor TNA USD"  value="ICBC 1.0% TNA" valueColor="var(--amber)" unit="depósito a 30 días en USD" />
+          <KPI label="Promedio USD"   value="~0.7% TNA" valueColor="var(--text-dim)" unit="sistema bancario AR" />
+          <KPI label="Nota"           value="Muy baja rentabilidad" valueColor="var(--negative)" unit="tasas en USD casi nulas en AR" />
         </div>
       )}
 
       {/* Gráficos */}
       {mode === "ars" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "#111" }}>
-          <div style={{ background: "#050505", padding: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "var(--bg-elev-2)" }}>
+          <div style={{ background: "var(--bg)", padding: 16 }}>
             <SectionTitle title="TNA por entidad (30 días) — orientativo" />
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={chartDataARS} layout="vertical" margin={{ left: 10, right: 40 }}>
-                <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" horizontal={false} />
-                <XAxis type="number" stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${v}%`} domain={[25, 42]} />
-                <YAxis type="category" dataKey="nombre" stroke="#333" fontSize={8} tick={{ fill: "#aaa" }} width={100} />
+                <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" horizontal={false} />
+                <XAxis type="number" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}%`} domain={[25, 42]} />
+                <YAxis type="category" dataKey="nombre" stroke="var(--border-hi)" fontSize={8} tick={{ fill: "var(--text-dim)" }} width={100} />
                 <Tooltip {...tooltipStyle} formatter={(v: unknown) => [`${fmtNum(v as number, 1)}%`, "TNA"]} />
-                <ReferenceLine x={tna} stroke="#FFA028" strokeDasharray="4 4" label={{ value: "BCRA", fill: "#FFA028", fontSize: 8 }} />
+                <ReferenceLine x={tna} stroke="var(--amber)" strokeDasharray="4 4" label={{ value: "BCRA", fill: "var(--amber)", fontSize: 8 }} />
                 <Bar dataKey="tna" radius={[0, 2, 2, 0]}>
                   {chartDataARS.map((d, i) => (
-                    <Cell key={i} fill={d.tna >= tna ? "#4AF6C3" : "#FF6B6B"} />
+                    <Cell key={i} fill={d.tna >= tna ? "var(--positive)" : "#FF6B6B"} />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div style={{ background: "#050505", padding: 16 }}>
+          <div style={{ background: "var(--bg)", padding: 16 }}>
             <SectionTitle title="TNA vs TEA por entidad — orientativo" />
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={chartDataARS} margin={{ top: 8, right: 12, left: 0, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" />
-                <XAxis dataKey="nombre" stroke="#333" fontSize={7} tick={{ fill: "#888" }} angle={-35} textAnchor="end" interval={0} />
-                <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${v}%`} domain={[25, 42]} />
+                <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
+                <XAxis dataKey="nombre" stroke="var(--border-hi)" fontSize={7} tick={{ fill: "var(--text-dim)" }} angle={-35} textAnchor="end" interval={0} />
+                <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}%`} domain={[25, 42]} />
                 <Tooltip {...tooltipStyle} formatter={(v: unknown, name: unknown) => [`${fmtNum(v as number, 2)}%`, name === "tna" ? "TNA" : "TEA"]} />
-                <Legend wrapperStyle={{ fontSize: 9, color: "#aaa" }} />
-                <Bar dataKey="tna" name="TNA" fill="#FFA028" opacity={0.8} />
-                <Bar dataKey="tea" name="TEA" fill="#4AF6C3" opacity={0.8} />
+                <Legend wrapperStyle={{ fontSize: 9, color: "var(--text-dim)" }} />
+                <Bar dataKey="tna" name="TNA" fill="var(--amber)" opacity={0.8} />
+                <Bar dataKey="tea" name="TEA" fill="var(--positive)" opacity={0.8} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -692,36 +692,36 @@ function PlazoFijoView() {
       )}
 
       {mode === "uva" && (
-        <div style={{ padding: 16, background: "#050505" }}>
+        <div style={{ padding: 16, background: "var(--bg)" }}>
           <SectionTitle title="Plazo Fijo UVA — Dinámica" />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             {/* Info panel */}
-            <div style={{ background: "#080808", border: "1px solid #111", padding: 16, fontFamily: "monospace" }}>
-              <div style={{ fontSize: 9, color: "#aaa", marginBottom: 12 }}>¿Cuándo conviene el PF UVA?</div>
-              <div style={{ fontSize: 8, color: "#888", lineHeight: 1.8 }}>
-                <div>• <span style={{ color: "#fff" }}>El PF UVA ajusta por CER (inflación)</span></div>
-                <div>• Si inflación mensual &gt; {fmtNum(tem)}% (TEM tasa fija) → <span style={{ color: "#4AF6C3" }}>conviene UVA</span></div>
-                <div>• Si inflación mensual &lt; {fmtNum(tem)}% → <span style={{ color: "#FF433D" }}>conviene tasa fija</span></div>
-                <div style={{ marginTop: 8 }}>• Plazo mínimo legal: <span style={{ color: "#FFA028" }}>90 días</span></div>
+            <div style={{ background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)", padding: 16, fontFamily: "var(--font-data)" }}>
+              <div style={{ fontSize: 9, color: "var(--text-dim)", marginBottom: 12 }}>¿Cuándo conviene el PF UVA?</div>
+              <div style={{ fontSize: 8, color: "var(--text-dim)", lineHeight: 1.8 }}>
+                <div>• <span style={{ color: "var(--text)" }}>El PF UVA ajusta por CER (inflación)</span></div>
+                <div>• Si inflación mensual &gt; {fmtNum(tem)}% (TEM tasa fija) → <span style={{ color: "var(--positive)" }}>conviene UVA</span></div>
+                <div>• Si inflación mensual &lt; {fmtNum(tem)}% → <span style={{ color: "var(--negative)" }}>conviene tasa fija</span></div>
+                <div style={{ marginTop: 8 }}>• Plazo mínimo legal: <span style={{ color: "var(--amber)" }}>90 días</span></div>
                 <div>• Los bancos pagan CER + spread (~1%) mensual</div>
                 <div>• TEA proyectada si CER={fmtNum(INFO_UVA.cerMensual)}%: <span style={{ color: "#CE93D8" }}>{fmtNum(uvaTEA)}%</span></div>
               </div>
             </div>
             {/* Comparación visual */}
-            <div style={{ background: "#080808", border: "1px solid #111", padding: 16 }}>
-              <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace", marginBottom: 8 }}>Rendimiento mensual comparado</div>
+            <div style={{ background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)", padding: 16 }}>
+              <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", marginBottom: 8 }}>Rendimiento mensual comparado</div>
               <div style={{ display: "flex", gap: 12, alignItems: "flex-end", height: 140 }}>
                 {[
-                  { label: "Tasa Fija (TEM)", value: tem, color: "#FFA028" },
-                  { label: "UVA estimado", value: uvaRendMensual, color: "#4AF6C3" },
+                  { label: "Tasa Fija (TEM)", value: tem, color: "var(--amber)" },
+                  { label: "UVA estimado", value: uvaRendMensual, color: "var(--positive)" },
                 ].map(item => {
                   const maxVal = Math.max(tem, uvaRendMensual) * 1.2
                   const h = Math.round((item.value / maxVal) * 120)
                   return (
                     <div key={item.label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: item.color, fontFamily: "monospace" }}>{fmtNum(item.value)}%</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: item.color, fontFamily: "var(--font-data)" }}>{fmtNum(item.value)}%</div>
                       <div style={{ width: "100%", height: h, background: item.color, opacity: 0.7, borderRadius: "2px 2px 0 0" }} />
-                      <div style={{ fontSize: 7, color: "#888", fontFamily: "monospace", textAlign: "center" }}>{item.label}</div>
+                      <div style={{ fontSize: 7, color: "var(--text-dim)", fontFamily: "var(--font-data)", textAlign: "center" }}>{item.label}</div>
                     </div>
                   )
                 })}
@@ -732,24 +732,24 @@ function PlazoFijoView() {
       )}
 
       {mode === "usd" && (
-        <div style={{ padding: 16, background: "#050505" }}>
+        <div style={{ padding: 16, background: "var(--bg)" }}>
           <SectionTitle title="PF en dólares por entidad — TNA orientativa" />
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={chartDataUSD} layout="vertical" margin={{ left: 10, right: 50 }}>
-              <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" horizontal={false} />
-              <XAxis type="number" stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${v}%`} />
-              <YAxis type="category" dataKey="nombre" stroke="#333" fontSize={8} tick={{ fill: "#aaa" }} width={100} />
+              <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" horizontal={false} />
+              <XAxis type="number" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}%`} />
+              <YAxis type="category" dataKey="nombre" stroke="var(--border-hi)" fontSize={8} tick={{ fill: "var(--text-dim)" }} width={100} />
               <Tooltip {...tooltipStyle} formatter={(v: unknown) => [`${fmtNum(v as number, 2)}%`, "TNA USD"]} />
-              <Bar dataKey="tna" fill="#4FC3F7" radius={[0, 2, 2, 0]} />
+              <Bar dataKey="tna" fill="var(--sky)" radius={[0, 2, 2, 0]} />
             </BarChart>
           </ResponsiveContainer>
-          <div style={{ marginTop: 12, padding: 10, background: "#080808", border: "1px solid #1a1a1a", fontFamily: "monospace", fontSize: 8, color: "#888" }}>
+          <div style={{ marginTop: 12, padding: 10, background: "var(--bg-row-alt)", border: "1px solid var(--border)", fontFamily: "var(--font-data)", fontSize: 8, color: "var(--text-dim)" }}>
             ⚠️ Las tasas de PF en USD en Argentina son históricamente muy bajas. Alternativas: ON en USD (BYMA), bonos soberanos o FCI Money Market USD.
           </div>
         </div>
       )}
 
-      <div style={{ padding: "6px 14px", fontSize: 8, color: "#888", borderTop: "1px solid #111", fontFamily: "monospace" }}>
+      <div style={{ padding: "6px 14px", fontSize: 8, color: "var(--text-dim)", borderTop: "1px solid var(--bg-elev-2)", fontFamily: "var(--font-data)" }}>
         {mode === "ars" && "TNA promedio: BCRA API var 35 · Tasas por entidad: orientativas abril 2026 — verificar en cada banco · Reg. A 7095"}
         {mode === "uva" && "CER: BCRA vía datos.gob.ar · PF UVA: Reg. A 7297 (mínimo 90 días) · Proyección asume inflación constante"}
         {mode === "usd" && "Tasas USD: orientativas abril 2026 — extremadamente bajas. Verificar en cada banco"}
@@ -800,31 +800,31 @@ function AgregadosView() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       {/* KPIs */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "#050505", borderBottom: "1px solid #111" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
         <KPI label="Base Monetaria" value={lastBM != null ? `$${fmtNum(lastBM / 1000, 0)}B` : null} valueColor="#FF6B6B" unit="millones ARS" />
-        <KPI label="M1" value={lastM1 != null ? `$${fmtNum(lastM1 / 1000, 0)}B` : null} valueColor="#FFA028" unit="billetes + cuentas corrientes" />
-        <KPI label="M2" value={lastM2 != null ? `$${fmtNum(lastM2 / 1000, 0)}B` : null} valueColor="#4AF6C3" unit="M1 + cajas de ahorro" />
+        <KPI label="M1" value={lastM1 != null ? `$${fmtNum(lastM1 / 1000, 0)}B` : null} valueColor="var(--amber)" unit="billetes + cuentas corrientes" />
+        <KPI label="M2" value={lastM2 != null ? `$${fmtNum(lastM2 / 1000, 0)}B` : null} valueColor="var(--positive)" unit="M1 + cajas de ahorro" />
         {lastM1 && lastM2 && <KPI label="Cuasidinero" value={`$${fmtNum((lastM2 - lastM1) / 1000, 0)}B`} valueColor="#CE93D8" unit="M2 - M1" />}
       </div>
 
       {/* Chart */}
-      <div style={{ padding: 16, background: "#050505" }}>
+      <div style={{ padding: 16, background: "var(--bg)" }}>
         <SectionTitle title="Agregados monetarios — últimos 3 años (millones ARS)" />
         <ResponsiveContainer width="100%" height={320}>
           <LineChart data={chartData} margin={{ top: 8, right: 20, left: 10, bottom: 4 }}>
-            <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" />
-            <XAxis dataKey="fecha" stroke="#333" fontSize={8} tick={{ fill: "#888" }} tickFormatter={d => d?.slice(0, 7) ?? ""} interval={Math.floor(chartData.length / 12)} />
-            <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${Math.round(v / 1e6)}T`} />
+            <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
+            <XAxis dataKey="fecha" stroke="var(--border-hi)" fontSize={8} tick={{ fill: "var(--text-dim)" }} tickFormatter={d => d?.slice(0, 7) ?? ""} interval={Math.floor(chartData.length / 12)} />
+            <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${Math.round(v / 1e6)}T`} />
             <Tooltip {...tooltipStyle} formatter={(v: unknown, name: unknown) => [`$${fmtNum((v as number) / 1000, 0)}B`, name === "bm" ? "Base Monetaria" : name === "m1" ? "M1" : "M2"]} />
-            <Legend wrapperStyle={{ fontSize: 9, color: "#aaa" }} />
+            <Legend wrapperStyle={{ fontSize: 9, color: "var(--text-dim)" }} />
             <Line type="monotone" dataKey="bm" stroke="#FF6B6B" strokeWidth={1.5} dot={false} name="bm" isAnimationActive={false} />
-            <Line type="monotone" dataKey="m1" stroke="#FFA028" strokeWidth={1.5} dot={false} name="m1" isAnimationActive={false} />
-            <Line type="monotone" dataKey="m2" stroke="#4AF6C3" strokeWidth={1.5} dot={false} name="m2" isAnimationActive={false} />
+            <Line type="monotone" dataKey="m1" stroke="var(--amber)" strokeWidth={1.5} dot={false} name="m1" isAnimationActive={false} />
+            <Line type="monotone" dataKey="m2" stroke="var(--positive)" strokeWidth={1.5} dot={false} name="m2" isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      <div style={{ padding: "6px 14px", fontSize: 8, color: "#888", borderTop: "1px solid #111", fontFamily: "monospace" }}>
+      <div style={{ padding: "6px 14px", fontSize: 8, color: "var(--text-dim)", borderTop: "1px solid var(--bg-elev-2)", fontFamily: "var(--font-data)" }}>
         Fuente: BCRA API v4.0 — Variables 15 (BM), 17 (M1), 18 (M2) · Frecuencia diaria
       </div>
     </div>
@@ -836,7 +836,7 @@ function AgregadosView() {
 const COMM_GROUPS = [
   {
     label: "Agrícolas",
-    color: "#4AF6C3",
+    color: "var(--positive)",
     items: [
       { key: "soja",     label: "Soja",     unit: "USD/bu",  ticker: "ZS=F",  decimals: 2, flag: "🫘" },
       { key: "maiz",     label: "Maíz",     unit: "USD/bu",  ticker: "ZC=F",  decimals: 2, flag: "🌽" },
@@ -849,7 +849,7 @@ const COMM_GROUPS = [
   },
   {
     label: "Energía",
-    color: "#FFA028",
+    color: "var(--amber)",
     items: [
       { key: "petroleo",    label: "WTI",         unit: "USD/bbl", ticker: "CL=F", decimals: 2, flag: "🛢️" },
       { key: "brent",       label: "Brent",       unit: "USD/bbl", ticker: "BZ=F", decimals: 2, flag: "🛢️" },
@@ -989,7 +989,7 @@ function CommoditiesView() {
   })
 
   // Colores únicos por ítem
-  const ITEM_COLORS = ["#4AF6C3","#FFA028","#FFD700","#FF6B6B","#CE93D8","#4FC3F7","#F06292","#81C784","#FF8A65","#A5D6A7","#90CAF9"]
+  const ITEM_COLORS = ["var(--positive)","var(--amber)","#FFD700","#FF6B6B","#CE93D8","var(--sky)","#F06292","#81C784","#FF8A65","#A5D6A7","#90CAF9"]
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -997,10 +997,10 @@ function CommoditiesView() {
       {/* Cards por grupo */}
       {COMM_GROUPS.map(g => (
         <div key={g.label}>
-          <div style={{ padding: "5px 14px 2px", fontSize: 8, color: g.color, textTransform: "uppercase", letterSpacing: 2, fontFamily: "monospace", background: "#030303", borderBottom: "1px solid #0d0d0d" }}>
+          <div style={{ padding: "5px 14px 2px", fontSize: 8, color: g.color, textTransform: "uppercase", letterSpacing: 2, fontFamily: "var(--font-data)", background: "var(--bg-elev-2)", borderBottom: "1px solid var(--bg-elev-2)" }}>
             {g.label}
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "4px 14px 6px", background: "#050505", borderBottom: "1px solid #111" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "4px 14px 6px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
             {g.items.map((item, idx) => {
               const q = snap[item.key]
               const isActive = selected.has(item.key)
@@ -1008,18 +1008,18 @@ function CommoditiesView() {
               return (
                 <button key={item.key} onClick={() => toggle(item.key)} style={{
                   flex: "1 1 120px", padding: "8px 10px", textAlign: "left", cursor: "pointer",
-                  background: isActive ? "#0d0d0d" : "#060606",
-                  border: isActive ? `1px solid ${color}55` : "1px solid #111",
-                  fontFamily: "monospace", transition: "all 0.15s",
+                  background: isActive ? "var(--bg-elev-2)" : "var(--bg)",
+                  border: isActive ? `1px solid ${color}55` : "1px solid var(--bg-elev-2)",
+                  fontFamily: "var(--font-data)", transition: "all 0.15s",
                 }}>
-                  <div style={{ fontSize: 8, color: isActive ? color : "#555", textTransform: "uppercase", letterSpacing: 0.8 }}>
+                  <div style={{ fontSize: 8, color: isActive ? color : "var(--text-mute)", textTransform: "uppercase", letterSpacing: 0.8 }}>
                     {item.flag} {item.label}
                   </div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: isActive ? "#fff" : "#444", marginTop: 2, lineHeight: 1 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: isActive ? "var(--text)" : "var(--text-mute)", marginTop: 2, lineHeight: 1 }}>
                     {q ? `$${fmtUSD(q.precio, item.decimals)}` : "—"}
                   </div>
-                  <div style={{ fontSize: 8, color: "#888", marginTop: 1 }}>{item.unit}</div>
-                  <div style={{ fontSize: 9, color: q ? changeColor(q.variacion_pct) : "#333", marginTop: 2, fontWeight: 700 }}>
+                  <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 1 }}>{item.unit}</div>
+                  <div style={{ fontSize: 9, color: q ? changeColor(q.variacion_pct) : "var(--border-hi)", marginTop: 2, fontWeight: 700 }}>
                     {q ? `${q.variacion_pct >= 0 ? "+" : ""}${fmtUSD(q.variacion_pct, 2)}%` : "—"}
                   </div>
                   {isActive && <div style={{ width: "100%", height: 2, background: color, marginTop: 3, borderRadius: 1 }} />}
@@ -1031,41 +1031,41 @@ function CommoditiesView() {
       ))}
 
       {/* Controles período */}
-      <div style={{ padding: "6px 14px", background: "#050505", borderBottom: "1px solid #111", display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>
+      <div style={{ padding: "6px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)", display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>
           {isMulti ? "% variación desde inicio del período" : `Precio en ${COMM_ALL.find(c => c.key === [...selected][0])?.unit ?? "USD"}`}
         </span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
           {["1mo", "3mo", "6mo", "1y", "2y", "5y"].map(p => (
             <button key={p} onClick={() => setSelPeriod(p)} style={{
-              fontSize: 8, fontFamily: "monospace", padding: "2px 8px", borderRadius: 12, cursor: "pointer",
+              fontSize: 8, fontFamily: "var(--font-data)", padding: "2px 8px", borderRadius: 12, cursor: "pointer",
               background: selPeriod === p ? "rgba(255,160,40,0.12)" : "transparent",
-              border: selPeriod === p ? "1px solid rgba(255,160,40,0.4)" : "1px solid #1a1a1a",
-              color: selPeriod === p ? "#FFA028" : "#555",
+              border: selPeriod === p ? "1px solid rgba(255,160,40,0.4)" : "1px solid var(--border)",
+              color: selPeriod === p ? "var(--amber)" : "var(--text-mute)",
             }}>{p}</button>
           ))}
         </div>
       </div>
 
       {/* Gráfico */}
-      <div style={{ padding: 16, background: "#050505" }}>
+      <div style={{ padding: 16, background: "var(--bg)" }}>
         {loadingKeys.size > 0
-          ? <div style={{ height: 300, display: "flex", alignItems: "center", justifyContent: "center", color: "#888", fontSize: 9, fontFamily: "monospace" }}>Cargando…</div>
+          ? <div style={{ height: 300, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 9, fontFamily: "var(--font-data)" }}>Cargando…</div>
           : (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={chartData} margin={{ top: 8, right: 20, left: 10, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" />
-                <XAxis dataKey="fecha" stroke="#333" fontSize={8} tick={{ fill: "#888" }}
+                <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
+                <XAxis dataKey="fecha" stroke="var(--border-hi)" fontSize={8} tick={{ fill: "var(--text-dim)" }}
                   tickFormatter={d => (d as string)?.slice(0, 7)}
                   interval={Math.max(1, Math.floor(dates.length / 10))} />
-                <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} domain={["auto", "auto"]}
+                <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} domain={["auto", "auto"]}
                   tickFormatter={v => isMulti
                     ? `${(v as number) >= 0 ? "+" : ""}${Math.round(v as number)}%`
                     : `$${fmtUSD(v as number, allSeries[0]?.item.decimals ?? 2)}`} />
                 <Tooltip
-                  contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 9, color: "#fff", fontFamily: "monospace" }}
-                  itemStyle={{ color: "#fff" }}
-                  labelStyle={{ color: "#aaa" }}
+                  contentStyle={{ background: "var(--bg-elev)", border: "1px solid var(--border)", fontSize: 9, color: "var(--text)", fontFamily: "var(--font-data)" }}
+                  itemStyle={{ color: "var(--text)" }}
+                  labelStyle={{ color: "var(--text-dim)" }}
                   formatter={(v: unknown, name: unknown) => {
                     const item = COMM_ALL.find(c => c.key === name)
                     const val = v as number
@@ -1074,9 +1074,9 @@ function CommoditiesView() {
                       : [`$${fmtUSD(val, item?.decimals ?? 2)} ${item?.unit ?? ""}`, item?.label ?? String(name)]
                   }}
                 />
-                <Legend wrapperStyle={{ fontSize: 9, color: "#aaa" }}
+                <Legend wrapperStyle={{ fontSize: 9, color: "var(--text-dim)" }}
                   formatter={value => COMM_ALL.find(c => c.key === value)?.label ?? value} />
-                {isMulti && <ReferenceLine y={0} stroke="#444" strokeDasharray="4 4" />}
+                {isMulti && <ReferenceLine y={0} stroke="var(--text-mute)" strokeDasharray="4 4" />}
                 {allSeries.map((s, idx) => (
                   <Line key={s.item.key} type="monotone" dataKey={s.item.key}
                     stroke={ITEM_COLORS[COMM_ALL.findIndex(c => c.key === s.item.key) % ITEM_COLORS.length]}
@@ -1086,19 +1086,19 @@ function CommoditiesView() {
             </ResponsiveContainer>
           )
         }
-        <div style={{ fontSize: 8, color: "#888", marginTop: 4, fontFamily: "monospace" }}>
+        <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 4, fontFamily: "var(--font-data)" }}>
           {isMulti ? "% variación acumulada desde inicio del período · click en un commodity para agregar/quitar del gráfico" : "Precio de contrato futuro · click en múltiples commodities para comparar rendimientos"}
         </div>
       </div>
 
       {/* Spread WTI/Brent */}
       {snap.petroleo && snap.brent && (
-        <div style={{ padding: "6px 14px", background: "#050505", borderTop: "1px solid #111", display: "flex", alignItems: "center", gap: 16 }}>
-          <span style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>SPREAD BRENT – WTI:</span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "#FFA028", fontFamily: "monospace" }}>
+        <div style={{ padding: "6px 14px", background: "var(--bg)", borderTop: "1px solid var(--bg-elev-2)", display: "flex", alignItems: "center", gap: 16 }}>
+          <span style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>SPREAD BRENT – WTI:</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--amber)", fontFamily: "var(--font-data)" }}>
             ${fmtUSD(snap.brent.precio - snap.petroleo.precio, 2)} USD/bbl
           </span>
-          <span style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>
+          <span style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>
             Brent ${fmtUSD(snap.brent.precio, 2)} · WTI ${fmtUSD(snap.petroleo.precio, 2)}
           </span>
         </div>
@@ -1106,20 +1106,20 @@ function CommoditiesView() {
 
       {/* Precios locales Rosario */}
       {agroLocal && (
-        <div style={{ padding: 14, background: "#050505", borderTop: "1px solid #111" }}>
+        <div style={{ padding: 14, background: "var(--bg)", borderTop: "1px solid var(--bg-elev-2)" }}>
           <SectionTitle title="Precios disponible Rosario (BCR) — USD/tn" />
           <div style={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
             {(["soja", "maiz", "trigo", "girasol"] as const).map(grano => {
               const g = agroLocal[grano]
               return (
-                <div key={grano} style={{ flex: "1 1 130px", padding: "8px 10px", background: "#080808", border: "1px solid #111", fontFamily: "monospace" }}>
-                  <div style={{ fontSize: 8, color: "#4AF6C3", textTransform: "capitalize", letterSpacing: 1 }}>{grano}</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", marginTop: 2 }}>
+                <div key={grano} style={{ flex: "1 1 130px", padding: "8px 10px", background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)", fontFamily: "var(--font-data)" }}>
+                  <div style={{ fontSize: 8, color: "var(--positive)", textTransform: "capitalize", letterSpacing: 1 }}>{grano}</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginTop: 2 }}>
                     {g.disponible != null ? `$${fmtUSD(g.disponible, 0)}` : "—"}
                   </div>
-                  <div style={{ fontSize: 8, color: "#888", marginTop: 1 }}>{g.unidad}</div>
+                  <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 1 }}>{g.unidad}</div>
                   {g.fobOficial != null && (
-                    <div style={{ fontSize: 8, color: "#888", marginTop: 2 }}>
+                    <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 2 }}>
                       FOB: ${fmtUSD(g.fobOficial, 0)} · Ret: {g.retencion}%
                     </div>
                   )}
@@ -1127,13 +1127,13 @@ function CommoditiesView() {
               )
             })}
           </div>
-          <div style={{ fontSize: 7, color: "#888", marginTop: 4, fontFamily: "monospace" }}>
+          <div style={{ fontSize: 7, color: "var(--text-dim)", marginTop: 4, fontFamily: "var(--font-data)" }}>
             {agroLocal.source} · FOB teórico = disponible × (1 − retención%) − gastos portuarios ~$15/tn
           </div>
         </div>
       )}
 
-      <div style={{ padding: "6px 14px", fontSize: 8, color: "#888", borderTop: "1px solid #111", fontFamily: "monospace" }}>
+      <div style={{ padding: "6px 14px", fontSize: 8, color: "var(--text-dim)", borderTop: "1px solid var(--bg-elev-2)", fontFamily: "var(--font-data)" }}>
         Fuente: Yahoo Finance (futuros) · BCR Rosario (disponible) · ZS=Soja, ZC=Maíz, ZW=Trigo, CL=WTI, GC=Oro · Precios diferidos ~15 min
       </div>
     </div>
@@ -1241,24 +1241,24 @@ function MundoView() {
       {/* Grilla de quotes por grupo */}
       {Object.entries(MUNDO_GROUPS).map(([grupo, keys]) => (
         <div key={grupo}>
-          <div style={{ padding: "6px 14px 2px", fontSize: 8, color: "#FFA028", textTransform: "uppercase", letterSpacing: 2, fontFamily: "monospace", background: "#030303", borderBottom: "1px solid #0d0d0d" }}>
+          <div style={{ padding: "6px 14px 2px", fontSize: 8, color: "var(--amber)", textTransform: "uppercase", letterSpacing: 2, fontFamily: "var(--font-data)", background: "var(--bg-elev-2)", borderBottom: "1px solid var(--bg-elev-2)" }}>
             {grupo}
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "4px 14px 8px", background: "#050505", borderBottom: "1px solid #111" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "4px 14px 8px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
             {keys.map(k => {
               const q = snap[k]
               return (
                 <button key={k} onClick={() => setSelTicker(k)} style={{
-                  flex: "1 1 120px", padding: "8px 12px", background: selTicker === k ? "#0d0d0d" : "#060606",
-                  border: selTicker === k ? "1px solid rgba(255,160,40,0.4)" : "1px solid #111",
-                  cursor: "pointer", textAlign: "left", fontFamily: "monospace",
+                  flex: "1 1 120px", padding: "8px 12px", background: selTicker === k ? "var(--bg-elev-2)" : "var(--bg)",
+                  border: selTicker === k ? "1px solid rgba(255,160,40,0.4)" : "1px solid var(--bg-elev-2)",
+                  cursor: "pointer", textAlign: "left", fontFamily: "var(--font-data)",
                 }}>
-                  <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1 }}>{MUNDO_LABELS[k]}</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", marginTop: 2 }}>
+                  <div style={{ fontSize: 8, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1 }}>{MUNDO_LABELS[k]}</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginTop: 2 }}>
                     {q ? fmtNum(q.precio, k === "us10y" ? 3 : 2) : "—"}
-                    <span style={{ fontSize: 8, color: "#888", marginLeft: 4 }}>{MUNDO_UNITS[k]}</span>
+                    <span style={{ fontSize: 8, color: "var(--text-dim)", marginLeft: 4 }}>{MUNDO_UNITS[k]}</span>
                   </div>
-                  <div style={{ fontSize: 9, color: q ? changeColor(q.variacion_pct) : "#555", marginTop: 1, fontWeight: 700 }}>
+                  <div style={{ fontSize: 9, color: q ? changeColor(q.variacion_pct) : "var(--text-mute)", marginTop: 1, fontWeight: 700 }}>
                     {q ? `${q.variacion_pct >= 0 ? "+" : ""}${fmtNum(q.variacion_pct, 2)}%` : "—"}
                   </div>
                 </button>
@@ -1269,34 +1269,34 @@ function MundoView() {
       ))}
 
       {/* Gráfico histórico */}
-      <div style={{ padding: 16, background: "#050505", borderTop: "1px solid #111" }}>
+      <div style={{ padding: 16, background: "var(--bg)", borderTop: "1px solid var(--bg-elev-2)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <SectionTitle title={`Histórico — ${MUNDO_LABELS[selTicker] ?? selTicker}`} />
           <div style={{ display: "flex", gap: 4 }}>
             {["1mo", "3mo", "6mo", "1y", "2y", "5y"].map(p => (
               <button key={p} onClick={() => setSelPeriod(p)} style={{
-                fontSize: 8, fontFamily: "monospace", padding: "2px 8px", borderRadius: 12, cursor: "pointer",
+                fontSize: 8, fontFamily: "var(--font-data)", padding: "2px 8px", borderRadius: 12, cursor: "pointer",
                 background: selPeriod === p ? "rgba(255,160,40,0.12)" : "transparent",
-                border: selPeriod === p ? "1px solid rgba(255,160,40,0.4)" : "1px solid #1a1a1a",
-                color: selPeriod === p ? "#FFA028" : "#555",
+                border: selPeriod === p ? "1px solid rgba(255,160,40,0.4)" : "1px solid var(--border)",
+                color: selPeriod === p ? "var(--amber)" : "var(--text-mute)",
               }}>{p}</button>
             ))}
           </div>
         </div>
-        {loadingHist ? <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: "#888", fontSize: 9, fontFamily: "monospace" }}>Cargando…</div> : (
+        {loadingHist ? <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 9, fontFamily: "var(--font-data)" }}>Cargando…</div> : (
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={hist.map(([d, v]) => ({ fecha: d, valor: v }))} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
               <defs>
                 <linearGradient id="mundoGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#FFA028" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#FFA028" stopOpacity={0} />
+                  <stop offset="5%" stopColor="var(--amber)" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="var(--amber)" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" />
-              <XAxis dataKey="fecha" stroke="#333" fontSize={8} tick={{ fill: "#888" }} tickFormatter={d => d?.slice(0, 7)} interval={Math.max(1, Math.floor(hist.length / 10))} />
-              <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} domain={["auto", "auto"]} />
+              <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
+              <XAxis dataKey="fecha" stroke="var(--border-hi)" fontSize={8} tick={{ fill: "var(--text-dim)" }} tickFormatter={d => d?.slice(0, 7)} interval={Math.max(1, Math.floor(hist.length / 10))} />
+              <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} domain={["auto", "auto"]} />
               <Tooltip {...tooltipStyle} formatter={(v: unknown) => [fmtNum(v as number, 2), MUNDO_LABELS[selTicker]]} />
-              <Area type="monotone" dataKey="valor" stroke="#FFA028" strokeWidth={2} fill="url(#mundoGrad)" dot={false} isAnimationActive={false} />
+              <Area type="monotone" dataKey="valor" stroke="var(--amber)" strokeWidth={2} fill="url(#mundoGrad)" dot={false} isAnimationActive={false} />
             </AreaChart>
           </ResponsiveContainer>
         )}
@@ -1304,25 +1304,25 @@ function MundoView() {
 
       {/* US Treasury yield curve */}
       {ustCurve && (
-        <div style={{ padding: 16, background: "#050505", borderTop: "1px solid #111" }}>
+        <div style={{ padding: 16, background: "var(--bg)", borderTop: "1px solid var(--bg-elev-2)" }}>
           <SectionTitle title="Curva de rendimientos UST — última fecha disponible" />
           <ResponsiveContainer width="100%" height={180}>
             <LineChart data={ustCurve} margin={{ top: 8, right: 20, left: 0, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" />
-              <XAxis dataKey="label" stroke="#333" fontSize={9} tick={{ fill: "#888" }} />
-              <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} tickFormatter={v => `${v}%`} domain={["auto", "auto"]} />
+              <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
+              <XAxis dataKey="label" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} />
+              <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}%`} domain={["auto", "auto"]} />
               <Tooltip {...tooltipStyle} formatter={(v: unknown) => [`${fmtNum(v as number, 3)}%`, "Yield"]} />
-              <Line type="monotone" dataKey="yield" stroke="#4AF6C3" strokeWidth={2} dot={{ r: 3, fill: "#4AF6C3" }} isAnimationActive={false} />
+              <Line type="monotone" dataKey="yield" stroke="var(--positive)" strokeWidth={2} dot={{ r: 3, fill: "var(--positive)" }} isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
-          <div style={{ fontSize: 7, color: "#888", marginTop: 4, fontFamily: "monospace" }}>
+          <div style={{ fontSize: 7, color: "var(--text-dim)", marginTop: 4, fontFamily: "var(--font-data)" }}>
             {ustCurve.map(p => `${p.label}: ${fmtNum(p.yield, 2)}%`).join(" · ")}
           </div>
         </div>
       )}
 
       {/* Próximos earnings USA */}
-      <div style={{ padding: 16, background: "#050505", borderTop: "1px solid #111" }}>
+      <div style={{ padding: 16, background: "var(--bg)", borderTop: "1px solid var(--bg-elev-2)" }}>
         <SectionTitle title="Próximos earnings USA — estimados Q2/Q3 2026" />
         <div style={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
           {NEXT_EARNINGS.sort((a, b) => a.fecha.localeCompare(b.fecha)).map(e => {
@@ -1330,31 +1330,31 @@ function MundoView() {
             const isNear = daysUntil <= 14
             return (
               <div key={e.ticker} style={{
-                flex: "1 1 140px", padding: "8px 10px", background: "#080808",
-                border: `1px solid ${isNear ? "#FFA02833" : "#111"}`,
-                fontFamily: "monospace",
+                flex: "1 1 140px", padding: "8px 10px", background: "var(--bg-row-alt)",
+                border: `1px solid ${isNear ? "#FFA02833" : "var(--bg-elev-2)"}`,
+                fontFamily: "var(--font-data)",
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#FFA028" }}>{e.ticker}</span>
-                  <span style={{ fontSize: 7, color: isNear ? "#FFA028" : "#444" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--amber)" }}>{e.ticker}</span>
+                  <span style={{ fontSize: 7, color: isNear ? "var(--amber)" : "var(--text-mute)" }}>
                     {daysUntil > 0 ? `en ${daysUntil}d` : daysUntil === 0 ? "HOY" : "pasado"}
                   </span>
                 </div>
-                <div style={{ fontSize: 8, color: "#999", marginTop: 1 }}>{e.empresa}</div>
-                <div style={{ fontSize: 8, color: "#888", marginTop: 2 }}>
+                <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 1 }}>{e.empresa}</div>
+                <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 2 }}>
                   {e.fecha} {e.afterHours ? "· after hours" : "· pre-market"}
                 </div>
-                <div style={{ fontSize: 7, color: "#777", marginTop: 1 }}>{e.sector}</div>
+                <div style={{ fontSize: 7, color: "var(--text-mute)", marginTop: 1 }}>{e.sector}</div>
               </div>
             )
           })}
         </div>
-        <div style={{ fontSize: 7, color: "#888", marginTop: 6, fontFamily: "monospace" }}>
+        <div style={{ fontSize: 7, color: "var(--text-dim)", marginTop: 6, fontFamily: "var(--font-data)" }}>
           Fechas orientativas — pueden variar. Verificar en earningswhispers.com
         </div>
       </div>
 
-      <div style={{ padding: "6px 14px", fontSize: 8, color: "#888", borderTop: "1px solid #111", fontFamily: "monospace" }}>
+      <div style={{ padding: "6px 14px", fontSize: 8, color: "var(--text-dim)", borderTop: "1px solid var(--bg-elev-2)", fontFamily: "var(--font-data)" }}>
         Fuente: Yahoo Finance (mercados globales) · Treasury.gov (curva UST) · Precios diferidos ~15 min
       </div>
     </div>
@@ -1364,10 +1364,10 @@ function MundoView() {
 // ── CRIPTO ────────────────────────────────────────────────────────────────────
 
 const CRYPTOS = [
-  { key: "bitcoin",  label: "Bitcoin",  ticker: "BTC-USD",  color: "#FFA028" },
+  { key: "bitcoin",  label: "Bitcoin",  ticker: "BTC-USD",  color: "var(--amber)" },
   { key: "ethereum", label: "Ethereum", ticker: "ETH-USD",  color: "#CE93D8" },
-  { key: "solana",   label: "Solana",   ticker: "SOL-USD",  color: "#4AF6C3" },
-  { key: "cardano",  label: "Cardano",  ticker: "ADA-USD",  color: "#4FC3F7" },
+  { key: "solana",   label: "Solana",   ticker: "SOL-USD",  color: "var(--positive)" },
+  { key: "cardano",  label: "Cardano",  ticker: "ADA-USD",  color: "var(--sky)" },
   { key: "xrp",      label: "XRP",      ticker: "XRP-USD",  color: "#FFD700" },
   { key: "bnb",      label: "BNB",      ticker: "BNB-USD",  color: "#F0B90B" },
   { key: "usdt",     label: "USDT",     ticker: "USDT-USD", color: "#26A17B" },
@@ -1423,27 +1423,27 @@ function CryptoView() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       {/* KPIs — cards clickeables, selección simple */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "8px 14px", background: "#050505", borderBottom: "1px solid #111" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "8px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
         {CRYPTOS.map(c => {
           const q = snap[c.key]
           const isActive = selKey === c.key
           return (
             <button key={c.key} onClick={() => setSelKey(c.key)} style={{
               flex: "1 1 110px", padding: "8px 10px", textAlign: "left", cursor: "pointer",
-              background: isActive ? "#0d0d0d" : "#060606",
-              border: isActive ? `1px solid ${c.color}55` : "1px solid #111",
-              fontFamily: "monospace", transition: "all 0.15s",
+              background: isActive ? "var(--bg-elev-2)" : "var(--bg)",
+              border: isActive ? `1px solid ${c.color}55` : "1px solid var(--bg-elev-2)",
+              fontFamily: "var(--font-data)", transition: "all 0.15s",
             }}>
-              <div style={{ fontSize: 8, color: isActive ? c.color : "#555", textTransform: "uppercase", letterSpacing: 1 }}>{c.label}</div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: isActive ? "#fff" : "#444", marginTop: 2, lineHeight: 1 }}>
+              <div style={{ fontSize: 8, color: isActive ? c.color : "var(--text-mute)", textTransform: "uppercase", letterSpacing: 1 }}>{c.label}</div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: isActive ? "var(--text)" : "var(--text-mute)", marginTop: 2, lineHeight: 1 }}>
                 {q ? `$${fmtUSD(q.precio, decimals(c.key))}` : "—"}
               </div>
               <div style={{
                 fontSize: 9, marginTop: 2, fontWeight: 700,
-                color: !q ? "#333" : (["usdt","usdc"].includes(c.key) && Math.abs(q.variacion_pct) < 0.1) ? "#666" : changeColor(q.variacion_pct),
+                color: !q ? "var(--border-hi)" : (["usdt","usdc"].includes(c.key) && Math.abs(q.variacion_pct) < 0.1) ? "#666" : changeColor(q.variacion_pct),
               }}>
                 {q ? `${q.variacion_pct >= 0 ? "+" : ""}${fmtUSD(q.variacion_pct, 2)}%` : "—"}
-                <span style={{ fontSize: 7, color: "#888", marginLeft: 3, fontWeight: 400 }}>1D</span>
+                <span style={{ fontSize: 7, color: "var(--text-dim)", marginLeft: 3, fontWeight: 400 }}>1D</span>
               </div>
               {isActive && <div style={{ width: "100%", height: 2, background: c.color, marginTop: 4, borderRadius: 1 }} />}
             </button>
@@ -1452,25 +1452,25 @@ function CryptoView() {
       </div>
 
       {/* Controles */}
-      <div style={{ padding: "6px 14px", background: "#050505", borderBottom: "1px solid #111", display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>Precio USD</span>
+      <div style={{ padding: "6px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)", display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>Precio USD</span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
           {["1mo", "3mo", "6mo", "1y", "2y", "5y"].map(p => (
             <button key={p} onClick={() => setSelPeriod(p)} style={{
-              fontSize: 8, fontFamily: "monospace", padding: "2px 8px", borderRadius: 12, cursor: "pointer",
+              fontSize: 8, fontFamily: "var(--font-data)", padding: "2px 8px", borderRadius: 12, cursor: "pointer",
               background: selPeriod === p ? "rgba(255,160,40,0.12)" : "transparent",
-              border: selPeriod === p ? "1px solid rgba(255,160,40,0.4)" : "1px solid #1a1a1a",
-              color: selPeriod === p ? "#FFA028" : "#555",
+              border: selPeriod === p ? "1px solid rgba(255,160,40,0.4)" : "1px solid var(--border)",
+              color: selPeriod === p ? "var(--amber)" : "var(--text-mute)",
             }}>{p}</button>
           ))}
         </div>
       </div>
 
       {/* Gráfico */}
-      <div style={{ padding: 16, background: "#050505" }}>
+      <div style={{ padding: 16, background: "var(--bg)" }}>
         <SectionTitle title={`${sel.label} — precio USD`} />
         {loadingHist
-          ? <div style={{ height: 320, display: "flex", alignItems: "center", justifyContent: "center", color: "#888", fontSize: 9, fontFamily: "monospace" }}>Cargando…</div>
+          ? <div style={{ height: 320, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 9, fontFamily: "var(--font-data)" }}>Cargando…</div>
           : (
             <ResponsiveContainer width="100%" height={320}>
               <AreaChart data={chartData} margin={{ top: 8, right: 20, left: 10, bottom: 4 }}>
@@ -1480,16 +1480,16 @@ function CryptoView() {
                     <stop offset="95%" stopColor={sel.color} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="2 4" stroke="#0d0d0d" />
-                <XAxis dataKey="fecha" stroke="#333" fontSize={8} tick={{ fill: "#888" }}
+                <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
+                <XAxis dataKey="fecha" stroke="var(--border-hi)" fontSize={8} tick={{ fill: "var(--text-dim)" }}
                   tickFormatter={d => (d as string)?.slice(0, 7)}
                   interval={Math.max(1, Math.floor(chartData.length / 10))} />
-                <YAxis stroke="#333" fontSize={9} tick={{ fill: "#888" }} domain={["auto", "auto"]}
+                <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} domain={["auto", "auto"]}
                   tickFormatter={v => `$${Math.round(v as number).toLocaleString("en-US")}`} />
                 <Tooltip
-                  contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 9, color: "#fff", fontFamily: "monospace" }}
-                  itemStyle={{ color: "#fff" }}
-                  labelStyle={{ color: "#aaa" }}
+                  contentStyle={{ background: "var(--bg-elev)", border: "1px solid var(--border)", fontSize: 9, color: "var(--text)", fontFamily: "var(--font-data)" }}
+                  itemStyle={{ color: "var(--text)" }}
+                  labelStyle={{ color: "var(--text-dim)" }}
                   formatter={(v: unknown) => [`$${fmtUSD(v as number, decimals(selKey))}`, sel.label]}
                 />
                 <Area type="monotone" dataKey="valor" stroke={sel.color} strokeWidth={2}
@@ -1502,16 +1502,16 @@ function CryptoView() {
 
       {/* USDT/ARS por exchange + BTC Dominance */}
       {(usdtArs || dominance != null) && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "#111", borderTop: "1px solid #111" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "var(--bg-elev-2)", borderTop: "1px solid var(--bg-elev-2)" }}>
           {/* USDT/ARS */}
           {usdtArs && (
-            <div style={{ background: "#050505", padding: 14 }}>
+            <div style={{ background: "var(--bg)", padding: 14 }}>
               <SectionTitle title="USDT/ARS por exchange (CriptoYa)" />
-              <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 9 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-data)", fontSize: 9 }}>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid #1a1a1a" }}>
+                  <tr style={{ borderBottom: "1px solid var(--border)" }}>
                     {["Exchange", "Compra", "Venta"].map(h => (
-                      <th key={h} style={{ padding: "3px 6px", color: "#888", fontWeight: 400, textAlign: h === "Exchange" ? "left" : "right" }}>{h}</th>
+                      <th key={h} style={{ padding: "3px 6px", color: "var(--text-dim)", fontWeight: 400, textAlign: h === "Exchange" ? "left" : "right" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1521,10 +1521,10 @@ function CryptoView() {
                     .sort((a, b) => a[1].ask - b[1].ask)
                     .slice(0, 8)
                     .map(([ex, v]) => (
-                      <tr key={ex} style={{ borderBottom: "1px solid #0d0d0d" }}>
-                        <td style={{ padding: "3px 6px", color: "#FFA028" }}>{ex.toUpperCase()}</td>
-                        <td style={{ padding: "3px 6px", color: "#4AF6C3", textAlign: "right" }}>${fmtNum(v.bid, 2)}</td>
-                        <td style={{ padding: "3px 6px", color: "#FF433D", textAlign: "right" }}>${fmtNum(v.ask, 2)}</td>
+                      <tr key={ex} style={{ borderBottom: "1px solid var(--bg-elev-2)" }}>
+                        <td style={{ padding: "3px 6px", color: "var(--amber)" }}>{ex.toUpperCase()}</td>
+                        <td style={{ padding: "3px 6px", color: "var(--positive)", textAlign: "right" }}>${fmtNum(v.bid, 2)}</td>
+                        <td style={{ padding: "3px 6px", color: "var(--negative)", textAlign: "right" }}>${fmtNum(v.ask, 2)}</td>
                       </tr>
                     ))}
                 </tbody>
@@ -1534,19 +1534,19 @@ function CryptoView() {
 
           {/* BTC Dominance */}
           {dominance != null && (
-            <div style={{ background: "#050505", padding: 14, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 8 }}>
-              <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "monospace" }}>BTC Dominance</div>
-              <div style={{ fontSize: 48, fontWeight: 700, color: "#FFA028", fontFamily: "monospace", lineHeight: 1 }}>
+            <div style={{ background: "var(--bg)", padding: 14, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 8 }}>
+              <div style={{ fontSize: 8, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "var(--font-data)" }}>BTC Dominance</div>
+              <div style={{ fontSize: 48, fontWeight: 700, color: "var(--amber)", fontFamily: "var(--font-data)", lineHeight: 1 }}>
                 {fmtNum(dominance, 1)}%
               </div>
-              <div style={{ fontSize: 8, color: "#888", fontFamily: "monospace" }}>% del market cap total cripto</div>
-              <div style={{ fontSize: 7, color: "#888", fontFamily: "monospace" }}>CoinGecko</div>
+              <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>% del market cap total cripto</div>
+              <div style={{ fontSize: 7, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>CoinGecko</div>
             </div>
           )}
         </div>
       )}
 
-      <div style={{ padding: "6px 14px", fontSize: 8, color: "#888", borderTop: "1px solid #111", fontFamily: "monospace" }}>
+      <div style={{ padding: "6px 14px", fontSize: 8, color: "var(--text-dim)", borderTop: "1px solid var(--bg-elev-2)", fontFamily: "var(--font-data)" }}>
         Fuente: Yahoo Finance · CoinGecko (dominance) · CriptoYa (USDT/ARS) · Precios en USD · Actualización cada 5 min
       </div>
     </div>

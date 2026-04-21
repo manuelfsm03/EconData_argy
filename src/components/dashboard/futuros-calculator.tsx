@@ -27,10 +27,10 @@ function fmtPct(v: number | null | undefined): string {
 }
 
 function valColor(v: number | null | undefined): string {
-  if (v == null) return "#555555"
-  if (v > 0) return "#4AF6C3"
-  if (v < 0) return "#FF433D"
-  return "#FFA028"
+  if (v == null) return "var(--text-mute)"
+  if (v > 0) return "var(--positive)"
+  if (v < 0) return "var(--negative)"
+  return "var(--amber)"
 }
 
 export function FuturosCalculator({ rofexData, spotA3500 }: FuturosCalculatorProps) {
@@ -108,23 +108,23 @@ export function FuturosCalculator({ rofexData, spotA3500 }: FuturosCalculatorPro
       {/* Input panel */}
       <div className="bbg-panel mb-px">
         <div className="bbg-panel-header">SIMULADOR DE COBERTURA — FUTUROS ROFEX</div>
-        <div className="flex gap-6 p-3" style={{ background: "#0a0a0a" }}>
+        <div className="flex gap-6 p-3" style={{ background: "var(--bg-elev)" }}>
           <div className="flex items-center gap-2">
-            <label style={{ color: "#FFA028", fontSize: "10px", fontWeight: 600 }}>USD AMOUNT:</label>
+            <label style={{ color: "var(--amber)", fontSize: "10px", fontWeight: 600 }}>USD AMOUNT:</label>
             <input
               type="number"
               value={usdAmount}
               onChange={(e) => setUsdAmount(Number(e.target.value) || 0)}
               className="text-right"
               style={{
-                background: "#000000", border: "1px solid #333333", color: "#FFFFFF",
+                background: "var(--bg)", border: "1px solid var(--border-hi)", color: "var(--text)",
                 padding: "3px 8px", fontSize: "11px", fontFamily: "inherit",
                 width: "120px", fontWeight: 600,
               }}
             />
           </div>
           <div className="flex items-center gap-2">
-            <label style={{ color: "#FFA028", fontSize: "10px", fontWeight: 600 }}>COMISION %:</label>
+            <label style={{ color: "var(--amber)", fontSize: "10px", fontWeight: 600 }}>COMISION %:</label>
             <input
               type="number"
               step="0.1"
@@ -132,14 +132,14 @@ export function FuturosCalculator({ rofexData, spotA3500 }: FuturosCalculatorPro
               onChange={(e) => setCommissionPct(Number(e.target.value) || 0)}
               className="text-right"
               style={{
-                background: "#000000", border: "1px solid #333333", color: "#FFFFFF",
+                background: "var(--bg)", border: "1px solid var(--border-hi)", color: "var(--text)",
                 padding: "3px 8px", fontSize: "11px", fontFamily: "inherit",
                 width: "80px", fontWeight: 600,
               }}
             />
           </div>
           <div className="flex items-center gap-2">
-            <label style={{ color: "#FFA028", fontSize: "10px", fontWeight: 600 }}>GARANTIA %:</label>
+            <label style={{ color: "var(--amber)", fontSize: "10px", fontWeight: 600 }}>GARANTIA %:</label>
             <input
               type="number"
               step="1"
@@ -147,14 +147,14 @@ export function FuturosCalculator({ rofexData, spotA3500 }: FuturosCalculatorPro
               onChange={(e) => setGuaranteePct(Number(e.target.value) || 0)}
               className="text-right"
               style={{
-                background: "#000000", border: "1px solid #333333", color: "#FFFFFF",
+                background: "var(--bg)", border: "1px solid var(--border-hi)", color: "var(--text)",
                 padding: "3px 8px", fontSize: "11px", fontFamily: "inherit",
                 width: "80px", fontWeight: 600,
               }}
             />
           </div>
           <div className="flex items-center gap-2">
-            <label style={{ color: "#FFA028", fontSize: "10px", fontWeight: 600 }}>SPOT A3500:</label>
+            <label style={{ color: "var(--amber)", fontSize: "10px", fontWeight: 600 }}>SPOT A3500:</label>
             <input
               type="number"
               step="0.01"
@@ -162,16 +162,16 @@ export function FuturosCalculator({ rofexData, spotA3500 }: FuturosCalculatorPro
               onChange={(e) => setCustomSpot(Number(e.target.value) || undefined)}
               className="text-right"
               style={{
-                background: "#000000", border: "1px solid #333333", color: "#FFFFFF",
+                background: "var(--bg)", border: "1px solid var(--border-hi)", color: "var(--text)",
                 padding: "3px 8px", fontSize: "11px", fontFamily: "inherit",
                 width: "100px", fontWeight: 600,
               }}
             />
           </div>
           <div className="flex items-center gap-2">
-            <span style={{ color: "#555555", fontSize: "10px" }}>CONTRATOS: {Math.floor(usdAmount / 1000)}</span>
-            <span style={{ color: "#555555", fontSize: "10px" }}>|</span>
-            <span style={{ color: "#555555", fontSize: "10px" }}>NOCIONAL: USD {fmtNum(Math.floor(usdAmount / 1000) * 1000, 0)}</span>
+            <span style={{ color: "var(--text-mute)", fontSize: "10px" }}>CONTRATOS: {Math.floor(usdAmount / 1000)}</span>
+            <span style={{ color: "var(--text-mute)", fontSize: "10px" }}>|</span>
+            <span style={{ color: "var(--text-mute)", fontSize: "10px" }}>NOCIONAL: USD {fmtNum(Math.floor(usdAmount / 1000) * 1000, 0)}</span>
           </div>
         </div>
       </div>
@@ -199,15 +199,15 @@ export function FuturosCalculator({ rofexData, spotA3500 }: FuturosCalculatorPro
             </thead>
             <tbody>
               {simulations.map((sim, i) => (
-                <tr key={sim.position} style={{ background: i % 2 === 0 ? "#000000" : "#060606" }}>
-                  <td style={{ color: "#FFA028", fontWeight: 700 }}>{sim.position}</td>
-                  <td className="text-right" style={{ color: "#FFFFFF", fontWeight: 600 }}>{fmtNum(sim.futurePrice)}</td>
+                <tr key={sim.position} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg)" }}>
+                  <td style={{ color: "var(--amber)", fontWeight: 700 }}>{sim.position}</td>
+                  <td className="text-right" style={{ color: "var(--text)", fontWeight: 600 }}>{fmtNum(sim.futurePrice)}</td>
                   <td className="text-right" style={{ color: valColor(sim.devImpl), fontWeight: 600 }}>{fmtPct(sim.devImpl)}</td>
                   <td className="text-right" style={{ color: valColor(sim.monthlyDev), fontWeight: 600 }}>{fmtPct(sim.monthlyDev)}</td>
                   <td className="text-right" style={{ color: "#FFD700", fontWeight: 600 }}>{fmtPct(sim.tna)}</td>
                   <td className="text-right" style={{ color: "#FFD700", fontWeight: 600 }}>{fmtPct(sim.cft)}</td>
-                  <td className="text-right" style={{ color: "#FFFFFF", fontWeight: 600 }}>{fmtNum(sim.guaranteePerUSD)}</td>
-                  <td className="text-right" style={{ color: "#FFFFFF", fontWeight: 600 }}>{fmtNum(sim.totalGuaranteeARS, 0)}</td>
+                  <td className="text-right" style={{ color: "var(--text)", fontWeight: 600 }}>{fmtNum(sim.guaranteePerUSD)}</td>
+                  <td className="text-right" style={{ color: "var(--text)", fontWeight: 600 }}>{fmtNum(sim.totalGuaranteeARS, 0)}</td>
                   <td className="text-right" style={{ color: "#0068FF", fontWeight: 600 }}>{fmtNum(sim.totalGuaranteeUSD, 0)}</td>
                   <td className="text-right" style={{ color: valColor(sim.pnlARS), fontWeight: 600 }}>{fmtNum(sim.pnlARS, 0)}</td>
                   <td className="text-right" style={{ color: valColor(sim.pnlUSD), fontWeight: 600 }}>{fmtNum(sim.pnlUSD, 0)}</td>
@@ -216,7 +216,7 @@ export function FuturosCalculator({ rofexData, spotA3500 }: FuturosCalculatorPro
               ))}
               {simulations.length === 0 && (
                 <tr>
-                  <td colSpan={12} style={{ color: "#555555", textAlign: "center", padding: "20px" }}>
+                  <td colSpan={12} style={{ color: "var(--text-mute)", textAlign: "center", padding: "20px" }}>
                     {spot === 0 ? "NO SPOT RATE AVAILABLE" : "NO ROFEX POSITIONS AVAILABLE"}
                   </td>
                 </tr>
@@ -224,7 +224,7 @@ export function FuturosCalculator({ rofexData, spotA3500 }: FuturosCalculatorPro
             </tbody>
           </table>
         </div>
-        <div style={{ padding: "6px 12px", borderTop: "1px solid #111111", fontSize: "9px", color: "#555555" }}>
+        <div style={{ padding: "6px 12px", borderTop: "1px solid var(--bg-elev-2)", fontSize: "9px", color: "var(--text-mute)" }}>
           FORMULA: DEV. IMPL = (FUTURO/SPOT - 1) | GTIA X USD = FUTURO * GTIA% | P&L = (FUTURO - SPOT) * NOCIONAL
         </div>
       </div>

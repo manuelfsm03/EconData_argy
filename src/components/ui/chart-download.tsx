@@ -14,7 +14,7 @@ async function capturePng(container: HTMLElement, filename: string) {
   const { toPng } = await import("html-to-image")
 
   const dataUrl = await toPng(container, {
-    backgroundColor: "#060606",
+    backgroundColor: "var(--bg-elev)",
     pixelRatio: window.devicePixelRatio || 2,
     style: { borderRadius: "0" },
   })
@@ -107,8 +107,8 @@ export function ChartDownload({ csvData, filename, chartRef }: ChartDownloadProp
         onClick={() => setOpen(o => !o)}
         disabled={loading}
         style={{
-          background: "none", border: "1px solid #222", borderRadius: 3,
-          color: "#888", cursor: "pointer", fontFamily: "monospace",
+          background: "none", border: "1px solid var(--border)", borderRadius: 3,
+          color: "var(--text-mute)", cursor: "pointer", fontFamily: "monospace",
           fontSize: 9, letterSpacing: 0.5, padding: "3px 8px",
           transition: "color 0.1s, border-color 0.1s",
         }}
@@ -127,7 +127,7 @@ export function ChartDownload({ csvData, filename, chartRef }: ChartDownloadProp
           />
           <div style={{
             position: "absolute", top: "calc(100% + 4px)", right: 0,
-            background: "#0d0d0d", border: "1px solid #222",
+            background: "var(--bg-elev)", border: "1px solid var(--border)",
             borderRadius: 4, zIndex: 1000, minWidth: 130,
             boxShadow: "0 4px 16px rgba(0,0,0,0.6)",
           }}>
@@ -136,7 +136,7 @@ export function ChartDownload({ csvData, filename, chartRef }: ChartDownloadProp
               style={{
                 display: "block", width: "100%", padding: "7px 12px",
                 background: "none", border: "none", textAlign: "left",
-                color: "#ccc", cursor: "pointer", fontFamily: "monospace", fontSize: 10,
+                color: "var(--text-dim)", cursor: "pointer", fontFamily: "monospace", fontSize: 10,
               }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#1a1a1a" }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none" }}
@@ -149,7 +149,7 @@ export function ChartDownload({ csvData, filename, chartRef }: ChartDownloadProp
                 style={{
                   display: "block", width: "100%", padding: "7px 12px",
                   background: "none", border: "none", borderTop: "1px solid #161616",
-                  textAlign: "left", color: "#ccc", cursor: "pointer",
+                  textAlign: "left", color: "var(--text-dim)", cursor: "pointer",
                   fontFamily: "monospace", fontSize: 10,
                 }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#1a1a1a" }}

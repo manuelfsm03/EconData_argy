@@ -27,12 +27,12 @@ export function HelpTooltip({ text, side = "top" }: HelpTooltipProps) {
     zIndex: 9999,
     maxWidth: 270,
     minWidth: 180,
-    background: "#0d0d0d",
-    border: "1px solid #2a2a2a",
+    background: "var(--bg-elev)",
+    border: "1px solid var(--border)",
     borderRadius: 5,
     padding: "9px 11px",
     fontSize: 10,
-    color: "#aaa",
+    color: "var(--text-dim)",
     fontFamily: "monospace",
     lineHeight: 1.65,
     letterSpacing: 0.2,
@@ -86,11 +86,11 @@ export function SectionMeta({ title, help, source }: SectionMetaProps) {
     <div style={{
       display: "flex", alignItems: "center", gap: 7,
       padding: "5px 14px",
-      background: "#060606",
+      background: "var(--bg-elev)",
       borderBottom: "1px solid #0e0e0e",
     }}>
       <span style={{
-        fontSize: 9, color: "#3a3a3a", fontFamily: "monospace",
+        fontSize: 9, color: "var(--text-mute)", fontFamily: "monospace",
         letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600,
       }}>
         {title}
@@ -98,7 +98,7 @@ export function SectionMeta({ title, help, source }: SectionMetaProps) {
       <HelpTooltip text={help} side="bottom" />
       {source && (
         <span style={{
-          fontSize: 8, color: "#222", fontFamily: "monospace",
+          fontSize: 8, color: "var(--text-mute)", fontFamily: "monospace",
           marginLeft: 4, letterSpacing: 0.5,
         }}>
           · {source}

@@ -16,8 +16,8 @@ interface PriceData {
 }
 
 function varColor(v: number | null): string {
-  if (v == null) return "#555"
-  return v >= 0 ? "#4AF6C3" : "#FF433D"
+  if (v == null) return "var(--text-mute)"
+  return v >= 0 ? "var(--positive)" : "var(--negative)"
 }
 
 function fmtPrice(v: number | null): string {
@@ -82,14 +82,14 @@ export function PriceTicker() {
     : []
 
   if (!data) return (
-    <div style={{ background: "#060606", borderBottom: "1px solid #111", padding: "4px 16px", height: 28 }} />
+    <div style={{ background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)", padding: "4px 16px", height: 28 }} />
   )
 
   return (
     <div
       style={{
-        background: "#060606",
-        borderBottom: "1px solid #111",
+        background: "var(--bg)",
+        borderBottom: "1px solid var(--bg-elev-2)",
         padding: "4px 16px",
         display: "flex",
         alignItems: "center",
@@ -107,19 +107,19 @@ export function PriceTicker() {
             alignItems: "center",
             gap: 6,
             paddingRight: 20,
-            borderRight: i < items.length - 1 ? "1px solid #1a1a1a" : "none",
+            borderRight: i < items.length - 1 ? "1px solid var(--border)" : "none",
             marginRight: i < items.length - 1 ? 20 : 0,
             whiteSpace: "nowrap",
           }}
         >
-          <span style={{ fontSize: 9, color: "#888", letterSpacing: 1, textTransform: "uppercase", fontFamily: "monospace" }}>
+          <span style={{ fontSize: 9, color: "var(--text-dim)", letterSpacing: 1, textTransform: "uppercase", fontFamily: "var(--font-data)" }}>
             {item.label}
           </span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", fontFamily: "monospace" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-data)" }}>
             {item.value}
           </span>
           {item.variacion != null && (
-            <span style={{ fontSize: 9, color: varColor(item.variacion), fontFamily: "monospace" }}>
+            <span style={{ fontSize: 9, color: varColor(item.variacion), fontFamily: "var(--font-data)" }}>
               {item.variacion >= 0 ? "+" : ""}{item.variacion.toFixed(2)}%
             </span>
           )}

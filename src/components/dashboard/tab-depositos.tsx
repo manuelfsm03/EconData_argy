@@ -23,7 +23,7 @@ export function TabDepositos() {
           title="DEPOSITOS CUENTA CORRIENTE — NIVEL"
           glossaryKey="DEPOSITOS CC"
           data={depositosCC.data}
-          areas={[{ key: "depositos_cc", name: "Cta Corriente", color: "#4AF6C3" }]}
+          areas={[{ key: "depositos_cc", name: "Cta Corriente", color: "var(--positive)" }]}
           yAxisLabel="MM ARS"
         />
       </BBGChartPanel>
@@ -33,7 +33,7 @@ export function TabDepositos() {
           title="CAJAS DE AHORRO — NIVEL"
           glossaryKey="CAJAS DE AHORRO"
           data={cajasAhorro.data}
-          areas={[{ key: "cajas_ahorro", name: "Cajas Ahorro", color: "#FFA028" }]}
+          areas={[{ key: "cajas_ahorro", name: "Cajas Ahorro", color: "var(--amber)" }]}
           yAxisLabel="MM ARS"
         />
       </BBGChartPanel>
@@ -55,8 +55,8 @@ export function TabDepositos() {
           glossaryKey="COMPONENTES DEPOSITOS"
           data={components.data}
           lines={[
-            { key: "depositos_cc", name: "Cta Cte", color: "#4AF6C3" },
-            { key: "cajas_ahorro", name: "Cajas Ahorro", color: "#FFA028" },
+            { key: "depositos_cc", name: "Cta Cte", color: "var(--positive)" },
+            { key: "cajas_ahorro", name: "Cajas Ahorro", color: "var(--amber)" },
             { key: "plazos_fijos", name: "Plazos Fijos", color: "#0068FF" },
           ]}
           yAxisLabel="MM ARS"
@@ -78,7 +78,7 @@ export function TabDepositos() {
           title="CIRCULACION MONETARIA — NIVEL"
           glossaryKey="CIRCULACION MONETARIA"
           data={circulante.data}
-          areas={[{ key: "circulacion", name: "Circulación", color: "#FF433D" }]}
+          areas={[{ key: "circulacion", name: "Circulación", color: "var(--negative)" }]}
           yAxisLabel="MM ARS"
         />
       </BBGChartPanel>
@@ -89,7 +89,7 @@ export function TabDepositos() {
           title="PRESTAMOS AL SECTOR PRIVADO — NIVEL"
           glossaryKey="PRESTAMOS PRIVADO"
           data={prestamos.data}
-          areas={[{ key: "prestamos_privado", name: "Préstamos Priv.", color: "#4AF6C3" }]}
+          areas={[{ key: "prestamos_privado", name: "Préstamos Priv.", color: "var(--positive)" }]}
           yAxisLabel="MM ARS"
         />
       </BBGChartPanel>
@@ -99,7 +99,7 @@ export function TabDepositos() {
           title="M2 PRIVADO — YOY"
           glossaryKey="M2"
           data={m2.data}
-          lines={[{ key: "m2_privado_yoy", name: "M2 Priv YoY", color: "#FFA028" }]}
+          lines={[{ key: "m2_privado_yoy", name: "M2 Priv YoY", color: "var(--amber)" }]}
           yAxisLabel="%"
           formatValue={(v) => v.toFixed(1) + "%"}
           showZeroLine
@@ -107,7 +107,7 @@ export function TabDepositos() {
       </BBGChartPanel>
 
       {/* Empty placeholder for 3rd column */}
-      <div style={{ background: "#000000" }} />
+      <div style={{ background: "var(--bg)" }} />
     </div>
   )
 }

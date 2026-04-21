@@ -17,9 +17,9 @@ interface MercuryItem {
 function getSentimentBadge(sentiment: string) {
   switch (sentiment) {
     case "bullish":
-      return { emoji: "🟢", color: "#4AF6C3", label: "Bullish" }
+      return { emoji: "🟢", color: "var(--positive)", label: "Bullish" }
     case "bearish":
-      return { emoji: "🔴", color: "#FF433D", label: "Bearish" }
+      return { emoji: "🔴", color: "var(--negative)", label: "Bearish" }
     default:
       return { emoji: "🟡", color: "#FFD700", label: "Neutral" }
   }
@@ -28,11 +28,11 @@ function getSentimentBadge(sentiment: string) {
 function getTierBadge(tier: number) {
   switch (tier) {
     case 1:
-      return { label: "T1", color: "#FFA028", desc: "Institutional" }
+      return { label: "T1", color: "var(--amber)", desc: "Institutional" }
     case 2:
       return { label: "T2", color: "#888888", desc: "Professional" }
     default:
-      return { label: "T3", color: "#555555", desc: "Community" }
+      return { label: "T3", color: "var(--text-mute)", desc: "Community" }
   }
 }
 
@@ -141,9 +141,9 @@ export function MercuryFeed() {
             value={filterSentiment || ""} 
             onChange={(e) => setFilterSentiment(e.target.value || null)}
             style={{
-              background: "#0a0a0a",
-              border: "1px solid #333",
-              color: "#888",
+              background: "var(--bg-elev)",
+              border: "1px solid var(--border-hi)",
+              color: "var(--text-dim)",
               fontSize: "10px",
               padding: "2px 6px",
               borderRadius: "2px",
@@ -160,9 +160,9 @@ export function MercuryFeed() {
             value={filterTier || ""} 
             onChange={(e) => setFilterTier(e.target.value ? parseInt(e.target.value) : null)}
             style={{
-              background: "#0a0a0a",
-              border: "1px solid #333",
-              color: "#888",
+              background: "var(--bg-elev)",
+              border: "1px solid var(--border-hi)",
+              color: "var(--text-dim)",
               fontSize: "10px",
               padding: "2px 6px",
               borderRadius: "2px",
@@ -174,7 +174,7 @@ export function MercuryFeed() {
             <option value="3">Tier 3 - Community</option>
           </select>
           
-          <span style={{ color: "#555555", fontWeight: 400, fontSize: "10px" }}>
+          <span style={{ color: "var(--text-mute)", fontWeight: 400, fontSize: "10px" }}>
             {filteredItems.length} alerts
           </span>
         </div>
@@ -199,12 +199,12 @@ export function MercuryFeed() {
                 <tr
                   key={item.id}
                   style={{
-                    background: expandedId === item.id ? "#0a0a0a" : i % 2 === 0 ? "#000000" : "#060606",
+                    background: expandedId === item.id ? "var(--bg-elev)" : i % 2 === 0 ? "var(--bg)" : "var(--bg)",
                     cursor: "pointer",
                   }}
                   onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
                 >
-                  <td style={{ color: "#FFA028", fontSize: "10px", verticalAlign: "top" }}>
+                  <td style={{ color: "var(--amber)", fontSize: "10px", verticalAlign: "top" }}>
                     {fmtTime(item.pubDate)}
                   </td>
                   <td style={{ verticalAlign: "top" }}>
@@ -213,7 +213,7 @@ export function MercuryFeed() {
                         color: tier.color, 
                         fontSize: "9px", 
                         fontWeight: 600,
-                        background: "#0a0a0a",
+                        background: "var(--bg-elev)",
                         padding: "1px 4px",
                         borderRadius: "2px",
                       }}
@@ -233,7 +233,7 @@ export function MercuryFeed() {
                   <td style={{ whiteSpace: "normal" }}>
                     <span
                       className="hover:underline"
-                      style={{ color: "#FFFFFF", fontSize: "11px", cursor: "pointer" }}
+                      style={{ color: "var(--text)", fontSize: "11px", cursor: "pointer" }}
                     >
                       {item.title}
                     </span>
@@ -250,7 +250,7 @@ export function MercuryFeed() {
                     {expandedId === item.id && (
                       <div style={{ color: "#888888", fontSize: "10px", marginTop: "4px", lineHeight: "1.4" }}>
                         {item.content}
-                        <div style={{ marginTop: "8px", color: "#888" }}>
+                        <div style={{ marginTop: "8px", color: "var(--text-dim)" }}>
                           Sentimiento: <span style={{ color: sentiment.color }}>{sentiment.label}</span> | 
                           Score: {(item.sentiment_score * 100).toFixed(1)}%
                         </div>
@@ -263,7 +263,7 @@ export function MercuryFeed() {
             
             {filteredItems.length === 0 && (
               <tr>
-                <td colSpan={5} style={{ color: "#555555", textAlign: "center", padding: "20px" }}>
+                <td colSpan={5} style={{ color: "var(--text-mute)", textAlign: "center", padding: "20px" }}>
                   {loading ? "CARGANDO ALERTAS..." : "NO ALERTS AVAILABLE"}
                 </td>
               </tr>

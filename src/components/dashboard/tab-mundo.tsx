@@ -19,15 +19,15 @@ import { GLOSSARY } from "@/lib/glossary"
 
 function SubTabs({ tabs, active, onChange }: { tabs: { key: string; label: string }[]; active: string; onChange: (k: string) => void }) {
   return (
-    <div style={{ display: "flex", gap: 1, background: "#111", padding: 1, flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: 1, background: "var(--bg-elev-2)", padding: 1, flexWrap: "wrap" }}>
       {tabs.map((t) => (
         <button
           key={t.key}
           onClick={() => onChange(t.key)}
           style={{
-            padding: "4px 10px", fontSize: 10, background: active === t.key ? "#1a1a1a" : "transparent",
-            color: active === t.key ? "#FFA028" : "#555", border: "none",
-            borderBottom: active === t.key ? "2px solid #FFA028" : "2px solid transparent",
+            padding: "4px 10px", fontSize: 10, background: active === t.key ? "var(--border)" : "transparent",
+            color: active === t.key ? "var(--amber)" : "var(--text-mute)", border: "none",
+            borderBottom: active === t.key ? "2px solid var(--amber)" : "2px solid transparent",
             cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700,
           }}
         >
@@ -49,15 +49,15 @@ function ElectricidadMundialView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando datos de electricidad...</div>
-  if (!data || data.length === 0) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Sin datos disponibles.</div>
+  if (loading) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Cargando datos de electricidad...</div>
+  if (!data || data.length === 0) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Sin datos disponibles.</div>
 
   const lines = [
-    { key: "China",                  name: "China",     color: "#FF433D" },
-    { key: "United States",          name: "EE.UU.",    color: "#4FC3F7" },
-    { key: "India",                  name: "India",     color: "#FFA028" },
-    { key: "European Union (27)",    name: "UE-27",     color: "#4AF6C3" },
-    { key: "Brazil",                 name: "Brasil",    color: "#FFD54F" },
+    { key: "China",                  name: "China",     color: "var(--negative)" },
+    { key: "United States",          name: "EE.UU.",    color: "var(--sky)" },
+    { key: "India",                  name: "India",     color: "var(--amber)" },
+    { key: "European Union (27)",    name: "UE-27",     color: "var(--positive)" },
+    { key: "Brazil",                 name: "Brasil",    color: "var(--yellow)" },
     { key: "Argentina",              name: "Argentina", color: "#CE93D8" },
   ]
 
@@ -72,7 +72,7 @@ function ElectricidadMundialView() {
         yAxisLabel="TWh"
         defaultRange="all"
       />
-      <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 10px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
         Fuente: Our World in Data — Ember / Energy Institute Statistical Review · Licencia CC BY 4.0
       </div>
     </div>
@@ -93,12 +93,12 @@ function PetroleoView() {
   ]
 
   const countryColors: Record<string, string> = {
-    "United States": "#4FC3F7",
-    "China": "#FFD54F",
+    "United States": "var(--sky)",
+    "China": "var(--yellow)",
     "Japan": "#FF6B6B",
-    "India": "#FFA028",
-    "Saudi Arabia": "#4AF6C3",
-    "Russia": "#FF433D",
+    "India": "var(--amber)",
+    "Saudi Arabia": "var(--positive)",
+    "Russia": "var(--negative)",
     "Iran": "#CE93D8",
     "Venezuela": "#00BCD4",
     "Canada": "#81C784",
@@ -118,14 +118,14 @@ function PetroleoView() {
       .catch(() => setLoading(false))
   }, [dataType])
 
-  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando datos de petróleo...</div>
-  if (!data) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Sin datos disponibles.</div>
+  if (loading) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Cargando datos de petróleo...</div>
+  if (!data) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Sin datos disponibles.</div>
 
   const lines = Array.from(selectedCountries)
     .map((country) => ({
       key: country,
       name: country,
-      color: countryColors[country] || "#999",
+      color: countryColors[country] || "var(--text-dim)",
     }))
 
   const titles: Record<typeof dataType, { title: string; label: string; source: string }> = {
@@ -165,7 +165,7 @@ function PetroleoView() {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 1, background: "#111", padding: 1, marginBottom: 8, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 1, background: "var(--bg-elev-2)", padding: 1, marginBottom: 8, flexWrap: "wrap" }}>
         {(["production", "consumption", "reserves", "refining"] as const).map((type) => (
           <button
             key={type}
@@ -173,10 +173,10 @@ function PetroleoView() {
             style={{
               padding: "4px 10px",
               fontSize: 10,
-              background: dataType === type ? "#1a1a1a" : "transparent",
-              color: dataType === type ? "#FFA028" : "#555",
+              background: dataType === type ? "var(--border)" : "transparent",
+              color: dataType === type ? "var(--amber)" : "var(--text-mute)",
               border: "none",
-              borderBottom: dataType === type ? "2px solid #FFA028" : "2px solid transparent",
+              borderBottom: dataType === type ? "2px solid var(--amber)" : "2px solid transparent",
               cursor: "pointer",
               textTransform: "uppercase",
               letterSpacing: "0.05em",
@@ -193,8 +193,8 @@ function PetroleoView() {
         ))}
       </div>
 
-      <div style={{ padding: "8px", background: "#0a0a0a", marginBottom: 8, borderBottom: "1px solid #111" }}>
-        <div style={{ fontSize: 9, color: "#999", marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>Seleccionar países:</div>
+      <div style={{ padding: "8px", background: "var(--bg-elev)", marginBottom: 8, borderBottom: "1px solid var(--bg-elev-2)" }}>
+        <div style={{ fontSize: 9, color: "var(--text-dim)", marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>Seleccionar países:</div>
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
           {allCountriesAvailable.map((country) => (
             <button
@@ -203,9 +203,9 @@ function PetroleoView() {
               style={{
                 padding: "4px 8px",
                 fontSize: 9,
-                background: selectedCountries.has(country) ? countryColors[country] : "#1a1a1a",
-                color: selectedCountries.has(country) ? "#000" : "#666",
-                border: `1px solid ${selectedCountries.has(country) ? countryColors[country] : "#333"}`,
+                background: selectedCountries.has(country) ? countryColors[country] : "var(--border)",
+                color: selectedCountries.has(country) ? "var(--bg)" : "#666",
+                border: `1px solid ${selectedCountries.has(country) ? countryColors[country] : "var(--border-hi)"}`,
                 borderRadius: 3,
                 cursor: "pointer",
                 fontWeight: selectedCountries.has(country) ? 700 : 400,
@@ -226,7 +226,7 @@ function PetroleoView() {
         yAxisLabel={config.label}
         defaultRange="all"
       />
-      <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 10px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
         Fuente: {config.source}
       </div>
     </div>
@@ -256,12 +256,12 @@ function PolymarketView() {
       .catch(() => setLoading(false))
   }, [categoria])
 
-  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando mercados de predicción...</div>
-  if (!data) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Sin datos disponibles.</div>
+  if (loading) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Cargando mercados de predicción...</div>
+  if (!data) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Sin datos disponibles.</div>
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 1, background: "#111", padding: 1, marginBottom: 8, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 1, background: "var(--bg-elev-2)", padding: 1, marginBottom: 8, flexWrap: "wrap" }}>
         {(["politics", "economics", "geopolitics"] as const).map((cat) => (
           <button
             key={cat}
@@ -269,10 +269,10 @@ function PolymarketView() {
             style={{
               padding: "4px 10px",
               fontSize: 10,
-              background: categoria === cat ? "#1a1a1a" : "transparent",
-              color: categoria === cat ? "#FFA028" : "#555",
+              background: categoria === cat ? "var(--border)" : "transparent",
+              color: categoria === cat ? "var(--amber)" : "var(--text-mute)",
               border: "none",
-              borderBottom: categoria === cat ? "2px solid #FFA028" : "2px solid transparent",
+              borderBottom: categoria === cat ? "2px solid var(--amber)" : "2px solid transparent",
               cursor: "pointer",
               textTransform: "uppercase",
               letterSpacing: "0.05em",
@@ -288,8 +288,8 @@ function PolymarketView() {
         ))}
       </div>
 
-      <div style={{ background: "#060606", border: "1px solid #1a1a1a", margin: 1 }}>
-        <div style={{ padding: "8px", borderBottom: "1px solid #111", fontSize: 10, color: "#999", fontWeight: 600 }}>
+      <div style={{ background: "var(--bg)", border: "1px solid var(--border)", margin: 1 }}>
+        <div style={{ padding: "8px", borderBottom: "1px solid var(--bg-elev-2)", fontSize: 10, color: "var(--text-dim)", fontWeight: 600 }}>
           MERCADOS DE PREDICCIÓN — Ordenados por volumen 24h
         </div>
 
@@ -297,41 +297,41 @@ function PolymarketView() {
           {data.map((market, idx) => {
             const probColor =
               market.probability > 70
-                ? "#4AF6C3"
+                ? "var(--positive)"
                 : market.probability > 50
-                  ? "#FFA028"
+                  ? "var(--amber)"
                   : market.probability > 30
                     ? "#FF9800"
-                    : "#FF433D"
+                    : "var(--negative)"
 
             return (
               <div
                 key={idx}
                 style={{
                   padding: "12px 8px",
-                  borderBottom: "1px solid #111",
+                  borderBottom: "1px solid var(--bg-elev-2)",
                   fontSize: 9,
                 }}
               >
                 <div style={{ marginBottom: 6 }}>
-                  <div style={{ color: "#FFA028", fontWeight: 600, marginBottom: 4, fontSize: 10, lineHeight: "1.3" }}>
+                  <div style={{ color: "var(--amber)", fontWeight: 600, marginBottom: 4, fontSize: 10, lineHeight: "1.3" }}>
                     {market.question}
                   </div>
-                  <div style={{ color: "#999", fontSize: 8, marginBottom: 4 }}>
+                  <div style={{ color: "var(--text-dim)", fontSize: 8, marginBottom: 4 }}>
                     {market.category} · Vence: {new Date(market.endDate).toLocaleDateString("es-AR")}
                   </div>
                 </div>
 
                 <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                   <div>
-                    <div style={{ color: "#999", fontSize: 8, marginBottom: 2 }}>Probabilidad</div>
-                    <div style={{ color: probColor, fontWeight: 700, fontSize: 14, fontFamily: "monospace" }}>
+                    <div style={{ color: "var(--text-dim)", fontSize: 8, marginBottom: 2 }}>Probabilidad</div>
+                    <div style={{ color: probColor, fontWeight: 700, fontSize: 14, fontFamily: "var(--font-data)" }}>
                       {market.probability.toFixed(1)}%
                     </div>
                   </div>
 
                   <div style={{ flex: 1, minWidth: 150 }}>
-                    <div style={{ background: "#111", height: 4, borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ background: "var(--bg-elev-2)", height: 4, borderRadius: 2, overflow: "hidden" }}>
                       <div
                         style={{
                           background: probColor,
@@ -344,15 +344,15 @@ function PolymarketView() {
                   </div>
 
                   <div>
-                    <div style={{ color: "#999", fontSize: 8, marginBottom: 2 }}>Vol. 24h</div>
-                    <div style={{ color: "#4AF6C3", fontWeight: 600, fontSize: 11, fontFamily: "monospace" }}>
+                    <div style={{ color: "var(--text-dim)", fontSize: 8, marginBottom: 2 }}>Vol. 24h</div>
+                    <div style={{ color: "var(--positive)", fontWeight: 600, fontSize: 11, fontFamily: "var(--font-data)" }}>
                       ${(market.volume24h / 1_000_000).toFixed(1)}M
                     </div>
                   </div>
 
                   <div>
-                    <div style={{ color: "#999", fontSize: 8, marginBottom: 2 }}>Liquidez</div>
-                    <div style={{ color: "#FFD700", fontWeight: 600, fontSize: 11, fontFamily: "monospace" }}>
+                    <div style={{ color: "var(--text-dim)", fontSize: 8, marginBottom: 2 }}>Liquidez</div>
+                    <div style={{ color: "#FFD700", fontWeight: 600, fontSize: 11, fontFamily: "var(--font-data)" }}>
                       ${(market.liquidity / 1_000).toFixed(0)}K
                     </div>
                   </div>
@@ -362,7 +362,7 @@ function PolymarketView() {
           })}
         </div>
 
-        <div style={{ padding: "4px 8px", fontSize: 8, color: "#777", borderTop: "1px solid #111", background: "#0a0a0a" }}>
+        <div style={{ padding: "4px 8px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)", background: "var(--bg-elev)" }}>
           Fuente: Polymarket CLOB API · Odds implícitas en tiempo real · Mayor volumen = mayor confianza en el mercado
         </div>
       </div>
@@ -383,12 +383,12 @@ function IAView() {
       .catch(() => setLoading(false))
   }, [segmento])
 
-  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando datos de IA...</div>
-  if (!data) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Sin datos disponibles.</div>
+  if (loading) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Cargando datos de IA...</div>
+  if (!data) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Sin datos disponibles.</div>
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 1, background: "#111", padding: 1, marginBottom: 8, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 1, background: "var(--bg-elev-2)", padding: 1, marginBottom: 8, flexWrap: "wrap" }}>
         {(["benchmarks", "trending"] as const).map((type) => (
           <button
             key={type}
@@ -396,10 +396,10 @@ function IAView() {
             style={{
               padding: "4px 10px",
               fontSize: 10,
-              background: segmento === type ? "#1a1a1a" : "transparent",
-              color: segmento === type ? "#FFA028" : "#555",
+              background: segmento === type ? "var(--border)" : "transparent",
+              color: segmento === type ? "var(--amber)" : "var(--text-mute)",
               border: "none",
-              borderBottom: segmento === type ? "2px solid #FFA028" : "2px solid transparent",
+              borderBottom: segmento === type ? "2px solid var(--amber)" : "2px solid transparent",
               cursor: "pointer",
               textTransform: "uppercase",
               letterSpacing: "0.05em",
@@ -412,15 +412,15 @@ function IAView() {
       </div>
 
       {segmento === "benchmarks" && (
-        <div style={{ background: "#060606", border: "1px solid #1a1a1a", margin: 1 }}>
-          <div style={{ padding: "8px", borderBottom: "1px solid #111", fontSize: 10, color: "#999", fontWeight: 600 }}>
+        <div style={{ background: "var(--bg)", border: "1px solid var(--border)", margin: 1 }}>
+          <div style={{ padding: "8px", borderBottom: "1px solid var(--bg-elev-2)", fontSize: 10, color: "var(--text-dim)", fontWeight: 600 }}>
             COMPARATIVA DE LLMs — Puntuaciones en benchmarks estándar
           </div>
           <div style={{ overflowX: "auto", padding: 8 }}>
             <table style={{ fontSize: 9, width: "100%", borderCollapse: "collapse", color: "#ccc" }}>
               <thead>
-                <tr style={{ borderBottom: "1px solid #222" }}>
-                  <th style={{ textAlign: "left", padding: "4px 8px", color: "#FFA028" }}>Modelo</th>
+                <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                  <th style={{ textAlign: "left", padding: "4px 8px", color: "var(--amber)" }}>Modelo</th>
                   <th style={{ textAlign: "center", padding: "4px 8px" }}>Empresa</th>
                   <th style={{ textAlign: "center", padding: "4px 8px" }}>MMLU</th>
                   <th style={{ textAlign: "center", padding: "4px 8px" }}>HumanEval</th>
@@ -430,19 +430,19 @@ function IAView() {
               </thead>
               <tbody>
                 {(data as Array<any>).map((model, idx) => (
-                  <tr key={idx} style={{ borderBottom: "1px solid #111" }}>
+                  <tr key={idx} style={{ borderBottom: "1px solid var(--bg-elev-2)" }}>
                     <td style={{ padding: "6px 8px" }}>{model.model}</td>
-                    <td style={{ textAlign: "center", padding: "6px 8px", fontSize: 8, color: "#999" }}>{model.company}</td>
-                    <td style={{ textAlign: "center", padding: "6px 8px", color: model.mmlu > 86 ? "#4AF6C3" : model.mmlu > 80 ? "#FFA028" : "#FF433D" }}>
+                    <td style={{ textAlign: "center", padding: "6px 8px", fontSize: 8, color: "var(--text-dim)" }}>{model.company}</td>
+                    <td style={{ textAlign: "center", padding: "6px 8px", color: model.mmlu > 86 ? "var(--positive)" : model.mmlu > 80 ? "var(--amber)" : "var(--negative)" }}>
                       {model.mmlu.toFixed(1)}
                     </td>
-                    <td style={{ textAlign: "center", padding: "6px 8px", color: model.humaneval > 85 ? "#4AF6C3" : model.humaneval > 70 ? "#FFA028" : "#FF433D" }}>
+                    <td style={{ textAlign: "center", padding: "6px 8px", color: model.humaneval > 85 ? "var(--positive)" : model.humaneval > 70 ? "var(--amber)" : "var(--negative)" }}>
                       {model.humaneval.toFixed(1)}
                     </td>
-                    <td style={{ textAlign: "center", padding: "6px 8px", color: model.gsm8k > 93 ? "#4AF6C3" : model.gsm8k > 85 ? "#FFA028" : "#FF433D" }}>
+                    <td style={{ textAlign: "center", padding: "6px 8px", color: model.gsm8k > 93 ? "var(--positive)" : model.gsm8k > 85 ? "var(--amber)" : "var(--negative)" }}>
                       {model.gsm8k.toFixed(1)}
                     </td>
-                    <td style={{ textAlign: "center", padding: "6px 8px", color: model.math > 85 ? "#4AF6C3" : model.math > 75 ? "#FFA028" : "#FF433D" }}>
+                    <td style={{ textAlign: "center", padding: "6px 8px", color: model.math > 85 ? "var(--positive)" : model.math > 75 ? "var(--amber)" : "var(--negative)" }}>
                       {model.math.toFixed(1)}
                     </td>
                   </tr>
@@ -450,30 +450,30 @@ function IAView() {
               </tbody>
             </table>
           </div>
-          <div style={{ padding: "4px 8px", fontSize: 8, color: "#777", borderTop: "1px solid #111", background: "#0a0a0a" }}>
+          <div style={{ padding: "4px 8px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)", background: "var(--bg-elev)" }}>
             MMLU: General Knowledge | HumanEval: Code | GSM8K: Math | MATH: Advanced Math
           </div>
         </div>
       )}
 
       {segmento === "trending" && (
-        <div style={{ background: "#060606", border: "1px solid #1a1a1a", margin: 1 }}>
-          <div style={{ padding: "8px", borderBottom: "1px solid #111", fontSize: 10, color: "#999", fontWeight: 600 }}>
+        <div style={{ background: "var(--bg)", border: "1px solid var(--border)", margin: 1 }}>
+          <div style={{ padding: "8px", borderBottom: "1px solid var(--bg-elev-2)", fontSize: 10, color: "var(--text-dim)", fontWeight: 600 }}>
             TOP MODELOS HUGGING FACE — Por descargas
           </div>
           <div style={{ padding: 8 }}>
             {(data as Array<any>).map((model, idx) => (
-              <div key={idx} style={{ padding: "8px", borderBottom: "1px solid #111", fontSize: 9 }}>
-                <div style={{ color: "#FFA028", fontWeight: 600, marginBottom: 2 }}>
+              <div key={idx} style={{ padding: "8px", borderBottom: "1px solid var(--bg-elev-2)", fontSize: 9 }}>
+                <div style={{ color: "var(--amber)", fontWeight: 600, marginBottom: 2 }}>
                   #{idx + 1} {model.id}
                 </div>
-                <div style={{ color: "#888", fontSize: 8, marginBottom: 4 }}>
+                <div style={{ color: "var(--text-dim)", fontSize: 8, marginBottom: 4 }}>
                   ⬇️ {(model.downloads / 1_000_000).toFixed(1)}M descargas · 👍 {model.likes}
                 </div>
                 {model.tags && model.tags.length > 0 && (
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                     {model.tags.slice(0, 3).map((tag: string) => (
-                      <span key={tag} style={{ background: "#1a1a1a", padding: "2px 6px", fontSize: 7, color: "#999", borderRadius: 2 }}>
+                      <span key={tag} style={{ background: "var(--border)", padding: "2px 6px", fontSize: 7, color: "var(--text-dim)", borderRadius: 2 }}>
                         {tag}
                       </span>
                     ))}
@@ -482,7 +482,7 @@ function IAView() {
               </div>
             ))}
           </div>
-          <div style={{ padding: "4px 8px", fontSize: 8, color: "#777", borderTop: "1px solid #111", background: "#0a0a0a" }}>
+          <div style={{ padding: "4px 8px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)", background: "var(--bg-elev)" }}>
             Fuente: Hugging Face Hub API · Datos: modelos con tag 'gpt' ordenados por descargas
           </div>
         </div>
@@ -507,16 +507,16 @@ function SojaView() {
   const countryColors: Record<string, string> = {
     "Brazil": "#FFB74D",
     "Argentina": "#CE93D8",
-    "United States": "#4FC3F7",
-    "China": "#FFD54F",
+    "United States": "var(--sky)",
+    "China": "var(--yellow)",
     "Paraguay": "#81C784",
-    "India": "#FFA028",
+    "India": "var(--amber)",
     "Bolivia": "#FF6B6B",
     "Indonesia": "#00BCD4",
     "Canada": "#64B5F6",
     "Mexico": "#BA68C8",
     "Ukraine": "#80DEEA",
-    "Russia": "#FF433D",
+    "Russia": "var(--negative)",
   }
 
   useEffect(() => {
@@ -569,17 +569,17 @@ function SojaView() {
     }
   }, [segmento])
 
-  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando datos de soja...</div>
-  if (!data) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Sin datos disponibles.</div>
+  if (loading) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Cargando datos de soja...</div>
+  if (!data) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Sin datos disponibles.</div>
 
   const isPrecio = segmento === "precio"
   const lines = isPrecio
-    ? [{ key: "SOJA (USD/bu)", name: "Precio SOJA", color: "#FFA028" }]
+    ? [{ key: "SOJA (USD/bu)", name: "Precio SOJA", color: "var(--amber)" }]
     : Array.from(selectedCountries)
         .map((country) => ({
           key: country,
           name: country,
-          color: countryColors[country] || "#999",
+          color: countryColors[country] || "var(--text-dim)",
         }))
 
   const toggleCountry = (country: string) => {
@@ -594,7 +594,7 @@ function SojaView() {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 1, background: "#111", padding: 1, marginBottom: 8, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 1, background: "var(--bg-elev-2)", padding: 1, marginBottom: 8, flexWrap: "wrap" }}>
         {(["produccion", "precio"] as const).map((type) => (
           <button
             key={type}
@@ -602,10 +602,10 @@ function SojaView() {
             style={{
               padding: "4px 10px",
               fontSize: 10,
-              background: segmento === type ? "#1a1a1a" : "transparent",
-              color: segmento === type ? "#FFA028" : "#555",
+              background: segmento === type ? "var(--border)" : "transparent",
+              color: segmento === type ? "var(--amber)" : "var(--text-mute)",
               border: "none",
-              borderBottom: segmento === type ? "2px solid #FFA028" : "2px solid transparent",
+              borderBottom: segmento === type ? "2px solid var(--amber)" : "2px solid transparent",
               cursor: "pointer",
               textTransform: "uppercase",
               letterSpacing: "0.05em",
@@ -618,8 +618,8 @@ function SojaView() {
       </div>
 
       {segmento === "produccion" && (
-        <div style={{ padding: "8px", background: "#0a0a0a", marginBottom: 8, borderBottom: "1px solid #111" }}>
-          <div style={{ fontSize: 9, color: "#999", marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>
+        <div style={{ padding: "8px", background: "var(--bg-elev)", marginBottom: 8, borderBottom: "1px solid var(--bg-elev-2)" }}>
+          <div style={{ fontSize: 9, color: "var(--text-dim)", marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>
             Seleccionar países:
           </div>
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -630,9 +630,9 @@ function SojaView() {
                 style={{
                   padding: "4px 8px",
                   fontSize: 9,
-                  background: selectedCountries.has(country) ? countryColors[country] : "#1a1a1a",
-                  color: selectedCountries.has(country) ? "#000" : "#666",
-                  border: `1px solid ${selectedCountries.has(country) ? countryColors[country] : "#333"}`,
+                  background: selectedCountries.has(country) ? countryColors[country] : "var(--border)",
+                  color: selectedCountries.has(country) ? "var(--bg)" : "#666",
+                  border: `1px solid ${selectedCountries.has(country) ? countryColors[country] : "var(--border-hi)"}`,
                   borderRadius: 3,
                   cursor: "pointer",
                   fontWeight: selectedCountries.has(country) ? 700 : 400,
@@ -654,7 +654,7 @@ function SojaView() {
         yAxisLabel={segmento === "produccion" ? "Millones de toneladas" : "USD/bushel"}
         defaultRange="all"
       />
-      <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 10px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
         Fuente: {segmento === "produccion" ? "Our World in Data (FAO)" : "Yahoo Finance — Contrato ZS=F"}
       </div>
     </div>
@@ -681,8 +681,8 @@ function MacroComparadaView() {
       .catch(() => setLoading(false))
   }, [indicador])
 
-  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando macro comparada...</div>
-  if (!rawData || Object.keys(rawData).length === 0) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Sin datos disponibles.</div>
+  if (loading) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Cargando macro comparada...</div>
+  if (!rawData || Object.keys(rawData).length === 0) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Sin datos disponibles.</div>
 
   // Transform { ARG: [["2023", 133.5], ...] } → [{ date: "2023-01-01", Argentina: 133.5, ... }]
   const yearMap: Record<string, Record<string, unknown>> = {}
@@ -703,25 +703,25 @@ function MacroComparadaView() {
 
   const lines = [
     { key: "Argentina",     name: "Argentina",  color: "#CE93D8" },
-    { key: "Brazil",        name: "Brasil",     color: "#FFD54F" },
-    { key: "Chile",         name: "Chile",      color: "#FFA028" },
-    { key: "Colombia",      name: "Colombia",   color: "#4AF6C3" },
-    { key: "México",        name: "México",     color: "#4FC3F7" },
-    { key: "United States", name: "EEUU",       color: "#FF433D" },
+    { key: "Brazil",        name: "Brasil",     color: "var(--yellow)" },
+    { key: "Chile",         name: "Chile",      color: "var(--amber)" },
+    { key: "Colombia",      name: "Colombia",   color: "var(--positive)" },
+    { key: "México",        name: "México",     color: "var(--sky)" },
+    { key: "United States", name: "EEUU",       color: "var(--negative)" },
     { key: "Alemania",      name: "Alemania",   color: "#90CAF9" },
     { key: "China",         name: "China",      color: "#EF9A9A" },
   ]
 
   return (
     <div>
-      <div style={{ padding: "4px 8px", background: "#0a0a0a", marginBottom: 8, borderBottom: "1px solid #111" }}>
+      <div style={{ padding: "4px 8px", background: "var(--bg-elev)", marginBottom: 8, borderBottom: "1px solid var(--bg-elev-2)" }}>
         <select
           value={indicador}
           onChange={(e) => setIndicador(e.target.value)}
           style={{
-            background: "#111",
-            border: "1px solid #1a1a1a",
-            color: "#FFA028",
+            background: "var(--bg-elev-2)",
+            border: "1px solid var(--border)",
+            color: "var(--amber)",
             padding: "4px 8px",
             fontSize: 10,
             fontWeight: 600,
@@ -742,7 +742,7 @@ function MacroComparadaView() {
         yAxisLabel="%"
         defaultRange="all"
       />
-      <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 10px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
         Fuente: World Bank Open Data · Licencia CC BY 4.0
       </div>
     </div>
@@ -801,8 +801,8 @@ function QuoteCard({
     <button
       onClick={onClick}
       style={{
-        background: selected ? "#0d0d0d" : "#060606",
-        border: `1px solid ${selected ? "#FFA028" : "#1a1a1a"}`,
+        background: selected ? "var(--bg-elev-2)" : "var(--bg)",
+        border: `1px solid ${selected ? "var(--amber)" : "var(--border)"}`,
         padding: "8px 10px",
         cursor: "pointer",
         textAlign: "left",
@@ -810,18 +810,18 @@ function QuoteCard({
         flex: "1 1 80px",
       }}
     >
-      <div style={{ fontSize: 9, color: selected ? "#FFA028" : "#666", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, display: "flex", alignItems: "center", gap: 2 }}>
+      <div style={{ fontSize: 9, color: selected ? "var(--amber)" : "#666", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, display: "flex", alignItems: "center", gap: 2 }}>
         {TICKER_LABELS[nombre] ?? nombre.toUpperCase()}
         {(() => { const lbl = TICKER_LABELS[nombre] ?? nombre.toUpperCase(); const g = GLOSSARY[lbl]; return g ? <InfoTooltip text={g.text} source={g.source} url={g.url} position="bottom" /> : null })()}
       </div>
-      <div style={{ fontSize: 14, fontFamily: "monospace", fontWeight: 700, color: "#fff" }}>
+      <div style={{ fontSize: 14, fontFamily: "var(--font-data)", fontWeight: 700, color: "var(--text)" }}>
         {data?.precio != null ? data.precio.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "—"}
       </div>
       <div
         style={{
           fontSize: 10,
-          fontFamily: "monospace",
-          color: data?.variacion_pct == null ? "#555" : isPositive ? "#4AF6C3" : "#FF433D",
+          fontFamily: "var(--font-data)",
+          color: data?.variacion_pct == null ? "var(--text-mute)" : isPositive ? "var(--positive)" : "var(--negative)",
           marginTop: 2,
         }}
       >
@@ -841,8 +841,8 @@ function fmtNum(v: number | null | undefined, dec = 1): string {
 }
 
 function varColor(v: number | null | undefined): string {
-  if (v == null) return "#555"
-  return v >= 0 ? "#4AF6C3" : "#FF433D"
+  if (v == null) return "var(--text-mute)"
+  return v >= 0 ? "var(--positive)" : "var(--negative)"
 }
 
 function varSign(v: number | null | undefined): string {
@@ -874,19 +874,19 @@ function KPI({
   return (
     <div
       style={{
-        background: "#0a0a0a",
-        border: "1px solid #1a1a1a",
+        background: "var(--bg-elev)",
+        border: "1px solid var(--border)",
         padding: "10px 14px",
         flex: "1 1 160px",
       }}
     >
-      <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+      <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
         {label}
       </div>
-      <div style={{ fontSize: 20, fontWeight: 700, color: valueColor ?? "#FFA028", fontFamily: "monospace" }}>
+      <div style={{ fontSize: 20, fontWeight: 700, color: valueColor ?? "var(--amber)", fontFamily: "var(--font-data)" }}>
         {value ?? "—"}
       </div>
-      <div style={{ fontSize: 9, color: "#888", marginTop: 2 }}>{unit}</div>
+      <div style={{ fontSize: 9, color: "var(--text-dim)", marginTop: 2 }}>{unit}</div>
       {var1 != null && (
         <div style={{ fontSize: 10, color: varColor(var1), marginTop: 4 }}>
           {varSign(var1)}{fmtNum(var1)}% {var1Label}
@@ -974,7 +974,7 @@ function PyramidChart({ data, height = 400 }: { data: PiramideRow[]; height?: nu
     <>
       {/* Hombre / Mujer labels */}
       <div style={{ display: "flex", justifyContent: "space-around", padding: "6px 52px 2px", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-        <span style={{ color: "#4FC3F7" }}>◀ Hombre</span>
+        <span style={{ color: "var(--sky)" }}>◀ Hombre</span>
         <span style={{ color: "#F48FB1" }}>Mujer ▶</span>
       </div>
       <ResponsiveContainer width="100%" height={height}>
@@ -985,27 +985,27 @@ function PyramidChart({ data, height = 400 }: { data: PiramideRow[]; height?: nu
           barCategoryGap="10%"
           barGap={1}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" horizontal={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
           <XAxis
             type="number"
             domain={[-domain, domain]}
             tickFormatter={(v: number) => `${Math.abs(v).toFixed(0)}%`}
-            tick={{ fontSize: 8, fill: "#555" }}
-            axisLine={{ stroke: "#333" }}
+            tick={{ fontSize: 8, fill: "var(--text-mute)" }}
+            axisLine={{ stroke: "var(--border-hi)" }}
             tickLine={false}
           />
           <YAxis
             type="category"
             dataKey="age"
-            tick={{ fontSize: 8, fill: "#888" }}
+            tick={{ fontSize: 8, fill: "var(--text-dim)" }}
             axisLine={false}
             tickLine={false}
             width={38}
           />
           <Tooltip
             cursor={{ fill: "rgba(255,255,255,0.03)" }}
-            contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10, borderRadius: 4 }}
-            labelStyle={{ color: "#aaa", fontWeight: 700 }}
+            contentStyle={{ background: "var(--bg-elev)", border: "1px solid var(--border)", fontSize: 10, borderRadius: 4 }}
+            labelStyle={{ color: "var(--text-dim)", fontWeight: 700 }}
             formatter={(value, name, props) => {
               const num = typeof value === "number" ? value : Number(value ?? NaN)
               if (!Number.isFinite(num)) return ["—", name]
@@ -1017,8 +1017,8 @@ function PyramidChart({ data, height = 400 }: { data: PiramideRow[]; height?: nu
               return [`${Math.abs(num).toFixed(2)}%  (${fmtAbs(abs)})`, label]
             }}
           />
-          <ReferenceLine x={0} stroke="#333" strokeWidth={1} />
-          <Bar dataKey="varones" fill="#4FC3F7" radius={[0, 2, 2, 0]} maxBarSize={14} />
+          <ReferenceLine x={0} stroke="var(--border-hi)" strokeWidth={1} />
+          <Bar dataKey="varones" fill="var(--sky)" radius={[0, 2, 2, 0]} maxBarSize={14} />
           <Bar dataKey="mujeres" fill="#F48FB1" radius={[2, 0, 0, 2]} maxBarSize={14} />
         </BarChart>
       </ResponsiveContainer>
@@ -1054,32 +1054,32 @@ function PoblacionSerieChart({ country, selectedYear }: { country: string; selec
     <div className="bbg-panel" style={{ marginTop: 8 }}>
       <div className="bbg-panel-header">POBLACIÓN TOTAL — EVOLUCIÓN 1950–2100</div>
       {loading ? (
-        <div style={{ padding: 24, color: "#888", textAlign: "center", fontSize: 11 }}>Cargando serie de población...</div>
+        <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11 }}>Cargando serie de población...</div>
       ) : (
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={serie} margin={{ top: 8, right: 20, left: 10, bottom: 4 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             <XAxis
               dataKey="year"
-              tick={{ fontSize: 8, fill: "#555" }}
-              axisLine={{ stroke: "#333" }}
+              tick={{ fontSize: 8, fill: "var(--text-mute)" }}
+              axisLine={{ stroke: "var(--border-hi)" }}
               tickLine={false}
             />
             <YAxis
-              tick={{ fontSize: 8, fill: "#555" }}
-              axisLine={{ stroke: "#333" }}
+              tick={{ fontSize: 8, fill: "var(--text-mute)" }}
+              axisLine={{ stroke: "var(--border-hi)" }}
               tickLine={false}
               tickFormatter={(v: number) => fmtPop(v)}
             />
             <Tooltip
-              contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 10, borderRadius: 4 }}
-              labelStyle={{ color: "#aaa", fontWeight: 700 }}
+              contentStyle={{ background: "var(--bg-elev)", border: "1px solid var(--border)", fontSize: 10, borderRadius: 4 }}
+              labelStyle={{ color: "var(--text-dim)", fontWeight: 700 }}
               formatter={(value) => {
                 const num = typeof value === "number" ? value : Number(value ?? NaN)
                 return Number.isFinite(num) ? fmtPop(num) : "—"
               }}
             />
-            <Area type="monotone" dataKey="total" fill="#FFA028" stroke="#FFA028" fillOpacity={0.4} />
+            <Area type="monotone" dataKey="total" fill="var(--amber)" stroke="var(--amber)" fillOpacity={0.4} />
           </AreaChart>
         </ResponsiveContainer>
       )}
@@ -1114,11 +1114,11 @@ function PiramidesView() {
 
           {/* Selector de país */}
           <div>
-            <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>País</div>
+            <div style={{ fontSize: 8, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>País</div>
             <select
               value={country}
               onChange={e => setCountry(e.target.value)}
-              style={{ background: "#0a0a0a", color: "#ccc", border: "1px solid #333", padding: "5px 10px", fontSize: 11, borderRadius: 2, cursor: "pointer" }}
+              style={{ background: "var(--bg-elev)", color: "#ccc", border: "1px solid var(--border-hi)", padding: "5px 10px", fontSize: 11, borderRadius: 2, cursor: "pointer" }}
             >
               {PAISES.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
             </select>
@@ -1126,30 +1126,30 @@ function PiramidesView() {
 
           {/* Selector de año */}
           <div style={{ flex: "1 1 200px" }}>
-            <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+            <div style={{ fontSize: 8, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
               Año:&nbsp;
-              <span style={{ color: year > 2025 ? "#FFA028" : "#4AF6C3", fontWeight: 700, fontFamily: "monospace" }}>{year}</span>
-              {year > 2025 && <span style={{ color: "#FFA028", marginLeft: 6 }}>· PROYECCIÓN ONU</span>}
+              <span style={{ color: year > 2025 ? "var(--amber)" : "var(--positive)", fontWeight: 700, fontFamily: "var(--font-data)" }}>{year}</span>
+              {year > 2025 && <span style={{ color: "var(--amber)", marginLeft: 6 }}>· PROYECCIÓN ONU</span>}
             </div>
             <input
               type="range" min={1950} max={2100} step={1} value={year}
               onChange={e => setYear(Number(e.target.value))}
-              style={{ width: "100%", accentColor: "#FFA028", cursor: "pointer" }}
+              style={{ width: "100%", accentColor: "var(--amber)", cursor: "pointer" }}
             />
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#888", marginTop: 2 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "var(--text-dim)", marginTop: 2 }}>
               <span>1950</span><span>2025</span><span>2100</span>
             </div>
           </div>
 
           {/* Accesos rápidos de año */}
           <div>
-            <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Acceso rápido</div>
+            <div style={{ fontSize: 8, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Acceso rápido</div>
             <div style={{ display: "flex", gap: 2 }}>
               {[1950, 1975, 2000, 2025, 2050, 2075, 2100].map(y => (
                 <button key={y} onClick={() => setYear(y)} style={{
                   fontSize: 8, padding: "3px 6px", border: "none", borderRadius: 2, cursor: "pointer",
-                  background: year === y ? "#FFA028" : "#1a1a1a",
-                  color: year === y ? "#000" : "#555",
+                  background: year === y ? "var(--amber)" : "var(--border)",
+                  color: year === y ? "var(--bg)" : "var(--text-mute)",
                 }}>{y}</button>
               ))}
             </div>
@@ -1159,13 +1159,13 @@ function PiramidesView() {
           {meta && (
             <div style={{ display: "flex", gap: 16, marginLeft: "auto" }}>
               {[
-                { label: "Total", value: `${(meta.total / 1e6).toFixed(1)}M`, color: "#fff" },
-                { label: "Varones", value: `${(meta.total_m / 1e6).toFixed(1)}M`, color: "#4FC3F7" },
+                { label: "Total", value: `${(meta.total / 1e6).toFixed(1)}M`, color: "var(--text)" },
+                { label: "Varones", value: `${(meta.total_m / 1e6).toFixed(1)}M`, color: "var(--sky)" },
                 { label: "Mujeres", value: `${(meta.total_f / 1e6).toFixed(1)}M`, color: "#F48FB1" },
               ].map(s => (
                 <div key={s.label} style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 8, color: "#888", textTransform: "uppercase" }}>{s.label}</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: s.color, fontFamily: "monospace" }}>{s.value}</div>
+                  <div style={{ fontSize: 8, color: "var(--text-dim)", textTransform: "uppercase" }}>{s.label}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: s.color, fontFamily: "var(--font-data)" }}>{s.value}</div>
                 </div>
               ))}
             </div>
@@ -1177,19 +1177,19 @@ function PiramidesView() {
       <div className="bbg-panel">
         <div className="bbg-panel-header">
           {paisName.toUpperCase()} · {year}
-          {meta?.proyeccion && <span style={{ fontSize: 8, fontWeight: 400, color: "#FFA028", marginLeft: 8 }}>· PROYECCIÓN ONU</span>}
+          {meta?.proyeccion && <span style={{ fontSize: 8, fontWeight: 400, color: "var(--amber)", marginLeft: 8 }}>· PROYECCIÓN ONU</span>}
         </div>
         {loading ? (
-          <div style={{ padding: 40, color: "#888", textAlign: "center", fontSize: 11 }}>Cargando pirámide de {paisName}...</div>
+          <div style={{ padding: 40, color: "var(--text-dim)", textAlign: "center", fontSize: 11 }}>Cargando pirámide de {paisName}...</div>
         ) : data.length > 0 ? (
           <>
             <PyramidChart data={data} height={480} />
-            <div style={{ padding: "4px 12px 8px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
+            <div style={{ padding: "4px 12px 8px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
               Fuente: populationpyramid.net · UN World Population Prospects 2024 · Años &gt;2025 = proyecciones ONU · Código de país: {country}
             </div>
           </>
         ) : (
-          <div style={{ padding: 40, color: "#888", textAlign: "center", fontSize: 11 }}>Sin datos disponibles para {paisName} {year}</div>
+          <div style={{ padding: 40, color: "var(--text-dim)", textAlign: "center", fontSize: 11 }}>Sin datos disponibles para {paisName} {year}</div>
         )}
       </div>
 
@@ -1211,8 +1211,8 @@ function DesigualdadView() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Cargando indicadores de desigualdad...</div>
-  if (!data) return <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Sin datos disponibles</div>
+  if (loading) return <div style={{ padding: 12, color: "var(--text-dim)", fontSize: 11 }}>Cargando indicadores de desigualdad...</div>
+  if (!data) return <div style={{ padding: 12, color: "var(--text-dim)", fontSize: 11 }}>Sin datos disponibles</div>
 
   const giniUltimo    = data.gini_arg[data.gini_arg.length - 1]
   const giniMin       = data.gini_arg.reduce((a, b) => b[1] < a[1] ? b : a, data.gini_arg[0])
@@ -1239,32 +1239,32 @@ function DesigualdadView() {
       ]} active={subTab} onChange={setSubTab} />
 
       {subTab === "gini_arg" && (<>
-        <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+        <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
           <KPI label="Gini Actual"       value={giniUltimo ? fmtNum(giniUltimo[1], 1) : null}
-            unit={`Escala 0-100 · ${giniUltimo?.[0]?.slice(0, 4) ?? ""}`} valueColor="#FFA028" />
+            unit={`Escala 0-100 · ${giniUltimo?.[0]?.slice(0, 4) ?? ""}`} valueColor="var(--amber)" />
           <KPI label="Mínimo histórico" value={giniMin ? fmtNum(giniMin[1], 1) : null}
-            unit={`Mayor igualdad · ${giniMin?.[0]?.slice(0, 4) ?? ""}`} valueColor="#4AF6C3" />
+            unit={`Mayor igualdad · ${giniMin?.[0]?.slice(0, 4) ?? ""}`} valueColor="var(--positive)" />
           <KPI label="Máximo histórico" value={giniMax ? fmtNum(giniMax[1], 1) : null}
-            unit={`Mayor desigualdad · ${giniMax?.[0]?.slice(0, 4) ?? ""}`} valueColor="#FF433D" />
+            unit={`Mayor desigualdad · ${giniMax?.[0]?.slice(0, 4) ?? ""}`} valueColor="var(--negative)" />
         </div>
         <div style={{ padding: "8px 0" }}>
           <BBGLineChart title="COEFICIENTE DE GINI — ARGENTINA 1974-2024" data={giniArgData}
-            lines={[{ key: "gini", name: "Gini", color: "#FFA028" }]}
+            lines={[{ key: "gini", name: "Gini", color: "var(--amber)" }]}
             height={240} yAxisLabel="Índice Gini" formatValue={v => fmtNum(v, 1)} defaultRange="all" showZeroLine={false} />
         </div>
-        <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
+        <div style={{ padding: "4px 10px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
           CEDLAS con base en EPH/INDEC · Empalme metodológico entre encuestas · Cobertura urbana · vía Argendata/Fundar (CC BY-NC-ND 4.0)
         </div>
       </>)}
 
       {subTab === "gini_mundo" && (<>
-        <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
-          <KPI label="Gini ARG"                  value={giniUltimo ? fmtNum(giniUltimo[1], 1) : null} unit="Escala 0-100" valueColor="#FFA028" />
+        <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
+          <KPI label="Gini ARG"                  value={giniUltimo ? fmtNum(giniUltimo[1], 1) : null} unit="Escala 0-100" valueColor="var(--amber)" />
           <KPI label="Ranking (más desiguales)" value={giniArgRank > 0 ? `#${giniArgRank}` : null}
-            unit={`de ${data.gini_mundo.length} países`} valueColor="#FFA028" />
+            unit={`de ${data.gini_mundo.length} países`} valueColor="var(--amber)" />
         </div>
-        <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", padding: "12px 16px", marginTop: 8 }}>
-          <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, fontWeight: 700, marginBottom: 12 }}>
+        <div style={{ background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 16px", marginTop: 8 }}>
+          <div style={{ fontSize: 9, color: "var(--amber)", letterSpacing: 1.5, fontWeight: 700, marginBottom: 12 }}>
             GINI MUNDIAL — TOP 20 PAÍSES MÁS DESIGUALES
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -1273,40 +1273,40 @@ function DesigualdadView() {
               const barPct = r.gini / maxGini * 78
               return (
                 <div key={r.pais} style={{ display: "grid", gridTemplateColumns: "130px 1fr 44px", alignItems: "center", gap: 8 }}>
-                  <div style={{ fontSize: 9, color: isArg ? "#FFA028" : "#888", textAlign: "right",
+                  <div style={{ fontSize: 9, color: isArg ? "var(--amber)" : "var(--text-dim)", textAlign: "right",
                     fontWeight: isArg ? 700 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.pais}</div>
-                  <div style={{ position: "relative", height: 12, background: "#111", borderRadius: 2 }}>
+                  <div style={{ position: "relative", height: 12, background: "var(--bg-elev-2)", borderRadius: 2 }}>
                     <div style={{ position: "absolute", height: "100%", borderRadius: 2,
-                      background: isArg ? "#FFA028" : "#4FC3F7", opacity: 0.8, width: `${barPct}%` }} />
+                      background: isArg ? "var(--amber)" : "var(--sky)", opacity: 0.8, width: `${barPct}%` }} />
                   </div>
-                  <div style={{ fontSize: 9, fontWeight: 700, fontFamily: "monospace",
-                    color: isArg ? "#FFA028" : "#4FC3F7", textAlign: "right" }}>{r.gini.toFixed(1)}</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, fontFamily: "var(--font-data)",
+                    color: isArg ? "var(--amber)" : "var(--sky)", textAlign: "right" }}>{r.gini.toFixed(1)}</div>
                 </div>
               )
             })}
           </div>
         </div>
-        <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111", marginTop: 4 }}>
+        <div style={{ padding: "4px 10px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)", marginTop: 4 }}>
           SEDLAC/Banco Mundial · Snapshot de último año disponible por país · vía Argendata/Fundar (CC BY-NC-ND 4.0)
         </div>
       </>)}
 
       {subTab === "informalidad" && (<>
-        <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+        <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
           <KPI label="Informalidad Productiva" value={prodUlt ? `${fmtNum(prodUlt[1], 1)}%` : null}
-            unit={`Baja productividad · ${prodUlt?.[0]?.slice(0, 4) ?? ""}`} valueColor="#4AF6C3" />
+            unit={`Baja productividad · ${prodUlt?.[0]?.slice(0, 4) ?? ""}`} valueColor="var(--positive)" />
           <KPI label="Informalidad Legal"       value={legalUlt ? `${fmtNum(legalUlt[1], 1)}%` : null}
-            unit={`Sin aportes previsionales · ${legalUlt?.[0]?.slice(0, 4) ?? ""}`} valueColor="#4FC3F7" />
+            unit={`Sin aportes previsionales · ${legalUlt?.[0]?.slice(0, 4) ?? ""}`} valueColor="var(--sky)" />
         </div>
         <div style={{ padding: "8px 0" }}>
           <BBGLineChart title="TASA DE INFORMALIDAD — ARGENTINA 1988-2022" data={infData}
             lines={[
-              { key: "productiva", name: "Def. Productiva", color: "#4AF6C3" },
-              { key: "legal",      name: "Def. Legal",      color: "#4FC3F7" },
+              { key: "productiva", name: "Def. Productiva", color: "var(--positive)" },
+              { key: "legal",      name: "Def. Legal",      color: "var(--sky)" },
             ]}
             height={240} yAxisLabel="%" formatValue={v => `${fmtNum(v, 1)}%`} defaultRange="all" />
         </div>
-        <div style={{ padding: "4px 10px", fontSize: 8, color: "#777", borderTop: "1px solid #111" }}>
+        <div style={{ padding: "4px 10px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
           Def. productiva: empleo en unidades de baja productividad · Def. legal: sin aportes al sistema previsional ·
           SEDLAC/Banco Mundial con base en EPH · vía Argendata/Fundar (CC BY-NC-ND 4.0)
         </div>
@@ -1363,7 +1363,7 @@ export function TabMundo() {
   }, [selectedTicker, fetchHistorico])
 
   if (loading) {
-    return <div style={{ padding: 24, color: "#888", fontSize: 11, textAlign: "center" }}>Cargando mercados...</div>
+    return <div style={{ padding: 24, color: "var(--text-dim)", fontSize: 11, textAlign: "center" }}>Cargando mercados...</div>
   }
 
   const label = TICKER_LABELS[selectedTicker] ?? selectedTicker.toUpperCase()
@@ -1374,7 +1374,7 @@ export function TabMundo() {
       <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between" }}>
         <span>MERCADOS MUNDIALES — YAHOO FINANCE / OWID</span>
         {lastUpdate && mundoTab === "mercados" && (
-          <span style={{ color: "#888", fontWeight: 400 }}>
+          <span style={{ color: "var(--text-dim)", fontWeight: 400 }}>
             UPD {new Date(lastUpdate).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
           </span>
         )}
@@ -1404,10 +1404,10 @@ export function TabMundo() {
       {/* Groups */}
       {Object.entries(GRUPOS).map(([grupo, tickers]) => (
         <div key={grupo} style={{ marginBottom: 1 }}>
-          <div style={{ padding: "3px 8px", background: "#0a0a0a", fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid #111" }}>
+          <div style={{ padding: "3px 8px", background: "var(--bg-elev)", fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid var(--bg-elev-2)" }}>
             {grupo}
           </div>
-          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", background: "#111", padding: 1, overflowX: "auto" }}>
+          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", background: "var(--bg-elev-2)", padding: 1, overflowX: "auto" }}>
             {tickers.map((t) => (
               <QuoteCard
                 key={t}
@@ -1422,26 +1422,26 @@ export function TabMundo() {
       ))}
 
       {/* Historical series */}
-      <div style={{ background: "#060606", border: "1px solid #1a1a1a", margin: 1 }}>
-        <div style={{ padding: "4px 8px", background: "#0d0d0d", borderBottom: "1px solid #111", fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: 1 }}>
+      <div style={{ background: "var(--bg)", border: "1px solid var(--border)", margin: 1 }}>
+        <div style={{ padding: "4px 8px", background: "var(--bg-elev-2)", borderBottom: "1px solid var(--bg-elev-2)", fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1 }}>
           {label} — Serie histórica (1 año) ·{" "}
           {selectedData?.precio != null ? selectedData.precio.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "—"}{" "}
-          <span style={{ color: (selectedData?.variacion_pct ?? 0) >= 0 ? "#4AF6C3" : "#FF433D" }}>
+          <span style={{ color: (selectedData?.variacion_pct ?? 0) >= 0 ? "var(--positive)" : "var(--negative)" }}>
             {selectedData?.variacion_pct != null
               ? `${(selectedData.variacion_pct) >= 0 ? "+" : ""}${selectedData.variacion_pct.toFixed(2)}%`
               : ""}
           </span>
         </div>
         {histLoading ? (
-          <div style={{ padding: 16, color: "#888", fontSize: 11, textAlign: "center" }}>Cargando histórico...</div>
+          <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11, textAlign: "center" }}>Cargando histórico...</div>
         ) : historico && historico.length > 0 ? (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  <th style={{ padding: "3px 8px", fontSize: 9, color: "#888", textAlign: "left", borderBottom: "1px solid #111" }}>Fecha</th>
-                  <th style={{ padding: "3px 8px", fontSize: 9, color: "#888", textAlign: "right", borderBottom: "1px solid #111" }}>Precio</th>
-                  <th style={{ padding: "3px 8px", fontSize: 9, color: "#888", textAlign: "right", borderBottom: "1px solid #111" }}>Var % (vs anterior)</th>
+                  <th style={{ padding: "3px 8px", fontSize: 9, color: "var(--text-dim)", textAlign: "left", borderBottom: "1px solid var(--bg-elev-2)" }}>Fecha</th>
+                  <th style={{ padding: "3px 8px", fontSize: 9, color: "var(--text-dim)", textAlign: "right", borderBottom: "1px solid var(--bg-elev-2)" }}>Precio</th>
+                  <th style={{ padding: "3px 8px", fontSize: 9, color: "var(--text-dim)", textAlign: "right", borderBottom: "1px solid var(--bg-elev-2)" }}>Var % (vs anterior)</th>
                 </tr>
               </thead>
               <tbody>
@@ -1453,12 +1453,12 @@ export function TabMundo() {
                     const prev = arr[i + 1]?.[1]
                     const chg = prev && prev !== 0 ? ((v - prev) / prev) * 100 : null
                     return (
-                      <tr key={d} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
-                        <td style={{ padding: "3px 8px", fontSize: 10, color: "#888" }}>{d}</td>
-                        <td style={{ padding: "3px 8px", fontSize: 10, color: "#fff", textAlign: "right", fontFamily: "monospace" }}>
+                      <tr key={d} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg-row-alt)" }}>
+                        <td style={{ padding: "3px 8px", fontSize: 10, color: "var(--text-dim)" }}>{d}</td>
+                        <td style={{ padding: "3px 8px", fontSize: 10, color: "var(--text)", textAlign: "right", fontFamily: "var(--font-data)" }}>
                           {v.toLocaleString("en-US", { maximumFractionDigits: 2 })}
                         </td>
-                        <td style={{ padding: "3px 8px", fontSize: 10, textAlign: "right", fontFamily: "monospace", color: chg == null ? "#555" : chg >= 0 ? "#4AF6C3" : "#FF433D" }}>
+                        <td style={{ padding: "3px 8px", fontSize: 10, textAlign: "right", fontFamily: "var(--font-data)", color: chg == null ? "var(--text-mute)" : chg >= 0 ? "var(--positive)" : "var(--negative)" }}>
                           {chg != null ? `${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%` : "—"}
                         </td>
                       </tr>
@@ -1468,7 +1468,7 @@ export function TabMundo() {
             </table>
           </div>
         ) : (
-          <div style={{ padding: 12, color: "#888", fontSize: 11 }}>Sin datos históricos disponibles.</div>
+          <div style={{ padding: 12, color: "var(--text-dim)", fontSize: 11 }}>Sin datos históricos disponibles.</div>
         )}
       </div>
       </>)}

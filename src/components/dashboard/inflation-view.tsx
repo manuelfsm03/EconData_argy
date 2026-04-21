@@ -40,9 +40,9 @@ interface PolymarketInflation {
 
 // Gráfico 1: IPC Observado (Total actual vs hipotético canasta 2018)
 const GRAFICO1_TYPES = [
-  { key: "ipc_var_mensual", label: "IPC Total (canasta 2004 vigente)", color: "#FF433D" },
+  { key: "ipc_var_mensual", label: "IPC Total (canasta 2004 vigente)", color: "var(--negative)" },
   { key: "ipc_var_mensual_canasta2022", label: "IPC Total (canasta 2018 hipot.)", color: "#FFB347" },
-  { key: "ipc_nucleo", label: "Núcleo", color: "#4AF6C3" },
+  { key: "ipc_nucleo", label: "Núcleo", color: "var(--positive)" },
   { key: "ipc_estacionales", label: "Estacionales", color: "#FFD700" },
 ]
 
@@ -98,12 +98,12 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
 
     // Mock regional data
     const mockRegional: RegionalInflation[] = [
-      { region: "GBA", inflation: 3.2, color: "#FF433D" },
-      { region: "Pampeana", inflation: 2.8, color: "#FFA028" },
+      { region: "GBA", inflation: 3.2, color: "var(--negative)" },
+      { region: "Pampeana", inflation: 2.8, color: "var(--amber)" },
       { region: "NEA", inflation: 3.5, color: "#FF6B6B" },
       { region: "NOA", inflation: 3.1, color: "#FFB347" },
       { region: "Cuyo", inflation: 2.9, color: "#FFD700" },
-      { region: "Patagonia", inflation: 2.5, color: "#4AF6C3" },
+      { region: "Patagonia", inflation: 2.5, color: "var(--positive)" },
     ]
     setRegionalData(mockRegional)
 
@@ -136,10 +136,10 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
 
   const getInflationColor = (value: number): string => {
     if (value > 4) return "#8B0000"
-    if (value > 3) return "#FF433D"
-    if (value > 2) return "#FFA028"
+    if (value > 3) return "var(--negative)"
+    if (value > 2) return "var(--amber)"
     if (value > 1) return "#FFD700"
-    return "#4AF6C3"
+    return "var(--positive)"
   }
 
   // Helper para calcular variación mensual de una serie (devuelve decimal, no %)
@@ -343,18 +343,18 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
       {/* INFLACIÓN MUNDIAL */}
-      <div style={{ background: "#000000", border: "1px solid #333333", borderRadius: "4px", padding: "16px" }}>
-        <h3 style={{ color: "#FFFFFF", fontWeight: "bold", marginBottom: "16px", fontFamily: "IBM Plex Mono, monospace" }}>
+      <div style={{ background: "var(--bg)", border: "1px solid var(--border-hi)", borderRadius: "4px", padding: "16px" }}>
+        <h3 style={{ color: "var(--text)", fontWeight: "bold", marginBottom: "16px", fontFamily: "IBM Plex Mono, monospace" }}>
           INFLACIÓN MUNDIAL — PAÍSES CLAVE
         </h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "8px", marginBottom: "16px" }}>
           {[
             { country: "Argentina", inflation: 2.8, color: "#CE93D8" },
-            { country: "Brasil", inflation: 1.2, color: "#FFD54F" },
-            { country: "Chile", inflation: 1.8, color: "#FFA028" },
-            { country: "México", inflation: 2.4, color: "#4FC3F7" },
-            { country: "Colombia", inflation: 1.9, color: "#4AF6C3" },
-            { country: "Perú", inflation: 2.1, color: "#FF433D" },
+            { country: "Brasil", inflation: 1.2, color: "var(--yellow)" },
+            { country: "Chile", inflation: 1.8, color: "var(--amber)" },
+            { country: "México", inflation: 2.4, color: "var(--sky)" },
+            { country: "Colombia", inflation: 1.9, color: "var(--positive)" },
+            { country: "Perú", inflation: 2.1, color: "var(--negative)" },
             { country: "USA", inflation: 1.4, color: "#81C784" },
             { country: "Alemania", inflation: 0.9, color: "#64B5F6" },
             { country: "Japón", inflation: 0.5, color: "#FFB74D" },
@@ -365,7 +365,7 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
             <div
               key={d.country}
               style={{
-                background: "#0a0a0a",
+                background: "var(--bg-elev)",
                 border: `1px solid ${d.color}`,
                 borderRadius: "2px",
                 padding: "12px",
@@ -375,7 +375,7 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
               <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>
                 {d.country}
               </div>
-              <div style={{ color: d.inflation > 3 ? "#FF433D" : d.inflation > 2 ? "#FFA028" : "#4AF6C3", fontWeight: "bold", fontSize: "16px", fontFamily: "monospace" }}>
+              <div style={{ color: d.inflation > 3 ? "var(--negative)" : d.inflation > 2 ? "var(--amber)" : "var(--positive)", fontWeight: "bold", fontSize: "16px", fontFamily: "var(--font-data)" }}>
                 {d.inflation.toFixed(1)}%
               </div>
             </div>
@@ -385,10 +385,10 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
         <div style={{ display: "flex", justifyContent: "center" }}>
           <div style={{
             width: "100%",
-            border: "1px solid #333333",
+            border: "1px solid var(--border-hi)",
             borderRadius: "4px",
             overflow: "hidden",
-            background: "#0a0a0a"
+            background: "var(--bg-elev)"
           }}>
             <iframe
               src="/inflation_map.html"
@@ -406,16 +406,16 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
 
       {/* IPC KPIs */}
       {ipcData && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: "8px", background: "#000000", border: "1px solid #333333", borderRadius: "4px", padding: "16px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: "8px", background: "var(--bg)", border: "1px solid var(--border-hi)", borderRadius: "4px", padding: "16px" }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>IPC Total</div>
-            <div style={{ color: "#FF433D", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
+            <div style={{ color: "var(--negative)", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
               {varMensual != null ? `${((varMensual * 100).toFixed(2))}%` : "-"}
             </div>
           </div>
           <div style={{ textAlign: "center" }}>
             <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>Núcleo</div>
-            <div style={{ color: "#4AF6C3", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
+            <div style={{ color: "var(--positive)", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
               {getVarMens(ipcData, "ipc_nucleo") != null ? `${(getVarMens(ipcData, "ipc_nucleo")! * 100).toFixed(2)}%` : "-"}
             </div>
           </div>
@@ -451,7 +451,7 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
           </div>
           <div style={{ textAlign: "center" }}>
             <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>Interanual</div>
-            <div style={{ color: "#FFA028", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
+            <div style={{ color: "var(--amber)", fontWeight: "bold", fontSize: "18px", fontFamily: "IBM Plex Mono, monospace" }}>
               {varInteranual != null ? `${(varInteranual).toFixed(2)}%` : "-"}
             </div>
           </div>
@@ -459,9 +459,9 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
       )}
 
       {/* GRÁFICO 1: IPC Observado */}
-      <div style={{ background: "#000000", border: "1px solid #333333", borderRadius: "4px", padding: "16px" }}>
+      <div style={{ background: "var(--bg)", border: "1px solid var(--border-hi)", borderRadius: "4px", padding: "16px" }}>
         <div style={{ marginBottom: "16px" }}>
-          <h3 style={{ color: "#FFFFFF", fontWeight: "bold", marginBottom: "12px", fontFamily: "IBM Plex Mono, monospace" }}>
+          <h3 style={{ color: "var(--text)", fontWeight: "bold", marginBottom: "12px", fontFamily: "IBM Plex Mono, monospace" }}>
             IPC OBSERVADO
           </h3>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
@@ -476,8 +476,8 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
                   )
                 }}
                 style={{
-                  background: selectedTypes1.includes(type.key) ? type.color : "#0a0a0a",
-                  color: selectedTypes1.includes(type.key) ? "#000000" : "#FFFFFF",
+                  background: selectedTypes1.includes(type.key) ? type.color : "var(--bg-elev)",
+                  color: selectedTypes1.includes(type.key) ? "var(--bg)" : "var(--text)",
                   border: `1px solid ${type.color}`,
                   padding: "8px 12px",
                   borderRadius: "2px",
@@ -498,9 +498,9 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
                   setSelectedMonth(null)
                 }}
                 style={{
-                  background: "#0a0a0a",
-                  color: "#FFFFFF",
-                  border: "1px solid #333333",
+                  background: "var(--bg-elev)",
+                  color: "var(--text)",
+                  border: "1px solid var(--border-hi)",
                   padding: "6px 12px",
                   borderRadius: "2px",
                   fontSize: "11px",
@@ -517,8 +517,8 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
                 onClick={downloadCSV}
                 disabled={chartData1.length === 0}
                 style={{
-                  background: chartData1.length > 0 ? "#4AF6C3" : "#333333",
-                  color: chartData1.length > 0 ? "#000000" : "#666666",
+                  background: chartData1.length > 0 ? "var(--positive)" : "var(--border-hi)",
+                  color: chartData1.length > 0 ? "var(--bg)" : "#666666",
                   border: "none",
                   padding: "6px 16px",
                   borderRadius: "2px",
@@ -549,9 +549,9 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
       </div>
 
       {/* GRÁFICO 2: Inflación Esperada */}
-      <div style={{ background: "#000000", border: "1px solid #333333", borderRadius: "4px", padding: "16px", marginTop: "16px" }}>
+      <div style={{ background: "var(--bg)", border: "1px solid var(--border-hi)", borderRadius: "4px", padding: "16px", marginTop: "16px" }}>
         <div style={{ marginBottom: "16px" }}>
-          <h3 style={{ color: "#FFFFFF", fontWeight: "bold", marginBottom: "12px", fontFamily: "IBM Plex Mono, monospace" }}>
+          <h3 style={{ color: "var(--text)", fontWeight: "bold", marginBottom: "12px", fontFamily: "IBM Plex Mono, monospace" }}>
             INFLACIÓN ESPERADA
           </h3>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
@@ -566,8 +566,8 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
                   )
                 }}
                 style={{
-                  background: selectedTypes2.includes(type.key) ? type.color : "#0a0a0a",
-                  color: selectedTypes2.includes(type.key) ? "#000000" : "#FFFFFF",
+                  background: selectedTypes2.includes(type.key) ? type.color : "var(--bg-elev)",
+                  color: selectedTypes2.includes(type.key) ? "var(--bg)" : "var(--text)",
                   border: `1px solid ${type.color}`,
                   padding: "8px 12px",
                   borderRadius: "2px",
@@ -585,8 +585,8 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
                 onClick={downloadCSVGrafico2}
                 disabled={chartData2.length === 0}
                 style={{
-                  background: chartData2.length > 0 ? "#4AF6C3" : "#333333",
-                  color: chartData2.length > 0 ? "#000000" : "#666666",
+                  background: chartData2.length > 0 ? "var(--positive)" : "var(--border-hi)",
+                  color: chartData2.length > 0 ? "var(--bg)" : "#666666",
                   border: "none",
                   padding: "6px 16px",
                   borderRadius: "2px",
@@ -617,8 +617,8 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
       </div>
 
       {/* Regional Inflation Map */}
-      <div style={{ background: "#000000", border: "1px solid #333333", borderRadius: "4px", padding: "16px", marginTop: "16px" }}>
-        <h3 style={{ color: "#FFFFFF", fontWeight: "bold", marginBottom: "16px", fontFamily: "IBM Plex Mono, monospace" }}>
+      <div style={{ background: "var(--bg)", border: "1px solid var(--border-hi)", borderRadius: "4px", padding: "16px", marginTop: "16px" }}>
+        <h3 style={{ color: "var(--text)", fontWeight: "bold", marginBottom: "16px", fontFamily: "IBM Plex Mono, monospace" }}>
           INFLACIÓN POR REGIÓN
         </h3>
 
@@ -627,7 +627,7 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
             <div
               key={region.region}
               style={{
-                background: "#0a0a0a",
+                background: "var(--bg-elev)",
                 border: `1px solid ${region.color}`,
                 borderRadius: "2px",
                 padding: "8px 12px",
@@ -637,7 +637,7 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
               <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase", marginBottom: "4px" }}>
                 {region.region}
               </div>
-              <div style={{ color: "#FFFFFF", fontWeight: "bold", fontSize: "16px", fontFamily: "IBM Plex Mono, monospace" }}>
+              <div style={{ color: "var(--text)", fontWeight: "bold", fontSize: "16px", fontFamily: "IBM Plex Mono, monospace" }}>
                 {region.inflation.toFixed(1)}%
               </div>
             </div>
@@ -649,10 +649,10 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
           <div style={{
             width: "100%",
             maxWidth: "100%",
-            border: "1px solid #333333",
+            border: "1px solid var(--border-hi)",
             borderRadius: "4px",
             overflow: "hidden",
-            background: "#0a0a0a"
+            background: "var(--bg-elev)"
           }}>
             <iframe
               src="/inflation_map.html"
@@ -674,27 +674,27 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
 
       {/* Polymarket Inflation Markets */}
       {polymarketInflation.length > 0 && (
-        <div style={{ background: "#000000", border: "1px solid #333333", borderRadius: "4px", padding: "16px", marginTop: "16px" }}>
-          <h3 style={{ color: "#FFFFFF", fontWeight: "bold", marginBottom: "16px", fontFamily: "IBM Plex Mono, monospace" }}>
+        <div style={{ background: "var(--bg)", border: "1px solid var(--border-hi)", borderRadius: "4px", padding: "16px", marginTop: "16px" }}>
+          <h3 style={{ color: "var(--text)", fontWeight: "bold", marginBottom: "16px", fontFamily: "IBM Plex Mono, monospace" }}>
             MERCADOS DE PREDICCIÓN — INFLACIÓN
           </h3>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {polymarketInflation.map((market, idx) => (
-              <div key={idx} style={{ background: "#0a0a0a", border: "1px solid #222222", borderRadius: "2px", padding: "12px" }}>
-                <div style={{ color: "#FFFFFF", fontSize: "12px", marginBottom: "8px", fontFamily: "IBM Plex Mono, monospace" }}>
+              <div key={idx} style={{ background: "var(--bg-elev)", border: "1px solid #222222", borderRadius: "2px", padding: "12px" }}>
+                <div style={{ color: "var(--text)", fontSize: "12px", marginBottom: "8px", fontFamily: "IBM Plex Mono, monospace" }}>
                   {market.question}
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px" }}>
                   <div style={{ display: "flex", gap: "16px" }}>
                     <div>
                       <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase" }}>Probabilidad</div>
-                      <div style={{ color: "#4AF6C3", fontWeight: "bold", fontFamily: "IBM Plex Mono, monospace" }}>
+                      <div style={{ color: "var(--positive)", fontWeight: "bold", fontFamily: "IBM Plex Mono, monospace" }}>
                         {(market.probability * 100).toFixed(1)}%
                       </div>
                     </div>
                     <div>
                       <div style={{ color: "#999999", fontSize: "10px", textTransform: "uppercase" }}>Volumen 24h</div>
-                      <div style={{ color: "#FFFFFF", fontWeight: "bold", fontFamily: "IBM Plex Mono, monospace" }}>
+                      <div style={{ color: "var(--text)", fontWeight: "bold", fontFamily: "IBM Plex Mono, monospace" }}>
                         ${(market.volume24h / 1_000_000).toFixed(1)}M
                       </div>
                     </div>
@@ -711,9 +711,9 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
 
       {/* IPC Tabs */}
       {ipcData && (
-        <div style={{ background: "#000000", border: "1px solid #333333", borderRadius: "4px", padding: "16px", marginTop: "16px" }}>
+        <div style={{ background: "var(--bg)", border: "1px solid var(--border-hi)", borderRadius: "4px", padding: "16px", marginTop: "16px" }}>
           {/* Tab Buttons */}
-          <div style={{ display: "flex", gap: "8px", marginBottom: "16px", borderBottom: "1px solid #333333", paddingBottom: "8px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "8px", marginBottom: "16px", borderBottom: "1px solid var(--border-hi)", paddingBottom: "8px", flexWrap: "wrap" }}>
             {["series", "canasta", "personal"].map((tab) => (
               <button
                 key={tab}
@@ -723,10 +723,10 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
                   fontSize: "12px",
                   fontWeight: "600",
                   fontFamily: "IBM Plex Mono, monospace",
-                  color: ipcTab === tab ? "#FFFFFF" : "#999999",
+                  color: ipcTab === tab ? "var(--text)" : "#999999",
                   background: "transparent",
                   border: "none",
-                  borderBottom: ipcTab === tab ? "2px solid #4AF6C3" : "none",
+                  borderBottom: ipcTab === tab ? "2px solid var(--positive)" : "none",
                   cursor: "pointer",
                   textTransform: "uppercase",
                 }}
@@ -767,7 +767,7 @@ export function InflationView({ inflation }: { inflation: Inflation[] }) {
                         const val = v != null ? (v as number) * 100 : null
                         return val != null ? (
                           <span style={{
-                            color: val > 5 ? "#FF433D" : val > 3 ? "#FFA028" : "#4AF6C3",
+                            color: val > 5 ? "var(--negative)" : val > 3 ? "var(--amber)" : "var(--positive)",
                             fontWeight: "bold"
                           }}>
                             {val >= 0 ? "+" : ""}{(val).toFixed(2)}%

@@ -35,10 +35,10 @@ function statusLabel(status: ScraperStatus["status"]): string {
 
 function statusColor(status: ScraperStatus["status"]): string {
   switch (status) {
-    case "success": return "#4AF6C3"
-    case "error": return "#FF433D"
-    case "running": return "#FFA028"
-    default: return "#555555"
+    case "success": return "var(--positive)"
+    case "error": return "var(--negative)"
+    case "running": return "var(--amber)"
+    default: return "var(--text-mute)"
   }
 }
 
@@ -64,7 +64,7 @@ export function StatusCard({ scrapers, onRefresh, onRefreshAll }: StatusCardProp
           <button
             onClick={onRefreshAll}
             className="text-[10px] px-2 py-0.5 uppercase tracking-wider cursor-pointer"
-            style={{ color: "#0068FF", border: "1px solid #333333", background: "#0a0a0a" }}
+            style={{ color: "#0068FF", border: "1px solid var(--border-hi)", background: "var(--bg-elev)" }}
           >
             Refresh All
           </button>
@@ -84,19 +84,19 @@ export function StatusCard({ scrapers, onRefresh, onRefreshAll }: StatusCardProp
         </thead>
         <tbody>
           {scrapers.map((s, i) => (
-            <tr key={s.source} style={{ background: i % 2 === 0 ? "#000000" : "#060606" }}>
+            <tr key={s.source} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg)" }}>
               <td>
                 <span className={`status-dot ${statusDot(s.status)}`} />
               </td>
-              <td style={{ color: "#FFA028", fontWeight: 600 }}>{s.name.toUpperCase()}</td>
+              <td style={{ color: "var(--amber)", fontWeight: 600 }}>{s.name.toUpperCase()}</td>
               <td style={{ color: statusColor(s.status), fontWeight: 600, fontSize: "10px" }}>
                 {statusLabel(s.status)}
               </td>
               <td style={{ color: "#888888", fontSize: "10px" }}>{fmtDt(s.lastRun)}</td>
-              <td className="text-right" style={{ color: s.recordsAdded ? "#FFFFFF" : "#555555" }}>
+              <td className="text-right" style={{ color: s.recordsAdded ? "var(--text)" : "var(--text-mute)" }}>
                 {s.recordsAdded ?? "-"}
               </td>
-              <td style={{ color: s.status === "error" ? "#FF433D" : "#555555", fontSize: "10px", whiteSpace: "normal", maxWidth: "300px" }}>
+              <td style={{ color: s.status === "error" ? "var(--negative)" : "var(--text-mute)", fontSize: "10px", whiteSpace: "normal", maxWidth: "300px" }}>
                 {s.message || "-"}
               </td>
               <td>
@@ -106,9 +106,9 @@ export function StatusCard({ scrapers, onRefresh, onRefreshAll }: StatusCardProp
                     disabled={s.status === "running"}
                     className="text-[9px] px-1.5 py-0.5 cursor-pointer uppercase"
                     style={{
-                      color: s.status === "running" ? "#555555" : "#0068FF",
+                      color: s.status === "running" ? "var(--text-mute)" : "#0068FF",
                       border: "1px solid #222222",
-                      background: "#0a0a0a",
+                      background: "var(--bg-elev)",
                     }}
                   >
                     Run
@@ -121,7 +121,7 @@ export function StatusCard({ scrapers, onRefresh, onRefreshAll }: StatusCardProp
       </table>
 
       {/* Schedule info */}
-      <div style={{ padding: "6px 8px", borderTop: "1px solid #111111", fontSize: "10px", color: "#555555" }}>
+      <div style={{ padding: "6px 8px", borderTop: "1px solid var(--bg-elev-2)", fontSize: "10px", color: "var(--text-mute)" }}>
         SCHEDULE: DAILY 17:00 ART (20:00 UTC) — MON-FRI POST MARKET CLOSE
       </div>
     </div>

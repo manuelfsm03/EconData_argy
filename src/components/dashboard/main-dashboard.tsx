@@ -7,16 +7,10 @@ import { TabFinanzas } from "./tab-finanzas"
 import { NewsFeed } from "./news-feed"
 import { TickerTape } from "./ticker-tape"
 import { CommandPalette } from "./command-palette"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 import {
-  LayoutDashboard,
-  TrendingUp,
-  BarChart2,
-  Landmark,
-  Newspaper,
-  Search,
+  LayoutDashboard, TrendingUp, BarChart2, Landmark, Newspaper, Search,
 } from "lucide-react"
-
-// ── Tipos ────────────────────────────────────────────────────────────────────
 
 interface NavTab {
   key: string
@@ -32,25 +26,6 @@ const MAIN_TABS: NavTab[] = [
   { key: "noticias", label: "Noticias", Icon: Newspaper        },
 ]
 
-
-function FinanzasPlaceholder() {
-  return (
-    <div style={{ padding: 60, textAlign: "center", fontFamily: "monospace" }}>
-      <div style={{ fontSize: 9, color: "#CE93D8", letterSpacing: 3, textTransform: "uppercase" }}>
-        FINANZAS — RAMA PISTA
-      </div>
-      <div style={{ fontSize: 8, color: "#777", marginTop: 12 }}>
-        Tipo de Cambio · ROFEX · Renta Fija · Renta Variable
-      </div>
-      <div style={{ fontSize: 8, color: "#888", marginTop: 8 }}>
-        En desarrollo por Luca Pistarelli (branch: Pista)
-      </div>
-    </div>
-  )
-}
-
-// ── Tab BCRA — lazy import ─────────────────────────────────────────────────
-
 function TabBCRALazy({ initialSubtab }: { initialSubtab?: string | null }) {
   const [Component, setComponent] = useState<React.ComponentType<{ initialSubtab?: string | null }> | null>(null)
 
@@ -58,27 +33,21 @@ function TabBCRALazy({ initialSubtab }: { initialSubtab?: string | null }) {
     import("./tab-bcra")
       .then((m) => setComponent(() => m.TabBCRA))
       .catch(() => setComponent(() => () => (
-        <div style={{ padding: 40, textAlign: "center", fontFamily: "monospace", color: "#777", fontSize: 9 }}>
+        <div style={{ padding: 40, textAlign: "center", fontFamily: "var(--font-data)", color: "var(--text-mute)", fontSize: 11 }}>
           BCRA — ERROR AL CARGAR
         </div>
       )))
   }, [])
 
   if (!Component) return (
-    <div style={{ padding: 40, textAlign: "center", fontFamily: "monospace", color: "#777", fontSize: 9 }}>
+    <div style={{ padding: 40, textAlign: "center", fontFamily: "var(--font-data)", color: "var(--text-mute)", fontSize: 11 }}>
       BCRA — CARGANDO...
     </div>
   )
   return <Component initialSubtab={initialSubtab} />
 }
 
-// ── Tab Noticias ─────────────────────────────────────────────────────────────
-
-function TabNoticias() {
-  return <NewsFeed />
-}
-
-// ── Dashboard principal ───────────────────────────────────────────────────────
+function TabNoticias() { return <NewsFeed /> }
 
 export function Dashboard() {
   const [activeTab, setActiveTab] = useState("macro")
@@ -90,9 +59,11 @@ export function Dashboard() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault(); setSearchOpen(true); return
+      }
       if (e.key === "/" && tag !== "INPUT" && tag !== "TEXTAREA") {
-        e.preventDefault()
-        setSearchOpen(true)
+        e.preventDefault(); setSearchOpen(true)
       }
     }
     window.addEventListener("keydown", handler)
@@ -111,46 +82,33 @@ export function Dashboard() {
     .toUpperCase()
 
   return (
-    <div style={{ background: "#121214", minHeight: "100vh", overflowX: "hidden" }}>
-
-      {/* ── FILA 1: TickerTape ───────────────────────────────────────────────── */}
+    <div style={{ background: "var(--bg)", minHeight: "100vh", overflowX: "hidden" }}>
       <TickerTape />
 
-      {/* ── FILA 2: TopBar horizontal — Logo + Tabs + Search + Fecha ─────────── */}
       <div style={{
-        background: "#121214",
-        borderBottom: "1px solid #2A2A2F",
-        height: 56,
-        display: "flex",
-        alignItems: "center",
-        padding: "0 24px",
-        gap: 24,
-        position: "sticky",
-        top: 0,
-        zIndex: 50,
+        background: "var(--bg)",
+        borderBottom: "1px solid var(--border)",
+        height: 56, display: "flex", alignItems: "center",
+        padding: "0 24px", gap: 24,
+        position: "sticky", top: 0, zIndex: 50,
       }}>
-        {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           <div style={{
-            width: 30, height: 30, borderRadius: 8,
-            background: "#FFA028",
+            width: 28, height: 28, borderRadius: 7,
+            background: "var(--amber)",
             display: "flex", alignItems: "center", justifyContent: "center",
             flexShrink: 0,
           }}>
-            <span style={{ fontWeight: 800, fontSize: 15, color: "#121214", fontFamily: "var(--font-ui)", lineHeight: 1 }}>L</span>
+            <span style={{ fontWeight: 700, fontSize: 14, color: "var(--bg)", fontFamily: "var(--font-ui)", lineHeight: 1 }}>L</span>
           </div>
           <span style={{
-            fontSize: 15, fontWeight: 600, color: "#F5F3EE",
+            fontSize: 15, fontWeight: 600, color: "var(--text)",
             letterSpacing: -0.2, fontFamily: "var(--font-ui)",
-          }}>
-            La Pizarra
-          </span>
+          }}>La Pizarra</span>
         </div>
 
-        {/* Separador */}
-        <div style={{ width: 1, height: 20, background: "#2A2A2F", flexShrink: 0 }} />
+        <div style={{ width: 1, height: 20, background: "var(--border)", flexShrink: 0 }} />
 
-        {/* Tabs — underline style */}
         <div style={{ display: "flex", alignItems: "stretch", height: "100%", gap: 2 }}>
           {MAIN_TABS.map(({ key, label, Icon }) => {
             const active = activeTab === key
@@ -161,18 +119,16 @@ export function Dashboard() {
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
                   padding: "0 14px",
-                  fontSize: 13, fontWeight: active ? 600 : 400,
-                  color: active ? "#F5F3EE" : "#A8A49D",
-                  background: "transparent",
-                  border: "none",
-                  borderBottom: active ? "2px solid #FFA028" : "2px solid transparent",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
+                  fontSize: 13, fontWeight: active ? 600 : 500,
+                  color: active ? "var(--text)" : "var(--text-dim)",
+                  background: "transparent", border: "none",
+                  borderBottom: active ? "2px solid var(--amber)" : "2px solid transparent",
+                  cursor: "pointer", whiteSpace: "nowrap",
                   transition: "color 0.15s, border-color 0.15s",
                   fontFamily: "var(--font-ui)",
                 }}
-                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.color = "#F5F3EE" }}
-                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.color = "#A8A49D" }}
+                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.color = "var(--text)" }}
+                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.color = "var(--text-dim)" }}
               >
                 <Icon size={14} strokeWidth={active ? 2.2 : 1.6} />
                 {label}
@@ -183,37 +139,35 @@ export function Dashboard() {
 
         <div style={{ flex: 1 }} />
 
-        {/* Buscador */}
         <button
           onClick={() => setSearchOpen(true)}
-          title="Buscar indicador (tecla /)"
+          title="Buscar indicador (⌘K)"
           style={{
             display: "flex", alignItems: "center", gap: 8,
-            width: 260, height: 34,
-            background: "#1A1A1D", border: "1px solid #2A2A2F",
-            borderRadius: 8, cursor: "text",
-            padding: "0 12px", textAlign: "left",
-            flexShrink: 0,
+            width: 280, height: 34,
+            background: "var(--bg-elev)", border: "1px solid var(--border)",
+            borderRadius: 7, cursor: "text",
+            padding: "0 12px", textAlign: "left", flexShrink: 0,
           }}
         >
-          <Search size={13} strokeWidth={1.8} style={{ color: "#5F5C56", flexShrink: 0 }} />
-          <span style={{ fontSize: 12, color: "#5F5C56", fontFamily: "var(--font-ui)", flex: 1 }}>
+          <Search size={13} strokeWidth={1.8} style={{ color: "var(--text-mute)", flexShrink: 0 }} />
+          <span style={{ fontSize: 12.5, color: "var(--text-mute)", fontFamily: "var(--font-ui)", flex: 1 }}>
             Buscar indicador…
           </span>
           <span style={{
-            fontSize: 10, color: "#5F5C56", fontFamily: "var(--font-data)",
-            background: "#222226", padding: "1px 5px", borderRadius: 4,
-            border: "1px solid #2A2A2F",
-          }}>/</span>
+            fontSize: 10, color: "var(--text-dim)", fontFamily: "var(--font-data)",
+            background: "var(--bg-elev-2)", padding: "2px 6px", borderRadius: 4,
+            border: "1px solid var(--border)",
+          }}>⌘K</span>
         </button>
 
-        {/* Fecha */}
-        <span style={{ fontSize: 11, color: "#5F5C56", fontFamily: "var(--font-data)", flexShrink: 0 }}>
+        <ThemeToggle />
+
+        <span style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "var(--font-data)", flexShrink: 0 }}>
           {dateStr}
         </span>
       </div>
 
-      {/* ── CONTENIDO ───────────────────────────────────────────────────────── */}
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 8px" }}>
         {activeTab === "resumen"   && <TabResumen onNavigate={handleNavigate} />}
         {activeTab === "finanzas"  && <TabFinanzas />}
@@ -222,7 +176,6 @@ export function Dashboard() {
         {activeTab === "noticias"  && <TabNoticias />}
       </div>
 
-      {/* ── Command Palette ─────────────────────────────────────────────────── */}
       <CommandPalette
         isOpen={searchOpen}
         onClose={() => setSearchOpen(false)}

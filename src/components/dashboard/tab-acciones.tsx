@@ -72,20 +72,20 @@ function fmtVol(v: number | null | undefined): string {
   return v.toFixed(0)
 }
 function changeColor(v: number | null | undefined): string {
-  if (v == null) return "#555"
-  return v > 0 ? "#4AF6C3" : v < 0 ? "#FF433D" : "#888"
+  if (v == null) return "var(--text-mute)"
+  return v > 0 ? "var(--positive)" : v < 0 ? "var(--negative)" : "var(--text-dim)"
 }
 
 // ── SubTabs ───────────────────────────────────────────────────────────────────
 function SubTabs({ tabs, active, onChange }: { tabs: { key: string; label: string }[]; active: string; onChange: (k: string) => void }) {
   return (
-    <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #222" }}>
+    <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)" }}>
       {tabs.map((t) => (
         <button key={t.key} onClick={() => onChange(t.key)} style={{
-          background: active === t.key ? "#0d0d0d" : "transparent",
-          color: active === t.key ? "#FFA028" : "#555",
+          background: active === t.key ? "var(--bg-elev-2)" : "transparent",
+          color: active === t.key ? "var(--amber)" : "var(--text-mute)",
           border: "none",
-          borderBottom: active === t.key ? "2px solid #FFA028" : "2px solid transparent",
+          borderBottom: active === t.key ? "2px solid var(--amber)" : "2px solid transparent",
           padding: "6px 14px", fontSize: 10,
           textTransform: "uppercase", letterSpacing: 1, cursor: "pointer",
         }}>{t.label}</button>
@@ -125,8 +125,8 @@ function ScreenerCategory({ cat, stocks, onSelect }: {
   function SortTh({ k, label, align = "right" }: { k: SortKey; label: string; align?: "left" | "right" }) {
     return (
       <th onClick={() => handleSort(k)} style={{
-        padding: "3px 8px", fontSize: 9, color: sortKey === k ? "#FFA028" : "#555",
-        textAlign: align, cursor: "pointer", borderBottom: "1px solid #1a1a1a",
+        padding: "3px 8px", fontSize: 9, color: sortKey === k ? "var(--amber)" : "var(--text-mute)",
+        textAlign: align, cursor: "pointer", borderBottom: "1px solid var(--border)",
         userSelect: "none", whiteSpace: "nowrap",
       }}>
         {label} {sortKey === k ? (sortDir === "asc" ? "↑" : "↓") : ""}
@@ -140,17 +140,17 @@ function ScreenerCategory({ cat, stocks, onSelect }: {
       <div
         onClick={() => setCollapsed((c) => !c)}
         style={{
-          padding: "5px 10px", background: "#0d0d0d",
-          borderBottom: "1px solid #1a1a1a", borderLeft: "3px solid #FFA028",
+          padding: "5px 10px", background: "var(--bg-elev-2)",
+          borderBottom: "1px solid var(--border)", borderLeft: "3px solid var(--amber)",
           display: "flex", justifyContent: "space-between", alignItems: "center",
           cursor: "pointer",
         }}
       >
-        <span style={{ fontSize: 10, color: "#FFA028", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>{cat}</span>
+        <span style={{ fontSize: 10, color: "var(--amber)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>{cat}</span>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <span style={{ fontSize: 9, color: "#4AF6C3" }}>{positives}↑</span>
-          <span style={{ fontSize: 9, color: "#FF433D" }}>{negatives}↓</span>
-          <span style={{ fontSize: 9, color: "#888" }}>{collapsed ? "▼" : "▲"}</span>
+          <span style={{ fontSize: 9, color: "var(--positive)" }}>{positives}↑</span>
+          <span style={{ fontSize: 9, color: "var(--negative)" }}>{negatives}↓</span>
+          <span style={{ fontSize: 9, color: "var(--text-dim)" }}>{collapsed ? "▼" : "▲"}</span>
         </div>
       </div>
 
@@ -161,9 +161,9 @@ function ScreenerCategory({ cat, stocks, onSelect }: {
               <SortTh k="ticker" label="Ticker" align="left" />
               <SortTh k="lastPrice" label="Último" />
               <SortTh k="change1D" label="Var 1D%" />
-              <th style={{ padding: "3px 8px", fontSize: 9, color: "#888", textAlign: "right", borderBottom: "1px solid #1a1a1a" }}>Cierre ant.</th>
+              <th style={{ padding: "3px 8px", fontSize: 9, color: "var(--text-dim)", textAlign: "right", borderBottom: "1px solid var(--border)" }}>Cierre ant.</th>
               <SortTh k="volume" label="Volumen" />
-              <th style={{ padding: "3px 8px", fontSize: 9, color: "#888", textAlign: "right", borderBottom: "1px solid #1a1a1a" }}>Bid / Ask</th>
+              <th style={{ padding: "3px 8px", fontSize: 9, color: "var(--text-dim)", textAlign: "right", borderBottom: "1px solid var(--border)" }}>Bid / Ask</th>
             </tr>
           </thead>
           <tbody>
@@ -172,26 +172,26 @@ function ScreenerCategory({ cat, stocks, onSelect }: {
                 key={stock.ticker}
                 onClick={() => onSelect(stock.ticker)}
                 style={{
-                  background: i % 2 === 0 ? "#060606" : "#080808",
+                  background: i % 2 === 0 ? "var(--bg)" : "var(--bg-row-alt)",
                   cursor: "pointer",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#0d0d0d")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = i % 2 === 0 ? "#060606" : "#080808")}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-elev-2)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = i % 2 === 0 ? "var(--bg)" : "var(--bg-row-alt)")}
               >
-                <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: "#FFA028" }}>{stock.ticker}</td>
-                <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 600, color: "#fff", textAlign: "right", fontFamily: "monospace" }}>
+                <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: "var(--amber)" }}>{stock.ticker}</td>
+                <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 600, color: "var(--text)", textAlign: "right", fontFamily: "var(--font-data)" }}>
                   {stock.lastPrice != null ? fmtNum(stock.lastPrice, 2) : "—"}
                 </td>
-                <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: changeColor(stock.change1D), textAlign: "right", fontFamily: "monospace" }}>
+                <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: changeColor(stock.change1D), textAlign: "right", fontFamily: "var(--font-data)" }}>
                   {fmtPct(stock.change1D)}
                 </td>
-                <td style={{ padding: "5px 8px", fontSize: 11, color: "#888", textAlign: "right", fontFamily: "monospace" }}>
+                <td style={{ padding: "5px 8px", fontSize: 11, color: "var(--text-dim)", textAlign: "right", fontFamily: "var(--font-data)" }}>
                   {stock.closePrice != null ? fmtNum(stock.closePrice, 2) : "—"}
                 </td>
-                <td style={{ padding: "5px 8px", fontSize: 11, color: "#999", textAlign: "right", fontFamily: "monospace" }}>
+                <td style={{ padding: "5px 8px", fontSize: 11, color: "var(--text-dim)", textAlign: "right", fontFamily: "var(--font-data)" }}>
                   {fmtVol(stock.volume)}
                 </td>
-                <td style={{ padding: "5px 8px", fontSize: 10, color: "#888", textAlign: "right", fontFamily: "monospace" }}>
+                <td style={{ padding: "5px 8px", fontSize: 10, color: "var(--text-dim)", textAlign: "right", fontFamily: "var(--font-data)" }}>
                   {stock.bid != null && stock.ask != null
                     ? `${fmtNum(stock.bid, 1)} / ${fmtNum(stock.ask, 1)}`
                     : "—"}
@@ -221,8 +221,8 @@ function ScreenerView({ onSelect }: { onSelect: (t: string) => void }) {
 
   useEffect(() => { load() }, [load])
 
-  if (loading) return <div style={{ padding: 32, textAlign: "center", color: "#888", fontSize: 11 }}>Cargando cotizaciones del Merval...</div>
-  if (error) return <div style={{ padding: 16, color: "#FF433D", fontSize: 11 }}>Error: {error}</div>
+  if (loading) return <div style={{ padding: 32, textAlign: "center", color: "var(--text-dim)", fontSize: 11 }}>Cargando cotizaciones del Merval...</div>
+  if (error) return <div style={{ padding: 16, color: "var(--negative)", fontSize: 11 }}>Error: {error}</div>
 
   const allStocks = Object.values(data).flat()
   const filteredData = search
@@ -231,21 +231,21 @@ function ScreenerView({ onSelect }: { onSelect: (t: string) => void }) {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 8, padding: "6px 8px", background: "#0a0a0a", borderBottom: "1px solid #1a1a1a", alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 8, padding: "6px 8px", background: "var(--bg-elev)", borderBottom: "1px solid var(--border)", alignItems: "center" }}>
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value.toUpperCase())}
           placeholder="Buscar ticker..."
           style={{
-            background: "#111", border: "1px solid #333", color: "#ccc",
+            background: "var(--bg-elev-2)", border: "1px solid var(--border-hi)", color: "#ccc",
             padding: "4px 8px", fontSize: 11, width: 150, borderRadius: 2,
             outline: "none",
           }}
         />
-        <span style={{ fontSize: 9, color: "#888" }}>{allStocks.length} instrumentos · Haz click en un ticker para ver detalle</span>
+        <span style={{ fontSize: 9, color: "var(--text-dim)" }}>{allStocks.length} instrumentos · Haz click en un ticker para ver detalle</span>
         <button onClick={load} style={{
           marginLeft: "auto", fontSize: 9, padding: "3px 8px",
-          background: "transparent", border: "1px solid #333", color: "#999", cursor: "pointer",
+          background: "transparent", border: "1px solid var(--border-hi)", color: "var(--text-dim)", cursor: "pointer",
         }}>↻ Actualizar</button>
       </div>
 
@@ -253,7 +253,7 @@ function ScreenerView({ onSelect }: { onSelect: (t: string) => void }) {
         <ScreenerCategory key={cat} cat={cat} stocks={stocks} onSelect={onSelect} />
       ))}
 
-      <div style={{ padding: "4px 8px", fontSize: 9, color: "#777", borderTop: "1px solid #111" }}>
+      <div style={{ padding: "4px 8px", fontSize: 9, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
         Precios: api-merval (24hs) · Variación vs cierre anterior · Click en ticker para ver detalle + gráfico
       </div>
     </div>
@@ -278,7 +278,7 @@ function PeerComparison() {
       .catch(() => setLoading(false))
   }, [selectedCat])
 
-  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando...</div>
+  if (loading) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Cargando...</div>
 
   const stocks = data[selectedCat] ?? []
   const withData = stocks.filter((s) => s.lastPrice != null)
@@ -293,13 +293,13 @@ function PeerComparison() {
   return (
     <div>
       {/* Category selector */}
-      <div style={{ display: "flex", gap: 2, padding: "6px 8px", background: "#0a0a0a", borderBottom: "1px solid #1a1a1a", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 2, padding: "6px 8px", background: "var(--bg-elev)", borderBottom: "1px solid var(--border)", flexWrap: "wrap" }}>
         {Object.keys(data).map((cat) => (
           <button key={cat} onClick={() => setSelectedCat(cat)} style={{
             fontSize: 9, padding: "3px 8px",
-            background: selectedCat === cat ? "#FFA028" : "transparent",
-            color: selectedCat === cat ? "#000" : "#666",
-            border: `1px solid ${selectedCat === cat ? "#FFA028" : "#333"}`,
+            background: selectedCat === cat ? "var(--amber)" : "transparent",
+            color: selectedCat === cat ? "var(--bg)" : "#666",
+            border: `1px solid ${selectedCat === cat ? "var(--amber)" : "var(--border-hi)"}`,
             cursor: "pointer", borderRadius: 2,
             maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           }}>{cat}</button>
@@ -310,16 +310,16 @@ function PeerComparison() {
         <>
           {/* Median banner */}
           {medianPrice != null && (
-            <div style={{ padding: "6px 12px", background: "#0d0d0d", borderBottom: "1px solid #1a1a1a", display: "flex", gap: 24 }}>
-              <div style={{ fontSize: 9, color: "#888" }}>
-                Mediana precio: <span style={{ color: "#FFA028", fontFamily: "monospace" }}>{fmtNum(medianPrice)}</span>
+            <div style={{ padding: "6px 12px", background: "var(--bg-elev-2)", borderBottom: "1px solid var(--border)", display: "flex", gap: 24 }}>
+              <div style={{ fontSize: 9, color: "var(--text-dim)" }}>
+                Mediana precio: <span style={{ color: "var(--amber)", fontFamily: "var(--font-data)" }}>{fmtNum(medianPrice)}</span>
               </div>
               {medianChange != null && (
-                <div style={{ fontSize: 9, color: "#888" }}>
-                  Mediana var 1D: <span style={{ color: changeColor(medianChange), fontFamily: "monospace" }}>{fmtPct(medianChange)}</span>
+                <div style={{ fontSize: 9, color: "var(--text-dim)" }}>
+                  Mediana var 1D: <span style={{ color: changeColor(medianChange), fontFamily: "var(--font-data)" }}>{fmtPct(medianChange)}</span>
                 </div>
               )}
-              <div style={{ fontSize: 9, color: "#888" }}>{withData.length} instrumentos</div>
+              <div style={{ fontSize: 9, color: "var(--text-dim)" }}>{withData.length} instrumentos</div>
             </div>
           )}
 
@@ -328,9 +328,9 @@ function PeerComparison() {
               <tr>
                 {["Ticker", "Último Px", "Var 1D%", "Cierre ant.", "Volumen", "vs Mediana 1D"].map((h, i) => (
                   <th key={h} style={{
-                    padding: "4px 8px", fontSize: 9, color: "#888",
+                    padding: "4px 8px", fontSize: 9, color: "var(--text-dim)",
                     textAlign: i === 0 ? "left" : "right",
-                    borderBottom: "1px solid #1a1a1a",
+                    borderBottom: "1px solid var(--border)",
                   }}>{h}</th>
                 ))}
               </tr>
@@ -343,22 +343,22 @@ function PeerComparison() {
                     ? stock.change1D - medianChange : null
 
                   return (
-                    <tr key={stock.ticker} style={{ background: i % 2 === 0 ? "#060606" : "#080808" }}>
-                      <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: "#FFA028" }}>{stock.ticker}</td>
-                      <td style={{ padding: "5px 8px", fontSize: 11, color: "#fff", textAlign: "right", fontFamily: "monospace" }}>
+                    <tr key={stock.ticker} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg-row-alt)" }}>
+                      <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: "var(--amber)" }}>{stock.ticker}</td>
+                      <td style={{ padding: "5px 8px", fontSize: 11, color: "var(--text)", textAlign: "right", fontFamily: "var(--font-data)" }}>
                         {fmtNum(stock.lastPrice)}
                       </td>
-                      <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: changeColor(stock.change1D), textAlign: "right", fontFamily: "monospace" }}>
+                      <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: changeColor(stock.change1D), textAlign: "right", fontFamily: "var(--font-data)" }}>
                         {fmtPct(stock.change1D)}
                       </td>
-                      <td style={{ padding: "5px 8px", fontSize: 11, color: "#888", textAlign: "right", fontFamily: "monospace" }}>
+                      <td style={{ padding: "5px 8px", fontSize: 11, color: "var(--text-dim)", textAlign: "right", fontFamily: "var(--font-data)" }}>
                         {fmtNum(stock.closePrice)}
                       </td>
-                      <td style={{ padding: "5px 8px", fontSize: 11, color: "#999", textAlign: "right", fontFamily: "monospace" }}>
+                      <td style={{ padding: "5px 8px", fontSize: 11, color: "var(--text-dim)", textAlign: "right", fontFamily: "var(--font-data)" }}>
                         {fmtVol(stock.volume)}
                       </td>
-                      <td style={{ padding: "5px 8px", fontSize: 11, fontFamily: "monospace", textAlign: "right",
-                        color: vsMedian == null ? "#555" : vsMedian > 0 ? "#4AF6C3" : "#FF433D" }}>
+                      <td style={{ padding: "5px 8px", fontSize: 11, fontFamily: "var(--font-data)", textAlign: "right",
+                        color: vsMedian == null ? "var(--text-mute)" : vsMedian > 0 ? "var(--positive)" : "var(--negative)" }}>
                         {vsMedian != null ? (vsMedian >= 0 ? "+" : "") + vsMedian.toFixed(2) + "%" : "—"}
                       </td>
                     </tr>
@@ -380,9 +380,9 @@ function DetailTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   const close = payload.find((p: { dataKey: string }) => p.dataKey === "close")?.value
   return (
-    <div style={{ background: "#0d0d0d", border: "1px solid #333", padding: "8px 12px", fontSize: 11 }}>
-      <div style={{ color: "#999", fontSize: 9, marginBottom: 4 }}>{label}</div>
-      {close != null && <div style={{ color: "#FFA028", fontFamily: "monospace" }}>Cierre: {fmtNum(close)}</div>}
+    <div style={{ background: "var(--bg-elev-2)", border: "1px solid var(--border-hi)", padding: "8px 12px", fontSize: 11 }}>
+      <div style={{ color: "var(--text-dim)", fontSize: 9, marginBottom: 4 }}>{label}</div>
+      {close != null && <div style={{ color: "var(--amber)", fontFamily: "var(--font-data)" }}>Cierre: {fmtNum(close)}</div>}
     </div>
   )
 }
@@ -411,41 +411,41 @@ function StockDetailView({ ticker, onClose }: { ticker: string; onClose: () => v
       .catch(() => {})
   }, [ticker])
 
-  if (loading) return <div style={{ padding: 16, color: "#888", fontSize: 11 }}>Cargando {ticker}...</div>
-  if (!detail) return <div style={{ padding: 16, color: "#FF433D", fontSize: 11 }}>No se pudo cargar {ticker}</div>
+  if (loading) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Cargando {ticker}...</div>
+  if (!detail) return <div style={{ padding: 16, color: "var(--negative)", fontSize: 11 }}>No se pudo cargar {ticker}</div>
 
   return (
-    <div style={{ background: "#060606", border: "1px solid #1a1a1a" }}>
+    <div style={{ background: "var(--bg)", border: "1px solid var(--border)" }}>
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "10px 12px", borderBottom: "1px solid #1a1a1a" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
         <div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-            <span style={{ fontSize: 18, fontWeight: 700, color: "#FFA028" }}>{detail.ticker}</span>
-            <span style={{ fontSize: 24, fontFamily: "monospace", fontWeight: 700, color: "#fff" }}>
+            <span style={{ fontSize: 18, fontWeight: 700, color: "var(--amber)" }}>{detail.ticker}</span>
+            <span style={{ fontSize: 24, fontFamily: "var(--font-data)", fontWeight: 700, color: "var(--text)" }}>
               {detail.lastPrice != null ? fmtNum(detail.lastPrice, 2) : "—"}
             </span>
-            <span style={{ fontSize: 14, fontFamily: "monospace", color: changeColor(detail.change1DPct) }}>
+            <span style={{ fontSize: 14, fontFamily: "var(--font-data)", color: changeColor(detail.change1DPct) }}>
               {fmtPct(detail.change1DPct)}
               {detail.change1D != null && <span style={{ fontSize: 11, marginLeft: 4 }}>({detail.change1D >= 0 ? "+" : ""}{fmtNum(detail.change1D, 2)})</span>}
             </span>
           </div>
           <div style={{ display: "flex", gap: 16, marginTop: 4 }}>
-            {detail.high52w && <span style={{ fontSize: 9, color: "#888" }}>52W H: <span style={{ color: "#4AF6C3" }}>{fmtNum(detail.high52w)}</span></span>}
-            {detail.low52w && <span style={{ fontSize: 9, color: "#888" }}>52W L: <span style={{ color: "#FF433D" }}>{fmtNum(detail.low52w)}</span></span>}
-            {detail.volume && <span style={{ fontSize: 9, color: "#888" }}>Vol: <span style={{ color: "#888" }}>{fmtVol(detail.volume)}</span></span>}
-            <span style={{ fontSize: 9, color: "#888" }}>{detail.currency}</span>
+            {detail.high52w && <span style={{ fontSize: 9, color: "var(--text-dim)" }}>52W H: <span style={{ color: "var(--positive)" }}>{fmtNum(detail.high52w)}</span></span>}
+            {detail.low52w && <span style={{ fontSize: 9, color: "var(--text-dim)" }}>52W L: <span style={{ color: "var(--negative)" }}>{fmtNum(detail.low52w)}</span></span>}
+            {detail.volume && <span style={{ fontSize: 9, color: "var(--text-dim)" }}>Vol: <span style={{ color: "var(--text-dim)" }}>{fmtVol(detail.volume)}</span></span>}
+            <span style={{ fontSize: 9, color: "var(--text-dim)" }}>{detail.currency}</span>
           </div>
         </div>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 16 }}>✕</button>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 16 }}>✕</button>
       </div>
 
       {/* Panel toggle */}
-      <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #1a1a1a" }}>
+      <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)" }}>
         {[{ k: "chart", l: "Gráfico" }, { k: "news", l: `Noticias (${news.length})` }].map(({ k, l }) => (
           <button key={k} onClick={() => setActivePanel(k as "chart" | "news")} style={{
-            background: activePanel === k ? "#0d0d0d" : "transparent",
-            color: activePanel === k ? "#FFA028" : "#555",
-            border: "none", borderBottom: activePanel === k ? "2px solid #FFA028" : "2px solid transparent",
+            background: activePanel === k ? "var(--bg-elev-2)" : "transparent",
+            color: activePanel === k ? "var(--amber)" : "var(--text-mute)",
+            border: "none", borderBottom: activePanel === k ? "2px solid var(--amber)" : "2px solid transparent",
             padding: "5px 14px", fontSize: 10, cursor: "pointer",
           }}>{l}</button>
         ))}
@@ -454,13 +454,13 @@ function StockDetailView({ ticker, onClose }: { ticker: string; onClose: () => v
       {activePanel === "chart" && (
         <div>
           {/* Range selector */}
-          <div style={{ display: "flex", gap: 2, padding: "5px 8px", background: "#0a0a0a", borderBottom: "1px solid #1a1a1a" }}>
+          <div style={{ display: "flex", gap: 2, padding: "5px 8px", background: "var(--bg-elev)", borderBottom: "1px solid var(--border)" }}>
             {(["1m", "3m", "6m", "1y", "max"] as HistRange[]).map((r) => (
               <button key={r} onClick={() => setRange(r)} style={{
                 fontSize: 9, padding: "2px 8px",
-                background: range === r ? "#FFA028" : "transparent",
-                color: range === r ? "#000" : "#666",
-                border: `1px solid ${range === r ? "#FFA028" : "#333"}`,
+                background: range === r ? "var(--amber)" : "transparent",
+                color: range === r ? "var(--bg)" : "#666",
+                border: `1px solid ${range === r ? "var(--amber)" : "var(--border-hi)"}`,
                 cursor: "pointer", borderRadius: 2,
               }}>{r.toUpperCase()}</button>
             ))}
@@ -470,24 +470,24 @@ function StockDetailView({ ticker, onClose }: { ticker: string; onClose: () => v
           <div style={{ padding: "8px 4px 4px 0" }}>
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={detail.history} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#1a1a1a" strokeDasharray="3 3" />
-                <XAxis dataKey="date" tick={{ fill: "#555", fontSize: 8 }} axisLine={{ stroke: "#333" }} tickLine={false}
+                <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+                <XAxis dataKey="date" tick={{ fill: "var(--text-mute)", fontSize: 8 }} axisLine={{ stroke: "var(--border-hi)" }} tickLine={false}
                   interval="preserveStartEnd"
                   tickFormatter={(d) => {
                     try { return new Date(d + "T00:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "short" }) } catch { return d }
                   }}
                 />
-                <YAxis tick={{ fill: "#555", fontSize: 8 }} axisLine={{ stroke: "#333" }} tickLine={false}
+                <YAxis tick={{ fill: "var(--text-mute)", fontSize: 8 }} axisLine={{ stroke: "var(--border-hi)" }} tickLine={false}
                   width={48} tickFormatter={(v) => fmtNum(v, 0)}
                   domain={["auto", "auto"]}
                 />
                 {detail.closePrice && (
-                  <ReferenceLine y={detail.closePrice} stroke="#333" strokeDasharray="4 2"
-                    label={{ value: "Cierre", fill: "#444", fontSize: 8, position: "insideTopLeft" }}
+                  <ReferenceLine y={detail.closePrice} stroke="var(--border-hi)" strokeDasharray="4 2"
+                    label={{ value: "Cierre", fill: "var(--text-mute)", fontSize: 8, position: "insideTopLeft" }}
                   />
                 )}
                 <Tooltip content={<DetailTooltip />} />
-                <Line type="monotone" dataKey="close" name="Precio" stroke="#FFA028" dot={false} strokeWidth={1.5} connectNulls />
+                <Line type="monotone" dataKey="close" name="Precio" stroke="var(--amber)" dot={false} strokeWidth={1.5} connectNulls />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -497,22 +497,22 @@ function StockDetailView({ ticker, onClose }: { ticker: string; onClose: () => v
       {activePanel === "news" && (
         <div style={{ maxHeight: 320, overflowY: "auto" }}>
           {news.length === 0 ? (
-            <div style={{ padding: 16, color: "#888", fontSize: 11, textAlign: "center" }}>
+            <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11, textAlign: "center" }}>
               No se encontraron noticias recientes para {ticker}
             </div>
           ) : (
             news.map((n) => (
-              <div key={n.id} style={{ padding: "10px 12px", borderBottom: "1px solid #111" }}>
+              <div key={n.id} style={{ padding: "10px 12px", borderBottom: "1px solid var(--bg-elev-2)" }}>
                 <a href={n.url} target="_blank" rel="noreferrer" style={{ color: "#ccc", textDecoration: "none", fontSize: 12, lineHeight: 1.4 }}>
                   {n.title}
                 </a>
                 <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                  <span style={{ fontSize: 9, color: "#FFA028" }}>{n.source}</span>
-                  <span style={{ fontSize: 9, color: "#888" }}>
+                  <span style={{ fontSize: 9, color: "var(--amber)" }}>{n.source}</span>
+                  <span style={{ fontSize: 9, color: "var(--text-dim)" }}>
                     {new Date(n.date).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })}
                   </span>
                 </div>
-                {n.snippet && <div style={{ fontSize: 10, color: "#999", marginTop: 4, lineHeight: 1.4 }}>{n.snippet}</div>}
+                {n.snippet && <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 4, lineHeight: 1.4 }}>{n.snippet}</div>}
               </div>
             ))
           )}
@@ -550,7 +550,7 @@ export function TabAcciones() {
       {activeTab === "detalle" && (
         selectedTicker
           ? <StockDetailView ticker={selectedTicker} onClose={() => { setSelectedTicker(null); setActiveTab("screener") }} />
-          : <div style={{ padding: 32, textAlign: "center", color: "#888", fontSize: 11 }}>
+          : <div style={{ padding: 32, textAlign: "center", color: "var(--text-dim)", fontSize: 11 }}>
               Seleccioná un ticker desde el Screener para ver el detalle
             </div>
       )}
