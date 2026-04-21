@@ -71,13 +71,14 @@ interface SubTabsProps {
 function SubTabs({ active, onChange }: SubTabsProps) {
   return (
     <div style={{
-      background: "#050505",
-      borderBottom: "1px solid #111",
+      background: "#1A1A1D",
+      borderBottom: "1px solid #2A2A2F",
       display: "flex",
-      alignItems: "center",
-      padding: "10px 14px",
-      gap: 6,
-      flexWrap: "wrap",
+      alignItems: "stretch",
+      padding: "0 24px",
+      gap: 0,
+      overflowX: "auto",
+      scrollbarWidth: "none",
     }}>
       {BCRA_TABS.map(t => {
         const isActive = active === t.key
@@ -89,32 +90,32 @@ function SubTabs({ active, onChange }: SubTabsProps) {
               display: "flex",
               alignItems: "center",
               gap: 6,
-              background: isActive ? "rgba(255,160,40,0.08)" : "transparent",
-              border: isActive ? "1px solid rgba(255,160,40,0.4)" : "1px solid #2a2a2a",
-              borderRadius: 20,
+              background: "transparent",
+              border: "none",
+              outline: "none",
+              borderBottom: isActive ? "2px solid #FFA028" : "2px solid transparent",
+              marginBottom: "-1px",
               cursor: "pointer",
-              padding: "5px 14px",
+              padding: "12px 16px",
               whiteSpace: "nowrap",
-              transition: "all 0.15s",
-              fontFamily: "monospace",
+              transition: "color 0.15s, border-color 0.15s",
+              fontFamily: "var(--font-ui)",
             }}
           >
             <span style={{
-              fontSize: 11,
-              color: isActive ? "#FFA028" : "#555",
-              fontFamily: "monospace",
+              fontSize: 12,
+              color: isActive ? "#F5F3EE" : "#A8A49D",
+              fontFamily: "var(--font-ui)",
               fontWeight: 700,
               lineHeight: 1,
             }}>
               {t.icon}
             </span>
             <span style={{
-              fontSize: 10,
-              fontFamily: "monospace",
-              color: isActive ? "#FFA028" : "#888",
+              fontSize: 12,
+              fontFamily: "var(--font-ui)",
+              color: isActive ? "#F5F3EE" : "#A8A49D",
               fontWeight: isActive ? 600 : 400,
-              letterSpacing: 0.5,
-              textTransform: "uppercase" as const,
             }}>
               {t.label}
             </span>

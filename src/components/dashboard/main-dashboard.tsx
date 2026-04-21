@@ -107,8 +107,10 @@ export function Dashboard() {
 
   const now = new Date()
   const dateStr = now
-    .toLocaleDateString("es-AR", { weekday: "short", day: "2-digit", month: "short", year: "numeric" })
+    .toLocaleDateString("es-AR", { day: "2-digit", month: "short" })
     .toUpperCase()
+    + " · "
+    + now.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })
 
   return (
     <div style={{ background: "#121214", minHeight: "100vh", overflowX: "hidden" }}>
@@ -165,7 +167,9 @@ export function Dashboard() {
                   color: active ? "#F5F3EE" : "#A8A49D",
                   background: "transparent",
                   border: "none",
+                  outline: "none",
                   borderBottom: active ? "2px solid #FFA028" : "2px solid transparent",
+                  marginBottom: "-1px",
                   cursor: "pointer",
                   whiteSpace: "nowrap",
                   transition: "color 0.15s, border-color 0.15s",
