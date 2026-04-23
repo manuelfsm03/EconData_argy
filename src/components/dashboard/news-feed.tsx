@@ -84,77 +84,108 @@ function NewsTable({ rows, extra, loading, expandedId, onToggle, onMore }: NewsT
   const visible   = rows.slice(0, INITIAL + extra)
   const remaining = rows.length - visible.length
 
+  if (visible.length === 0) {
+    return (
+      <div style={{ padding: 32, textAlign: "center", color: "#333", fontFamily: "monospace", fontSize: 10 }}>
+        {loading ? "CARGANDO..." : "SIN RESULTADOS"}
+      </div>
+    )
+  }
+
   return (
     <>
-      <table>
-        <thead>
-          <tr>
-            <th style={{ width: 40 }}>Hora</th>
-            <th style={{ width: 100 }}>Fuente</th>
-            <th>Titular</th>
-          </tr>
-        </thead>
-        <tbody>
-          {visible.map((item, i) => (
-            <tr
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        {/* Header fijo de columnas */}
+        <div style={{
+          display: "grid", gridTemplateColumns: "54px 90px 1fr",
+          padding: "5px 12px", borderBottom: "1px solid #0f0f0f",
+          background: "#040404", position: "sticky", top: 0, zIndex: 1,
+        }}>
+          {["HORA", "FUENTE", "TITULAR"].map(h => (
+            <span key={h} style={{ fontSize: 8, color: "#333", fontFamily: "monospace", letterSpacing: 1 }}>{h}</span>
+          ))}
+        </div>
+
+        {/* Filas */}
+        {visible.map((item, i) => {
+          const isExpanded = expandedId === item.id
+          return (
+            <div
               key={item.id + i}
-              style={{
-                background: i % 2 === 0 ? "#000000" : "#060606",
-                cursor: item.description ? "pointer" : "default",
-              }}
               onClick={() => item.description && onToggle(item.id)}
+              style={{
+                display: "grid", gridTemplateColumns: "54px 90px 1fr",
+                padding: "9px 12px",
+                borderBottom: "1px solid #0a0a0a",
+                background: isExpanded ? "#0d0d0d" : "transparent",
+                cursor: item.description ? "pointer" : "default",
+                transition: "background 0.1s",
+              }}
+              onMouseEnter={e => { if (!isExpanded) (e.currentTarget as HTMLDivElement).style.background = "#080808" }}
+              onMouseLeave={e => { if (!isExpanded) (e.currentTarget as HTMLDivElement).style.background = "transparent" }}
             >
-              <td style={{ color: "#FFA028", fontSize: 12, verticalAlign: "top", paddingTop: 10, paddingBottom: 10 }}>
+              {/* Hora */}
+              <span style={{
+                fontSize: 11, color: "#FFA028", fontFamily: "monospace",
+                paddingTop: 1, whiteSpace: "nowrap",
+              }}>
                 {fmtTime(item.pubDate)}
-              </td>
-              <td style={{ color: "#0068FF", fontSize: 12, verticalAlign: "top", fontWeight: 500, paddingTop: 10, paddingBottom: 10 }}>
-                {item.source.toUpperCase().slice(0, 14)}
-              </td>
-              <td style={{ whiteSpace: "normal", paddingTop: 10, paddingBottom: 10 }}>
-                <CategoryBadge category={item.category} />
-                <a
-                  href={item.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: "#FFFFFF", fontSize: 13, lineHeight: 1.5 }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {item.title}
-                </a>
-                {expandedId === item.id && item.description && (
-                  <div style={{ color: "#888888", fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
+              </span>
+
+              {/* Fuente */}
+              <span style={{
+                fontSize: 10, color: "#3a7bd5", fontFamily: "monospace",
+                fontWeight: 600, paddingTop: 1,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {item.source.toUpperCase().slice(0, 12)}
+              </span>
+
+              {/* Titular */}
+              <div>
+                <div style={{ marginBottom: item.description && isExpanded ? 4 : 0 }}>
+                  <CategoryBadge category={item.category} />
+                  <a
+                    href={item.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      color: "#e8e8e8", fontSize: 13, lineHeight: 1.55,
+                      textDecoration: "none", fontFamily: "monospace",
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = "#fff" }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = "#e8e8e8" }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {item.title}
+                  </a>
+                </div>
+                {isExpanded && item.description && (
+                  <div style={{
+                    color: "#777", fontSize: 11, lineHeight: 1.6,
+                    marginTop: 6, paddingTop: 6,
+                    borderTop: "1px solid #111", fontFamily: "monospace",
+                  }}>
                     {item.description}
                   </div>
                 )}
-              </td>
-            </tr>
-          ))}
-
-          {visible.length === 0 && (
-            <tr>
-              <td colSpan={3} style={{ color: "#555555", textAlign: "center", padding: 20 }}>
-                {loading ? "CARGANDO NOTICIAS..." : "SIN RESULTADOS"}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+              </div>
+            </div>
+          )
+        })}
+      </div>
 
       {remaining > 0 && (
-        <div style={{ padding: "6px 12px", borderTop: "1px solid #111111" }}>
+        <div style={{ padding: "8px 12px", borderTop: "1px solid #0f0f0f", background: "#040404" }}>
           <button
             onClick={onMore}
             style={{
-              color: "#0068FF",
-              fontSize: 10,
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
+              color: "#3a7bd5", fontSize: 9, background: "none", border: "none",
+              cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.06em",
+              fontFamily: "monospace",
             }}
           >
-            Ver {remaining} más ▼
+            ▼ Ver {remaining} noticias más
           </button>
         </div>
       )}
@@ -244,6 +275,9 @@ export function NewsFeed() {
         </span>
       </div>
 
+      {/* EN VIVO — colapsado por defecto, arriba del feed para no tapar noticias */}
+      <LiveSection />
+
       {/* Dos columnas: Argentina | Internacional */}
       <div style={{ display: "flex", gap: 1, background: "#111111", flex: 1, minHeight: 0 }}>
         {/* Argentina */}
@@ -323,9 +357,6 @@ export function NewsFeed() {
           </div>
         </div>
       </div>
-
-      {/* EN VIVO */}
-      <LiveSection />
     </div>
   )
 }

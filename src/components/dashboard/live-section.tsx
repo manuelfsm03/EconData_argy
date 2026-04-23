@@ -31,7 +31,7 @@ function extractVideoId(input: string): string | null {
 
 export function LiveSection() {
   const [channels, setChannels]     = useState(DEFAULT_CHANNELS)
-  const [collapsed, setCollapsed]   = useState(false)
+  const [collapsed, setCollapsed]   = useState(true) // colapsado por defecto
   const [muted, setMuted]           = useState<Record<string, boolean>>(
     Object.fromEntries(DEFAULT_CHANNELS.map((c) => [c.id, true]))
   )
@@ -72,16 +72,33 @@ export function LiveSection() {
 
   return (
     <div style={{ borderTop: "1px solid #1a1a1a" }}>
-      {/* Header */}
+      {/* Header — siempre visible, actúa como toggle */}
       <div
         className="bbg-panel-header"
-        style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", userSelect: "none" }}
+        style={{
+          display: "flex", alignItems: "center", gap: 8,
+          cursor: "pointer", userSelect: "none",
+          background: collapsed ? "#060606" : "#0a0a0a",
+          transition: "background 0.15s",
+        }}
         onClick={() => setCollapsed((v) => !v)}
       >
-        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#FF433D", display: "inline-block", boxShadow: "0 0 6px #FF433D" }} />
-        EN VIVO
-        <span style={{ marginLeft: "auto", color: "#333", fontSize: 9, fontWeight: 400 }}>
-          {collapsed ? "▼ EXPANDIR" : "▲ COLAPSAR"}
+        <span style={{
+          width: 7, height: 7, borderRadius: "50%",
+          background: collapsed ? "#444" : "#FF433D",
+          display: "inline-block",
+          boxShadow: collapsed ? "none" : "0 0 6px #FF433D",
+          transition: "all 0.3s",
+        }} />
+        <span style={{ color: collapsed ? "#555" : "#FF433D", fontSize: 10, letterSpacing: 1 }}>EN VIVO</span>
+        <span style={{ fontSize: 9, color: "#333" }}>— {channels.length} canales</span>
+        <span style={{
+          marginLeft: "auto",
+          fontSize: 9, color: "#444", fontWeight: 400,
+          background: "#111", border: "1px solid #222",
+          padding: "2px 8px", borderRadius: 10,
+        }}>
+          {collapsed ? "▶ MOSTRAR" : "▼ OCULTAR"}
         </span>
       </div>
 
