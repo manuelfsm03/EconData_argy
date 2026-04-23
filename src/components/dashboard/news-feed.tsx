@@ -275,9 +275,6 @@ export function NewsFeed() {
         </span>
       </div>
 
-      {/* EN VIVO — colapsado por defecto, arriba del feed para no tapar noticias */}
-      <LiveSection />
-
       {/* Dos columnas: Argentina | Internacional */}
       <div style={{ display: "flex", gap: 1, background: "#111111", flex: 1, minHeight: 0 }}>
         {/* Argentina */}
@@ -357,6 +354,9 @@ export function NewsFeed() {
           </div>
         </div>
       </div>
+
+      {/* EN VIVO — abajo, visible por defecto pero compacto */}
+      <LiveSection />
     </div>
   )
 }

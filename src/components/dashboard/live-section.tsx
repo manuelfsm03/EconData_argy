@@ -13,31 +13,29 @@ const DEFAULT_CHANNELS = [
   { id: "euronews",  label: "EURONEWS",   country: "EU", videoId: "pykpO5kQJ98" },
 ]
 
+// Altura de cada tile en modo compacto (preview visible pero no invasivo)
+const TILE_H = 90
+
 function extractVideoId(input: string): string | null {
   const s = input.trim()
-  // youtu.be/ID
   const short = s.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/)
   if (short) return short[1]
-  // watch?v=ID
   const watch = s.match(/[?&]v=([a-zA-Z0-9_-]{11})/)
   if (watch) return watch[1]
-  // embed/ID or live/ID
   const embed = s.match(/(?:embed|live)\/([a-zA-Z0-9_-]{11})/)
   if (embed) return embed[1]
-  // raw ID de 11 caracteres
   if (/^[a-zA-Z0-9_-]{11}$/.test(s)) return s
   return null
 }
 
 export function LiveSection() {
-  const [channels, setChannels]     = useState(DEFAULT_CHANNELS)
-  const [collapsed, setCollapsed]   = useState(true) // colapsado por defecto
-  const [muted, setMuted]           = useState<Record<string, boolean>>(
+  const [channels, setChannels] = useState(DEFAULT_CHANNELS)
+  const [hidden, setHidden]     = useState(false) // false = visible por defecto
+  const [muted, setMuted]       = useState<Record<string, boolean>>(
     Object.fromEntries(DEFAULT_CHANNELS.map((c) => [c.id, true]))
   )
   const iframeRefs = useRef<Record<string, HTMLIFrameElement | null>>({})
 
-  // Editor de canal personalizado
   const [selectedSlot, setSelectedSlot] = useState("0")
   const [urlInput, setUrlInput]         = useState("")
   const [labelInput, setLabelInput]     = useState("")
@@ -71,65 +69,78 @@ export function LiveSection() {
   }
 
   return (
-    <div style={{ borderTop: "1px solid #1a1a1a" }}>
-      {/* Header — siempre visible, actúa como toggle */}
+    <div style={{ borderTop: "1px solid #1a1a1a", flexShrink: 0 }}>
+      {/* Header — siempre visible */}
       <div
         className="bbg-panel-header"
         style={{
           display: "flex", alignItems: "center", gap: 8,
           cursor: "pointer", userSelect: "none",
-          background: collapsed ? "#060606" : "#0a0a0a",
-          transition: "background 0.15s",
         }}
-        onClick={() => setCollapsed((v) => !v)}
+        onClick={() => setHidden((v) => !v)}
       >
         <span style={{
           width: 7, height: 7, borderRadius: "50%",
-          background: collapsed ? "#444" : "#FF433D",
-          display: "inline-block",
-          boxShadow: collapsed ? "none" : "0 0 6px #FF433D",
-          transition: "all 0.3s",
+          background: "#FF433D", display: "inline-block",
+          boxShadow: "0 0 5px #FF433D55",
         }} />
-        <span style={{ color: collapsed ? "#555" : "#FF433D", fontSize: 10, letterSpacing: 1 }}>EN VIVO</span>
-        <span style={{ fontSize: 9, color: "#333" }}>— {channels.length} canales</span>
+        <span style={{ color: "#FF433D", fontSize: 10, letterSpacing: 1 }}>EN VIVO</span>
+        <span style={{ fontSize: 9, color: "#444" }}>— {channels.length} canales</span>
+
         <span style={{
           marginLeft: "auto",
-          fontSize: 9, color: "#444", fontWeight: 400,
-          background: "#111", border: "1px solid #222",
-          padding: "2px 8px", borderRadius: 10,
+          fontSize: 9, color: "#555", fontWeight: 400,
+          background: "#0d0d0d", border: "1px solid #1e1e1e",
+          padding: "1px 8px", borderRadius: 10, fontFamily: "monospace",
         }}>
-          {collapsed ? "▶ MOSTRAR" : "▼ OCULTAR"}
+          {hidden ? "▶ mostrar" : "▼ ocultar"}
         </span>
       </div>
 
-      {!collapsed && (
+      {/* Canales — grilla 8 en una fila, compactos */}
+      {!hidden && (
         <>
-          {/* Grid de canales */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gridTemplateRows: "repeat(2, 150px)", gap: 1, background: "#111" }}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(8, 1fr)",
+            gap: 1,
+            background: "#0a0a0a",
+          }}>
             {channels.map((ch, idx) => (
-              <div key={ch.id + ch.videoId} style={{ position: "relative", background: "#000" }}>
-                {/* Label + mute button */}
+              <div key={ch.id + ch.videoId} style={{ position: "relative", background: "#000", height: TILE_H }}>
+                {/* Overlay con label y mute */}
                 <div style={{
-                  position: "absolute", top: 0, left: 0, right: 0, zIndex: 1,
-                  background: "#000000bb", padding: "2px 6px",
-                  display: "flex", alignItems: "center", gap: 4,
+                  position: "absolute", top: 0, left: 0, right: 0, zIndex: 2,
+                  background: "linear-gradient(to bottom, #000000cc 0%, transparent 100%)",
+                  padding: "3px 5px",
+                  display: "flex", alignItems: "center", gap: 3,
                 }}>
-                  <span style={{ fontSize: 9, color: "#555", flexShrink: 0 }}>{idx + 1}</span>
-                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#FF433D", display: "inline-block", flexShrink: 0 }} />
-                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", color: "#FF433D", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ch.label}</span>
-                  <span style={{ fontSize: 9, color: "#555" }}>{ch.country}</span>
+                  <span style={{ fontSize: 8, color: "#555", flexShrink: 0 }}>{idx + 1}</span>
+                  <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#FF433D", display: "inline-block", flexShrink: 0 }} />
+                  <span style={{
+                    fontSize: 8, fontWeight: 700, color: "#ccc",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1,
+                  }}>
+                    {ch.label}
+                  </span>
                   <button
-                    onClick={() => toggleMute(ch.id)}
+                    onClick={(e) => { e.stopPropagation(); toggleMute(ch.id) }}
                     title={muted[ch.id] ? "Activar audio" : "Silenciar"}
-                    style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", padding: "0 2px", fontSize: 11, lineHeight: 1, color: muted[ch.id] ? "#555" : "#4AF6C3" }}
+                    style={{
+                      background: "none", border: "none", cursor: "pointer",
+                      padding: 0, fontSize: 9, lineHeight: 1,
+                      color: muted[ch.id] ? "#444" : "#4AF6C3",
+                      flexShrink: 0,
+                    }}
                   >
                     {muted[ch.id] ? "🔇" : "🔊"}
                   </button>
                 </div>
+
                 <iframe
                   ref={(el) => { iframeRefs.current[ch.id] = el }}
-                  src={`https://www.youtube.com/embed/${ch.videoId}?autoplay=1&mute=1&rel=0&modestbranding=1&vq=hd720&enablejsapi=1`}
-                  style={{ display: "block", width: "100%", height: 150, border: "none" }}
+                  src={`https://www.youtube.com/embed/${ch.videoId}?autoplay=1&mute=1&rel=0&modestbranding=1&enablejsapi=1`}
+                  style={{ display: "block", width: "100%", height: TILE_H, border: "none" }}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                   allowFullScreen
                   loading="lazy"
@@ -140,13 +151,19 @@ export function LiveSection() {
           </div>
 
           {/* Editor de canal */}
-          <div style={{ background: "#050505", borderTop: "1px solid #1a1a1a", padding: "6px 10px", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 9, color: "#444", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>Reemplazar canal</span>
+          <div style={{
+            background: "#050505", borderTop: "1px solid #111",
+            padding: "5px 10px", display: "flex", alignItems: "center",
+            gap: 8, flexWrap: "wrap",
+          }}>
+            <span style={{ fontSize: 8, color: "#333", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>
+              Reemplazar canal
+            </span>
 
             <select
               value={selectedSlot}
               onChange={(e) => setSelectedSlot(e.target.value)}
-              style={{ background: "#0a0a0a", border: "1px solid #222", color: "#888", fontSize: 9, padding: "2px 6px" }}
+              style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", color: "#666", fontSize: 8, padding: "2px 4px" }}
             >
               {channels.map((ch, i) => (
                 <option key={ch.id} value={i}>{i + 1} — {ch.label}</option>
@@ -157,24 +174,28 @@ export function LiveSection() {
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               placeholder="URL o ID de YouTube"
-              style={{ flex: 1, minWidth: 160, background: "#0a0a0a", border: "1px solid #222", color: "#ccc", fontSize: 9, padding: "3px 8px" }}
+              style={{ flex: 1, minWidth: 140, background: "#0a0a0a", border: "1px solid #1a1a1a", color: "#aaa", fontSize: 8, padding: "2px 6px" }}
             />
 
             <input
               value={labelInput}
               onChange={(e) => setLabelInput(e.target.value)}
               placeholder="Nombre (opcional)"
-              style={{ width: 110, background: "#0a0a0a", border: "1px solid #222", color: "#ccc", fontSize: 9, padding: "3px 8px" }}
+              style={{ width: 90, background: "#0a0a0a", border: "1px solid #1a1a1a", color: "#aaa", fontSize: 8, padding: "2px 6px" }}
             />
 
             <button
               onClick={handleReplace}
-              style={{ background: "#0d0d0d", border: "1px solid #333", color: "#FFA028", fontSize: 9, padding: "3px 10px", cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}
+              style={{
+                background: "#0d0d0d", border: "1px solid #222", color: "#FFA028",
+                fontSize: 8, padding: "2px 8px", cursor: "pointer",
+                textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap",
+              }}
             >
               Aplicar
             </button>
 
-            {error && <span style={{ fontSize: 9, color: "#FF433D" }}>{error}</span>}
+            {error && <span style={{ fontSize: 8, color: "#FF433D" }}>{error}</span>}
           </div>
         </>
       )}
