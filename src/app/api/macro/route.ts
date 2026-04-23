@@ -520,18 +520,17 @@ export async function GET(request: NextRequest) {
 
     // ── ARGENDATA — DESIGUALDAD E INFORMALIDAD ──────────────────────────────
     if (endpoint === "argendata_desigualdad") {
-      const [giniArgRows, giniMundoRows, informalRows, desempleoRows] = await Promise.all([
-        fetchCSVData("https://raw.githubusercontent.com/argendatafundar/data/main/DESIGU/ISA_desigualdad_i2.csv"),
+      const [giniIndec, giniMundoRows, informalRows, desempleoRows] = await Promise.all([
+        getMultiserie(["gini_indec"], 100),
         fetchCSVData("https://raw.githubusercontent.com/argendatafundar/data/main/DESIGU/ISA_mundo_i1.csv"),
         fetchCSVData("https://raw.githubusercontent.com/argendatafundar/data/main/INFDES/tasa_informalidad_argentina_tipo_anio.csv"),
         fetchCSVData("https://raw.githubusercontent.com/argendatafundar/data/main/INFDES/tasa_desempleo_arg_mundial_modelada.csv"),
       ])
 
-      // Gini ARG: serie temporal (columna "ano")
-      const gini_arg: [string, number][] = giniArgRows
-        .filter(r => r.ano && r.gini)
-        .map(r => [`${r.ano}-01-01`, parseFloat(r.gini)] as [string, number])
-        .sort(([a], [b]) => (a as string).localeCompare(b as string))
+      // Gini ARG: INDEC API trimestral (escala 0–1 → 0–100), orden ascendente
+      const gini_arg: [string, number][] = (giniIndec.gini_indec ?? [])
+        .map(([d, v]) => [d, parseFloat((v * 100).toFixed(1))] as [string, number])
+        .sort(([a], [b]) => a.localeCompare(b))
 
       // Gini mundo: cross-sectional (sin anio)
       const gini_mundo = giniMundoRows
@@ -571,7 +570,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         data: { gini_arg, gini_mundo, informalidad: { productiva, legal }, desempleo_mundial },
         updated_at: new Date().toISOString(),
-        source: "Argendata/Fundar — CEDLAS/EPH · SEDLAC · OIT/Banco Mundial",
+        source: "Gini ARG: INDEC/EPH vía apis.datos.gob.ar (trimestral) · Gini mundial: Argendata/Fundar · Informalidad/Desempleo: CEDLAS/OIT",
       })
     }
 

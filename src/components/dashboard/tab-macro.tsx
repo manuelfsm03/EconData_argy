@@ -2988,12 +2988,12 @@ function DesigualdadView() {
             unit={`Mayor desigualdad · ${giniMax?.[0]?.slice(0, 4) ?? ""}`} valueColor="#FF433D" />
         </div>
         <div style={{ padding: "8px 0" }}>
-          <BBGLineChart title="COEFICIENTE DE GINI — ARGENTINA 1974-2024" data={giniArgData}
+          <BBGLineChart title="COEFICIENTE DE GINI — ARGENTINA 2003-2025 (trimestral)" data={giniArgData}
             lines={[{ key: "gini", name: "Gini", color: "#FFA028" }]}
             height={240} yAxisLabel="Índice Gini" formatValue={v => fmtNum(v, 1)} defaultRange="all" showZeroLine={false} />
         </div>
         <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
-          CEDLAS con base en EPH/INDEC · Empalme metodológico entre encuestas · Cobertura urbana · vía Argendata/Fundar (CC BY-NC-ND 4.0)
+          INDEC · Coeficiente de Gini del Ingreso Per Cápita Familiar · EPH continua · 31 aglomerados urbanos · vía apis.datos.gob.ar
         </div>
       </>)}
 
