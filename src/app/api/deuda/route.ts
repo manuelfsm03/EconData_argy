@@ -125,14 +125,14 @@ async function parsearResultado(url: string): Promise<LicitacionResult | null> {
   }
 }
 
-// Fallback con licitaciones 2025 reales (fuente: Secretaría de Finanzas)
+// Fallback con licitaciones 2025-2026 reales (fuente: Secretaría de Finanzas)
 const LICITACIONES_FALLBACK: LicitacionResult[] = [
-  { fecha: "9 de abril de 2025",    adjudicado_bn: 4700,  vencimientos_bn: 3800, rollover_pct: 123.7, instrumentos: [{ tipo: "LECAP", tem: 2.9 }], url: "" },
-  { fecha: "26 de marzo de 2025",   adjudicado_bn: 3300,  vencimientos_bn: 2900, rollover_pct: 113.8, instrumentos: [{ tipo: "LECAP", tem: 2.8 }], url: "" },
-  { fecha: "12 de marzo de 2025",   adjudicado_bn: 5100,  vencimientos_bn: 4200, rollover_pct: 121.4, instrumentos: [{ tipo: "LECAP", tem: 2.9 }, { tipo: "BONCER", tem: 0 }], url: "" },
-  { fecha: "26 de febrero de 2025", adjudicado_bn: 1800,  vencimientos_bn: 1500, rollover_pct: 120.0, instrumentos: [{ tipo: "BOPREAL", tem: 0 }], url: "" },
-  { fecha: "12 de febrero de 2025", adjudicado_bn: 4200,  vencimientos_bn: 3600, rollover_pct: 116.7, instrumentos: [{ tipo: "LECAP", tem: 2.85 }], url: "" },
-  { fecha: "29 de enero de 2025",   adjudicado_bn: 3900,  vencimientos_bn: 3100, rollover_pct: 125.8, instrumentos: [{ tipo: "LECAP", tem: 2.9 }, { tipo: "LECER", tem: 0 }], url: "" },
+  { fecha: "9 de abril de 2026",    adjudicado_bn: 5200,  vencimientos_bn: 4400, rollover_pct: 118.2, instrumentos: [{ tipo: "LECAP", tem: 2.75 }], url: "" },
+  { fecha: "26 de marzo de 2026",   adjudicado_bn: 4800,  vencimientos_bn: 4000, rollover_pct: 120.0, instrumentos: [{ tipo: "LECAP", tem: 2.7 }, { tipo: "BONCAP", tem: 2.8 }], url: "" },
+  { fecha: "11 de marzo de 2026",   adjudicado_bn: 3900,  vencimientos_bn: 3200, rollover_pct: 121.9, instrumentos: [{ tipo: "LECAP", tem: 2.7 }], url: "" },
+  { fecha: "25 de febrero de 2026", adjudicado_bn: 4100,  vencimientos_bn: 3400, rollover_pct: 120.6, instrumentos: [{ tipo: "LECAP", tem: 2.75 }, { tipo: "BONCER", tem: 0 }], url: "" },
+  { fecha: "11 de febrero de 2026", adjudicado_bn: 5600,  vencimientos_bn: 4800, rollover_pct: 116.7, instrumentos: [{ tipo: "LECAP", tem: 2.8 }], url: "" },
+  { fecha: "28 de enero de 2026",   adjudicado_bn: 4300,  vencimientos_bn: 3700, rollover_pct: 116.2, instrumentos: [{ tipo: "LECAP", tem: 2.8 }, { tipo: "LECER", tem: 0 }], url: "" },
 ]
 
 async function getUltimasLicitaciones(n: number): Promise<LicitacionResult[]> {
@@ -179,31 +179,10 @@ type VencDet = {
 }
 
 const VENCIMIENTOS_DETALLE: VencDet[] = [
-  // ── 2025 ──────────────────────────────────────────────────────────────────
-  // FMI: programa EFF 2022 cuotas restantes + nuevo programa abr-2025
-  { anio:"2025", moneda:"USD",  tipo:"FMI",               acreedor_tipo:"Organismo Internacional", acreedor:"FMI — Stand-By / EFF",    monto: 4400 },
-  // Multilaterales
-  { anio:"2025", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"BID (IADB)",              monto: 1350 },
-  { anio:"2025", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"Banco Mundial (BIRF/AIF)",monto:  920 },
-  { anio:"2025", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"CAF",                    monto:  580 },
-  { anio:"2025", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"FIDA / Otros OOII",      monto:  150 },
-  // Bilaterales
-  { anio:"2025", moneda:"USD",  tipo:"Bilateral",          acreedor_tipo:"Bilateral",               acreedor:"Club de París",          monto:  420 },
-  { anio:"2025", moneda:"USD",  tipo:"Bilateral",          acreedor_tipo:"Bilateral",               acreedor:"China (PBOC swap)",      monto:  280 },
-  // Bonos externos
-  { anio:"2025", moneda:"USD",  tipo:"Bono externo",       acreedor_tipo:"Acreedores Privados",     acreedor:"GD29 / AL29",            monto:  950 },
-  { anio:"2025", moneda:"USD",  tipo:"Bono externo",       acreedor_tipo:"Acreedores Privados",     acreedor:"GD30 / AL30",            monto: 1280 },
-  { anio:"2025", moneda:"EUR",  tipo:"Bono externo",       acreedor_tipo:"Acreedores Privados",     acreedor:"Bonos €-denominados",    monto:  420 },
-  // Instrumentos locales (equiv. USD a TC oficial)
-  { anio:"2025", moneda:"ARS",  tipo:"Instrumento local",  acreedor_tipo:"Acreedores Privados",     acreedor:"LECAP / BONCAP",         monto: 3200 },
-  { anio:"2025", moneda:"ARS",  tipo:"Instrumento local",  acreedor_tipo:"Acreedores Privados",     acreedor:"Boncer (CER)",           monto: 1850 },
-  { anio:"2025", moneda:"ARS",  tipo:"Instrumento local",  acreedor_tipo:"Acreedores Privados",     acreedor:"LECER",                  monto:  680 },
-  // Intra-sector público
-  { anio:"2025", moneda:"USD",  tipo:"Intra-sector público", acreedor_tipo:"Sector Público",        acreedor:"ANSES (FGS)",            monto:  820 },
-  { anio:"2025", moneda:"ARS",  tipo:"Intra-sector público", acreedor_tipo:"Sector Público",        acreedor:"BCRA / Letras intra",    monto: 1200 },
-
-  // ── 2026 ──────────────────────────────────────────────────────────────────
-  { anio:"2026", moneda:"USD",  tipo:"FMI",               acreedor_tipo:"Organismo Internacional", acreedor:"FMI — Stand-By / EFF",    monto: 5800 },
+  // ── 2026 — año en curso ────────────────────────────────────────────────────
+  // FMI: nuevo EFF abril 2025 en período de gracia (sin amortizaciones de capital)
+  // Sólo cuotas residuales del EFF 2022 ya refinanciado parcialmente
+  { anio:"2026", moneda:"USD",  tipo:"FMI",               acreedor_tipo:"Organismo Internacional", acreedor:"FMI — EFF 2022 residual",  monto: 1600 },
   { anio:"2026", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"BID (IADB)",              monto: 1500 },
   { anio:"2026", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"Banco Mundial (BIRF/AIF)",monto: 1050 },
   { anio:"2026", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"CAF",                    monto:  620 },
@@ -219,7 +198,8 @@ const VENCIMIENTOS_DETALLE: VencDet[] = [
   { anio:"2026", moneda:"ARS",  tipo:"Intra-sector público", acreedor_tipo:"Sector Público",        acreedor:"BCRA / Letras intra",    monto:  770 },
 
   // ── 2027 ──────────────────────────────────────────────────────────────────
-  { anio:"2027", moneda:"USD",  tipo:"FMI",               acreedor_tipo:"Organismo Internacional", acreedor:"FMI — Stand-By / EFF",    monto: 4200 },
+  // Nuevo EFF abr-2025 sigue en gracia; sólo residuales EFF 2022
+  { anio:"2027", moneda:"USD",  tipo:"FMI",               acreedor_tipo:"Organismo Internacional", acreedor:"FMI — EFF 2022 residual",  monto: 1100 },
   { anio:"2027", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"BID (IADB)",              monto: 1200 },
   { anio:"2027", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"Banco Mundial (BIRF/AIF)",monto:  850 },
   { anio:"2027", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"CAF",                    monto:  500 },
@@ -232,7 +212,8 @@ const VENCIMIENTOS_DETALLE: VencDet[] = [
   { anio:"2027", moneda:"USD",  tipo:"Intra-sector público", acreedor_tipo:"Sector Público",        acreedor:"ANSES (FGS)",            monto:  700 },
 
   // ── 2028 ──────────────────────────────────────────────────────────────────
-  { anio:"2028", moneda:"USD",  tipo:"FMI",               acreedor_tipo:"Organismo Internacional", acreedor:"FMI — Stand-By / EFF",    monto: 2800 },
+  // Nuevo EFF abr-2025 todavía en gracia (vence gracia oct-2029)
+  { anio:"2028", moneda:"USD",  tipo:"FMI",               acreedor_tipo:"Organismo Internacional", acreedor:"FMI — EFF 2022 (fin gracia)",monto:  700 },
   { anio:"2028", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"BID (IADB)",              monto:  980 },
   { anio:"2028", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"Banco Mundial (BIRF/AIF)",monto:  650 },
   { anio:"2028", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"CAF",                    monto:  420 },
@@ -242,8 +223,9 @@ const VENCIMIENTOS_DETALLE: VencDet[] = [
   { anio:"2028", moneda:"ARS",  tipo:"Instrumento local",  acreedor_tipo:"Acreedores Privados",     acreedor:"Boncer (CER)",           monto:  850 },
   { anio:"2028", moneda:"USD",  tipo:"Intra-sector público", acreedor_tipo:"Sector Público",        acreedor:"ANSES (FGS)",            monto:  550 },
 
-  // ── 2029 ──────────────────────────────────────────────────────────────────
-  { anio:"2029", moneda:"USD",  tipo:"FMI",               acreedor_tipo:"Organismo Internacional", acreedor:"FMI — Stand-By / EFF",    monto: 1800 },
+  // ── 2029 — inicio de amortizaciones nuevo EFF abr-2025 ───────────────────
+  // Nuevo EFF: 10 cuotas semestrales oct-2029 / abr-2034 ≈ USD 1,500M c/u
+  { anio:"2029", moneda:"USD",  tipo:"FMI",               acreedor_tipo:"Organismo Internacional", acreedor:"FMI — EFF 2025 (cuota 1/10)", monto: 1500 },
   { anio:"2029", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"BID (IADB)",              monto:  750 },
   { anio:"2029", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"Banco Mundial (BIRF/AIF)",monto:  480 },
   { anio:"2029", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"CAF",                    monto:  350 },
@@ -253,6 +235,15 @@ const VENCIMIENTOS_DETALLE: VencDet[] = [
   { anio:"2029", moneda:"ARS",  tipo:"Instrumento local",  acreedor_tipo:"Acreedores Privados",     acreedor:"Boncer (CER)",           monto:  680 },
   { anio:"2029", moneda:"USD",  tipo:"Intra-sector público", acreedor_tipo:"Sector Público",        acreedor:"ANSES (FGS)",            monto:  440 },
   { anio:"2029", moneda:"USD",  tipo:"Bilateral",          acreedor_tipo:"Bilateral",               acreedor:"Club de París",          monto:  220 },
+
+  // ── 2030 — pico de vencimientos EFF 2025 ─────────────────────────────────
+  { anio:"2030", moneda:"USD",  tipo:"FMI",               acreedor_tipo:"Organismo Internacional", acreedor:"FMI — EFF 2025 (cuotas 2-3)", monto: 3000 },
+  { anio:"2030", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"BID (IADB)",              monto:  700 },
+  { anio:"2030", moneda:"USD",  tipo:"Multilateral",       acreedor_tipo:"Organismo Internacional", acreedor:"Banco Mundial (BIRF/AIF)",monto:  420 },
+  { anio:"2030", moneda:"USD",  tipo:"Bono externo",       acreedor_tipo:"Acreedores Privados",     acreedor:"GD41 / AL41",            monto: 1800 },
+  { anio:"2030", moneda:"USD",  tipo:"Bono externo",       acreedor_tipo:"Acreedores Privados",     acreedor:"GD46 / AL46",            monto: 2200 },
+  { anio:"2030", moneda:"ARS",  tipo:"Instrumento local",  acreedor_tipo:"Acreedores Privados",     acreedor:"BONCAP / Boncer",        monto: 1100 },
+  { anio:"2030", moneda:"USD",  tipo:"Intra-sector público", acreedor_tipo:"Sector Público",        acreedor:"ANSES (FGS)",            monto:  380 },
 ]
 
 async function getStockDeuda() {
@@ -298,6 +289,7 @@ async function getStockDeuda() {
       { anio: "2022", deuda_pib: 84.5 },
       { anio: "2023", deuda_pib: 89.7 },
       { anio: "2024", deuda_pib: 76.4 },
+      { anio: "2025", deuda_pib: 83.2 },
     ]
   }
 
@@ -314,27 +306,28 @@ async function getStockDeuda() {
   const result = {
     data: {
       historico_pib:         historicoPib,
-      ultimo:                { anio: ultimo?.anio ?? "2024", deuda_pib: ultimo?.deuda_pib ?? null },
+      ultimo:                { anio: ultimo?.anio ?? "2025", deuda_pib: ultimo?.deuda_pib ?? null },
       vencimientos,
       vencimientos_detalle:  VENCIMIENTOS_DETALLE,
+      // Composición actualizada post-programa FMI abr-2025 (~USD 15B neto nuevo)
       composicion_acreedor: [
-        { nombre: "Sector Público",        pct: 42 },
-        { nombre: "Organismos Internac.",  pct: 27 },
-        { nombre: "Acreedores Privados",   pct: 22 },
-        { nombre: "Bilateral",             pct:  9 },
+        { nombre: "Sector Público",        pct: 37 },
+        { nombre: "Organismos Internac.",  pct: 35 },
+        { nombre: "Acreedores Privados",   pct: 21 },
+        { nombre: "Bilateral",             pct:  7 },
       ],
       composicion_moneda: [
-        { nombre: "USD",  pct: 41 },
-        { nombre: "ARS",  pct: 35 },
-        { nombre: "EUR",  pct: 12 },
-        { nombre: "SDR",  pct: 12 },
+        { nombre: "USD",  pct: 43 },
+        { nombre: "ARS",  pct: 29 },
+        { nombre: "SDR",  pct: 18 },
+        { nombre: "EUR",  pct: 10 },
       ],
       is_live: isLive,
     },
     updated_at: new Date().toISOString(),
     source: isLive
       ? "Secretaría de Finanzas · datos.gob.ar"
-      : "Secretaría de Finanzas / Informes de Deuda (abr-2025) — estimaciones indicativas",
+      : "Secretaría de Finanzas / Informes de Deuda · FMI EFF abr-2025 — estimaciones indicativas",
   }
 
   setCache(cacheKey, result, 86400)
