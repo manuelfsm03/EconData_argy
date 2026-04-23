@@ -21,6 +21,8 @@ import { TabBonos } from "./tab-bonos"
 import { TabTiposCambio } from "./tab-tipos-cambio"
 import { TabAcciones } from "./tab-acciones"
 import { TickerTape } from "./ticker-tape"
+import { FloatingAgent } from "./floating-agent"
+import { TabPivot } from "./tab-pivot"
 import { formatPercent, formatDate } from "@/lib/utils"
 
 // Stock quote for top movers
@@ -287,6 +289,7 @@ export function Dashboard() {
           <TabsTrigger value="deuda">Deuda</TabsTrigger>
           <TabsTrigger value="mundo">Mundo</TabsTrigger>
           <TabsTrigger value="geopolitica">Geopolítica</TabsTrigger>
+          <TabsTrigger value="pivot">Pivot</TabsTrigger>
           <TabsTrigger value="status">Status</TabsTrigger>
         </TabsList>
 
@@ -637,6 +640,11 @@ export function Dashboard() {
           <TabGeopolitica />
         </TabsContent>
 
+        {/* ═══════════ PIVOT ═══════════ */}
+        <TabsContent value="pivot">
+          <TabPivot />
+        </TabsContent>
+
         {/* ═══════════ STATUS ═══════════ */}
         <TabsContent value="status">
           <StatusCard
@@ -646,6 +654,9 @@ export function Dashboard() {
           />
         </TabsContent>
       </Tabs>
+
+      {/* Asistente flotante — global, todas las secciones */}
+      <FloatingAgent />
     </div>
   )
 }

@@ -1,0 +1,38 @@
+[      26ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5555/icon.svg?380d0b7296171d58:0
+[      40ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5555/icon.svg:0
+[  126858ms] [LOG] [Fast Refresh] rebuilding @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:186
+[  128110ms] [LOG] [Fast Refresh] done in 1253ms @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:43
+[  128246ms] [LOG] [Fast Refresh] rebuilding @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:186
+[  128473ms] [LOG] [Fast Refresh] done in 226ms @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:43
+[  128677ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5555/icon.svg?380d0b7296171d58:0
+[  128713ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5555/icon.svg:0
+[  134181ms] [LOG] [Fast Refresh] rebuilding @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:186
+[  134466ms] [LOG] [Fast Refresh] done in 285ms @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:43
+[  136110ms] [LOG] [Fast Refresh] rebuilding @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:186
+[  136830ms] [LOG] [Fast Refresh] done in 720ms @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:43
+[  148680ms] [LOG] [Fast Refresh] rebuilding @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:186
+[  148943ms] [LOG] [Fast Refresh] rebuilding @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:186
+[  148980ms] [LOG] [Fast Refresh] done in 37ms @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:43
+[  149089ms] [ERROR] ./src/components/dashboard/inflation-view.tsx
+Error: 
+  x Unexpected token `div`. Expected jsx identifier
+     ,-[C:\Users\juanc\OneDrive\Desktop\Big data y Machine learning\EconData_argy\src\components\dashboard\inflation-view.tsx:309:1]
+ 309 |   const uniqueYears = getUniqueYears()
+ 310 | 
+ 311 |   return (
+ 312 |     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+     :      ^^^
+ 313 |       {/* INFLACIÓN MUNDIAL */}
+ 314 |       <div style={{ background: "#000000", border: "1px solid #333333", borderRadius: "4px", padding: "16px" }}>
+ 315 |         <h3 style={{ color: "#FFFFFF", fontWeight: "bold", marginBottom: "16px", fontFamily: "IBM Plex Mono, monospace" }}>
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/components/dashboard/inflation-view.tsx
+./src/components/dashboard/main-dashboard.tsx
+./src/app/page.tsx @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  150993ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5555/?_rsc=1p60s:0
+[  151025ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5555/:0

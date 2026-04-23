@@ -1,0 +1,597 @@
+- generic [ref=e2]:
+  - alert [ref=e1]
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: PANEL DE CONTROL
+        - generic [ref=e7]: MIÉ, 01 ABR 2026
+      - generic [ref=e8]:
+        - generic [ref=e163]: UPD 05:23:59 p. m.
+        - button "Refresh" [ref=e10] [cursor=pointer]
+    - generic [ref=e167]:
+      - generic [ref=e168]:
+        - generic [ref=e169]: GGAL
+        - generic [ref=e170]: "6890.00"
+        - generic [ref=e171]: — +0.00%
+        - generic [ref=e172]: "|"
+      - generic [ref=e173]:
+        - generic [ref=e174]: BMA
+        - generic [ref=e175]: "11540.00"
+        - generic [ref=e176]: ▲ +1.14%
+        - generic [ref=e177]: "|"
+      - generic [ref=e178]:
+        - generic [ref=e179]: BBAR
+        - generic [ref=e180]: "8090.00"
+        - generic [ref=e181]: ▲ +1.89%
+        - generic [ref=e182]: "|"
+      - generic [ref=e183]:
+        - generic [ref=e184]: PAMP
+        - generic [ref=e185]: "5170.00"
+        - generic [ref=e186]: ▼ -0.58%
+        - generic [ref=e187]: "|"
+      - generic [ref=e188]:
+        - generic [ref=e189]: CEPU
+        - generic [ref=e190]: "2480.00"
+        - generic [ref=e191]: ▼ -0.52%
+        - generic [ref=e192]: "|"
+      - generic [ref=e193]:
+        - generic [ref=e194]: TECO2
+        - generic [ref=e195]: "3517.50"
+        - generic [ref=e196]: ▲ +2.55%
+        - generic [ref=e197]: "|"
+      - generic [ref=e198]:
+        - generic [ref=e199]: ALUA
+        - generic [ref=e200]: "992.00"
+        - generic [ref=e201]: ▲ +5.87%
+        - generic [ref=e202]: "|"
+      - generic [ref=e203]:
+        - generic [ref=e204]: TXAR
+        - generic [ref=e205]: "698.50"
+        - generic [ref=e206]: ▲ +3.56%
+        - generic [ref=e207]: "|"
+      - generic [ref=e208]:
+        - generic [ref=e209]: LOMA
+        - generic [ref=e210]: "3320.00"
+        - generic [ref=e211]: ▲ +2.08%
+        - generic [ref=e212]: "|"
+      - generic [ref=e213]:
+        - generic [ref=e214]: MIRG
+        - generic [ref=e215]: "18700.00"
+        - generic [ref=e216]: ▲ +1.77%
+        - generic [ref=e217]: "|"
+      - generic [ref=e218]:
+        - generic [ref=e219]: AGRO
+        - generic [ref=e220]: "48.50"
+        - generic [ref=e221]: ▲ +0.62%
+        - generic [ref=e222]: "|"
+      - generic [ref=e223]:
+        - generic [ref=e224]: IRSA
+        - generic [ref=e225]: "2470.00"
+        - generic [ref=e226]: ▲ +4.22%
+        - generic [ref=e227]: "|"
+      - generic [ref=e228]:
+        - generic [ref=e229]: SUPV
+        - generic [ref=e230]: "2860.00"
+        - generic [ref=e231]: ▲ +2.33%
+        - generic [ref=e232]: "|"
+      - generic [ref=e233]:
+        - generic [ref=e234]: GGAL
+        - generic [ref=e235]: "6890.00"
+        - generic [ref=e236]: — +0.00%
+        - generic [ref=e237]: "|"
+      - generic [ref=e238]:
+        - generic [ref=e239]: BMA
+        - generic [ref=e240]: "11540.00"
+        - generic [ref=e241]: ▲ +1.14%
+        - generic [ref=e242]: "|"
+      - generic [ref=e243]:
+        - generic [ref=e244]: BBAR
+        - generic [ref=e245]: "8090.00"
+        - generic [ref=e246]: ▲ +1.89%
+        - generic [ref=e247]: "|"
+      - generic [ref=e248]:
+        - generic [ref=e249]: PAMP
+        - generic [ref=e250]: "5170.00"
+        - generic [ref=e251]: ▼ -0.58%
+        - generic [ref=e252]: "|"
+      - generic [ref=e253]:
+        - generic [ref=e254]: CEPU
+        - generic [ref=e255]: "2480.00"
+        - generic [ref=e256]: ▼ -0.52%
+        - generic [ref=e257]: "|"
+      - generic [ref=e258]:
+        - generic [ref=e259]: TECO2
+        - generic [ref=e260]: "3517.50"
+        - generic [ref=e261]: ▲ +2.55%
+        - generic [ref=e262]: "|"
+      - generic [ref=e263]:
+        - generic [ref=e264]: ALUA
+        - generic [ref=e265]: "992.00"
+        - generic [ref=e266]: ▲ +5.87%
+        - generic [ref=e267]: "|"
+      - generic [ref=e268]:
+        - generic [ref=e269]: TXAR
+        - generic [ref=e270]: "698.50"
+        - generic [ref=e271]: ▲ +3.56%
+        - generic [ref=e272]: "|"
+      - generic [ref=e273]:
+        - generic [ref=e274]: LOMA
+        - generic [ref=e275]: "3320.00"
+        - generic [ref=e276]: ▲ +2.08%
+        - generic [ref=e277]: "|"
+      - generic [ref=e278]:
+        - generic [ref=e279]: MIRG
+        - generic [ref=e280]: "18700.00"
+        - generic [ref=e281]: ▲ +1.77%
+        - generic [ref=e282]: "|"
+      - generic [ref=e283]:
+        - generic [ref=e284]: AGRO
+        - generic [ref=e285]: "48.50"
+        - generic [ref=e286]: ▲ +0.62%
+        - generic [ref=e287]: "|"
+      - generic [ref=e288]:
+        - generic [ref=e289]: IRSA
+        - generic [ref=e290]: "2470.00"
+        - generic [ref=e291]: ▲ +4.22%
+        - generic [ref=e292]: "|"
+      - generic [ref=e293]:
+        - generic [ref=e294]: SUPV
+        - generic [ref=e295]: "2860.00"
+        - generic [ref=e296]: ▲ +2.33%
+        - generic [ref=e297]: "|"
+    - generic [ref=e11]:
+      - tablist [ref=e12]:
+        - tab "Resumen" [ref=e13] [cursor=pointer]
+        - tab "Tipos de Cambio" [ref=e14] [cursor=pointer]
+        - tab "Rofex" [ref=e15] [cursor=pointer]
+        - tab "Inflacion" [active] [selected] [ref=e16] [cursor=pointer]
+        - tab "Plazos Fijos" [ref=e17] [cursor=pointer]
+        - tab "Depositos" [ref=e18] [cursor=pointer]
+        - tab "Reservas" [ref=e19] [cursor=pointer]
+        - tab "Market Data" [ref=e20] [cursor=pointer]
+        - tab "Arbitraje" [ref=e21] [cursor=pointer]
+        - tab "Noticias" [ref=e22] [cursor=pointer]
+        - tab "Bonos" [ref=e23] [cursor=pointer]
+        - tab "Acciones AR" [ref=e24] [cursor=pointer]
+        - tab "Macro" [ref=e25] [cursor=pointer]
+        - tab "Deuda" [ref=e26] [cursor=pointer]
+        - tab "Mundo" [ref=e27] [cursor=pointer]
+        - tab "Geopolítica" [ref=e28] [cursor=pointer]
+        - tab "Status" [ref=e29] [cursor=pointer]
+      - tabpanel "Inflacion" [ref=e381]:
+        - generic [ref=e382]:
+          - generic [ref=e383]:
+            - heading "INFLACIÓN MUNDIAL — PAÍSES CLAVE" [level=3] [ref=e384]
+            - generic [ref=e385]:
+              - generic [ref=e386]:
+                - generic [ref=e387]: Argentina
+                - generic [ref=e388]: 2.8%
+              - generic [ref=e389]:
+                - generic [ref=e390]: Brasil
+                - generic [ref=e391]: 1.2%
+              - generic [ref=e392]:
+                - generic [ref=e393]: Chile
+                - generic [ref=e394]: 1.8%
+              - generic [ref=e395]:
+                - generic [ref=e396]: México
+                - generic [ref=e397]: 2.4%
+              - generic [ref=e398]:
+                - generic [ref=e399]: Colombia
+                - generic [ref=e400]: 1.9%
+              - generic [ref=e401]:
+                - generic [ref=e402]: Perú
+                - generic [ref=e403]: 2.1%
+              - generic [ref=e404]:
+                - generic [ref=e405]: USA
+                - generic [ref=e406]: 1.4%
+              - generic [ref=e407]:
+                - generic [ref=e408]: Alemania
+                - generic [ref=e409]: 0.9%
+              - generic [ref=e410]:
+                - generic [ref=e411]: Japón
+                - generic [ref=e412]: 0.5%
+              - generic [ref=e413]:
+                - generic [ref=e414]: China
+                - generic [ref=e415]: 0.2%
+              - generic [ref=e416]:
+                - generic [ref=e417]: Eurozona
+                - generic [ref=e418]: 1.0%
+              - generic [ref=e419]:
+                - generic [ref=e420]: Reino Unido
+                - generic [ref=e421]: 1.5%
+            - iframe [ref=e424]:
+              - generic [active] [ref=f1e1]:
+                - generic [ref=f1e2]:
+                  - paragraph [ref=f1e3]: ESCALA DE INFLACIÓN
+                  - generic [ref=f1e4]: "> 3.0%"
+                  - generic [ref=f1e6]: 2.5 - 3.0%
+                  - generic [ref=f1e8]: 2.0 - 2.5%
+                  - generic [ref=f1e10]: 1.5 - 2.0%
+                  - generic [ref=f1e12]: 1.0 - 1.5%
+                  - generic [ref=f1e14]: < 1.0%
+                  - paragraph [ref=f1e16]:
+                    - text: "Datos: Últimas 4 semanas"
+                    - text: "Fuente: IMF, Central Banks"
+                - generic [ref=f1e17]:
+                  - generic:
+                    - generic:
+                      - button "" [ref=f1e46] [cursor=pointer]:
+                        - generic [ref=f1e47]: 
+                      - button "" [ref=f1e48] [cursor=pointer]:
+                        - generic [ref=f1e49]: 
+                      - button "" [ref=f1e50] [cursor=pointer]:
+                        - generic [ref=f1e51]: 
+                      - button "" [ref=f1e52] [cursor=pointer]:
+                        - generic [ref=f1e53]: 
+                      - button "" [ref=f1e54] [cursor=pointer]:
+                        - generic [ref=f1e55]: 
+                      - button "" [ref=f1e56] [cursor=pointer]:
+                        - generic [ref=f1e57]: 
+                      - button "" [ref=f1e58] [cursor=pointer]:
+                        - generic [ref=f1e59]: 
+                      - button "" [ref=f1e60] [cursor=pointer]:
+                        - generic [ref=f1e61]: 
+                      - button "" [ref=f1e62] [cursor=pointer]:
+                        - generic [ref=f1e63]: 
+                      - button "" [ref=f1e64] [cursor=pointer]:
+                        - generic [ref=f1e65]: 
+                      - button "" [ref=f1e66] [cursor=pointer]:
+                        - generic [ref=f1e67]: 
+                      - button "" [ref=f1e68] [cursor=pointer]:
+                        - generic [ref=f1e69]: 
+                      - button "" [ref=f1e70] [cursor=pointer]:
+                        - generic [ref=f1e71]: 
+                      - button "" [ref=f1e72] [cursor=pointer]:
+                        - generic [ref=f1e73]: 
+                      - button "" [ref=f1e74] [cursor=pointer]:
+                        - generic [ref=f1e75]: 
+                      - button "" [ref=f1e76] [cursor=pointer]:
+                        - generic [ref=f1e77]: 
+                      - button "" [ref=f1e78] [cursor=pointer]:
+                        - generic [ref=f1e79]: 
+                      - button "" [ref=f1e80] [cursor=pointer]:
+                        - generic [ref=f1e81]: 
+                      - button "" [ref=f1e82] [cursor=pointer]:
+                        - generic [ref=f1e83]: 
+                      - button "" [ref=f1e84] [cursor=pointer]:
+                        - generic [ref=f1e85]: 
+                      - button "" [ref=f1e86] [cursor=pointer]:
+                        - generic [ref=f1e87]: 
+                      - button "" [ref=f1e88] [cursor=pointer]:
+                        - generic [ref=f1e89]: 
+                      - button "" [ref=f1e90] [cursor=pointer]:
+                        - generic [ref=f1e91]: 
+                      - button "" [ref=f1e92] [cursor=pointer]:
+                        - generic [ref=f1e93]: 
+                      - button "" [ref=f1e94] [cursor=pointer]:
+                        - generic [ref=f1e95]: 
+                      - button "" [ref=f1e96] [cursor=pointer]:
+                        - generic [ref=f1e97]: 
+                      - button "" [ref=f1e98] [cursor=pointer]:
+                        - generic [ref=f1e99]: 
+                  - generic:
+                    - generic [ref=f1e100]:
+                      - button "Zoom in" [ref=f1e101] [cursor=pointer]: +
+                      - button "Zoom out" [ref=f1e102] [cursor=pointer]: −
+                    - generic [ref=f1e103]:
+                      - link "Leaflet" [ref=f1e104] [cursor=pointer]:
+                        - /url: https://leafletjs.com
+                        - img [ref=f1e105]
+                        - text: Leaflet
+                      - text: "| ©"
+                      - link "OpenStreetMap" [ref=f1e109] [cursor=pointer]:
+                        - /url: https://www.openstreetmap.org/copyright
+                      - text: contributors ©
+                      - link "CARTO" [ref=f1e110] [cursor=pointer]:
+                        - /url: https://carto.com/attributions
+          - generic [ref=e425]:
+            - generic [ref=e426]:
+              - generic [ref=e427]: IPC Total
+              - generic [ref=e428]: 2.90%
+            - generic [ref=e429]:
+              - generic [ref=e430]: Núcleo
+              - generic [ref=e431]: 3.08%
+            - generic [ref=e432]:
+              - generic [ref=e433]: Alimentos
+              - generic [ref=e434]: 3.32%
+            - generic [ref=e435]:
+              - generic [ref=e436]: Regulados
+              - generic [ref=e437]: 4.25%
+            - generic [ref=e438]:
+              - generic [ref=e439]: Estacionales
+              - generic [ref=e440]: 15.85%
+            - generic [ref=e441]:
+              - generic [ref=e442]: Breakeven
+              - generic [ref=e443]: 3.48%
+            - generic [ref=e444]:
+              - generic [ref=e445]: Mayorista
+              - generic [ref=e446]: 3.33%
+            - generic [ref=e447]:
+              - generic [ref=e448]: Interanual
+              - generic [ref=e449]: 33.05%
+          - generic [ref=e450]:
+            - generic [ref=e451]:
+              - heading "IPC OBSERVADO" [level=3] [ref=e452]
+              - generic [ref=e453]:
+                - button "IPC Total (canasta 2004 vigente)" [ref=e454] [cursor=pointer]
+                - button "IPC Total (canasta 2018 hipot.)" [ref=e455] [cursor=pointer]
+                - button "Núcleo" [ref=e456] [cursor=pointer]
+                - button "Estacionales" [ref=e457] [cursor=pointer]
+            - generic [ref=e458]:
+              - generic [ref=e459]: IPC TOTAL — NÚCLEO — ESTACIONAL — MAYORISTA (variación mensual)
+              - generic [ref=e462]:
+                - list [ref=e464]:
+                  - listitem [ref=e465]:
+                    - img "IPC Total (canasta 2004 vigente) legend icon" [ref=e466]
+                    - text: IPC Total (canasta 2004 vigente)
+                  - listitem [ref=e468]:
+                    - img "IPC Total (canasta 2018 hipot.) legend icon" [ref=e469]
+                    - text: IPC Total (canasta 2018 hipot.)
+                - application [ref=e471]:
+                  - generic [ref=e484]:
+                    - generic [ref=e485]:
+                      - generic [ref=e487]: 2021-05-01
+                      - generic [ref=e489]: 2021-09-01
+                      - generic [ref=e491]: 2022-01-01
+                      - generic [ref=e493]: 2022-05-01
+                      - generic [ref=e495]: 2022-09-01
+                      - generic [ref=e497]: 2023-01-01
+                      - generic [ref=e499]: 2023-05-01
+                      - generic [ref=e501]: 2023-09-01
+                      - generic [ref=e503]: 2024-01-01
+                      - generic [ref=e505]: 2024-05-01
+                      - generic [ref=e507]: 2024-09-01
+                      - generic [ref=e509]: 2025-01-01
+                      - generic [ref=e511]: 2025-05-01
+                      - generic [ref=e513]: 2025-09-01
+                      - generic [ref=e515]: 2026-02-01
+                    - generic [ref=e516]:
+                      - generic [ref=e518]: 0.0%
+                      - generic [ref=e520]: 7.0%
+                      - generic [ref=e522]: 14.0%
+                      - generic [ref=e524]: 21.0%
+                      - generic [ref=e526]: 28.0%
+          - generic [ref=e527]:
+            - generic [ref=e528]:
+              - heading "INFLACIÓN ESPERADA" [level=3] [ref=e529]
+              - generic [ref=e530]:
+                - button "REM Mediana (BCRA)" [ref=e531] [cursor=pointer]
+                - button "Breakeven Implícito" [ref=e532] [cursor=pointer]
+            - generic [ref=e533]:
+              - generic [ref=e534]: REM BCRA — EXPECTATIVAS DE INFLACIÓN (Mediana, P25, P75)
+              - generic [ref=e537]:
+                - list [ref=e539]:
+                  - listitem [ref=e540]:
+                    - img "Breakeven Implícito legend icon" [ref=e541]
+                    - text: Breakeven Implícito
+                  - listitem [ref=e543]:
+                    - img "REM Mediana (BCRA) legend icon" [ref=e544]
+                    - text: REM Mediana (BCRA)
+                - application [ref=e546]:
+                  - generic [ref=e559]:
+                    - generic [ref=e560]:
+                      - generic [ref=e562]: May 26
+                      - generic [ref=e564]: Jun 26
+                      - generic [ref=e566]: Jul 26
+                      - generic [ref=e568]: Ago 26
+                      - generic [ref=e570]: Sep 26
+                      - generic [ref=e572]: Oct 26
+                    - generic [ref=e573]:
+                      - generic [ref=e575]: 0.0%
+                      - generic [ref=e577]: 0.4%
+                      - generic [ref=e579]: 0.9%
+                      - generic [ref=e581]: 1.4%
+                      - generic [ref=e583]: 1.8%
+          - generic [ref=e584]:
+            - heading "INFLACIÓN POR REGIÓN" [level=3] [ref=e585]
+            - generic [ref=e586]:
+              - generic [ref=e587]:
+                - generic [ref=e588]: GBA
+                - generic [ref=e589]: 3.2%
+              - generic [ref=e590]:
+                - generic [ref=e591]: Pampeana
+                - generic [ref=e592]: 2.8%
+              - generic [ref=e593]:
+                - generic [ref=e594]: NEA
+                - generic [ref=e595]: 3.5%
+              - generic [ref=e596]:
+                - generic [ref=e597]: NOA
+                - generic [ref=e598]: 3.1%
+              - generic [ref=e599]:
+                - generic [ref=e600]: Cuyo
+                - generic [ref=e601]: 2.9%
+              - generic [ref=e602]:
+                - generic [ref=e603]: Patagonia
+                - generic [ref=e604]: 2.5%
+            - iframe [ref=e607]:
+              - generic [ref=f2e2]:
+                - generic:
+                  - generic:
+                    - img
+                  - generic:
+                    - button "NOA 3.1%" [ref=f2e7] [cursor=pointer]:
+                      - generic [ref=f2e8]:
+                        - text: NOA
+                        - text: 3.1%
+                    - button "NEA 3.5%" [ref=f2e9] [cursor=pointer]:
+                      - generic [ref=f2e10]:
+                        - text: NEA
+                        - text: 3.5%
+                    - button "Cuyo 2.9%" [ref=f2e11] [cursor=pointer]:
+                      - generic [ref=f2e12]:
+                        - text: Cuyo
+                        - text: 2.9%
+                    - button "Pampeana 2.8%" [ref=f2e13] [cursor=pointer]:
+                      - generic [ref=f2e14]:
+                        - text: Pampeana
+                        - text: 2.8%
+                    - button "GBA 3.2%" [ref=f2e15] [cursor=pointer]:
+                      - generic [ref=f2e16]:
+                        - text: GBA
+                        - text: 3.2%
+                    - button "Patagonia 2.5%" [ref=f2e17] [cursor=pointer]:
+                      - generic [ref=f2e18]:
+                        - text: Patagonia
+                        - text: 2.5%
+                - generic:
+                  - generic [ref=f2e19]:
+                    - button "Zoom in" [ref=f2e20] [cursor=pointer]: +
+                    - button "Zoom out" [disabled] [ref=f2e21]: −
+                  - generic [ref=f2e22]:
+                    - link "Leaflet" [ref=f2e23] [cursor=pointer]:
+                      - /url: https://leafletjs.com
+                      - img [ref=f2e24]
+                      - text: Leaflet
+                    - text: "| ©"
+                    - link "OpenStreetMap" [ref=f2e28] [cursor=pointer]:
+                      - /url: https://www.openstreetmap.org/copyright
+                    - text: contributors ©
+                    - link "CARTO" [ref=f2e29] [cursor=pointer]:
+                      - /url: https://carto.com/attributions
+            - generic [ref=e608]: "Escala: ▮ Rojo oscuro >4% | ▮ Rojo >3% | ▮ Naranja >2% | ▮ Dorado >1% | ▮ Verde <1%"
+          - generic [ref=e609]:
+            - heading "MERCADOS DE PREDICCIÓN — INFLACIÓN" [level=3] [ref=e610]
+            - generic [ref=e611]:
+              - generic [ref=e612]:
+                - generic [ref=e613]: Will Argentina's inflation exceed 3% in April 2026?
+                - generic [ref=e614]:
+                  - generic [ref=e615]:
+                    - generic [ref=e616]:
+                      - generic [ref=e617]: Probabilidad
+                      - generic [ref=e618]: 72.0%
+                    - generic [ref=e619]:
+                      - generic [ref=e620]: Volumen 24h
+                      - generic [ref=e621]: $2.5M
+                  - generic [ref=e622]: 30/4/2026
+              - generic [ref=e623]:
+                - generic [ref=e624]: Will central bank inflation target fall below 2% by Q3 2026?
+                - generic [ref=e625]:
+                  - generic [ref=e626]:
+                    - generic [ref=e627]:
+                      - generic [ref=e628]: Probabilidad
+                      - generic [ref=e629]: 35.0%
+                    - generic [ref=e630]:
+                      - generic [ref=e631]: Volumen 24h
+                      - generic [ref=e632]: $1.8M
+                  - generic [ref=e633]: 14/9/2026
+              - generic [ref=e634]:
+                - generic [ref=e635]: Will monthly inflation exceed 2% at any point in 2026?
+                - generic [ref=e636]:
+                  - generic [ref=e637]:
+                    - generic [ref=e638]:
+                      - generic [ref=e639]: Probabilidad
+                      - generic [ref=e640]: 68.0%
+                    - generic [ref=e641]:
+                      - generic [ref=e642]: Volumen 24h
+                      - generic [ref=e643]: $3.2M
+                  - generic [ref=e644]: 30/12/2026
+          - generic [ref=e645]:
+            - generic [ref=e646]:
+              - button "Serie Histórica" [ref=e647] [cursor=pointer]
+              - button "Canasta 2004 vs 2022" [ref=e648] [cursor=pointer]
+              - button "Mi Inflación" [ref=e649] [cursor=pointer]
+            - generic [ref=e650]:
+              - generic [ref=e651]: HISTÓRICO IPC VAR. MENSUAL — ÚLTIMOS 24 PERÍODOS
+              - table [ref=e653]:
+                - rowgroup [ref=e654]:
+                  - row "Fecha IPC %" [ref=e655]:
+                    - columnheader "Fecha" [ref=e656]
+                    - columnheader "IPC %" [ref=e657]
+                - rowgroup [ref=e658]:
+                  - row "2026-02-01 +2.90%" [ref=e659]:
+                    - cell "2026-02-01" [ref=e660]
+                    - cell "+2.90%" [ref=e661]:
+                      - generic [ref=e662]: +2.90%
+                  - row "2026-01-01 +2.88%" [ref=e663]:
+                    - cell "2026-01-01" [ref=e664]
+                    - cell "+2.88%" [ref=e665]:
+                      - generic [ref=e666]: +2.88%
+                  - row "2025-12-01 +2.85%" [ref=e667]:
+                    - cell "2025-12-01" [ref=e668]
+                    - cell "+2.85%" [ref=e669]:
+                      - generic [ref=e670]: +2.85%
+                  - row "2025-11-01 +2.47%" [ref=e671]:
+                    - cell "2025-11-01" [ref=e672]
+                    - cell "+2.47%" [ref=e673]:
+                      - generic [ref=e674]: +2.47%
+                  - row "2025-10-01 +2.34%" [ref=e675]:
+                    - cell "2025-10-01" [ref=e676]
+                    - cell "+2.34%" [ref=e677]:
+                      - generic [ref=e678]: +2.34%
+                  - row "2025-09-01 +2.08%" [ref=e679]:
+                    - cell "2025-09-01" [ref=e680]
+                    - cell "+2.08%" [ref=e681]:
+                      - generic [ref=e682]: +2.08%
+                  - row "2025-08-01 +1.88%" [ref=e683]:
+                    - cell "2025-08-01" [ref=e684]
+                    - cell "+1.88%" [ref=e685]:
+                      - generic [ref=e686]: +1.88%
+                  - row "2025-07-01 +1.90%" [ref=e687]:
+                    - cell "2025-07-01" [ref=e688]
+                    - cell "+1.90%" [ref=e689]:
+                      - generic [ref=e690]: +1.90%
+                  - row "2025-06-01 +1.62%" [ref=e691]:
+                    - cell "2025-06-01" [ref=e692]
+                    - cell "+1.62%" [ref=e693]:
+                      - generic [ref=e694]: +1.62%
+                  - row "2025-05-01 +1.50%" [ref=e695]:
+                    - cell "2025-05-01" [ref=e696]
+                    - cell "+1.50%" [ref=e697]:
+                      - generic [ref=e698]: +1.50%
+                  - row "2025-04-01 +2.78%" [ref=e699]:
+                    - cell "2025-04-01" [ref=e700]
+                    - cell "+2.78%" [ref=e701]:
+                      - generic [ref=e702]: +2.78%
+                  - row "2025-03-01 +3.73%" [ref=e703]:
+                    - cell "2025-03-01" [ref=e704]
+                    - cell "+3.73%" [ref=e705]:
+                      - generic [ref=e706]: +3.73%
+                  - row "2025-02-01 +2.40%" [ref=e707]:
+                    - cell "2025-02-01" [ref=e708]
+                    - cell "+2.40%" [ref=e709]:
+                      - generic [ref=e710]: +2.40%
+                  - row "2025-01-01 +2.21%" [ref=e711]:
+                    - cell "2025-01-01" [ref=e712]
+                    - cell "+2.21%" [ref=e713]:
+                      - generic [ref=e714]: +2.21%
+                  - row "2024-12-01 +2.70%" [ref=e715]:
+                    - cell "2024-12-01" [ref=e716]
+                    - cell "+2.70%" [ref=e717]:
+                      - generic [ref=e718]: +2.70%
+                  - row "2024-11-01 +2.43%" [ref=e719]:
+                    - cell "2024-11-01" [ref=e720]
+                    - cell "+2.43%" [ref=e721]:
+                      - generic [ref=e722]: +2.43%
+                  - row "2024-10-01 +2.69%" [ref=e723]:
+                    - cell "2024-10-01" [ref=e724]
+                    - cell "+2.69%" [ref=e725]:
+                      - generic [ref=e726]: +2.69%
+                  - row "2024-09-01 +3.47%" [ref=e727]:
+                    - cell "2024-09-01" [ref=e728]
+                    - cell "+3.47%" [ref=e729]:
+                      - generic [ref=e730]: +3.47%
+                  - row "2024-08-01 +4.17%" [ref=e731]:
+                    - cell "2024-08-01" [ref=e732]
+                    - cell "+4.17%" [ref=e733]:
+                      - generic [ref=e734]: +4.17%
+                  - row "2024-07-01 +4.03%" [ref=e735]:
+                    - cell "2024-07-01" [ref=e736]
+                    - cell "+4.03%" [ref=e737]:
+                      - generic [ref=e738]: +4.03%
+                  - row "2024-06-01 +4.58%" [ref=e739]:
+                    - cell "2024-06-01" [ref=e740]
+                    - cell "+4.58%" [ref=e741]:
+                      - generic [ref=e742]: +4.58%
+                  - row "2024-05-01 +4.20%" [ref=e743]:
+                    - cell "2024-05-01" [ref=e744]
+                    - cell "+4.20%" [ref=e745]:
+                      - generic [ref=e746]: +4.20%
+                  - row "2024-04-01 +8.83%" [ref=e747]:
+                    - cell "2024-04-01" [ref=e748]
+                    - cell "+8.83%" [ref=e749]:
+                      - generic [ref=e750]: +8.83%
+                  - row "2024-03-01 +11.01%" [ref=e751]:
+                    - cell "2024-03-01" [ref=e752]
+                    - cell "+11.01%" [ref=e753]:
+                      - generic [ref=e754]: +11.01%
+  - generic [ref=e380]: 7.0%

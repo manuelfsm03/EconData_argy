@@ -67,15 +67,28 @@ export interface RateLimitResult {
   resetsInSeconds: number
 }
 
+// Fallback en memoria: último timestamp por IP hash (se resetea con cada deploy/restart)
+const inMemoryLastRequest = new Map<string, number>()
+const MIN_INTERVAL_MS = 5000 // mínimo 5s entre requests del mismo IP
+
 export async function checkRateLimit(ip: string, maxPerDay: number): Promise<RateLimitResult> {
   const ipHash = hashIp(ip)
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
-  // Si no hay Supabase configurado, siempre permitir (MVP sin observabilidad)
+  // ── Anti-burst: ventana corta en memoria ─────────────────────────────────
+  const lastTs = inMemoryLastRequest.get(ipHash) ?? 0
+  const elapsed = Date.now() - lastTs
+  if (elapsed < MIN_INTERVAL_MS) {
+    return { allowed: false, remaining: 0, resetsInSeconds: Math.ceil((MIN_INTERVAL_MS - elapsed) / 1000) }
+  }
+  inMemoryLastRequest.set(ipHash, Date.now())
+
+  // ── Sin Supabase: solo aplica el anti-burst ───────────────────────────────
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return { allowed: true, remaining: maxPerDay - 1, resetsInSeconds: 86400 }
   }
 
+  // ── Supabase: rate limit diario ───────────────────────────────────────────
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
   try {
     const res = await fetch(
       supabaseUrl("chat_events") +
@@ -93,8 +106,14 @@ export async function checkRateLimit(ip: string, maxPerDay: number): Promise<Rat
     }
     return { allowed: true, remaining: maxPerDay - current - 1, resetsInSeconds: 86400 }
   } catch {
-    // Fail-open: si Supabase no responde, no bloqueamos al usuario
-    return { allowed: true, remaining: maxPerDay - 1, resetsInSeconds: 86400 }
+    // Supabase caído: aplicar límite conservador en memoria (fail-safe, no fail-open)
+    const safeKey = `safe:${ipHash}`
+    const safeCount = (inMemoryLastRequest.get(safeKey) as unknown as number) ?? 0
+    if (safeCount >= maxPerDay) {
+      return { allowed: false, remaining: 0, resetsInSeconds: 86400 }
+    }
+    inMemoryLastRequest.set(safeKey, (safeCount + 1) as unknown as number)
+    return { allowed: true, remaining: maxPerDay - safeCount - 1, resetsInSeconds: 86400 }
   }
 }
 

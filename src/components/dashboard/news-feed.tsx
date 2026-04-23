@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { LiveSection }  from "./live-section"
-import { ChatAgente }   from "./chat-agente"
 
 interface RSSItem {
   id: string
@@ -296,16 +295,6 @@ export function NewsFeed() {
           </div>
         </div>
 
-        {/* Asistente */}
-        <div style={{ width: 320, flexShrink: 0, background: "#000000", display: "flex", flexDirection: "column" }}>
-          <div className="bbg-panel-header" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ color: "#FFA028" }}>▐</span>
-            ASISTENTE
-          </div>
-          <div style={{ flex: 1, padding: "8px 8px 0", display: "flex", flexDirection: "column", minHeight: 0 }}>
-            <ChatAgente />
-          </div>
-        </div>
       </div>
 
       {/* EN VIVO */}

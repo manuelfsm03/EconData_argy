@@ -13,8 +13,8 @@
 
 import { executeTool, ToolDef } from "./agente-tools"
 
-const MAX_OUTPUT_TOKENS = 600
-const LLM_TIMEOUT_MS = 8000
+const MAX_OUTPUT_TOKENS = 350  // respuestas cortas = menos tokens de salida
+const LLM_TIMEOUT_MS   = 8000
 
 export const MODELS: Record<string, { label: string; provider: "anthropic" | "google"; model: string }> = {
   "haiku-4.5": {
@@ -281,7 +281,7 @@ function stripGeminiUnsupported(schema: unknown): unknown {
   const s = schema as Record<string, unknown>
   const out: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(s)) {
-    if (k === "default") continue
+    if (k === "default" || k === "enum") continue
     out[k] = k === "properties"
       ? Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([pk, pv]) => [pk, stripGeminiUnsupported(pv)]))
       : stripGeminiUnsupported(v)

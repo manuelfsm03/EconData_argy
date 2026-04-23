@@ -13,7 +13,9 @@ export const runtime = "nodejs"
 function requireAdmin(request: NextRequest): boolean {
   const expected = process.env.ADMIN_PASSWORD
   if (!expected) return false
-  return request.headers.get("x-admin-password") === expected
+  if (request.headers.get("x-admin-password") === expected) return true
+  if (request.cookies.get("lapizarra_admin")?.value === expected) return true
+  return false
 }
 
 function supabaseUrl(path: string): string {

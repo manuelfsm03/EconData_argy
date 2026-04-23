@@ -1,0 +1,389 @@
+- generic [ref=e2]:
+  - alert [ref=e1]
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: PANEL DE CONTROL
+        - generic [ref=e7]: MIÉ, 01 ABR 2026
+      - generic [ref=e8]:
+        - generic [ref=e163]: UPD 05:23:59 p. m.
+        - button "Refresh" [ref=e10] [cursor=pointer]
+    - generic [ref=e167]:
+      - generic [ref=e168]:
+        - generic [ref=e169]: GGAL
+        - generic [ref=e170]: "6890.00"
+        - generic [ref=e171]: — +0.00%
+        - generic [ref=e172]: "|"
+      - generic [ref=e173]:
+        - generic [ref=e174]: BMA
+        - generic [ref=e175]: "11540.00"
+        - generic [ref=e176]: ▲ +1.14%
+        - generic [ref=e177]: "|"
+      - generic [ref=e178]:
+        - generic [ref=e179]: BBAR
+        - generic [ref=e180]: "8090.00"
+        - generic [ref=e181]: ▲ +1.89%
+        - generic [ref=e182]: "|"
+      - generic [ref=e183]:
+        - generic [ref=e184]: PAMP
+        - generic [ref=e185]: "5170.00"
+        - generic [ref=e186]: ▼ -0.58%
+        - generic [ref=e187]: "|"
+      - generic [ref=e188]:
+        - generic [ref=e189]: CEPU
+        - generic [ref=e190]: "2480.00"
+        - generic [ref=e191]: ▼ -0.52%
+        - generic [ref=e192]: "|"
+      - generic [ref=e193]:
+        - generic [ref=e194]: TECO2
+        - generic [ref=e195]: "3517.50"
+        - generic [ref=e196]: ▲ +2.55%
+        - generic [ref=e197]: "|"
+      - generic [ref=e198]:
+        - generic [ref=e199]: ALUA
+        - generic [ref=e200]: "992.00"
+        - generic [ref=e201]: ▲ +5.87%
+        - generic [ref=e202]: "|"
+      - generic [ref=e203]:
+        - generic [ref=e204]: TXAR
+        - generic [ref=e205]: "698.50"
+        - generic [ref=e206]: ▲ +3.56%
+        - generic [ref=e207]: "|"
+      - generic [ref=e208]:
+        - generic [ref=e209]: LOMA
+        - generic [ref=e210]: "3320.00"
+        - generic [ref=e211]: ▲ +2.08%
+        - generic [ref=e212]: "|"
+      - generic [ref=e213]:
+        - generic [ref=e214]: MIRG
+        - generic [ref=e215]: "18700.00"
+        - generic [ref=e216]: ▲ +1.77%
+        - generic [ref=e217]: "|"
+      - generic [ref=e218]:
+        - generic [ref=e219]: AGRO
+        - generic [ref=e220]: "48.50"
+        - generic [ref=e221]: ▲ +0.62%
+        - generic [ref=e222]: "|"
+      - generic [ref=e223]:
+        - generic [ref=e224]: IRSA
+        - generic [ref=e225]: "2470.00"
+        - generic [ref=e226]: ▲ +4.22%
+        - generic [ref=e227]: "|"
+      - generic [ref=e228]:
+        - generic [ref=e229]: SUPV
+        - generic [ref=e230]: "2860.00"
+        - generic [ref=e231]: ▲ +2.33%
+        - generic [ref=e232]: "|"
+      - generic [ref=e233]:
+        - generic [ref=e234]: GGAL
+        - generic [ref=e235]: "6890.00"
+        - generic [ref=e236]: — +0.00%
+        - generic [ref=e237]: "|"
+      - generic [ref=e238]:
+        - generic [ref=e239]: BMA
+        - generic [ref=e240]: "11540.00"
+        - generic [ref=e241]: ▲ +1.14%
+        - generic [ref=e242]: "|"
+      - generic [ref=e243]:
+        - generic [ref=e244]: BBAR
+        - generic [ref=e245]: "8090.00"
+        - generic [ref=e246]: ▲ +1.89%
+        - generic [ref=e247]: "|"
+      - generic [ref=e248]:
+        - generic [ref=e249]: PAMP
+        - generic [ref=e250]: "5170.00"
+        - generic [ref=e251]: ▼ -0.58%
+        - generic [ref=e252]: "|"
+      - generic [ref=e253]:
+        - generic [ref=e254]: CEPU
+        - generic [ref=e255]: "2480.00"
+        - generic [ref=e256]: ▼ -0.52%
+        - generic [ref=e257]: "|"
+      - generic [ref=e258]:
+        - generic [ref=e259]: TECO2
+        - generic [ref=e260]: "3517.50"
+        - generic [ref=e261]: ▲ +2.55%
+        - generic [ref=e262]: "|"
+      - generic [ref=e263]:
+        - generic [ref=e264]: ALUA
+        - generic [ref=e265]: "992.00"
+        - generic [ref=e266]: ▲ +5.87%
+        - generic [ref=e267]: "|"
+      - generic [ref=e268]:
+        - generic [ref=e269]: TXAR
+        - generic [ref=e270]: "698.50"
+        - generic [ref=e271]: ▲ +3.56%
+        - generic [ref=e272]: "|"
+      - generic [ref=e273]:
+        - generic [ref=e274]: LOMA
+        - generic [ref=e275]: "3320.00"
+        - generic [ref=e276]: ▲ +2.08%
+        - generic [ref=e277]: "|"
+      - generic [ref=e278]:
+        - generic [ref=e279]: MIRG
+        - generic [ref=e280]: "18700.00"
+        - generic [ref=e281]: ▲ +1.77%
+        - generic [ref=e282]: "|"
+      - generic [ref=e283]:
+        - generic [ref=e284]: AGRO
+        - generic [ref=e285]: "48.50"
+        - generic [ref=e286]: ▲ +0.62%
+        - generic [ref=e287]: "|"
+      - generic [ref=e288]:
+        - generic [ref=e289]: IRSA
+        - generic [ref=e290]: "2470.00"
+        - generic [ref=e291]: ▲ +4.22%
+        - generic [ref=e292]: "|"
+      - generic [ref=e293]:
+        - generic [ref=e294]: SUPV
+        - generic [ref=e295]: "2860.00"
+        - generic [ref=e296]: ▲ +2.33%
+        - generic [ref=e297]: "|"
+    - generic [ref=e11]:
+      - tablist [ref=e12]:
+        - tab "Resumen" [ref=e13] [cursor=pointer]
+        - tab "Tipos de Cambio" [ref=e14] [cursor=pointer]
+        - tab "Rofex" [ref=e15] [cursor=pointer]
+        - tab "Inflacion" [ref=e16] [cursor=pointer]
+        - tab "Plazos Fijos" [ref=e17] [cursor=pointer]
+        - tab "Depositos" [ref=e18] [cursor=pointer]
+        - tab "Reservas" [ref=e19] [cursor=pointer]
+        - tab "Market Data" [ref=e20] [cursor=pointer]
+        - tab "Arbitraje" [ref=e21] [cursor=pointer]
+        - tab "Noticias" [ref=e22] [cursor=pointer]
+        - tab "Bonos" [ref=e23] [cursor=pointer]
+        - tab "Acciones AR" [ref=e24] [cursor=pointer]
+        - tab "Macro" [ref=e25] [cursor=pointer]
+        - tab "Deuda" [ref=e26] [cursor=pointer]
+        - tab "Mundo" [active] [selected] [ref=e27] [cursor=pointer]
+        - tab "Geopolítica" [ref=e28] [cursor=pointer]
+        - tab "Status" [ref=e29] [cursor=pointer]
+      - tabpanel "Mundo" [ref=e1002]:
+        - generic [ref=e1003]:
+          - generic [ref=e1004]:
+            - generic [ref=e1005]: MERCADOS MUNDIALES — YAHOO FINANCE / OWID
+            - generic [ref=e1006]: UPD 05:24 p. m.
+          - generic [ref=e1007]:
+            - button "Mercados" [ref=e1008] [cursor=pointer]
+            - button "Electricidad" [ref=e1009] [cursor=pointer]
+            - button "Petróleo" [ref=e1010] [cursor=pointer]
+            - button "Soja" [ref=e1011] [cursor=pointer]
+            - button "IA" [ref=e1012] [cursor=pointer]
+            - button "Predicción" [ref=e1013] [cursor=pointer]
+            - button "Macro Comparada" [ref=e1014] [cursor=pointer]
+            - button "Gini Mundial" [ref=e1015] [cursor=pointer]
+            - button "Pirámides" [ref=e1016] [cursor=pointer]
+          - generic [ref=e1017]:
+            - generic [ref=e1018]: Índices
+            - generic [ref=e1019]:
+              - button "S&P 500 6,575.32 -0.25%" [ref=e1020] [cursor=pointer]:
+                - generic [ref=e1021]: S&P 500
+                - generic [ref=e1022]: 6,575.32
+                - generic [ref=e1023]: "-0.25%"
+              - button "NASDAQ 21,840.95 -0.41%" [ref=e1024] [cursor=pointer]:
+                - generic [ref=e1025]: NASDAQ
+                - generic [ref=e1026]: 21,840.95
+                - generic [ref=e1027]: "-0.41%"
+              - button "DOW 46,565.74 +0.29%" [ref=e1028] [cursor=pointer]:
+                - generic [ref=e1029]: DOW
+                - generic [ref=e1030]: 46,565.74
+                - generic [ref=e1031]: +0.29%
+              - button "MERVAL 2,999,341.8 +6.92%" [ref=e1032] [cursor=pointer]:
+                - generic [ref=e1033]: MERVAL
+                - generic [ref=e1034]: 2,999,341.8
+                - generic [ref=e1035]: +6.92%
+              - button "VIX 24.62 -10.28%" [ref=e1036] [cursor=pointer]:
+                - generic [ref=e1037]: VIX
+                - generic [ref=e1038]: "24.62"
+                - generic [ref=e1039]: "-10.28%"
+          - generic [ref=e1040]:
+            - generic [ref=e1041]: Commodities
+            - generic [ref=e1042]:
+              - button "SOJA 1,167.25 +0.69%" [ref=e1043] [cursor=pointer]:
+                - generic [ref=e1044]: SOJA
+                - generic [ref=e1045]: 1,167.25
+                - generic [ref=e1046]: +0.69%
+              - button "MAÍZ 453 -1.95%" [ref=e1047] [cursor=pointer]:
+                - generic [ref=e1048]: MAÍZ
+                - generic [ref=e1049]: "453"
+                - generic [ref=e1050]: "-1.95%"
+              - button "TRIGO 597.5 -1.24%" [ref=e1051] [cursor=pointer]:
+                - generic [ref=e1052]: TRIGO
+                - generic [ref=e1053]: "597.5"
+                - generic [ref=e1054]: "-1.24%"
+              - button "WTI 99.56 -0.08%" [ref=e1055] [cursor=pointer]:
+                - generic [ref=e1056]: WTI
+                - generic [ref=e1057]: "99.56"
+                - generic [ref=e1058]: "-0.08%"
+              - button "ORO 4,794.9 +6.74%" [ref=e1059] [cursor=pointer]:
+                - generic [ref=e1060]: ORO
+                - generic [ref=e1061]: 4,794.9
+                - generic [ref=e1062]: +6.74%
+          - generic [ref=e1063]:
+            - generic [ref=e1064]: FX
+            - generic [ref=e1065]:
+              - button "EUR/USD 1.16 +0.22%" [ref=e1066] [cursor=pointer]:
+                - generic [ref=e1067]: EUR/USD
+                - generic [ref=e1068]: "1.16"
+                - generic [ref=e1069]: +0.22%
+              - button "USD/BRL 5.15 -1.63%" [ref=e1070] [cursor=pointer]:
+                - generic [ref=e1071]: USD/BRL
+                - generic [ref=e1072]: "5.15"
+                - generic [ref=e1073]: "-1.63%"
+              - button "USD/CNY 6.87 -0.43%" [ref=e1074] [cursor=pointer]:
+                - generic [ref=e1075]: USD/CNY
+                - generic [ref=e1076]: "6.87"
+                - generic [ref=e1077]: "-0.43%"
+              - button "DXY 99.6 -0.55%" [ref=e1078] [cursor=pointer]:
+                - generic [ref=e1079]: DXY
+                - generic [ref=e1080]: "99.6"
+                - generic [ref=e1081]: "-0.55%"
+          - generic [ref=e1082]:
+            - generic [ref=e1083]: Renta Fija / Crypto
+            - generic [ref=e1084]:
+              - button "US 10Y 4.32 -2.20%" [ref=e1085] [cursor=pointer]:
+                - generic [ref=e1086]: US 10Y
+                - generic [ref=e1087]: "4.32"
+                - generic [ref=e1088]: "-2.20%"
+              - button "BRENT 100.88 -10.38%" [ref=e1089] [cursor=pointer]:
+                - generic [ref=e1090]: BRENT
+                - generic [ref=e1091]: "100.88"
+                - generic [ref=e1092]: "-10.38%"
+              - button "BTC 68,038.19 +2.59%" [ref=e1093] [cursor=pointer]:
+                - generic [ref=e1094]: BTC
+                - generic [ref=e1095]: 68,038.19
+                - generic [ref=e1096]: +2.59%
+              - button "ETH 2,135.7 +7.18%" [ref=e1097] [cursor=pointer]:
+                - generic [ref=e1098]: ETH
+                - generic [ref=e1099]: 2,135.7
+                - generic [ref=e1100]: +7.18%
+          - generic [ref=e1101]:
+            - generic [ref=e1102]: S&P 500 — Serie histórica (1 año) · 6,575.32 -0.25%
+            - table [ref=e1104]:
+              - rowgroup [ref=e1105]:
+                - row "Fecha Precio Var % (vs anterior)" [ref=e1106]:
+                  - columnheader "Fecha" [ref=e1107]
+                  - columnheader "Precio" [ref=e1108]
+                  - columnheader "Var % (vs anterior)" [ref=e1109]
+              - rowgroup [ref=e1110]:
+                - row "2026-04-01 6,575.32 +0.72%" [ref=e1111]:
+                  - cell "2026-04-01" [ref=e1112]
+                  - cell "6,575.32" [ref=e1113]
+                  - cell "+0.72%" [ref=e1114]
+                - row "2026-03-31 6,528.52 +2.91%" [ref=e1115]:
+                  - cell "2026-03-31" [ref=e1116]
+                  - cell "6,528.52" [ref=e1117]
+                  - cell "+2.91%" [ref=e1118]
+                - row "2026-03-30 6,343.72 -0.39%" [ref=e1119]:
+                  - cell "2026-03-30" [ref=e1120]
+                  - cell "6,343.72" [ref=e1121]
+                  - cell "-0.39%" [ref=e1122]
+                - row "2026-03-27 6,368.85 -1.67%" [ref=e1123]:
+                  - cell "2026-03-27" [ref=e1124]
+                  - cell "6,368.85" [ref=e1125]
+                  - cell "-1.67%" [ref=e1126]
+                - row "2026-03-26 6,477.16 -1.74%" [ref=e1127]:
+                  - cell "2026-03-26" [ref=e1128]
+                  - cell "6,477.16" [ref=e1129]
+                  - cell "-1.74%" [ref=e1130]
+                - row "2026-03-25 6,591.9 +0.54%" [ref=e1131]:
+                  - cell "2026-03-25" [ref=e1132]
+                  - cell "6,591.9" [ref=e1133]
+                  - cell "+0.54%" [ref=e1134]
+                - row "2026-03-24 6,556.37 -0.37%" [ref=e1135]:
+                  - cell "2026-03-24" [ref=e1136]
+                  - cell "6,556.37" [ref=e1137]
+                  - cell "-0.37%" [ref=e1138]
+                - row "2026-03-23 6,581 +1.15%" [ref=e1139]:
+                  - cell "2026-03-23" [ref=e1140]
+                  - cell "6,581" [ref=e1141]
+                  - cell "+1.15%" [ref=e1142]
+                - row "2026-03-20 6,506.48 -1.51%" [ref=e1143]:
+                  - cell "2026-03-20" [ref=e1144]
+                  - cell "6,506.48" [ref=e1145]
+                  - cell "-1.51%" [ref=e1146]
+                - row "2026-03-19 6,606.49 -0.27%" [ref=e1147]:
+                  - cell "2026-03-19" [ref=e1148]
+                  - cell "6,606.49" [ref=e1149]
+                  - cell "-0.27%" [ref=e1150]
+                - row "2026-03-18 6,624.7 -1.36%" [ref=e1151]:
+                  - cell "2026-03-18" [ref=e1152]
+                  - cell "6,624.7" [ref=e1153]
+                  - cell "-1.36%" [ref=e1154]
+                - row "2026-03-17 6,716.09 +0.25%" [ref=e1155]:
+                  - cell "2026-03-17" [ref=e1156]
+                  - cell "6,716.09" [ref=e1157]
+                  - cell "+0.25%" [ref=e1158]
+                - row "2026-03-16 6,699.38 +1.01%" [ref=e1159]:
+                  - cell "2026-03-16" [ref=e1160]
+                  - cell "6,699.38" [ref=e1161]
+                  - cell "+1.01%" [ref=e1162]
+                - row "2026-03-13 6,632.19 -0.61%" [ref=e1163]:
+                  - cell "2026-03-13" [ref=e1164]
+                  - cell "6,632.19" [ref=e1165]
+                  - cell "-0.61%" [ref=e1166]
+                - row "2026-03-12 6,672.62 -1.52%" [ref=e1167]:
+                  - cell "2026-03-12" [ref=e1168]
+                  - cell "6,672.62" [ref=e1169]
+                  - cell "-1.52%" [ref=e1170]
+                - row "2026-03-11 6,775.8 -0.08%" [ref=e1171]:
+                  - cell "2026-03-11" [ref=e1172]
+                  - cell "6,775.8" [ref=e1173]
+                  - cell "-0.08%" [ref=e1174]
+                - row "2026-03-10 6,781.48 -0.21%" [ref=e1175]:
+                  - cell "2026-03-10" [ref=e1176]
+                  - cell "6,781.48" [ref=e1177]
+                  - cell "-0.21%" [ref=e1178]
+                - row "2026-03-09 6,795.99 +0.83%" [ref=e1179]:
+                  - cell "2026-03-09" [ref=e1180]
+                  - cell "6,795.99" [ref=e1181]
+                  - cell "+0.83%" [ref=e1182]
+                - row "2026-03-06 6,740.02 -1.33%" [ref=e1183]:
+                  - cell "2026-03-06" [ref=e1184]
+                  - cell "6,740.02" [ref=e1185]
+                  - cell "-1.33%" [ref=e1186]
+                - row "2026-03-05 6,830.71 -0.56%" [ref=e1187]:
+                  - cell "2026-03-05" [ref=e1188]
+                  - cell "6,830.71" [ref=e1189]
+                  - cell "-0.56%" [ref=e1190]
+                - row "2026-03-04 6,869.5 +0.78%" [ref=e1191]:
+                  - cell "2026-03-04" [ref=e1192]
+                  - cell "6,869.5" [ref=e1193]
+                  - cell "+0.78%" [ref=e1194]
+                - row "2026-03-03 6,816.63 -0.94%" [ref=e1195]:
+                  - cell "2026-03-03" [ref=e1196]
+                  - cell "6,816.63" [ref=e1197]
+                  - cell "-0.94%" [ref=e1198]
+                - row "2026-03-02 6,881.62 +0.04%" [ref=e1199]:
+                  - cell "2026-03-02" [ref=e1200]
+                  - cell "6,881.62" [ref=e1201]
+                  - cell "+0.04%" [ref=e1202]
+                - row "2026-02-27 6,878.88 -0.43%" [ref=e1203]:
+                  - cell "2026-02-27" [ref=e1204]
+                  - cell "6,878.88" [ref=e1205]
+                  - cell "-0.43%" [ref=e1206]
+                - row "2026-02-26 6,908.86 -0.54%" [ref=e1207]:
+                  - cell "2026-02-26" [ref=e1208]
+                  - cell "6,908.86" [ref=e1209]
+                  - cell "-0.54%" [ref=e1210]
+                - row "2026-02-25 6,946.13 +0.81%" [ref=e1211]:
+                  - cell "2026-02-25" [ref=e1212]
+                  - cell "6,946.13" [ref=e1213]
+                  - cell "+0.81%" [ref=e1214]
+                - row "2026-02-24 6,890.07 +0.77%" [ref=e1215]:
+                  - cell "2026-02-24" [ref=e1216]
+                  - cell "6,890.07" [ref=e1217]
+                  - cell "+0.77%" [ref=e1218]
+                - row "2026-02-23 6,837.75 -1.04%" [ref=e1219]:
+                  - cell "2026-02-23" [ref=e1220]
+                  - cell "6,837.75" [ref=e1221]
+                  - cell "-1.04%" [ref=e1222]
+                - row "2026-02-20 6,909.51 +0.69%" [ref=e1223]:
+                  - cell "2026-02-20" [ref=e1224]
+                  - cell "6,909.51" [ref=e1225]
+                  - cell "+0.69%" [ref=e1226]
+                - row "2026-02-19 6,861.89 —" [ref=e1227]:
+                  - cell "2026-02-19" [ref=e1228]
+                  - cell "6,861.89" [ref=e1229]
+                  - cell "—" [ref=e1230]
+  - generic [ref=e380]: "6"

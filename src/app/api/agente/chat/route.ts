@@ -18,6 +18,26 @@ export const maxDuration = 10 // Vercel Hobby limit
 
 const MAX_QUERIES_PER_DAY = 3
 const MAX_MESSAGE_LEN     = 500
+const SESSION_ID_MAX_LEN  = 64
+
+// Patrones de prompt injection conocidos
+const INJECTION_PATTERNS = [
+  /ignore\s+(all\s+)?previous\s+instructions/i,
+  /ignore\s+(all\s+)?prior\s+instructions/i,
+  /forget\s+(everything|all|your|the)/i,
+  /you\s+are\s+now\s+(a\s+)?(?!pizi)/i,
+  /act\s+as\s+(if\s+you\s+(are|were)\s+)?(?!pizi)/i,
+  /pretend\s+(you\s+are|to\s+be)/i,
+  /jailbreak/i,
+  /DAN\s+mode/i,
+  /developer\s+mode/i,
+  /\[SYSTEM\]/i,
+  /<\|im_start\|>/i,
+]
+
+function detectInjection(text: string): boolean {
+  return INJECTION_PATTERNS.some((p) => p.test(text))
+}
 
 export async function POST(request: NextRequest) {
   const tStart = Date.now()
@@ -33,7 +53,8 @@ export async function POST(request: NextRequest) {
 
   const message   = typeof body.message === "string" ? body.message.trim() : ""
   const modelId   = typeof body.model   === "string" ? body.model   : "haiku-4.5"
-  const sessionId = typeof body.session_id === "string" ? body.session_id : null
+  const rawSession = typeof body.session_id === "string" ? body.session_id : ""
+  const sessionId  = rawSession.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, SESSION_ID_MAX_LEN) || null
 
   // ── Validaciones ──────────────────────────────────────────────────────────
   if (!message || message.length === 0) {
@@ -43,8 +64,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Mensaje demasiado largo (máx ${MAX_MESSAGE_LEN} caracteres)` }, { status: 400 })
   }
   if (!MODELS[modelId]) {
-    const valid = Object.keys(MODELS).join(", ")
-    return NextResponse.json({ error: `Modelo inválido. Opciones: ${valid}` }, { status: 400 })
+    return NextResponse.json({ error: "Modelo inválido" }, { status: 400 })
+  }
+  if (detectInjection(message)) {
+    return NextResponse.json(
+      { error: "Solo puedo ayudarte con los datos del dashboard. ¿Querés que consulte el dólar, la inflación, los mercados o las noticias de hoy?" },
+      { status: 400 },
+    )
   }
 
   // ── Rate limit ────────────────────────────────────────────────────────────
@@ -105,6 +131,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (e) {
     const errMsg = e instanceof Error ? e.message : String(e)
+    console.error("[agente/chat] ERROR:", errMsg)
 
     logChatEvent({
       ip,
@@ -116,7 +143,7 @@ export async function POST(request: NextRequest) {
       errorMessage:   errMsg.slice(0, 500),
     })
 
-    // No exponer el mensaje interno al usuario
+    if (process.env.NODE_ENV === "development") console.error("[agente/chat] ERROR:", errMsg)
     return NextResponse.json(
       { error: "Error procesando la consulta. Intentá de nuevo." },
       { status: 500 },
