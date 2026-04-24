@@ -79,7 +79,6 @@ const SERIES_IDS: Record<string, string> = {
   poblacion_indec:  "9.2_P_2004_T_9",         // Población Argentina
   gini_indec:         "65.1_CGI_0_0_21",         // Coeficiente Gini EPH (semestral)
   informalidad_indec: "52.1_ASDJ_0_0_37",       // Asalariados sin descuento jubilatorio EPH (anual)
-  pobreza_indec:      "64.2_POBLACION_NUA_0_0_34_74", // Personas bajo línea de pobreza % (semestral)
   natalidad_indec:  "tn_arg",                  // Tasa de natalidad
   mortalidad_indec: "tmi_arg",                 // Tasa mortalidad infantil
   smvm:             "57.1_SMVMM_0_M_34",       // Salario Mínimo Vital y Móvil (mensual)
@@ -522,14 +521,13 @@ export async function GET(request: NextRequest) {
 
     // ── ARGENDATA — DESIGUALDAD E INFORMALIDAD ──────────────────────────────
     if (endpoint === "argendata_desigualdad") {
-      const [giniIndec, giniArgRows, giniMundoRows, informalRows, desempleoRows, informalIndec, pobrezaIndec] = await Promise.all([
+      const [giniIndec, giniArgRows, giniMundoRows, informalRows, desempleoRows, informalIndec] = await Promise.all([
         getMultiserie(["gini_indec"], 100),
         fetchCSVData("https://raw.githubusercontent.com/argendatafundar/data/main/DESIGU/ISA_desigualdad_i2.csv"),
         fetchCSVData("https://raw.githubusercontent.com/argendatafundar/data/main/DESIGU/ISA_mundo_i1.csv"),
         fetchCSVData("https://raw.githubusercontent.com/argendatafundar/data/main/INFDES/tasa_informalidad_argentina_tipo_anio.csv"),
         fetchCSVData("https://raw.githubusercontent.com/argendatafundar/data/main/INFDES/tasa_desempleo_arg_mundial_modelada.csv"),
         getMultiserie(["informalidad_indec"], 30),
-        getMultiserie(["pobreza_indec"], 60),
       ])
 
       // Gini ARG: Argendata anual pre-2003 + INDEC trimestral desde 2003
@@ -572,11 +570,6 @@ export async function GET(request: NextRequest) {
 
       const legal: [string, number][] = [...legalHistorica, ...legalIndec]
 
-      // Pobreza: INDEC/EPH semestral 2003-presente (escala 0-1 → %)
-      const pobreza: [string, number][] = (pobrezaIndec.pobreza_indec ?? [])
-        .map(([d, v]) => [d, parseFloat((v * 100).toFixed(1))] as [string, number])
-        .sort(([a], [b]) => a.localeCompare(b))
-
       // Desempleo mundial: serie por país, valores en proporción → %
       const PAISES_DESEMP = new Set(["Argentina", "Brasil", "Chile", "México", "Uruguay", "Bolivia", "Mundo"])
       const desempleoMap: Record<string, Record<string, unknown>> = {}
@@ -593,7 +586,7 @@ export async function GET(request: NextRequest) {
       )
 
       return NextResponse.json({
-        data: { gini_arg, gini_mundo, informalidad: { productiva, legal }, pobreza, desempleo_mundial },
+        data: { gini_arg, gini_mundo, informalidad: { productiva, legal }, desempleo_mundial },
         updated_at: new Date().toISOString(),
         source: "Gini/Pobreza/Informalidad: INDEC/EPH vía apis.datos.gob.ar · Gini mundial: Argendata/Fundar · Desempleo: CEDLAS/OIT",
       })
