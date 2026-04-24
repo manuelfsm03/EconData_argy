@@ -2426,7 +2426,7 @@ function ComposicionExportView() {
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px 0" }}>
         <div style={{ fontSize: 9, color: "#555", fontFamily: "monospace", letterSpacing: 1 }}>
-          COMPOSICIÓN POR RUBRO (USD MILLONES ANUALES)
+          COMPOSICIÓN POR RUBRO (USD MILLONES MENSUALES)
         </div>
         <div style={{ display: "flex", gap: 4 }}>
           <button style={btnStyle(modo === "expo")} onClick={() => setModo("expo")}>Exportaciones</button>
@@ -2443,7 +2443,7 @@ function ComposicionExportView() {
         defaultRange="all"
       />
       <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
-        Fuente: Argendata/Fundar — INDEC · Licencia CC BY-NC-ND 4.0
+        INDEC · Intercambio Comercial Argentino · Clasificación ICA (PP/MOA/MOI/CyE para expo · BK/BI/CyL/P&A/BC/VAP para impo)
       </div>
     </div>
   )

@@ -611,39 +611,46 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // ── ARGENDATA — COMPOSICIÓN COMERCIO EXTERIOR ────────────────────────────
+    // ── COMPOSICIÓN COMERCIO EXTERIOR — ICA INDEC (mensual, hasta hoy) ──────
     if (endpoint === "argendata_comext") {
-      const BASE = "https://raw.githubusercontent.com/argendatafundar/data/main/COMEXT/"
-      const [expoRows, impoRows] = await Promise.all([
-        fetchCSVData(`${BASE}composicion_exportaciones_bienes_sitc_seccion.csv`),
-        fetchCSVData(`${BASE}composicion_importaciones_bienes_sitc_seccion.csv`),
-      ])
+      const ICA_CSV = "https://infra.datos.gob.ar/catalog/sspm/dataset/74/distribution/74.3/download/intercambio-comercial-argentino-mensual.csv"
+      const rows = await fetchCSVData(ICA_CSV, 3600)
 
-      const pivot = (rows: Record<string, string>[], valCol: string) => {
-        const byYear: Record<string, Record<string, unknown>> = {}
-        const catSet = new Set<string>()
-        for (const r of rows) {
-          if (r.geocodigoFundar !== "ARG") continue
-          const year = r.year ?? ""
-          const cat = r.sitc_product_name_es ?? "Otros"
-          const val = parseFloat(r[valCol] ?? "") || 0
-          catSet.add(cat)
-          if (!byYear[year]) byYear[year] = { date: `${year}-01-01` }
-          byYear[year][cat] = parseFloat(val.toFixed(2))
-        }
-        const series = Object.values(byYear).sort((a, b) =>
-          (a.date as string).localeCompare(b.date as string)
-        )
-        return { series, categorias: Array.from(catSet) }
+      const p = (r: Record<string, string>, k: string) => {
+        const v = parseFloat(r[k])
+        return isNaN(v) ? null : parseFloat(v.toFixed(2))
       }
 
-      const expo = pivot(expoRows, "export_value_pc")
-      const impo = pivot(impoRows, "import_value_pc")
+      const expoSeries = rows
+        .filter(r => r.indice_tiempo)
+        .map(r => ({
+          date:             r.indice_tiempo,
+          "Prod. Primarios": p(r, "ica_exportacion_productos_primarios"),
+          "MOA":             p(r, "ica_exportacion_manufacturas_origen_agropecuario"),
+          "MOI":             p(r, "ica_exportacion_manufacturas_origen_industrial"),
+          "Combustibles":    p(r, "ica_exportacion_combustible_energia"),
+        }))
+
+      const impoSeries = rows
+        .filter(r => r.indice_tiempo)
+        .map(r => ({
+          date:              r.indice_tiempo,
+          "Bs. Capital":     p(r, "ica_importaciones_bienes_capital"),
+          "Bs. Intermedios": p(r, "ica_importaciones_bienes_intermedios"),
+          "Combustibles":    p(r, "ica_importaciones_combustibles_lubricantes"),
+          "P&A Bs. Capital": p(r, "ica_importaciones_piezas_accesorios_bienes_capital"),
+          "Bs. Consumo":     p(r, "ica_importaciones_bienes_consumo"),
+          "Vehículos":       p(r, "ica_importaciones_vehiculos_automotores_pasajeros"),
+          "Resto":           p(r, "ica_importaciones_resto"),
+        }))
 
       return NextResponse.json({
-        data: { expo, impo },
+        data: {
+          expo: { series: expoSeries, categorias: ["Prod. Primarios", "MOA", "MOI", "Combustibles"] },
+          impo: { series: impoSeries, categorias: ["Bs. Capital", "Bs. Intermedios", "Combustibles", "P&A Bs. Capital", "Bs. Consumo", "Vehículos", "Resto"] },
+        },
         updated_at: new Date().toISOString(),
-        source: "Argendata/Fundar — Atlas de Complejidad Económica, Harvard Growth Lab",
+        source: "INDEC · Intercambio Comercial Argentino — CSV directo (mensual)",
       })
     }
 
