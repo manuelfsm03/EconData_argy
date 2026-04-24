@@ -1217,12 +1217,12 @@ function DesigualdadView() {
             unit={`Mayor desigualdad · ${giniMax?.[0]?.slice(0, 4) ?? ""}`} valueColor="#FF433D" />
         </div>
         <div style={{ padding: "8px 0" }}>
-          <BBGLineChart title="COEFICIENTE DE GINI — ARGENTINA 2003-2025 (trimestral)" data={giniArgData}
+          <BBGLineChart title="COEFICIENTE DE GINI — ARGENTINA 1974-2025" data={giniArgData}
             lines={[{ key: "gini", name: "Gini", color: "#FFA028" }]}
             height={240} yAxisLabel="Índice Gini" formatValue={v => fmtNum(v, 1)} defaultRange="all" showZeroLine={false} />
         </div>
         <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
-          INDEC · Coeficiente de Gini del Ingreso Per Cápita Familiar · EPH continua · 31 aglomerados urbanos · vía apis.datos.gob.ar
+          1974–2002: CEDLAS/EPH vía Argendata/Fundar (anual) · 2003–2025: INDEC/EPH vía apis.datos.gob.ar (trimestral)
         </div>
       </>)}
 
@@ -1276,8 +1276,8 @@ function DesigualdadView() {
             height={240} yAxisLabel="%" formatValue={v => `${fmtNum(v, 1)}%`} defaultRange="all" />
         </div>
         <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
-          Def. productiva: empleo en unidades de baja productividad · Def. legal: sin aportes al sistema previsional ·
-          SEDLAC/Banco Mundial con base en EPH · vía Argendata/Fundar (CC BY-NC-ND 4.0)
+          Def. productiva: empleo en unidades de baja productividad (SEDLAC/Banco Mundial · Argendata/Fundar) ·
+          Def. legal: sin aportes previsionales — pre-2004: SEDLAC/Argendata · 2004-2025: INDEC/EPH vía apis.datos.gob.ar
         </div>
       </>)}
     </div>

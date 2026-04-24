@@ -2988,12 +2988,12 @@ function DesigualdadView() {
             unit={`Mayor desigualdad · ${giniMax?.[0]?.slice(0, 4) ?? ""}`} valueColor="#FF433D" />
         </div>
         <div style={{ padding: "8px 0" }}>
-          <BBGLineChart title="COEFICIENTE DE GINI — ARGENTINA 2003-2025 (trimestral)" data={giniArgData}
+          <BBGLineChart title="COEFICIENTE DE GINI — ARGENTINA 1974-2025" data={giniArgData}
             lines={[{ key: "gini", name: "Gini", color: "#FFA028" }]}
             height={240} yAxisLabel="Índice Gini" formatValue={v => fmtNum(v, 1)} defaultRange="all" showZeroLine={false} />
         </div>
         <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
-          INDEC · Coeficiente de Gini del Ingreso Per Cápita Familiar · EPH continua · 31 aglomerados urbanos · vía apis.datos.gob.ar
+          1974–2002: CEDLAS/EPH vía Argendata/Fundar (anual) · 2003–2025: INDEC/EPH vía apis.datos.gob.ar (trimestral)
         </div>
       </>)}
 
@@ -3047,8 +3047,8 @@ function DesigualdadView() {
             height={240} yAxisLabel="%" formatValue={v => `${fmtNum(v, 1)}%`} defaultRange="all" />
         </div>
         <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
-          Def. productiva: empleo en unidades de baja productividad · Def. legal: sin aportes al sistema previsional ·
-          SEDLAC/Banco Mundial con base en EPH · vía Argendata/Fundar (CC BY-NC-ND 4.0)
+          Def. productiva: empleo en unidades de baja productividad (SEDLAC/Banco Mundial · Argendata/Fundar) ·
+          Def. legal: sin aportes previsionales — pre-2004: SEDLAC/Argendata · 2004-2025: INDEC/EPH vía apis.datos.gob.ar
         </div>
       </>)}
     </div>
@@ -3645,9 +3645,20 @@ interface BigMacData {
     adj_subval_pct: number | null
     date: string
   } | null
+  argentina_est: {
+    dollar_price_oficial: number
+    dollar_price_blue: number
+    tc_oficial: number
+    tc_blue: number
+    subval_pct_oficial: number
+    subval_pct_blue: number
+    tc_bigmac_implicito: number
+    fecha_tc: string
+    fecha_precio_base: string
+  } | null
   usa_precio: number
   ranking: BigMacCountry[]
-  historico_arg: { date: string; dollar_price: number; subval_pct: number }[]
+  historico_arg: { date: string; dollar_price: number; subval_pct: number; estimado: boolean }[]
   ultima_fecha: string
 }
 
@@ -3666,6 +3677,7 @@ function BigMacView() {
   if (loading) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando Big Mac Index...</div>
 
   const arg = data?.argentina
+  const est = data?.argentina_est
   const subvalKey = modo === "ajustado" ? "adj_subval_pct" : "subval_pct"
   const ranking = data?.ranking?.slice().sort((a, b) => a[subvalKey] - b[subvalKey]) ?? []
   const maxAbs = Math.max(...ranking.map(r => Math.abs(r[subvalKey])), 1)
@@ -3673,20 +3685,55 @@ function BigMacView() {
   return (
     <div>
       <SectionMeta title="Big Mac Index" help="Medida de paridad de poder adquisitivo (PPP) calculada por The Economist. Compara el precio de la hamburguesa en distintos países. Si el índice sugiere subvaluación, la moneda local sería más 'barata' que lo que indica el tipo de cambio de mercado." source="The Economist" />
+
+      {/* Datos oficiales - última publicación */}
+      <div style={{ padding: "4px 12px 2px", fontSize: 8, color: "#555", letterSpacing: 1 }}>
+        ÚLTIMA PUBLICACIÓN — The Economist ({arg?.date ?? "—"})
+      </div>
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
         <KPI label="Precio BM ARG (USD)"
           value={arg?.dollar_price != null ? `USD ${fmtNum(arg.dollar_price, 2)}` : null}
-          unit={`Fecha: ${arg?.date ?? "—"}`}
+          unit={`TC oficial ${arg?.dollar_ex != null ? fmtNum(arg.dollar_ex, 0) : "—"} · ${arg?.date ?? "—"}`}
           valueColor="#FFA028" />
         <KPI label="TC Big Mac implícito"
           value={arg?.tc_bigmac != null ? `$${fmtNum(arg.tc_bigmac, 0)}` : null}
-          unit="Precio ARG / Precio USA"
+          unit="Precio ARS / Precio USD-USA"
           valueColor="#4FC3F7" />
         <KPI label="Subvaluación vs USD"
           value={arg?.subval_pct != null ? `${arg.subval_pct >= 0 ? "+" : ""}${fmtNum(arg.subval_pct, 1)}%` : null}
-          unit="Negativo = barato vs USA"
+          unit="Negativo = peso barato vs dólar"
           valueColor={arg?.subval_pct != null ? (arg.subval_pct >= 0 ? "#FF433D" : "#4AF6C3") : "#555"} />
       </div>
+
+      {/* Estimación actualizada con TC hoy */}
+      {est && (
+        <>
+          <div style={{ padding: "8px 12px 2px", fontSize: 8, color: "#4AF6C3", letterSpacing: 1 }}>
+            ESTIMACIÓN HOY ({est.fecha_tc}) — Precio ARS base {est.fecha_precio_base} · TC actual
+          </div>
+          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+            <KPI label="BM ARG est. (TC oficial)"
+              value={`USD ${fmtNum(est.dollar_price_oficial, 2)}`}
+              unit={`TC oficial $${fmtNum(est.tc_oficial, 0)} · ${est.fecha_tc}`}
+              valueColor="#4AF6C3" />
+            <KPI label="BM ARG est. (TC blue)"
+              value={`USD ${fmtNum(est.dollar_price_blue, 2)}`}
+              unit={`TC blue $${fmtNum(est.tc_blue, 0)} · ${est.fecha_tc}`}
+              valueColor="#4AF6C3" />
+            <KPI label="Subval. est. (oficial)"
+              value={`${est.subval_pct_oficial >= 0 ? "+" : ""}${fmtNum(est.subval_pct_oficial, 1)}%`}
+              unit="vs precio USA · TC oficial"
+              valueColor={est.subval_pct_oficial >= 0 ? "#FF433D" : "#4AF6C3"} />
+            <KPI label="Subval. est. (blue)"
+              value={`${est.subval_pct_blue >= 0 ? "+" : ""}${fmtNum(est.subval_pct_blue, 1)}%`}
+              unit="vs precio USA · TC blue"
+              valueColor={est.subval_pct_blue >= 0 ? "#FF433D" : "#4AF6C3"} />
+          </div>
+          <div style={{ padding: "3px 12px", fontSize: 7, color: "#333" }}>
+            ⚠ Estimación: usa precio ARS del boletín The Economist ({est.fecha_precio_base}) + TC actual. El precio en pesos puede haber cambiado.
+          </div>
+        </>
+      )}
 
       {/* Selector modo */}
       <div style={{ padding: "8px 12px 4px", display: "flex", gap: 8, alignItems: "center" }}>
@@ -3704,6 +3751,30 @@ function BigMacView() {
       </div>
 
       {/* Ranking */}
+      {/* Histórico ARG */}
+      {(data?.historico_arg?.length ?? 0) > 0 && (
+        <div style={{ padding: "8px 12px 0" }}>
+          <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, marginBottom: 4 }}>
+            PRECIO BIG MAC ARG EN USD — HISTÓRICO
+          </div>
+          <BBGLineChart
+            title=""
+            data={data!.historico_arg.map(r => ({ date: r.date, precio: r.dollar_price }))}
+            lines={[{ key: "precio", name: "USD", color: "#FFA028" }]}
+            height={180}
+            yAxisLabel="USD"
+            formatValue={v => `$${fmtNum(v, 2)}`}
+            defaultRange="all"
+            showZeroLine={false}
+          />
+          {est && (
+            <div style={{ fontSize: 7, color: "#4AF6C3", padding: "2px 0" }}>
+              ● Último punto ({est.fecha_tc}): estimación con TC oficial ${fmtNum(est.tc_oficial, 0)}
+            </div>
+          )}
+        </div>
+      )}
+
       {ranking.length > 0 && (
         <div style={{ padding: "4px 12px 12px" }}>
           <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, marginBottom: 8 }}>
@@ -3898,12 +3969,14 @@ type VencDet = {
 interface DeudaData {
   data: {
     historico_pib:       { anio: string; deuda_pib: number }[]
-    ultimo:              { anio: string; deuda_pib: number | null }
+    series_mensual:      { date: string; deuda_usd: number; deuda_pib: number | null }[]
+    ultimo:              { anio: string; deuda_pib: number | null; deuda_usd: number | null }
     vencimientos:        { anio: string; monto: number }[]
     vencimientos_detalle: VencDet[]
     composicion_acreedor: { nombre: string; pct: number }[]
     composicion_moneda:   { nombre: string; pct: number }[]
     is_live: boolean
+    ultima_fecha: string
   }
   source: string
 }
@@ -4209,21 +4282,49 @@ function DeudaView() {
               <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
                 <KPI label="Deuda / PIB"
                   value={stock.data.ultimo.deuda_pib != null ? `${fmtNum(stock.data.ultimo.deuda_pib, 1)}%` : null}
-                  unit={`Año ${stock.data.ultimo.anio} · ${stock.data.is_live ? "Datos oficiales" : "Estimación"}`}
+                  unit={stock.data.is_live
+                    ? `${stock.data.ultima_fecha} · Adm. Central · Sec. Finanzas`
+                    : "Estimación indicativa — fuente no disponible"}
                   valueColor={stock.data.ultimo.deuda_pib != null
                     ? (stock.data.ultimo.deuda_pib < 70 ? "#4AF6C3" : stock.data.ultimo.deuda_pib < 90 ? "#FFA028" : "#FF433D")
                     : "#555"} />
+                {stock.data.ultimo.deuda_usd != null && (
+                  <KPI label="Deuda Nominal"
+                    value={`USD ${fmtNum(stock.data.ultimo.deuda_usd / 1000, 1)}B`}
+                    unit={`${stock.data.ultima_fecha} · Administración Central`}
+                    valueColor="#4FC3F7" />
+                )}
               </div>
 
-              {/* Histórico deuda/PIB */}
+              {/* Serie mensual deuda/PBI cuando hay datos en vivo (2019-presente) */}
+              {stock.data.is_live && stock.data.series_mensual.length > 0 && (
+                <div style={{ padding: "8px 12px 0" }}>
+                  <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, marginBottom: 4 }}>
+                    DEUDA ADIM. CENTRAL / PBI — MENSUAL (2019–{stock.data.ultima_fecha?.slice(0, 4)})
+                  </div>
+                  <BBGAreaChart
+                    title=""
+                    data={stock.data.series_mensual
+                      .filter(r => r.deuda_pib != null)
+                      .map(r => ({ date: r.date + "-01", valor: r.deuda_pib as number }))}
+                    areas={[{ key: "valor", name: "Deuda/PBI", color: "#FFA028" }]}
+                    height={200}
+                    yAxisLabel="%"
+                    formatValue={v => `${fmtNum(v, 1)}%`}
+                    defaultRange="all"
+                  />
+                </div>
+              )}
+
+              {/* Histórico anual deuda/PIB (2004–presente) */}
               {stock.data.historico_pib.length > 0 && (
                 <div style={{ padding: "8px 12px 0" }}>
-                  <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, marginBottom: 4 }}>DEUDA / PIB — EVOLUCIÓN</div>
+                  <div style={{ fontSize: 9, color: "#555", letterSpacing: 1.5, marginBottom: 4 }}>DEUDA / PBI — SERIE ANUAL 2004–PRESENTE</div>
                   <BBGAreaChart
                     title=""
                     data={stock.data.historico_pib.map(r => ({ date: r.anio + "-01-01", valor: r.deuda_pib }))}
-                    areas={[{ key: "valor", name: "Deuda/PIB", color: "#FFA028" }]}
-                    height={220}
+                    areas={[{ key: "valor", name: "Deuda/PBI", color: "#FFA028" }]}
+                    height={180}
                     yAxisLabel="%"
                     formatValue={v => `${fmtNum(v, 1)}%`}
                     defaultRange="all"
@@ -4282,8 +4383,22 @@ function DeudaView() {
                 ))}
               </div>
 
-              <div style={{ padding: "4px 12px", fontSize: 8, color: "#333" }}>
-                {stock.source}
+              <div style={{ padding: "6px 12px", fontSize: 8, color: "#444", borderTop: "1px solid #111", lineHeight: 1.6 }}>
+                {stock.data.is_live
+                  ? <>
+                      {stock.source}
+                      {" · "}Serie mensual 2019-presente: Deuda Bruta Administración Central (excluye deuda provincial, BCRA y empresas públicas)
+                      {" · "}Serie anual 2004-2018: estimaciones FMI/Sec. Finanzas (sector público consolidado)
+                    </>
+                  : <>
+                      <span style={{ color: "#FFA028" }}>⚠ Estimación anual</span>
+                      {" · "}Fuente live no disponible. Valores indicativos.{" "}
+                      <a href="https://www.argentina.gob.ar/economia/finanzas/datos-mensuales-de-la-deuda/datos" target="_blank" rel="noopener noreferrer"
+                        style={{ color: "#4AF6C3", textDecoration: "underline" }}>
+                        Boletín mensual · Secretaría de Finanzas
+                      </a>
+                    </>
+                }
               </div>
             </div>
           ) : <div style={{ padding: 24, color: "#444", textAlign: "center", fontSize: 11 }}>Sin datos disponibles</div>
