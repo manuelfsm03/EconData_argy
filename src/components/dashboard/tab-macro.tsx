@@ -2936,6 +2936,7 @@ type DesigualdadData = {
   gini_arg: [string, number][]
   gini_mundo: { pais: string; gini: number }[]
   informalidad: { productiva: [string, number][]; legal: [string, number][] }
+  pobreza: [string, number][]
   desempleo_mundial: Record<string, unknown>[]
 }
 
@@ -2959,6 +2960,9 @@ function DesigualdadView() {
   const giniMax       = data.gini_arg.reduce((a, b) => b[1] > a[1] ? b : a, data.gini_arg[0])
   const prodUlt       = data.informalidad.productiva[data.informalidad.productiva.length - 1]
   const legalUlt      = data.informalidad.legal[data.informalidad.legal.length - 1]
+  const pobrezaUlt    = data.pobreza?.[data.pobreza.length - 1]
+  const pobrezaAnterior = data.pobreza?.[data.pobreza.length - 2]
+  const pobrezaData   = (data.pobreza ?? []).map(([date, val]) => ({ date, pobreza: val }))
   const giniMundoRank = [...data.gini_mundo].sort((a, b) => b.gini - a.gini).slice(0, 20)
   const giniArgRank   = giniMundoRank.findIndex(r => r.pais === "Argentina") + 1
   const maxGini       = giniMundoRank[0]?.gini ?? 60
@@ -2975,6 +2979,7 @@ function DesigualdadView() {
       <SubTabs tabs={[
         { key: "gini_arg",     label: "Gini ARG" },
         { key: "gini_mundo",   label: "Gini Mundial" },
+        { key: "pobreza",      label: "Pobreza" },
         { key: "informalidad", label: "Informalidad" },
       ]} active={subTab} onChange={setSubTab} />
 
@@ -3031,6 +3036,31 @@ function DesigualdadView() {
         </div>
       </>)}
 
+      {subTab === "pobreza" && (<>
+        <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+          <KPI label="Pobreza (último semestre)"
+            value={pobrezaUlt ? `${fmtNum(pobrezaUlt[1], 1)}%` : null}
+            unit={`Personas · ${pobrezaUlt?.[0]?.slice(0, 7) ?? ""}`} valueColor="#FF8A65" />
+          <KPI label="Semestre anterior"
+            value={pobrezaAnterior ? `${fmtNum(pobrezaAnterior[1], 1)}%` : null}
+            unit={pobrezaAnterior?.[0]?.slice(0, 7) ?? ""} valueColor="#555" />
+          {pobrezaUlt && pobrezaAnterior && (
+            <KPI label="Variación"
+              value={`${fmtNum(pobrezaUlt[1] - pobrezaAnterior[1], 1)} pp`}
+              unit="puntos porcentuales"
+              valueColor={(pobrezaUlt[1] - pobrezaAnterior[1]) < 0 ? "#4AF6C3" : "#FF433D"} />
+          )}
+        </div>
+        <div style={{ padding: "8px 0" }}>
+          <BBGLineChart title="TASA DE POBREZA — ARGENTINA 2003-2025 (% personas)" data={pobrezaData}
+            lines={[{ key: "pobreza", name: "% bajo línea de pobreza", color: "#FF8A65" }]}
+            height={240} yAxisLabel="%" formatValue={v => `${fmtNum(v, 1)}%`} defaultRange="all" />
+        </div>
+        <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
+          Población con ingresos por debajo de la línea de pobreza · INDEC/EPH semestral · vía apis.datos.gob.ar
+        </div>
+      </>)}
+
       {subTab === "informalidad" && (<>
         <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
           <KPI label="Informalidad Productiva" value={prodUlt ? `${fmtNum(prodUlt[1], 1)}%` : null}
@@ -3039,7 +3069,7 @@ function DesigualdadView() {
             unit={`Sin aportes previsionales · ${legalUlt?.[0]?.slice(0, 4) ?? ""}`} valueColor="#4FC3F7" />
         </div>
         <div style={{ padding: "8px 0" }}>
-          <BBGLineChart title="TASA DE INFORMALIDAD — ARGENTINA 1988-2022" data={infData}
+          <BBGLineChart title="TASA DE INFORMALIDAD — ARGENTINA 1988-2025" data={infData}
             lines={[
               { key: "productiva", name: "Def. Productiva", color: "#4AF6C3" },
               { key: "legal",      name: "Def. Legal",      color: "#4FC3F7" },
@@ -3640,6 +3670,7 @@ interface BigMacData {
   argentina: {
     local_price: number
     dollar_price: number
+    dollar_ex: number
     tc_bigmac: number
     subval_pct: number
     adj_subval_pct: number | null
