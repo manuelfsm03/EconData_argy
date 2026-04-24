@@ -243,8 +243,27 @@ export async function GET(request: NextRequest) {
     }
 
     if (endpoint === "balanza") {
-      const data = await getMultiserie(["exportaciones", "importaciones", "saldo_comercial"], 120)
-      return NextResponse.json({ data, updated_at: new Date().toISOString(), source: "apis.datos.gob.ar" })
+      // CSV directo tiene menos rezago que la API (ej: marzo 2026 disponible antes en CSV)
+      const ICA_CSV = "https://infra.datos.gob.ar/catalog/sspm/dataset/74/distribution/74.3/download/intercambio-comercial-argentino-mensual.csv"
+      const rows = await fetchCSVData(ICA_CSV, 3600)
+      const exportaciones: [string, number][] = []
+      const importaciones: [string, number][] = []
+      const saldo_comercial: [string, number][] = []
+      for (const r of rows) {
+        const date = r.indice_tiempo
+        if (!date) continue
+        const expo = parseFloat(r.ica_expo_totales)
+        const impo = parseFloat(r.ica_importaciones_totales)
+        const saldo = parseFloat(r.ica_saldo_comercial)
+        if (!isNaN(expo))  exportaciones.push([date, expo])
+        if (!isNaN(impo))  importaciones.push([date, impo])
+        if (!isNaN(saldo)) saldo_comercial.push([date, saldo])
+      }
+      return NextResponse.json({
+        data: { exportaciones, importaciones, saldo_comercial },
+        updated_at: new Date().toISOString(),
+        source: "INDEC · Intercambio Comercial Argentino (CSV directo)",
+      })
     }
 
     if (endpoint === "fiscal") {
