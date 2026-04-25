@@ -495,9 +495,16 @@ export async function GET(request: NextRequest) {
     // ── ARGENDATA — PIB PER CÁPITA HISTÓRICO ────────────────────────────────
     if (endpoint === "argendata_crecim") {
       const BASE = "https://raw.githubusercontent.com/argendatafundar/data/main/CRECIM/"
-      const [histRows, relRows] = await Promise.all([
+
+      const WB_PPP_URL = "https://api.worldbank.org/v2/country/ARG;BRA;CHL;MEX;USA;URY/indicator/NY.GDP.PCAP.PP.KD?format=json&per_page=50&mrv=6"
+
+      const [histRows, relRows, wbRaw] = await Promise.all([
         fetchCSVData(`${BASE}pib_per_capita_historico.csv`),
         fetchCSVData(`${BASE}pib_per_capita_historico_relativo_arg.csv`),
+        fetch(WB_PPP_URL, {
+          headers: { "User-Agent": "PanelDeControl/2.0" },
+          signal: AbortSignal.timeout(8000),
+        }).then(r => r.json()).catch(() => null),
       ])
 
       const PAISES_NIV = new Set(["Argentina", "Brasil", "Chile", "México", "Estados Unidos"])
@@ -513,9 +520,6 @@ export async function GET(request: NextRequest) {
         if (!nivelMap[anio]) nivelMap[anio] = { date: `${anio}-01-01` }
         nivelMap[anio][pais] = parseFloat(r.pib_per_capita ?? "") || null
       }
-      const nivel = Object.values(nivelMap).sort((a, b) =>
-        (a.date as string).localeCompare(b.date as string)
-      )
 
       // Pivote relativo: { date, Brasil, Chile, México, Uruguay }
       const relMap: Record<string, Record<string, unknown>> = {}
@@ -527,6 +531,74 @@ export async function GET(request: NextRequest) {
         if (!relMap[anio]) relMap[anio] = { date: `${anio}-01-01` }
         relMap[anio][pais] = parseFloat(r.relativo_arg ?? "") || null
       }
+
+      // Extender con World Bank PPP 2023-2024 (escalado al ancla Maddison 2022)
+      if (wbRaw) {
+        type WBEntry = { countryiso3code: string; date: string; value: number | null }
+        const wbEntries: WBEntry[] = wbRaw[1] ?? []
+        const wbLookup: Record<string, Record<number, number>> = {}
+        for (const e of wbEntries) {
+          if (!e.value) continue
+          if (!wbLookup[e.countryiso3code]) wbLookup[e.countryiso3code] = {}
+          wbLookup[e.countryiso3code][parseInt(e.date)] = e.value
+        }
+
+        const ISO3_NIV: Record<string, string> = {
+          "ARG": "Argentina", "BRA": "Brasil", "CHL": "Chile",
+          "MEX": "México", "USA": "Estados Unidos",
+        }
+        const ISO3_REL: Record<string, string> = {
+          "BRA": "Brasil", "CHL": "Chile", "MEX": "México", "URY": "Uruguay",
+        }
+
+        // Nivel: find anchor year per country, scale WB → Maddison units, append 2023-2024
+        for (const [iso3, pais] of Object.entries(ISO3_NIV)) {
+          const wbC = wbLookup[iso3]
+          if (!wbC) continue
+          let anchorYear = 0, anchorVal = 0
+          for (const [ys, row] of Object.entries(nivelMap)) {
+            const y = parseInt(ys)
+            if (row[pais] != null && y > anchorYear) { anchorYear = y; anchorVal = row[pais] as number }
+          }
+          if (!anchorYear || !wbC[anchorYear]) continue
+          const scale = anchorVal / wbC[anchorYear]
+          for (const extYear of [2023, 2024]) {
+            if (extYear <= anchorYear || !wbC[extYear]) continue
+            if (!nivelMap[String(extYear)]) nivelMap[String(extYear)] = { date: `${extYear}-01-01` }
+            if (nivelMap[String(extYear)][pais] == null) {
+              nivelMap[String(extYear)][pais] = Math.round(wbC[extYear] * scale)
+            }
+          }
+        }
+
+        // Relativo: scale WB ratios anchored to last Argendata relative value
+        const argWB = wbLookup["ARG"]
+        if (argWB) {
+          for (const [iso3, pais] of Object.entries(ISO3_REL)) {
+            const wbC = wbLookup[iso3]
+            if (!wbC) continue
+            let anchorYear = 0, anchorVal = 0
+            for (const [ys, row] of Object.entries(relMap)) {
+              const y = parseInt(ys)
+              if (row[pais] != null && y > anchorYear) { anchorYear = y; anchorVal = row[pais] as number }
+            }
+            if (!anchorYear || !wbC[anchorYear] || !argWB[anchorYear]) continue
+            const wbRatioAnchor = wbC[anchorYear] / argWB[anchorYear]
+            const scale = anchorVal / wbRatioAnchor
+            for (const extYear of [2023, 2024]) {
+              if (extYear <= anchorYear || !wbC[extYear] || !argWB[extYear]) continue
+              if (!relMap[String(extYear)]) relMap[String(extYear)] = { date: `${extYear}-01-01` }
+              if (relMap[String(extYear)][pais] == null) {
+                relMap[String(extYear)][pais] = parseFloat(((wbC[extYear] / argWB[extYear]) * scale).toFixed(3))
+              }
+            }
+          }
+        }
+      }
+
+      const nivel = Object.values(nivelMap).sort((a, b) =>
+        (a.date as string).localeCompare(b.date as string)
+      )
       const relativo = Object.values(relMap).sort((a, b) =>
         (a.date as string).localeCompare(b.date as string)
       )
@@ -534,7 +606,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         data: { nivel, relativo },
         updated_at: new Date().toISOString(),
-        source: "Argendata/Fundar — Maddison Project Database 2023",
+        source: "Argendata/Fundar — Maddison Project Database 2023 · World Bank PPP (extensión 2023-2024)",
       })
     }
 

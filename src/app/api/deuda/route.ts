@@ -8,8 +8,10 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
+import * as XLSX from "xlsx"
 
 const BASE_GOB = "https://www.argentina.gob.ar"
+const INDEC_BASE = "https://apis.datos.gob.ar/series/api/series/"
 
 const ARCHIVE_PATHS = [
   "/economia/licitaciones",
@@ -246,43 +248,146 @@ const VENCIMIENTOS_DETALLE: VencDet[] = [
   { anio:"2030", moneda:"USD",  tipo:"Intra-sector público", acreedor_tipo:"Sector Público",        acreedor:"ANSES (FGS)",            monto:  380 },
 ]
 
+// Fallback histórico deuda/PIB sector público total (FMI/Sec. Finanzas) — pre-2019
+const FALLBACK_HISTORICO: { anio: string; deuda_pib: number }[] = [
+  { anio: "2004", deuda_pib: 127.3 },
+  { anio: "2005", deuda_pib: 73.9 },
+  { anio: "2006", deuda_pib: 63.6 },
+  { anio: "2007", deuda_pib: 55.5 },
+  { anio: "2008", deuda_pib: 48.4 },
+  { anio: "2009", deuda_pib: 48.8 },
+  { anio: "2010", deuda_pib: 44.9 },
+  { anio: "2011", deuda_pib: 41.3 },
+  { anio: "2012", deuda_pib: 42.7 },
+  { anio: "2013", deuda_pib: 43.5 },
+  { anio: "2014", deuda_pib: 46.1 },
+  { anio: "2015", deuda_pib: 52.6 },
+  { anio: "2016", deuda_pib: 53.9 },
+  { anio: "2017", deuda_pib: 57.1 },
+  { anio: "2018", deuda_pib: 86.3 },
+]
+
+async function fetchExcelUrl(): Promise<string> {
+  const res = await fetch(`${BASE_GOB}/economia/finanzas/datos-mensuales-de-la-deuda/datos`, {
+    headers: { "User-Agent": "PanelDeControl/2.0" },
+    signal: AbortSignal.timeout(10000),
+  })
+  if (!res.ok) throw new Error(`Finanzas page ${res.status}`)
+  const html = await res.text()
+  const match = html.match(/href="(?:blank:#)?(https?:\/\/[^"]+\.xlsx)"/)
+  if (!match) throw new Error("Excel URL not found in Finanzas page")
+  return match[1]
+}
+
+async function fetchIndecGdp(): Promise<Record<string, number>> {
+  // Serie: PIB nominal anual en USD corrientes, frecuencia trimestral
+  // Cada observación trimestral representa el GDP anual con el tipo de cambio de ese trimestre
+  const res = await fetch(
+    `${INDEC_BASE}?ids=9.2_PDPC_2004_T_30&limit=100&sort=asc`,
+    { headers: { "User-Agent": "PanelDeControl/2.0" }, signal: AbortSignal.timeout(8000) },
+  )
+  if (!res.ok) throw new Error(`INDEC GDP ${res.status}`)
+  const raw = await res.json()
+  // Indexar por YYYY-QQ: usar Q4 de cada año como GDP anual representativo
+  const byYearQ4: Record<string, number> = {}
+  for (const [date, val] of raw.data as [string, number][]) {
+    const month = date.slice(5, 7)
+    const year = date.slice(0, 4)
+    if (month === "10") byYearQ4[year] = val // octubre = Q4
+  }
+  // También indexar por YYYY-MM para cálculo mensual interpolado
+  const byYM: Record<string, number> = {}
+  for (const [date, val] of raw.data as [string, number][]) {
+    byYM[date.slice(0, 7)] = val
+  }
+  return { ...byYearQ4, _raw: byYM as unknown as number }
+}
+
 async function getStockDeuda() {
-  const cacheKey = "deuda_stock"
+  const cacheKey = "deuda_stock_v2"
   const cached = getCache<unknown>(cacheKey)
   if (cached) return cached
 
-  // Intentar CSV Secretaría de Finanzas (datos.gob.ar)
-  let historicoPib: { anio: string; deuda_pib: number }[] = []
+  let historicoPib: { anio: string; deuda_pib: number; deuda_usd?: number }[] = []
+  let seriesMensual: { date: string; deuda_usd: number; deuda_pib: number | null }[] = []
   let isLive = false
+  let ultimaFecha = ""
 
   try {
-    const csvUrl = "https://infra.datos.gob.ar/catalog/otros/dataset/17/distribution/17.1/download/deuda-bruta.csv"
-    const res = await fetch(csvUrl, { signal: AbortSignal.timeout(10000) })
-    if (res.ok) {
-      const text = await res.text()
-      const lines = text.trim().split("\n").slice(1) // skip header
-      for (const line of lines) {
-        const cols = line.split(",")
-        // Buscar columnas anio/año y deuda_pib / deuda_pib_corriente
-        if (cols.length >= 3) {
-          const anio = cols[0]?.trim().replace(/"/g, "")
-          const val  = parseFloat(cols.find(c => c.includes(".")) ?? "")
-          if (anio && !isNaN(val)) historicoPib.push({ anio, deuda_pib: val })
-        }
-      }
-      if (historicoPib.length > 0) isLive = true
-    }
-  } catch {
-    // Usar fallback
-  }
+    const [xlsxUrl, gdpData] = await Promise.all([fetchExcelUrl(), fetchIndecGdp()])
 
-  // Fallback histórico deuda/PIB (fuente: FMI / Secretaría de Finanzas)
-  if (!isLive) {
+    // Descargar y parsear Excel
+    const xlsxRes = await fetch(xlsxUrl, {
+      headers: { "User-Agent": "PanelDeControl/2.0" },
+      signal: AbortSignal.timeout(30000),
+    })
+    if (!xlsxRes.ok) throw new Error(`Excel download ${xlsxRes.status}`)
+
+    const buffer = await xlsxRes.arrayBuffer()
+    const wb = XLSX.read(new Uint8Array(buffer), { type: "array" })
+    const sh = wb.Sheets["A.1"]
+    if (!sh) throw new Error("Sheet A.1 not found")
+
+    const rows = XLSX.utils.sheet_to_json<(string | number)[]>(sh, { header: 1, defval: "" })
+
+    // Dynamically find the row with Excel date serials (≈ 40000–55000 for 2009–2050)
+    let dateRowIdx = 8
+    for (let r = 4; r < Math.min(25, rows.length - 1); r++) {
+      const row = rows[r] as (string | number)[]
+      const dateCount = row.filter(v => typeof v === "number" && v > 40000 && v < 55000).length
+      if (dateCount > 5) { dateRowIdx = r; break }
+    }
+    const dateRow = rows[dateRowIdx] as (string | number)[]
+    const debtRow = rows[dateRowIdx + 1] as (string | number)[]
+
+    // Construir mapa GDP por mes/trimestre (usar el trimestre más cercano anterior)
+    const gdpRaw = gdpData["_raw"] as unknown as Record<string, number>
+
+    function getGdpForMonth(yyyymm: string): number | null {
+      // Buscar el trimestre correspondiente (INDEC reporta en Jan/Apr/Jul/Oct)
+      const [y, m] = yyyymm.split("-").map(Number)
+      const quarterMonth = m <= 3 ? "01" : m <= 6 ? "04" : m <= 9 ? "07" : "10"
+      const key = `${y}-${quarterMonth}`
+      return gdpRaw[key] ?? gdpRaw[`${y}-10`] ?? gdpRaw[`${y - 1}-10`] ?? null
+    }
+
+    // Parsear columnas: serial Excel → YYYY-MM, deuda en MUSD
+    for (let i = 2; i < dateRow.length; i++) {
+      const serial = dateRow[i] as number
+      const val = debtRow[i] as number
+      if (!serial || !val || typeof serial !== "number" || typeof val !== "number") continue
+      const jsDate = new Date(Math.round((serial - 25569) * 86400 * 1000))
+      const yyyymm = jsDate.toISOString().slice(0, 7)
+      const deuda_usd = Math.round(val)
+      const gdp = getGdpForMonth(yyyymm)
+      const deuda_pib = gdp ? parseFloat(((deuda_usd / gdp) * 100).toFixed(1)) : null
+      seriesMensual.push({ date: yyyymm, deuda_usd, deuda_pib })
+    }
+
+    // Construir serie anual (diciembre de cada año = cierre de ejercicio)
+    const porAnio: Record<string, { deuda_usd: number; deuda_pib: number | null }> = {}
+    for (const row of seriesMensual) {
+      if (row.date.endsWith("-12")) {
+        porAnio[row.date.slice(0, 4)] = { deuda_usd: row.deuda_usd, deuda_pib: row.deuda_pib }
+      }
+    }
+
+    // Combinar: fallback pre-2019 + Excel 2019-presente
     historicoPib = [
-      { anio: "2015", deuda_pib: 52.6 },
-      { anio: "2016", deuda_pib: 53.9 },
-      { anio: "2017", deuda_pib: 57.1 },
-      { anio: "2018", deuda_pib: 86.3 },
+      ...FALLBACK_HISTORICO,
+      ...Object.entries(porAnio)
+        .map(([anio, v]) => ({ anio, deuda_pib: v.deuda_pib ?? 0, deuda_usd: v.deuda_usd }))
+        .filter(r => parseInt(r.anio) >= 2019)
+        .sort((a, b) => a.anio.localeCompare(b.anio)),
+    ]
+
+    ultimaFecha = seriesMensual.at(-1)?.date ?? ""
+    isLive = seriesMensual.length > 0
+  } catch (err) {
+    console.error("[deuda/stock] Excel/INDEC fetch failed:", err)
+    // Fallback completo
+    historicoPib = [
+      ...FALLBACK_HISTORICO,
       { anio: "2019", deuda_pib: 90.2 },
       { anio: "2020", deuda_pib: 103.8 },
       { anio: "2021", deuda_pib: 80.1 },
@@ -293,7 +398,9 @@ async function getStockDeuda() {
     ]
   }
 
-  const ultimo = historicoPib.at(-1)
+  const ultimo = isLive && seriesMensual.length > 0
+    ? { anio: seriesMensual.at(-1)!.date, deuda_pib: seriesMensual.at(-1)!.deuda_pib, deuda_usd: seriesMensual.at(-1)!.deuda_usd }
+    : { anio: historicoPib.at(-1)?.anio ?? "2025", deuda_pib: historicoPib.at(-1)?.deuda_pib ?? null, deuda_usd: undefined }
 
   // Derived: aggregate vencimientos totals by year
   const vencimientos = Array.from(
@@ -305,11 +412,15 @@ async function getStockDeuda() {
 
   const result = {
     data: {
-      historico_pib:         historicoPib,
-      ultimo:                { anio: ultimo?.anio ?? "2025", deuda_pib: ultimo?.deuda_pib ?? null },
+      historico_pib:    historicoPib,
+      series_mensual:   seriesMensual,
+      ultimo: {
+        anio:      ultimo.anio,
+        deuda_pib: ultimo.deuda_pib,
+        deuda_usd: (ultimo as { deuda_usd?: number }).deuda_usd ?? null,
+      },
       vencimientos,
-      vencimientos_detalle:  VENCIMIENTOS_DETALLE,
-      // Composición actualizada post-programa FMI abr-2025 (~USD 15B neto nuevo)
+      vencimientos_detalle: VENCIMIENTOS_DETALLE,
       composicion_acreedor: [
         { nombre: "Sector Público",        pct: 37 },
         { nombre: "Organismos Internac.",  pct: 35 },
@@ -322,12 +433,13 @@ async function getStockDeuda() {
         { nombre: "SDR",  pct: 18 },
         { nombre: "EUR",  pct: 10 },
       ],
-      is_live: isLive,
+      is_live:      isLive,
+      ultima_fecha: ultimaFecha,
     },
     updated_at: new Date().toISOString(),
     source: isLive
-      ? "Secretaría de Finanzas · datos.gob.ar"
-      : "Secretaría de Finanzas / Informes de Deuda · FMI EFF abr-2025 — estimaciones indicativas",
+      ? `Boletín Mensual Secretaría de Finanzas (${ultimaFecha}) · PBI: INDEC vía apis.datos.gob.ar · Adm. Central`
+      : "Secretaría de Finanzas / FMI — estimaciones indicativas (fuente live no disponible)",
   }
 
   setCache(cacheKey, result, 86400)

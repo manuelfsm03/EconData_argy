@@ -123,41 +123,98 @@ export async function GET() {
     const argData = argRow ? {
       local_price:      argRow.local_price,
       dollar_price:     argRow.dollar_price,
-      dollar_ex:        argRow.dollar_ex,   // TC implícito Big Mac
+      dollar_ex:        argRow.dollar_ex,
       adj_price:        argRow.adj_price,
       subval_pct:       ((argRow.dollar_price / usaRow.dollar_price) - 1) * 100,
       adj_subval_pct:   argRow.adj_price > 0
         ? ((argRow.adj_price / usaRow.dollar_price) - 1) * 100
         : null,
-      // TC Big Mac implícito = precio local ARG / precio USD USA
       tc_bigmac:        argRow.local_price / usaRow.dollar_price,
       date:             argRow.date,
     } : null
 
-    // Serie histórica ARG
+    // ── Estimación actualizada: mismo precio ARS + TC actual ─────────────────
+    let argEstimado: {
+      dollar_price_oficial: number
+      dollar_price_blue: number
+      tc_oficial: number
+      tc_blue: number
+      subval_pct_oficial: number
+      subval_pct_blue: number
+      tc_bigmac_implicito: number
+      fecha_tc: string
+      fecha_precio_base: string
+    } | null = null
+
+    if (argRow) {
+      try {
+        const [resOficial, resBlue] = await Promise.all([
+          fetch("https://dolarapi.com/v1/dolares/oficial", { signal: AbortSignal.timeout(5000) }),
+          fetch("https://dolarapi.com/v1/dolares/blue",    { signal: AbortSignal.timeout(5000) }),
+        ])
+        if (resOficial.ok && resBlue.ok) {
+          const [dOficial, dBlue] = await Promise.all([resOficial.json(), resBlue.json()])
+          const tc_oficial = parseFloat(dOficial.venta) || parseFloat(dOficial.compra)
+          const tc_blue    = parseFloat(dBlue.venta)    || parseFloat(dBlue.compra)
+
+          if (tc_oficial > 0 && tc_blue > 0) {
+            const dp_oficial = argRow.local_price / tc_oficial
+            const dp_blue    = argRow.local_price / tc_blue
+            argEstimado = {
+              dollar_price_oficial: parseFloat(dp_oficial.toFixed(2)),
+              dollar_price_blue:    parseFloat(dp_blue.toFixed(2)),
+              tc_oficial,
+              tc_blue,
+              subval_pct_oficial:   parseFloat(((dp_oficial / usaRow.dollar_price - 1) * 100).toFixed(1)),
+              subval_pct_blue:      parseFloat(((dp_blue    / usaRow.dollar_price - 1) * 100).toFixed(1)),
+              tc_bigmac_implicito:  parseFloat((argRow.local_price / usaRow.dollar_price).toFixed(0)),
+              fecha_tc:             new Date().toISOString().slice(0, 10),
+              fecha_precio_base:    argRow.date,
+            }
+          }
+        }
+      } catch {
+        // estimado no disponible, continuar sin él
+      }
+    }
+
+    // Serie histórica ARG + punto estimado hoy
+    const usaPriceByDate = new Map(rows.filter(r => r.iso_a3 === "USA").map(r => [r.date, r.dollar_price]))
     const argHistorico = rows
       .filter(r => r.iso_a3 === "ARG" && r.dollar_price > 0)
       .map(r => ({
-        date:        r.date,
+        date:         r.date,
         dollar_price: r.dollar_price,
-        subval_pct:  ((r.dollar_price / (rows.find(u => u.iso_a3 === "USA" && u.date === r.date)?.dollar_price ?? usaRow.dollar_price)) - 1) * 100,
+        subval_pct:   ((r.dollar_price / (usaPriceByDate.get(r.date) ?? usaRow.dollar_price)) - 1) * 100,
+        estimado:     false,
       }))
       .sort((a, b) => a.date.localeCompare(b.date))
 
+    // Agregar punto estimado con TC oficial si está disponible
+    if (argEstimado) {
+      argHistorico.push({
+        date:         argEstimado.fecha_tc,
+        dollar_price: argEstimado.dollar_price_oficial,
+        subval_pct:   argEstimado.subval_pct_oficial,
+        estimado:     true,
+      })
+    }
+
     const result = {
       data: {
-        argentina:     argData,
-        usa_precio:    usaRow.dollar_price,
-        ranking:       ranking.sort((a, b) => a.subval_pct - b.subval_pct),
-        historico_arg: argHistorico,
-        ultima_fecha:  ultimaFecha,
+        argentina:      argData,
+        argentina_est:  argEstimado,
+        usa_precio:     usaRow.dollar_price,
+        ranking:        ranking.sort((a, b) => a.subval_pct - b.subval_pct),
+        historico_arg:  argHistorico,
+        ultima_fecha:   ultimaFecha,
       },
       updated_at: new Date().toISOString(),
       source: "The Economist Big Mac Index · github.com/TheEconomist/big-mac-data",
-      nota: "Datos semestrales · No constituye análisis de inversión",
+      nota: "Datos semestrales · Estimación actualizada con TC oficial dolarapi.com · No constituye análisis de inversión",
     }
 
-    setCache(cacheKey, result, 86400) // 24h
+    setCache(cacheKey, result, 3600) // 1h para que el TC se refresque
     return NextResponse.json(result)
   } catch (err) {
     console.error("Big Mac endpoint error:", err)
