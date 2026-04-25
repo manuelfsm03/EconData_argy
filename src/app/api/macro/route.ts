@@ -611,46 +611,101 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // ── COMPOSICIÓN COMERCIO EXTERIOR — ICA INDEC (mensual, hasta hoy) ──────
+    // ── COMPOSICIÓN COMERCIO EXTERIOR — SITC (Argendata histórico + Comtrade reciente) ──
     if (endpoint === "argendata_comext") {
-      const ICA_CSV = "https://infra.datos.gob.ar/catalog/sspm/dataset/74/distribution/74.3/download/intercambio-comercial-argentino-mensual.csv"
-      const rows = await fetchCSVData(ICA_CSV, 3600)
+      const SITC_NAMES: Record<string, string> = {
+        "0": "Productos alimenticios",
+        "1": "Bebidas y tabaco",
+        "2": "Materiales crudos",
+        "3": "Combustibles minerales",
+        "4": "Aceites y mantecas",
+        "5": "Productos químicos",
+        "6": "Artículos manufacturados",
+        "7": "Maq. y transporte",
+        "8": "Manuf. diversas",
+        "9": "Transacciones diversas",
+      }
+      const SITC_CATS = Object.values(SITC_NAMES)
 
-      const p = (r: Record<string, string>, k: string) => {
-        const v = parseFloat(r[k])
-        return isNaN(v) ? null : parseFloat(v.toFixed(2))
+      // 1. ICA CSV para totales anuales (convertir shares → USD millones)
+      const ICA_CSV = "https://infra.datos.gob.ar/catalog/sspm/dataset/74/distribution/74.3/download/intercambio-comercial-argentino-mensual.csv"
+      const [icaRows, argExpoRows, argImpoRows] = await Promise.all([
+        fetchCSVData(ICA_CSV, 3600),
+        fetchCSVData("https://raw.githubusercontent.com/argendatafundar/data/main/COMEXT/composicion_exportaciones_bienes_sitc_seccion.csv"),
+        fetchCSVData("https://raw.githubusercontent.com/argendatafundar/data/main/COMEXT/composicion_importaciones_bienes_sitc_seccion.csv"),
+      ])
+
+      // Totales anuales INDEC (suma mensual por año)
+      const annualICA: Record<number, { expo: number; impo: number }> = {}
+      for (const r of icaRows) {
+        const year = parseInt(r.indice_tiempo?.slice(0, 4))
+        if (!year) continue
+        if (!annualICA[year]) annualICA[year] = { expo: 0, impo: 0 }
+        annualICA[year].expo += parseFloat(r.ica_expo_totales) || 0
+        annualICA[year].impo += parseFloat(r.ica_importaciones_totales) || 0
       }
 
-      const expoSeries = rows
-        .filter(r => r.indice_tiempo)
-        .map(r => ({
-          date:             r.indice_tiempo,
-          "Prod. Primarios": p(r, "ica_exportacion_productos_primarios"),
-          "MOA":             p(r, "ica_exportacion_manufacturas_origen_agropecuario"),
-          "MOI":             p(r, "ica_exportacion_manufacturas_origen_industrial"),
-          "Combustibles":    p(r, "ica_exportacion_combustible_energia"),
-        }))
+      // 2. Argendata histórico → USD millones (share% × total_anual / 100)
+      const expoByYear: Record<number, Record<string, number>> = {}
+      for (const r of argExpoRows) {
+        if (r.geocodigoFundar !== "ARG") continue
+        const year = parseInt(r.year)
+        const code = r.sitc_2_1_cod
+        const share = parseFloat(r.export_value_pc)
+        if (!year || !code || isNaN(share)) continue
+        const total = annualICA[year]?.expo ?? 0
+        if (!expoByYear[year]) expoByYear[year] = {}
+        expoByYear[year][code] = parseFloat(((share / 100) * total).toFixed(1))
+      }
 
-      const impoSeries = rows
-        .filter(r => r.indice_tiempo)
-        .map(r => ({
-          date:              r.indice_tiempo,
-          "Bs. Capital":     p(r, "ica_importaciones_bienes_capital"),
-          "Bs. Intermedios": p(r, "ica_importaciones_bienes_intermedios"),
-          "Combustibles":    p(r, "ica_importaciones_combustibles_lubricantes"),
-          "P&A Bs. Capital": p(r, "ica_importaciones_piezas_accesorios_bienes_capital"),
-          "Bs. Consumo":     p(r, "ica_importaciones_bienes_consumo"),
-          "Vehículos":       p(r, "ica_importaciones_vehiculos_automotores_pasajeros"),
-          "Resto":           p(r, "ica_importaciones_resto"),
-        }))
+      const impoByYear: Record<number, Record<string, number>> = {}
+      for (const r of argImpoRows) {
+        if (r.geocodigoFundar !== "ARG") continue
+        const year = parseInt(r.year)
+        const code = r.sitc_2_1_cod
+        const share = parseFloat(r.import_value_pc)
+        if (!year || !code || isNaN(share)) continue
+        const total = annualICA[year]?.impo ?? 0
+        if (!impoByYear[year]) impoByYear[year] = {}
+        impoByYear[year][code] = parseFloat(((share / 100) * total).toFixed(1))
+      }
+
+      // 3. Comtrade S4 para exportaciones 2022-2024 (10 filas limpias por año)
+      for (const year of [2022, 2023, 2024]) {
+        try {
+          const url = `https://comtradeapi.un.org/public/v1/preview/C/A/S4?reporterCode=032&period=${year}&flowCode=X&partnerCode=0&cmdCode=0,1,2,3,4,5,6,7,8,9`
+          const ctRes = await fetch(url, { signal: AbortSignal.timeout(8000) })
+          if (!ctRes.ok) continue
+          const ctData = await ctRes.json()
+          if (!expoByYear[year]) expoByYear[year] = {}
+          for (const row of (ctData.data ?? []) as { cmdCode: string; fobvalue: number }[]) {
+            if (/^\d$/.test(row.cmdCode) && row.fobvalue > 0) {
+              expoByYear[year][row.cmdCode] = parseFloat((row.fobvalue / 1e6).toFixed(1))
+            }
+          }
+        } catch { /* skip year if API unavailable */ }
+      }
+
+      // 4. Construir series finales
+      const buildSeries = (byYear: Record<number, Record<string, number>>) =>
+        Object.keys(byYear)
+          .map(Number)
+          .sort()
+          .map(year => {
+            const row: Record<string, unknown> = { date: `${year}-01-01` }
+            for (const [code, name] of Object.entries(SITC_NAMES)) {
+              row[name] = byYear[year]?.[code] ?? null
+            }
+            return row
+          })
 
       return NextResponse.json({
         data: {
-          expo: { series: expoSeries, categorias: ["Prod. Primarios", "MOA", "MOI", "Combustibles"] },
-          impo: { series: impoSeries, categorias: ["Bs. Capital", "Bs. Intermedios", "Combustibles", "P&A Bs. Capital", "Bs. Consumo", "Vehículos", "Resto"] },
+          expo: { series: buildSeries(expoByYear), categorias: SITC_CATS },
+          impo: { series: buildSeries(impoByYear), categorias: SITC_CATS },
         },
         updated_at: new Date().toISOString(),
-        source: "INDEC · Intercambio Comercial Argentino — CSV directo (mensual)",
+        source: "Expo: Argendata/Fundar (1962-2021) + UN Comtrade (2022-2024) · Impo: Argendata/Fundar (1962-2021) · Clasificación SITC Rev.4",
       })
     }
 

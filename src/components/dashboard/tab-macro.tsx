@@ -2426,7 +2426,7 @@ function ComposicionExportView() {
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px 0" }}>
         <div style={{ fontSize: 9, color: "#555", fontFamily: "monospace", letterSpacing: 1 }}>
-          COMPOSICIÓN POR RUBRO (USD MILLONES MENSUALES)
+          COMPOSICIÓN POR RUBRO SITC (USD MILLONES ANUALES)
         </div>
         <div style={{ display: "flex", gap: 4 }}>
           <button style={btnStyle(modo === "expo")} onClick={() => setModo("expo")}>Exportaciones</button>
@@ -2443,7 +2443,7 @@ function ComposicionExportView() {
         defaultRange="all"
       />
       <div style={{ padding: "4px 10px", fontSize: 8, color: "#333", borderTop: "1px solid #111" }}>
-        INDEC · Intercambio Comercial Argentino · Clasificación ICA (PP/MOA/MOI/CyE para expo · BK/BI/CyL/P&A/BC/VAP para impo)
+        Expo: Argendata/Fundar (1962-2021) + UN Comtrade S4 (2022-2024) · Impo: Argendata/Fundar (1962-2021) · Clasificación SITC Rev.4
       </div>
     </div>
   )
