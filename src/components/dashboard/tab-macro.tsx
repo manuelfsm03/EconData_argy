@@ -2004,6 +2004,7 @@ interface BreakevenData {
   tasas: { badlar_tna: number | null; badlar_tea: number | null; tpm_tna: number | null; tpm_tea: number | null; fecha: string | null }
   cer:   { inflacion_anual_trailing: number | null; inflacion_mensual_trailing: number | null; fecha: string | null }
   lecaps: { ticker: string; vencimiento: string; dias_vto: number; tem: number | null; tea: number | null }[]
+  lecap_referencia: { tem: number; tea: number | null; ticker: string; fecha: string } | null
   rem:   { inflacion_12m: number | null; dolar_12m: number | null; tasa_12m: number | null; fecha: string | null }
   breakeven: { lecap_corto_tea: number | null; real_vs_rem: number | null; inflac_vs_cer: number | null; interpretation: string | null }
 }
@@ -2061,7 +2062,11 @@ function BreakEvenSection() {
           <div style={{ fontSize: 20, fontWeight: 700, color: "#FFD700", fontFamily: "monospace" }}>
             {bk?.lecap_corto_tea != null ? `${bk.lecap_corto_tea.toFixed(1)}%` : "—"}
           </div>
-          <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>tasa fija de mercado · anual</div>
+          <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>
+            {bkData?.lecap_referencia
+              ? `TEM ${bkData.lecap_referencia.tem.toFixed(2)}% · ${bkData.lecap_referencia.ticker}`
+              : "tasa fija de mercado · anual"}
+          </div>
         </div>
 
         {/* REM inflación 12M */}
@@ -2070,7 +2075,7 @@ function BreakEvenSection() {
           <div style={{ fontSize: 20, fontWeight: 700, color: "#FF433D", fontFamily: "monospace" }}>
             {rem?.inflacion_12m != null ? `${rem.inflacion_12m.toFixed(1)}%` : "—"}
           </div>
-          <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>mediana analistas · BCRA {rem?.fecha ?? ""}</div>
+          <div style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>mediana analistas · BCRA · {rem?.fecha ?? ""}</div>
         </div>
 
         {/* Breakeven real implícito */}
