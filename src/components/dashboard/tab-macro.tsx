@@ -2232,7 +2232,11 @@ function BreakEvenSection() {
                   tick={{ fill: "#555", fontSize: 8 }}
                   axisLine={{ stroke: "#222" }}
                   tickLine={false}
-                  interval={Math.max(1, Math.floor(data.length / 10) - 1)}
+                  interval={0}
+                  tickFormatter={(val: string, idx: number) => {
+                    const step = Math.max(2, Math.floor(data.length / 10))
+                    return idx % step === 0 || idx === data.length - 1 ? val : ""
+                  }}
                 />
                 <YAxis
                   tick={{ fill: "#555", fontSize: 8 }}
