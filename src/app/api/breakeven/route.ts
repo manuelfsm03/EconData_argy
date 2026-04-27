@@ -89,6 +89,52 @@ async function fetchLecapsCurva(): Promise<{ ticker: string; vencimiento: string
   } catch { return [] }
 }
 
+// ── ArgentinaDatos REM ────────────────────────────────────────────────────────
+const IPC_IND = "Precios minoristas (IPC nivel general-Nacional; INDEC)"
+
+interface ArgRemRow {
+  indicador: string; periodoTipo: string; periodo: string; muestra: string
+  periodoDesde: string | null; mediana: number; percentil25: number; percentil75: number
+  maximo: number; minimo: number; informe: string
+}
+
+async function fetchRemArgentinadatos(): Promise<{
+  informe: string
+  mensual: { mes: string; fecha: string | null; mediana: number; p25: number; p75: number; max: number; min: number }[]
+  inf12m: number | null
+  inf24m: number | null
+  anual: { periodo: string; mediana: number }[]
+} | null> {
+  try {
+    const res = await fetch("https://api.argentinadatos.com/v1/rems/ultimo", {
+      headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!res.ok) return null
+    const data: ArgRemRow[] = await res.json()
+
+    const mensual = data
+      .filter(r => r.indicador === IPC_IND && r.periodoTipo === "mensual" && r.muestra === "todos")
+      .map(r => ({
+        mes:     r.periodo,
+        fecha:   r.periodoDesde,
+        mediana: r.mediana,
+        p25:     r.percentil25,
+        p75:     r.percentil75,
+        max:     r.maximo,
+        min:     r.minimo,
+      }))
+
+    const inf12m = data.find(r => r.indicador === IPC_IND && r.periodoTipo === "proximos_12_meses" && r.muestra === "todos")?.mediana ?? null
+    const inf24m = data.find(r => r.indicador === IPC_IND && r.periodoTipo === "proximos_24_meses" && r.muestra === "todos")?.mediana ?? null
+    const anual  = data
+      .filter(r => r.indicador === IPC_IND && r.periodoTipo === "anual" && r.muestra === "todos")
+      .map(r => ({ periodo: r.periodo, mediana: r.mediana }))
+
+    return { informe: data[0]?.informe ?? "", mensual, inf12m, inf24m, anual }
+  } catch { return null }
+}
+
 /** REM participantes (del Excel BCRA) */
 async function fetchRemParticipantes(): Promise<{
   inflacion_12m: number | null
@@ -110,14 +156,15 @@ export async function GET(_req: NextRequest) {
   if (cached) return NextResponse.json(cached)
 
   try {
-    const [badlarSerie, tpmSerie, cerSerie, remSerie, lecapResult, lecapsCurva, remExcel] = await Promise.all([
+    const [badlarSerie, tpmSerie, cerSerie, remSerie, lecapResult, lecapsCurva, remExcel, remArg] = await Promise.all([
       fetchSerie(SERIES.badlar, 5),
       fetchSerie(SERIES.tpm, 5),
-      fetchSerie(SERIES.cer_diario, 35),   // 35 días → trailing 30d
-      fetchSerie(SERIES.rem_inf12, 60),    // 60 meses de historial
+      fetchSerie(SERIES.cer_diario, 35),
+      fetchSerie(SERIES.rem_inf12, 60),
       fetchLecapTem(),
       fetchLecapsCurva(),
       fetchRemParticipantes(),
+      fetchRemArgentinadatos(),
     ])
 
     // ── Tasas nominales de referencia ─────────────────────────────────────────
@@ -157,12 +204,13 @@ export async function GET(_req: NextRequest) {
       : null
 
     // ── REM inflación 12M ─────────────────────────────────────────────────────
-    // Primario: serie mensual datos.gob.ar (más rápida y confiable que Excel)
-    // Fallback: Excel BCRA parseado por /api/rem
+    // Prioridad: ArgentinaDatos (más reciente) > datos.gob.ar serie > Excel BCRA
     const remInf12Series  = remSerie.at(-1)?.valor ?? null
     const remFechaSeries  = remSerie.at(-1)?.fecha ?? null
-    const remInf12Final   = remInf12Series ?? remExcel.inflacion_12m
-    const remFechaFinal   = remFechaSeries ?? remExcel.fecha
+    const remInf12Final   = remArg?.inf12m ?? remInf12Series ?? remExcel.inflacion_12m
+    const remFechaFinal   = remArg?.informe
+      ? `REM ${remArg.informe}`
+      : (remFechaSeries ?? remExcel.fecha)
 
     // ── Breakeven real ────────────────────────────────────────────────────────
     const breakevenReal = lecapCortoTEA != null && remInf12Final != null
@@ -211,6 +259,10 @@ export async function GET(_req: NextRequest) {
           label:         `${r.fecha.slice(5, 7)}/${r.fecha.slice(2, 4)}`,
           inflacion_12m: parseFloat(r.valor.toFixed(1)),
         })),
+        rem_mensual:   remArg?.mensual  ?? [],
+        rem_anual:     remArg?.anual    ?? [],
+        rem_inf24m:    remArg?.inf24m   ?? null,
+        rem_informe:   remArg?.informe  ?? null,
         breakeven: {
           lecap_corto_tea:  lecapCortoTEA != null ? parseFloat(lecapCortoTEA.toFixed(1)) : null,
           lecap_medio_tea:  lecapMedioTEA != null ? parseFloat(lecapMedioTEA.toFixed(1)) : null,

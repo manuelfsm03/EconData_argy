@@ -2006,7 +2006,11 @@ interface BreakevenData {
   lecaps: { ticker: string; vencimiento: string; dias_vto: number; tem: number | null; tea: number | null }[]
   lecap_referencia: { tem: number; tea: number | null; ticker: string; fecha: string } | null
   rem:   { inflacion_12m: number | null; dolar_12m: number | null; tasa_12m: number | null; fecha: string | null }
-  rem_serie: { fecha: string; label: string; inflacion_12m: number }[]
+  rem_serie:   { fecha: string; label: string; inflacion_12m: number }[]
+  rem_mensual: { mes: string; fecha: string | null; mediana: number; p25: number; p75: number; max: number; min: number }[]
+  rem_anual:   { periodo: string; mediana: number }[]
+  rem_inf24m:  number | null
+  rem_informe: string | null
   breakeven: { lecap_corto_tea: number | null; real_vs_rem: number | null; inflac_vs_cer: number | null; interpretation: string | null }
 }
 
@@ -2133,47 +2137,50 @@ function BreakEvenSection() {
         </div>
       </div>
 
-      {/* Gráfico forward — inflación mensual proyectada 12 meses */}
-      {(bk?.lecap_corto_tea != null || rem?.inflacion_12m != null) && (() => {
-        const lecapMensual = bk?.lecap_corto_tea != null
-          ? (Math.pow(1 + bk.lecap_corto_tea / 100, 1 / 12) - 1) * 100 : null
-        const remMensual = rem?.inflacion_12m != null
-          ? (Math.pow(1 + rem.inflacion_12m / 100, 1 / 12) - 1) * 100 : null
-        const cerMensual = cer?.inflacion_anual_trailing != null
-          ? (Math.pow(1 + cer.inflacion_anual_trailing / 100, 1 / 12) - 1) * 100 : null
-        const hoy = new Date()
-        const forwardData = Array.from({ length: 12 }, (_, i) => {
-          const d = new Date(hoy.getFullYear(), hoy.getMonth() + i + 1, 1)
-          const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-          const label = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getFullYear()).slice(2)}`
-          return { mes, label, lecap: lecapMensual, rem: remMensual, cer: cerMensual }
-        })
+      {/* Gráfico forward — inflación mensual esperada mes a mes (REM ArgentinaDatos) */}
+      {(bkData?.rem_mensual?.length ?? 0) > 0 && (() => {
+        const data = bkData!.rem_mensual.map(r => ({
+          ...r,
+          bandWidth: r.p75 - r.p25,
+        }))
         return (
           <div style={{ padding: "8px 12px 4px" }}>
-            <div style={{ fontSize: 9, color: "#666", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>
-              INFLACIÓN MENSUAL ESPERADA — PRÓXIMOS 12 MESES (proyección flat desde valores actuales)
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
+              <div style={{ fontSize: 9, color: "#666", fontFamily: "monospace", letterSpacing: 1 }}>
+                REM — INFLACIÓN MENSUAL ESPERADA (mes a mes)
+              </div>
+              {bkData?.rem_informe && (
+                <div style={{ fontSize: 8, color: "#FF433D99", fontFamily: "monospace" }}>
+                  Informe {bkData.rem_informe}
+                </div>
+              )}
             </div>
-            <ResponsiveContainer width="100%" height={160}>
-              <LineChart data={forwardData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={180}>
+              <ComposedChart data={data} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="#111" strokeDasharray="3 3" />
-                <XAxis dataKey="label" tick={{ fill: "#555", fontSize: 8 }} axisLine={{ stroke: "#222" }} tickLine={false} />
+                <XAxis dataKey="mes" tick={{ fill: "#555", fontSize: 8 }} axisLine={{ stroke: "#222" }} tickLine={false} />
                 <YAxis
                   tick={{ fill: "#555", fontSize: 8 }} axisLine={{ stroke: "#222" }} tickLine={false}
-                  tickFormatter={(v: number) => `${v.toFixed(1)}%`}
-                  domain={["auto", "auto"]}
+                  tickFormatter={(v: number) => `${v}%`}
+                  domain={[0, "auto"]}
                 />
                 <Tooltip
                   contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 9, fontFamily: "monospace" }}
-                  formatter={(v: unknown, name: unknown) => [`${Number(v).toFixed(2)}% mensual`, String(name)]}
+                  formatter={(v: unknown, name: unknown) => {
+                    if (name === "Rango p25-p75") return null
+                    return [`${Number(v).toFixed(1)}%`, String(name)]
+                  }}
                 />
                 <Legend wrapperStyle={{ fontSize: 8, color: "#666" }} />
-                {lecapMensual != null && <Line type="monotone" dataKey="lecap" name="LECAP Breakeven" stroke="#FFD700" strokeWidth={2} dot={false} />}
-                {remMensual   != null && <Line type="monotone" dataKey="rem"   name="REM Analistas"   stroke="#FFA028" strokeWidth={2} dot={false} />}
-                {cerMensual   != null && <Line type="monotone" dataKey="cer"   name="CER Trailing"    stroke="#CE93D8" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />}
-              </LineChart>
+                <Area type="monotone" dataKey="p25"       stackId="b" stroke="none" fill="transparent"  legendType="none" />
+                <Area type="monotone" dataKey="bandWidth" stackId="b" name="Rango p25-p75" stroke="none" fill="#FF433D22" legendType="square" />
+                <Line type="monotone" dataKey="min"    name="Mín"    stroke="#FF433D33" strokeWidth={1} dot={false} strokeDasharray="2 3" legendType="none" />
+                <Line type="monotone" dataKey="max"    name="Máx"    stroke="#FF433D33" strokeWidth={1} dot={false} strokeDasharray="2 3" legendType="none" />
+                <Line type="monotone" dataKey="mediana" name="Mediana" stroke="#FF433D" strokeWidth={2.5} dot={{ r: 4, fill: "#FF433D" }} />
+              </ComposedChart>
             </ResponsiveContainer>
             <div style={{ fontSize: 8, color: "#333", marginTop: 2, fontFamily: "monospace" }}>
-              Proyección lineal — LECAP TEA → mensual | REM 12M → mensual | CER anualizado 30d → mensual
+              Fuente: BCRA REM vía ArgentinaDatos · Banda = p25-p75 · Dashed = rango máx-mín
             </div>
           </div>
         )
