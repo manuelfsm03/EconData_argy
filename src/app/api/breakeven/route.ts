@@ -114,7 +114,7 @@ export async function GET(_req: NextRequest) {
       fetchSerie(SERIES.badlar, 5),
       fetchSerie(SERIES.tpm, 5),
       fetchSerie(SERIES.cer_diario, 35),   // 35 días → trailing 30d
-      fetchSerie(SERIES.rem_inf12, 3),     // últimas 3 mediciones mensuales
+      fetchSerie(SERIES.rem_inf12, 60),    // 60 meses de historial
       fetchLecapTem(),
       fetchLecapsCurva(),
       fetchRemParticipantes(),
@@ -206,6 +206,11 @@ export async function GET(_req: NextRequest) {
           tasa_12m:      remExcel.tasa_12m,
           fecha:         remFechaFinal,
         },
+        rem_serie: remSerie.map(r => ({
+          fecha:         r.fecha,
+          label:         `${r.fecha.slice(5, 7)}/${r.fecha.slice(2, 4)}`,
+          inflacion_12m: parseFloat(r.valor.toFixed(1)),
+        })),
         breakeven: {
           lecap_corto_tea:  lecapCortoTEA != null ? parseFloat(lecapCortoTEA.toFixed(1)) : null,
           lecap_medio_tea:  lecapMedioTEA != null ? parseFloat(lecapMedioTEA.toFixed(1)) : null,

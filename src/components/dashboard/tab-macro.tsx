@@ -2006,6 +2006,7 @@ interface BreakevenData {
   lecaps: { ticker: string; vencimiento: string; dias_vto: number; tem: number | null; tea: number | null }[]
   lecap_referencia: { tem: number; tea: number | null; ticker: string; fecha: string } | null
   rem:   { inflacion_12m: number | null; dolar_12m: number | null; tasa_12m: number | null; fecha: string | null }
+  rem_serie: { fecha: string; label: string; inflacion_12m: number }[]
   breakeven: { lecap_corto_tea: number | null; real_vs_rem: number | null; inflac_vs_cer: number | null; interpretation: string | null }
 }
 
@@ -2039,16 +2040,21 @@ function BreakEvenSection() {
     ]).then(([bk, rem]) => {
       setBkData(bk?.data ?? null)
       setParticipantes(rem?.data?.participantes ?? [])
-      // Serie histórica REM
-      const serie: { fecha: string; inflacion_12m: number | null; inflacion_24m: number | null; nucleo_12m: number | null; dolar_12m: number | null; tasa_12m: number | null }[] = rem?.data?.serie ?? []
-      setRemHistorial(
-        serie.map(r => ({
-          ...r,
-          label: r.fecha
-            ? `${r.fecha.slice(5, 7)}/${r.fecha.slice(2, 4)}`
-            : r.fecha,
-        }))
+      // Serie histórica: primario = rem_serie breakeven (datos.gob.ar), fallback = Excel BCRA
+      const bkSerie: RemHistRow[] = (bk?.data?.rem_serie ?? []).map(
+        (r: { fecha: string; label: string; inflacion_12m: number }) => ({
+          fecha: r.fecha, label: r.label,
+          inflacion_12m: r.inflacion_12m, inflacion_24m: null, nucleo_12m: null, dolar_12m: null, tasa_12m: null,
+        })
       )
+      if (bkSerie.length > 0) {
+        setRemHistorial(bkSerie)
+      } else {
+        const excelSerie: { fecha: string; inflacion_12m: number | null; inflacion_24m: number | null; nucleo_12m: number | null; dolar_12m: number | null; tasa_12m: number | null }[] = rem?.data?.serie ?? []
+        setRemHistorial(excelSerie.map(r => ({
+          ...r, label: r.fecha ? `${r.fecha.slice(5, 7)}/${r.fecha.slice(2, 4)}` : r.fecha,
+        })))
+      }
       setLoading(false)
     })
   }, [])
