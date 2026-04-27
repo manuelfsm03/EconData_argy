@@ -2021,20 +2021,9 @@ interface RemParticipante {
   tasa_12m: number | null
 }
 
-interface RemHistRow {
-  fecha: string
-  label: string
-  inflacion_12m: number | null
-  inflacion_24m: number | null
-  nucleo_12m:    number | null
-  dolar_12m:     number | null
-  tasa_12m:      number | null
-}
-
 function BreakEvenSection() {
   const [bkData, setBkData] = useState<BreakevenData | null>(null)
   const [participantes, setParticipantes] = useState<RemParticipante[]>([])
-  const [remHistorial, setRemHistorial] = useState<RemHistRow[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -2044,21 +2033,6 @@ function BreakEvenSection() {
     ]).then(([bk, rem]) => {
       setBkData(bk?.data ?? null)
       setParticipantes(rem?.data?.participantes ?? [])
-      // Serie histórica: primario = rem_serie breakeven (datos.gob.ar), fallback = Excel BCRA
-      const bkSerie: RemHistRow[] = (bk?.data?.rem_serie ?? []).map(
-        (r: { fecha: string; label: string; inflacion_12m: number }) => ({
-          fecha: r.fecha, label: r.label,
-          inflacion_12m: r.inflacion_12m, inflacion_24m: null, nucleo_12m: null, dolar_12m: null, tasa_12m: null,
-        })
-      )
-      if (bkSerie.length > 0) {
-        setRemHistorial(bkSerie)
-      } else {
-        const excelSerie: { fecha: string; inflacion_12m: number | null; inflacion_24m: number | null; nucleo_12m: number | null; dolar_12m: number | null; tasa_12m: number | null }[] = rem?.data?.serie ?? []
-        setRemHistorial(excelSerie.map(r => ({
-          ...r, label: r.fecha ? `${r.fecha.slice(5, 7)}/${r.fecha.slice(2, 4)}` : r.fecha,
-        })))
-      }
       setLoading(false)
     })
   }, [])
@@ -2173,9 +2147,9 @@ function BreakEvenSection() {
                 />
                 <Legend wrapperStyle={{ fontSize: 8, color: "#666" }} />
                 <Area type="monotone" dataKey="p25"       stackId="b" stroke="none" fill="transparent"  legendType="none" />
-                <Area type="monotone" dataKey="bandWidth" stackId="b" name="Rango p25-p75" stroke="none" fill="#FF433D22" legendType="square" />
-                <Line type="monotone" dataKey="min"    name="Mín"    stroke="#FF433D33" strokeWidth={1} dot={false} strokeDasharray="2 3" legendType="none" />
-                <Line type="monotone" dataKey="max"    name="Máx"    stroke="#FF433D33" strokeWidth={1} dot={false} strokeDasharray="2 3" legendType="none" />
+                <Area type="monotone" dataKey="bandWidth" stackId="b" name="Rango p25-p75" stroke="none" fill="#4FC3F7AA" legendType="square" />
+                <Line type="monotone" dataKey="min"    name="Mín"    stroke="#4FC3F799" strokeWidth={1} dot={false} strokeDasharray="2 3" legendType="none" />
+                <Line type="monotone" dataKey="max"    name="Máx"    stroke="#4FC3F799" strokeWidth={1} dot={false} strokeDasharray="2 3" legendType="none" />
                 <Line type="monotone" dataKey="mediana" name="Mediana" stroke="#FF433D" strokeWidth={2.5} dot={{ r: 4, fill: "#FF433D" }} />
               </ComposedChart>
             </ResponsiveContainer>
@@ -2220,55 +2194,6 @@ function BreakEvenSection() {
           </div>
         </div>
       )}
-
-      {/* REM histórico — inflación esperada 12M mes a mes */}
-      {remHistorial.length > 0 && (() => {
-        const data = remHistorial.slice(-36)
-        const hasNucleo = data.some(r => r.nucleo_12m != null)
-        const has24m    = data.some(r => r.inflacion_24m != null)
-        return (
-          <div style={{ padding: "8px 12px 4px" }}>
-            <div style={{ fontSize: 9, color: "#666", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>
-              REM — EXPECTATIVAS DE INFLACIÓN · EVOLUCIÓN MENSUAL
-            </div>
-            <ResponsiveContainer width="100%" height={180}>
-              <LineChart data={data} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#111" strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="label"
-                  tick={{ fill: "#555", fontSize: 8 }}
-                  axisLine={{ stroke: "#222" }}
-                  tickLine={false}
-                  interval={0}
-                  tickFormatter={(val: string, idx: number) => {
-                    const step = Math.max(2, Math.floor(data.length / 10))
-                    return idx % step === 0 || idx === data.length - 1 ? val : ""
-                  }}
-                />
-                <YAxis
-                  tick={{ fill: "#555", fontSize: 8 }}
-                  axisLine={{ stroke: "#222" }}
-                  tickLine={false}
-                  tickFormatter={(v: number) => `${v}%`}
-                  domain={["auto", "auto"]}
-                />
-                <Tooltip
-                  contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontSize: 9, fontFamily: "monospace" }}
-                  formatter={(v: unknown, name: unknown) => [`${Number(v).toFixed(1)}%`, String(name)]}
-                  labelFormatter={(l: unknown) => `Relevamiento ${l}`}
-                />
-                <Legend wrapperStyle={{ fontSize: 8, color: "#666" }} />
-                <Line type="monotone" dataKey="inflacion_12m" name="Inflac. 12M" stroke="#FF433D"  strokeWidth={2} dot={false} connectNulls />
-                {has24m    && <Line type="monotone" dataKey="inflacion_24m" name="Inflac. 24M" stroke="#FFA028"  strokeWidth={1.5} dot={false} connectNulls strokeDasharray="5 3" />}
-                {hasNucleo && <Line type="monotone" dataKey="nucleo_12m"    name="Núcleo 12M"  stroke="#CE93D8"  strokeWidth={1.5} dot={false} connectNulls strokeDasharray="3 2" />}
-              </LineChart>
-            </ResponsiveContainer>
-            <div style={{ fontSize: 8, color: "#333", marginTop: 2, fontFamily: "monospace" }}>
-              Fuente: BCRA · REM · Medianas · Últimos {data.length} relevamientos mensuales
-            </div>
-          </div>
-        )
-      })()}
 
       {/* Top-10 participantes REM */}
       {participantes.length > 0 && (
