@@ -325,6 +325,48 @@ type EmaeSectorialRow = {
   imp_subsidios: number | null
 }
 
+// Ponderaciones VAB a precios básicos, base 2004 — INDEC Cuentas Nacionales
+// Representan el peso de cada sector en el VAB total del año base
+const POND_VAB_2004: Record<string, number> = {
+  agro:          5.11,
+  pesca:         0.28,
+  mineria:       3.88,
+  industria:    17.23,
+  energia:       2.19,
+  construccion:  5.10,
+  comercio:      8.54,
+  turismo:       1.53,
+  transporte:    8.14,
+  finanzas:      4.51,
+  inmobiliarias: 14.73,
+  adm_publica:   6.12,
+  ensenanza:     5.23,
+  salud:         5.04,
+  serv_comun:    3.79,
+}
+
+const EMAE_SECTOR_KEYS = Object.keys(POND_VAB_2004) as (keyof EmaeSectorialRow)[]
+
+// Para cada fila, calcula el % del VAB total a precios constantes 2004
+// Fórmula: share_j_t = (w_j × idx_j_t) / Σ_k(w_k × idx_k_t) × 100
+function computePctVAB(rows: EmaeSectorialRow[]): EmaeSectorialRow[] {
+  return rows.map(row => {
+    const denom = EMAE_SECTOR_KEYS.reduce((sum, k) => {
+      const w = POND_VAB_2004[k as string] ?? 0
+      const v = row[k] as number | null
+      return sum + (v != null ? w * (v / 100) : 0)
+    }, 0)
+    if (denom === 0) return row
+    const out: Record<string, number | null | string> = { date: row.date, imp_subsidios: null }
+    for (const k of EMAE_SECTOR_KEYS) {
+      const w = POND_VAB_2004[k as string] ?? 0
+      const v = row[k] as number | null
+      out[k as string] = v != null ? (w * (v / 100)) / denom * 100 : null
+    }
+    return out as unknown as EmaeSectorialRow
+  })
+}
+
 type UCIRow = {
   date: string
   nivel_general: number | null
@@ -582,6 +624,9 @@ function EmaeView() {
   const [estructuralLoading, setEstructuralLoading] = useState(true)
   const [emaeSectorialData, setEmaeSectorialData] = useState<EmaeSectorialRow[]>([])
   const [emaeSectorialLoading, setEmaeSectorialLoading] = useState(true)
+  const [emaeSectorialCompleto, setEmaeSectorialCompleto] = useState<EmaeSectorialRow[]>([])
+  const [emaeSectorialCompletoLoading, setEmaeSectorialCompletoLoading] = useState(false)
+  const [emaeModoPBI, setEmaeModoPBI] = useState(false)
   const [emaeSubTab, setEmaeSubTab] = useState("actividad")
   const [emaeEstrTab, setEmaeEstrTab] = useState("indicadores")
   const [actividadData, setActividadData] = useState<ActividadData | null>(null)
@@ -1086,9 +1131,50 @@ function EmaeView() {
 
           {/* Gráfico de líneas comparativo — todos los sectores con toggle */}
           <div style={{ padding: "8px 0" }}>
+            {/* Toggle modo % PBI */}
+            <div style={{ display: "flex", gap: 8, padding: "0 12px 6px", alignItems: "center" }}>
+              <button
+                onClick={() => {
+                  const next = !emaeModoPBI
+                  setEmaeModoPBI(next)
+                  if (next && emaeSectorialCompleto.length === 0 && !emaeSectorialCompletoLoading) {
+                    setEmaeSectorialCompletoLoading(true)
+                    fetch("/api/macro?endpoint=emae_sectorial_completo")
+                      .then(r => r.json())
+                      .then(j => { setEmaeSectorialCompleto(j.data ?? []); setEmaeSectorialCompletoLoading(false) })
+                      .catch(() => setEmaeSectorialCompletoLoading(false))
+                  }
+                }}
+                style={{
+                  fontSize: 8, letterSpacing: 1.5, fontFamily: "monospace", cursor: "pointer",
+                  padding: "3px 10px", border: "1px solid",
+                  borderColor: emaeModoPBI ? "#4AF6C3" : "#222",
+                  background: emaeModoPBI ? "#4AF6C318" : "transparent",
+                  color: emaeModoPBI ? "#4AF6C3" : "#444",
+                }}
+              >
+                {emaeModoPBI ? "▸ % DEL PBI (p.c. 2004)" : "% DEL PBI (p.c. 2004)"}
+              </button>
+              <span style={{ fontSize: 8, color: "#333", fontFamily: "monospace" }}>
+                {emaeModoPBI
+                  ? "% del VAB total · ponderaciones INDEC base 2004 · precios constantes"
+                  : "Índice base 2004=100 · valores originales INDEC"}
+              </span>
+              {emaeModoPBI && emaeSectorialCompletoLoading && (
+                <span style={{ fontSize: 8, color: "#555", fontFamily: "monospace" }}>cargando serie completa...</span>
+              )}
+            </div>
             <BBGLineChart
-              title="EMAE — EVOLUCIÓN SECTORIAL (ÍNDICE BASE 2004)"
-              data={emaeSectorialData}
+              title={emaeModoPBI
+                ? "EMAE — % DEL PBI POR SECTOR (PRECIOS CONSTANTES 2004)"
+                : "EMAE — EVOLUCIÓN SECTORIAL (ÍNDICE BASE 2004)"}
+              data={(() => {
+                if (!emaeModoPBI) return emaeSectorialData
+                const base = emaeSectorialCompleto.length > 0
+                  ? emaeSectorialCompleto
+                  : emaeSectorialData
+                return computePctVAB(base)
+              })()}
               enableLineToggle
               lines={[
                 { key: "agro",          name: "Agro",         color: "#4AF6C3" },
@@ -1108,7 +1194,7 @@ function EmaeView() {
                 { key: "serv_comun",    name: "Serv. Com.",   color: "#90A4AE" },
               ]}
               height={280}
-              yAxisLabel="Índice 2004=100"
+              yAxisLabel={emaeModoPBI ? "% del VAB" : "Índice 2004=100"}
               defaultRange="all"
             />
           </div>

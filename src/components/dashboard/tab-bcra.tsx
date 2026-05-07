@@ -61,6 +61,7 @@ const BCRA_TABS = [
   { key: "reservas",  label: "Reservas",       icon: "⬡" },
   { key: "compras",   label: "Compras BCRA",   icon: "⇄" },
   { key: "rem",       label: "REM",            icon: "◎" },
+  { key: "bancos",    label: "Bal. Bancos",    icon: "▦" },
 ]
 
 interface SubTabsProps {
@@ -390,7 +391,17 @@ function ReservasView() {
     netas: { fecha: string; brutas: number; netas: number; swap_china: number; encajes: number }[]
     ultima: { brutas: number | null; netas: number | null; fecha: string | null; var_semanal_brutas: number | null }
   } | null>(null)
+  const [historico, setHistorico] = useState<{
+    serie: { fecha: string; brutas: number; netas: number }[]
+    meta: {
+      primera_fecha: string | null; ultima_fecha: string | null; n_puntos: number
+      primera_fecha_netas: string | null; excel_ok: boolean
+      fuente_brutas: string; fuente_netas: string; nota_diferencia: string
+    }
+  } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadingHist, setLoadingHist] = useState(false)
+  const [modoHistorico, setModoHistorico] = useState(false)
 
   useEffect(() => {
     fetch("/api/bcra?endpoint=reservas")
@@ -399,39 +410,94 @@ function ReservasView() {
       .catch(() => setLoading(false))
   }, [])
 
+  function toggleHistorico() {
+    const next = !modoHistorico
+    setModoHistorico(next)
+    if (next && historico === null) {
+      setLoadingHist(true)
+      fetch("/api/bcra?endpoint=reservas_historico")
+        .then(r => r.json())
+        .then(j => { setHistorico(j.data); setLoadingHist(false) })
+        .catch(() => setLoadingHist(false))
+    }
+  }
+
   if (loading) return <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>Cargando reservas...</div>
 
   const ult = data?.ultima
-  const chartData = data?.netas?.slice(-24) ?? []
+  const chartDataReciente = data?.netas?.slice(-24) ?? []
+  const serieHist = historico?.serie ?? []
+  const metaHist  = historico?.meta
+
+  // Para la serie histórica, netas son válidas solo desde que existen los componentes (~2003)
+  const primeraFechaNetas = metaHist?.primera_fecha_netas ?? "2003-01-01"
 
   return (
     <div>
-      <SectionMeta title="Reservas Internacionales" help="Reservas internacionales brutas del BCRA en USD. Las reservas netas excluyen encajes en moneda extranjera, el swap con China y las obligaciones de corto plazo con el FMI y otros acreedores." source="BCRA API" />
+      <SectionMeta
+        title="Reservas Internacionales"
+        help="Reservas internacionales brutas del BCRA en USD. Las reservas netas excluyen encajes en moneda extranjera (Var 1200+1243), pase pasivo con el exterior (Var 76) y DEG 2009 (Var 83)."
+        source="BCRA API v4.0"
+      />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
         <KPI label="Reservas Brutas"
           value={ult?.brutas != null ? `USD ${fmtNum(ult.brutas / 1e3, 2)}B` : null}
           unit={ult?.var_semanal_brutas != null
-            ? `Var. semanal: ${ult.var_semanal_brutas >= 0 ? "+" : ""}${fmtNum(ult.var_semanal_brutas, 0)}M · Var 1 BCRA API`
-            : `Fecha: ${ult?.fecha ?? "—"} · Var 1 BCRA API`}
+            ? `Var. semanal: ${ult.var_semanal_brutas >= 0 ? "+" : ""}${fmtNum(ult.var_semanal_brutas, 0)}M · BCRA Var.1`
+            : `Fecha: ${ult?.fecha ?? "—"} · BCRA Var.1`}
           valueColor="#FFA028" />
         <KPI label="Reservas Netas"
           value={ult?.netas != null ? `USD ${fmtNum(ult.netas / 1e3, 2)}B` : null}
-          unit="Metodología F. Machado"
+          unit="argentinadatos.com · metodología F. Machado"
           valueColor={ult?.netas != null ? (ult.netas >= 0 ? "#4AF6C3" : "#FF433D") : "#555"} />
         <KPI label="Diferencia (B − N)"
           value={ult?.brutas != null && ult?.netas != null
             ? `USD ${fmtNum((ult.brutas - ult.netas) / 1e3, 2)}B`
             : null}
-          unit="Swap China + Encajes + DEGs"
+          unit="Encajes ME + Swap + DEGs"
           valueColor="#CE93D8" />
       </div>
-      {chartData.length > 0 && (
+
+      {/* Toggle modo histórico */}
+      <div style={{ display: "flex", gap: 8, padding: "8px 12px 0", alignItems: "center", flexWrap: "wrap" }}>
+        <button
+          onClick={toggleHistorico}
+          style={{
+            fontSize: 8, letterSpacing: 1.5, fontFamily: "monospace", cursor: "pointer",
+            padding: "3px 10px", border: "1px solid",
+            borderColor: modoHistorico ? "#FFA028" : "#222",
+            background: modoHistorico ? "#FFA02818" : "transparent",
+            color: modoHistorico ? "#FFA028" : "#444",
+          }}
+        >
+          {modoHistorico ? "▸ HISTÓRICO BCRA (desde 1996)" : "HISTÓRICO BCRA (desde 1996)"}
+        </button>
+        {!modoHistorico && (
+          <span style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>
+            Vista actual: últimos 24 meses · brutas + netas
+          </span>
+        )}
+        {modoHistorico && metaHist && (
+          <span style={{ fontSize: 8, color: "#444", fontFamily: "monospace" }}>
+            {metaHist.primera_fecha} → {metaHist.ultima_fecha} · {metaHist.n_puntos} pts
+            · Netas desde {primeraFechaNetas?.slice(0, 7)}
+          </span>
+        )}
+        {modoHistorico && loadingHist && (
+          <span style={{ fontSize: 8, color: "#555", fontFamily: "monospace" }}>
+            cargando 5 series BCRA (~7,500 pts c/u)...
+          </span>
+        )}
+      </div>
+
+      {/* Gráfico reciente: brutas + netas (24 meses) */}
+      {!modoHistorico && chartDataReciente.length > 0 && (
         <div style={{ padding: "8px 12px 0" }}>
           <div style={{ fontSize: 9, color: "#4AF6C3", letterSpacing: 1.5, marginBottom: 4, fontFamily: "monospace" }}>
             RESERVAS BRUTAS vs. NETAS — ÚLTIMOS 24 MESES (USD millones)
           </div>
           <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={chartData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+            <AreaChart data={chartDataReciente} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#111" />
               <XAxis dataKey="fecha" tick={{ fontSize: 8, fill: "#555", fontFamily: "monospace" }}
                 tickFormatter={d => d?.slice(0, 7) ?? ""} interval="preserveStartEnd" />
@@ -445,8 +511,65 @@ function ReservasView() {
             </AreaChart>
           </ResponsiveContainer>
           <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>
-            Brutas: Var 1 BCRA API · Netas: argentinadatos.com + metodología F. Machado
+            Brutas: BCRA Var.1 · Netas: argentinadatos.com (metodología F. Machado)
           </div>
+        </div>
+      )}
+
+      {/* Gráfico histórico: brutas + netas desde series BCRA */}
+      {modoHistorico && (
+        <div style={{ padding: "8px 12px 0" }}>
+          <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, marginBottom: 4, fontFamily: "monospace" }}>
+            RESERVAS BRUTAS vs. NETAS — HISTÓRICO BCRA (USD millones)
+          </div>
+          {loadingHist ? (
+            <div style={{ color: "#555", fontSize: 11, fontFamily: "monospace", padding: "48px 0", textAlign: "center" }}>
+              Cargando series históricas del BCRA (Var 1, 1200, 1243, 76, 83)...
+            </div>
+          ) : serieHist.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={serieHist} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#111" />
+                  <XAxis
+                    dataKey="fecha"
+                    tick={{ fontSize: 8, fill: "#555", fontFamily: "monospace" }}
+                    tickFormatter={d => d?.slice(0, 4) ?? ""}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    tick={{ fontSize: 8, fill: "#555", fontFamily: "monospace" }}
+                    tickFormatter={v => `${(Number(v) / 1e3).toFixed(0)}B`}
+                  />
+                  <Tooltip
+                    contentStyle={{ background: "#0a0a0a", border: "1px solid #222", fontFamily: "monospace", fontSize: 10 }}
+                    formatter={(v: unknown) => [`USD ${fmtNum(v as number, 0)}M`]}
+                    labelFormatter={l => String(l).slice(0, 10)}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 9, fontFamily: "monospace" }} />
+                  <Area
+                    type="monotone" dataKey="brutas" name="Brutas"
+                    stroke="#FFA028" fill="#FFA02820" strokeWidth={1.5} dot={false}
+                  />
+                  <Area
+                    type="monotone" dataKey="netas" name="Netas (BCRA)"
+                    stroke="#4AF6C3" fill="#4AF6C318" strokeWidth={1.5} dot={false}
+                    connectNulls={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+              <div style={{ fontSize: 8, color: "#333", marginTop: 4, lineHeight: 1.6 }}>
+                {metaHist?.fuente_brutas} · Netas: {metaHist?.fuente_netas}
+                {metaHist?.nota_diferencia && (
+                  <span style={{ color: "#2a2a2a", marginLeft: 8 }}>· {metaHist.nota_diferencia}</span>
+                )}
+              </div>
+            </>
+          ) : (
+            <div style={{ color: "#555", fontSize: 11, fontFamily: "monospace", padding: "32px 0", textAlign: "center" }}>
+              No se pudo cargar la serie histórica
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -1065,6 +1188,238 @@ function TasasView() {
   )
 }
 
+// ── Balance de Bancos ──────────────────────────────────────────────────────────
+//
+// Fuente: BCRA — InfBanc_Anexo.xlsx · Estado de Sit. Financiera
+// Activos y fondeo del sistema financiero como % del activo total (mensual desde 2010)
+
+type BancosPeriod = {
+  fecha: string
+  // Activos
+  disponibilidades: number
+  inst_bcra:        number
+  titulos_pub:      number
+  cred_pub:         number
+  cred_priv:        number
+  otros_activos:    number
+  // Fondeo
+  dep_priv_vista:   number
+  dep_priv_plazo:   number
+  dep_priv_otros:   number
+  dep_pub:          number
+  on_lineas_ext:    number
+  oblig_bcra:       number
+  otros_pasivos:    number
+  pn:               number
+  // Absoluto
+  activo_mm:        number
+}
+
+const ACTIVOS_CFG = [
+  { key: "cred_priv",       label: "Créd. s. privado",     color: "#4FC3F7" },
+  { key: "titulos_pub",     label: "Títulos públicos",     color: "#FFA028" },
+  { key: "disponibilidades",label: "Disponibilidades",     color: "#4AF6C3" },
+  { key: "cred_pub",        label: "Créd. s. público",     color: "#CE93D8" },
+  { key: "inst_bcra",       label: "Inst. BCRA (LELIQ)",   color: "#FF8A65" },
+  { key: "otros_activos",   label: "Otros activos",        color: "#444" },
+] as const
+
+const FONDEO_CFG = [
+  { key: "dep_priv_vista",  label: "Dep. s. priv. – Vista",  color: "#4FC3F7" },
+  { key: "dep_priv_plazo",  label: "Dep. s. priv. – Plazo",  color: "#4AF6C3" },
+  { key: "dep_priv_otros",  label: "Dep. s. priv. – Otros",  color: "#81C784" },
+  { key: "dep_pub",         label: "Dep. s. público",        color: "#FFA028" },
+  { key: "on_lineas_ext",   label: "ON/OS + Líneas ext.",    color: "#CE93D8" },
+  { key: "oblig_bcra",      label: "Oblig. BCRA",            color: "#FF433D" },
+  { key: "otros_pasivos",   label: "Otros pasivos",          color: "#555" },
+  { key: "pn",              label: "Patr. neto",             color: "#FFD54F" },
+] as const
+
+const RANGOS = [
+  { key: "24",  label: "2 años"  },
+  { key: "60",  label: "5 años"  },
+  { key: "all", label: "Todo"    },
+]
+
+function BancosView() {
+  const [serie, setSerie]       = useState<BancosPeriod[]>([])
+  const [loading, setLoading]   = useState(true)
+  const [rango, setRango]       = useState<"24" | "60" | "all">("24")
+
+  useEffect(() => {
+    fetch("/api/bancos")
+      .then(r => r.json())
+      .then(j => { setSerie(j.data?.serie ?? []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return (
+    <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>
+      Cargando balance del sistema financiero...
+    </div>
+  )
+
+  if (serie.length === 0) return (
+    <div style={{ padding: 24, color: "#555", textAlign: "center", fontSize: 11, fontFamily: "monospace" }}>
+      Sin datos disponibles
+    </div>
+  )
+
+  const filtered = rango === "all"
+    ? serie
+    : serie.slice(-Number(rango))
+
+  const last = serie.at(-1)
+
+  // Formatter para tooltip
+  const tooltipStyle = { background: "#0a0a0a", border: "1px solid #222", fontFamily: "monospace", fontSize: 10 }
+
+  const xTickProps = { fontSize: 8, fill: "#555", fontFamily: "monospace" }
+  const yTickFmt = (v: number) => `${v}%`
+
+  // KPIs del último período
+  const kpis = last ? [
+    { label: "Créd. s. privado",   value: `${last.cred_priv}%`,        color: "#4FC3F7" },
+    { label: "Disponibilidades",   value: `${last.disponibilidades}%`, color: "#4AF6C3" },
+    { label: "Títulos públicos",   value: `${last.titulos_pub}%`,      color: "#FFA028" },
+    { label: "Dep. vista s. priv.",value: `${last.dep_priv_vista}%`,   color: "#4FC3F7" },
+    { label: "Dep. plazo s. priv.",value: `${last.dep_priv_plazo}%`,   color: "#4AF6C3" },
+    { label: "Patr. neto",         value: `${last.pn}%`,               color: "#FFD54F" },
+  ] : []
+
+  return (
+    <div>
+      <SectionMeta
+        title="Balance del Sistema Financiero"
+        help="Composición del activo y del fondeo del sistema financiero argentino como % del activo total. Fuente: BCRA — Informe sobre Bancos, Estado de Situación Financiera."
+        source="BCRA — InfBanc_Anexo.xlsx"
+      />
+
+      {/* KPIs */}
+      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "#111" }}>
+        {kpis.map(k => (
+          <KPI key={k.label} label={k.label} value={k.value}
+            unit={`% del activo · ${last?.fecha ?? ""}`} valueColor={k.color} />
+        ))}
+        <KPI label="Activo total" value={last?.activo_mm != null
+          ? `$${(last.activo_mm / 1e9).toFixed(1)}B`
+          : null}
+          unit="Billones de pesos corrientes" valueColor="#888" />
+      </div>
+
+      {/* Selector rango */}
+      <div style={{ display: "flex", gap: 6, padding: "8px 12px 0", alignItems: "center" }}>
+        {RANGOS.map(r => (
+          <button
+            key={r.key}
+            onClick={() => setRango(r.key as "24" | "60" | "all")}
+            style={{
+              fontSize: 8, letterSpacing: 1.5, fontFamily: "monospace", cursor: "pointer",
+              padding: "3px 10px", border: "1px solid",
+              borderColor: rango === r.key ? "#FFA028" : "#222",
+              background: rango === r.key ? "#FFA02818" : "transparent",
+              color: rango === r.key ? "#FFA028" : "#444",
+            }}
+          >
+            {r.label}
+          </button>
+        ))}
+        <span style={{ fontSize: 8, color: "#444", fontFamily: "monospace", marginLeft: 4 }}>
+          {filtered.length} períodos · hasta {last?.fecha}
+        </span>
+      </div>
+
+      {/* Gráfico activos */}
+      <div style={{ padding: "10px 12px 0" }}>
+        <div style={{ fontSize: 9, color: "#4AF6C3", letterSpacing: 1.5, marginBottom: 4, fontFamily: "monospace" }}>
+          COMPOSICIÓN DEL ACTIVO — % del activo total
+        </div>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={filtered} margin={{ top: 4, right: 12, left: 0, bottom: 0 }} barCategoryGap="20%">
+            <CartesianGrid strokeDasharray="3 3" stroke="#111" vertical={false} />
+            <XAxis dataKey="fecha" tick={xTickProps}
+              tickFormatter={d => rango === "all" ? (d as string).slice(0, 4) : (d as string).slice(0, 7)}
+              interval={rango === "all" ? 11 : rango === "60" ? 5 : 2}
+            />
+            <YAxis tick={{ ...xTickProps }} tickFormatter={yTickFmt} domain={[0, 100]} />
+            <Tooltip contentStyle={tooltipStyle}
+              formatter={(v: unknown, name: unknown) => [`${(v as number).toFixed(1)}%`, name as string]} />
+            <Legend wrapperStyle={{ fontSize: 8, fontFamily: "monospace" }} />
+            {ACTIVOS_CFG.map(c => (
+              <Bar key={c.key} dataKey={c.key} name={c.label} stackId="a"
+                fill={c.color} stroke="none" />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Gráfico fondeo */}
+      <div style={{ padding: "10px 12px 0" }}>
+        <div style={{ fontSize: 9, color: "#FFA028", letterSpacing: 1.5, marginBottom: 4, fontFamily: "monospace" }}>
+          COMPOSICIÓN DEL FONDEO (PASIVO + PN) — % del activo total
+        </div>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={filtered} margin={{ top: 4, right: 12, left: 0, bottom: 0 }} barCategoryGap="20%">
+            <CartesianGrid strokeDasharray="3 3" stroke="#111" vertical={false} />
+            <XAxis dataKey="fecha" tick={xTickProps}
+              tickFormatter={d => rango === "all" ? (d as string).slice(0, 4) : (d as string).slice(0, 7)}
+              interval={rango === "all" ? 11 : rango === "60" ? 5 : 2}
+            />
+            <YAxis tick={{ ...xTickProps }} tickFormatter={yTickFmt} domain={[0, 100]} />
+            <Tooltip contentStyle={tooltipStyle}
+              formatter={(v: unknown, name: unknown) => [`${(v as number).toFixed(1)}%`, name as string]} />
+            <Legend wrapperStyle={{ fontSize: 8, fontFamily: "monospace" }} />
+            {FONDEO_CFG.map(c => (
+              <Bar key={c.key} dataKey={c.key} name={c.label} stackId="b"
+                fill={c.color} stroke="none" />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+        <div style={{ fontSize: 8, color: "#333", marginTop: 4 }}>
+          Fuente: BCRA — Informe sobre Bancos · Estado de Sit. Financiera (Sistema Financiero) · En % del activo total
+        </div>
+      </div>
+
+      {/* Tabla resumen últimos 12 meses */}
+      <div style={{ padding: "10px 12px 0", overflowX: "auto" }}>
+        <div style={{ fontSize: 9, color: "#555", letterSpacing: 1.5, marginBottom: 6, fontFamily: "monospace" }}>
+          TABLA — ÚLTIMOS 12 PERÍODOS (% del activo)
+        </div>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 8, minWidth: 700 }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid #222" }}>
+              <th style={{ padding: "4px 8px", color: "#555", textAlign: "left", fontWeight: 400 }}>Fecha</th>
+              {ACTIVOS_CFG.map(c => (
+                <th key={c.key} style={{ padding: "4px 6px", color: c.color, textAlign: "right", fontWeight: 600, whiteSpace: "nowrap" }}>
+                  {c.label.replace("Disponibilidades", "Disp.").replace("Títulos públicos", "Tít. púb.").replace("Créd. s. privado", "Crd. priv.").replace("Créd. s. público", "Crd. pub.").replace("Otros activos", "Otros")}
+                </th>
+              ))}
+              <th style={{ padding: "4px 6px", color: "#FFD54F", textAlign: "right", fontWeight: 600 }}>PN</th>
+              <th style={{ padding: "4px 6px", color: "#888", textAlign: "right", fontWeight: 400 }}>Activo ($B)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {serie.slice(-12).reverse().map((r, i) => (
+              <tr key={r.fecha} style={{ borderBottom: "1px solid #0d0d0d", background: i % 2 === 0 ? "#060606" : "#080808" }}>
+                <td style={{ padding: "3px 8px", color: "#666" }}>{r.fecha}</td>
+                {ACTIVOS_CFG.map(c => (
+                  <td key={c.key} style={{ padding: "3px 6px", color: c.color, textAlign: "right" }}>
+                    {r[c.key].toFixed(1)}%
+                  </td>
+                ))}
+                <td style={{ padding: "3px 6px", color: "#FFD54F", textAlign: "right" }}>{r.pn.toFixed(1)}%</td>
+                <td style={{ padding: "3px 6px", color: "#666", textAlign: "right" }}>
+                  ${(r.activo_mm / 1e9).toFixed(0)}B
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export function TabBCRA({ initialSubtab }: { initialSubtab?: string | null }) {
@@ -1093,6 +1448,7 @@ export function TabBCRA({ initialSubtab }: { initialSubtab?: string | null }) {
       {activeTab === "reservas"  && <ReservasView  />}
       {activeTab === "compras"   && <ComprasView   />}
       {activeTab === "rem"       && <REMView       />}
+      {activeTab === "bancos"    && <BancosView    />}
     </div>
   )
 }

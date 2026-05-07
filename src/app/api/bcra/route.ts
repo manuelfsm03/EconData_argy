@@ -240,6 +240,179 @@ async function getTasas() {
   return result
 }
 
+// ── Helper: fetch todas las páginas de una variable BCRA ─────────────────────
+async function fetchVarCompleto(idVariable: number, desde = "1990-01-01"): Promise<{ fecha: string; valor: number }[]> {
+  const BASE = "https://api.bcra.gob.ar/estadisticas/v4.0"
+  const PAGE = 3000
+  const today = new Date().toISOString().slice(0, 10)
+  type Pt = { fecha: string; valor: number }
+  let todos: Pt[] = []
+  try {
+    const url = `${BASE}/monetarias/${idVariable}?desde=${desde}&hasta=${today}&limit=${PAGE}&offset=0`
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0", "Accept": "application/json" },
+      signal: AbortSignal.timeout(15000),
+    })
+    if (!res.ok) return []
+    const j = await res.json()
+    const total: number = j.metadata?.resultset?.count ?? 0
+    todos = (j.results?.[0]?.detalle ?? []).map((p: Pt) => ({ fecha: p.fecha, valor: p.valor }))
+    const paginas = Math.ceil(total / PAGE)
+    for (let i = 1; i < paginas; i++) {
+      try {
+        const r2 = await fetch(
+          `${BASE}/monetarias/${idVariable}?desde=${desde}&hasta=${today}&limit=${PAGE}&offset=${i * PAGE}`,
+          { headers: { "User-Agent": "Mozilla/5.0", "Accept": "application/json" }, signal: AbortSignal.timeout(15000) }
+        )
+        if (r2.ok) {
+          const j2 = await r2.json()
+          todos = [...todos, ...(j2.results?.[0]?.detalle ?? []).map((p: Pt) => ({ fecha: p.fecha, valor: p.valor }))]
+        }
+      } catch { /* partial data */ }
+    }
+  } catch { /* API unavailable */ }
+  return todos.sort((a, b) => a.fecha.localeCompare(b.fecha))
+}
+
+// ── Reservas Históricas — Pipeline completo (Excel BCRA + API) ───────────────
+//
+// FUENTES:
+//   • series.xlsm  (BCRA) → RESERVAS sheet → desde 2003-01-02
+//       Col C (Var74) = Reservas excl. DEG 2009
+//       Col D (Var75) = Oro, divisas, colocaciones (excl. swap y DEG) ← base netas
+//       Col E (Var76) = Pase pasivo USD exterior (swap China/otros)
+//       Col N (Var83) = DEG asignaciones 2009
+//       Brutas = Col C + Col N
+//   • BCRA API v4.0 Var1 → datos pre-2003 (desde 2000)
+//   • BCRA API v4.0 Var1200 → Efectivo ME en entidades (encaje cash, desde 1996)
+//   • BCRA API v4.0 Var1243 → CC ME en BCRA (encaje depositado, desde 2003)
+//
+// METODOLOGÍA F. MACHADO:
+//   Netas = Var75 − Var1200 − Var1243
+//   (Var75 ya excluye swap activado y DEGs; los encajes bancarios en USD se restan aparte)
+//
+// NOTA: la diferencia vs argentinadatos.com (~7-8B) es el saldo neto con el FMI,
+// no disponible como variable directa en la API del BCRA.
+
+type ReservasPt = { fecha: string; brutas: number; netas: number }
+
+// Convierte serial de Excel (días desde 30-dic-1899) a YYYY-MM-DD
+function xlSerialToDate(serial: number): string {
+  return new Date(Date.UTC(1899, 11, 30) + serial * 86400000).toISOString().slice(0, 10)
+}
+
+// Lookup con fill hacia adelante (retorna último valor conocido antes de la fecha)
+function lookupFF(sorted: { fecha: string; valor: number }[], fecha: string): number {
+  let lo = 0, hi = sorted.length - 1, best = 0
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    if (sorted[mid].fecha <= fecha) { best = sorted[mid].valor; lo = mid + 1 }
+    else hi = mid - 1
+  }
+  return best
+}
+
+async function getReservasHistorico() {
+  const cacheKey = "bcra_reservas_historico"
+  const cached = getCache(cacheKey)
+  if (cached) return cached
+
+  // ── 1. Descargar series.xlsm del BCRA ──────────────────────────────────────
+  const XLSX_URL = "https://www.bcra.gob.ar/Pdfs/PublicacionesEstadisticas/series.xlsm"
+  type ExcelPt = { fecha: string; brutas: number; var75: number }
+  let excelSerie: ExcelPt[] = []
+  let excelOK = false
+
+  try {
+    const res = await fetch(XLSX_URL, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      signal: AbortSignal.timeout(40000),
+    })
+    if (res.ok) {
+      const buf = Buffer.from(await res.arrayBuffer())
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const XLSX = require("xlsx") as typeof import("xlsx")
+      const wb = XLSX.read(buf, { type: "buffer" })
+      const ws = wb.Sheets["RESERVAS"]
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1 }) as unknown[][]
+
+      excelSerie = rows
+        .filter(r => typeof r[0] === "number" && (r[0] as number) > 30000 && r[2] != null)
+        .map(r => {
+          const a = r as (number | null)[]
+          const var74 = a[2] ?? 0
+          const var75 = a[3] ?? var74  // fallback a var74 si falta
+          const deg   = a[13] ?? 0
+          return {
+            fecha:  xlSerialToDate(a[0] as number),
+            brutas: (var74 + deg),
+            var75,
+          }
+        })
+        .filter(p => p.brutas > 0)
+      excelOK = excelSerie.length > 0
+    }
+  } catch { /* fallback al API */ }
+
+  // ── 2. Fetch encajes (Var1200 + Var1243) en paralelo con Var1 pre-Excel ────
+  const excelPrimerFecha = excelSerie[0]?.fecha ?? "2003-01-02"
+
+  const [v1200, v1243, v1pre] = await Promise.all([
+    fetchVarCompleto(1200),          // Efectivo ME en entidades — desde 1996
+    fetchVarCompleto(1243),          // CC ME en BCRA (encajes depositados) — desde 2003
+    excelOK
+      ? fetchVarCompleto(1, "2000-01-01")  // Var1 para pre-2003 (o full si Excel falló)
+      : fetchVarCompleto(1),               // full si Excel no disponible
+  ])
+
+  // ── 3. Construir serie pre-Excel desde Var1 (2000-01-01 hasta excelPrimerFecha) ──
+  const preExcel: ExcelPt[] = excelOK
+    ? v1pre
+        .filter(p => p.fecha >= "2000-01-01" && p.fecha < excelPrimerFecha)
+        .map(p => ({ fecha: p.fecha, brutas: p.valor, var75: p.valor }))
+    : v1pre.map(p => ({ fecha: p.fecha, brutas: p.valor, var75: p.valor }))
+
+  // ── 4. Combinar: [pre-2003 Var1] + [2003+ Excel] ──────────────────────────
+  const base: ExcelPt[] = [...preExcel, ...excelSerie]
+
+  // ── 5. Calcular Netas (F. Machado): Var75 − Var1200 − Var1243 ──────────────
+  const serie: ReservasPt[] = base.map(pt => {
+    const ef = lookupFF(v1200, pt.fecha)  // efectivo ME en entidades
+    const cc = lookupFF(v1243, pt.fecha)  // CC ME en BCRA (principal encaje)
+    const netas = pt.var75 - ef - cc
+    return {
+      fecha:  pt.fecha,
+      brutas: Math.round(pt.brutas),
+      netas:  Math.round(netas),
+    }
+  })
+
+  const meta = {
+    primera_fecha:        serie[0]?.fecha ?? null,
+    ultima_fecha:         serie.at(-1)?.fecha ?? null,
+    n_puntos:             serie.length,
+    primera_fecha_netas:  v1243[0]?.fecha ?? null,
+    excel_ok:             excelOK,
+    fuente_brutas:        excelOK
+      ? "series.xlsm BCRA (Col C+N) + API Var1 pre-2003"
+      : "BCRA API v4.0 · idVariable=1",
+    fuente_netas:
+      "Var75 (series.xlsm Col D) − Var1200 − Var1243 · Metodología F. Machado",
+    nota_diferencia:
+      "Diferencia vs otras metodologías: saldo neto FMI (~7-8B USD) no disponible como variable BCRA directa",
+  }
+
+  const result = {
+    data: { serie, meta },
+    updated_at: new Date().toISOString(),
+    source: excelOK
+      ? "BCRA series.xlsm + BCRA API v4.0"
+      : "BCRA API v4.0",
+  }
+  setCache(cacheKey, result, 14400)
+  return result
+}
+
 // ── Handler principal ─────────────────────────────────────────────────────────
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
@@ -248,11 +421,12 @@ export async function GET(req: Request) {
   try {
     let data: unknown
     switch (endpoint) {
-      case "plazofijo": data = await getPlazoFijo(); break
-      case "agregados": data = await getAgregados(); break
-      case "reservas":  data = await getReservas();  break
-      case "compras":   data = await getCompras();   break
-      case "tasas":     data = await getTasas();     break
+      case "plazofijo":          data = await getPlazoFijo();         break
+      case "agregados":          data = await getAgregados();         break
+      case "reservas":           data = await getReservas();          break
+      case "reservas_historico": data = await getReservasHistorico(); break
+      case "compras":            data = await getCompras();           break
+      case "tasas":              data = await getTasas();             break
       default:
         return NextResponse.json({ error: `Unknown endpoint: ${endpoint}` }, { status: 400 })
     }
