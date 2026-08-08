@@ -1,8 +1,8 @@
 "use client"
 
-import { useBCRAData } from "@/hooks/use-bcra-data"
-import { BBGLineChart } from "@/components/charts/bbg-line-chart"
-import { BBGChartPanel } from "@/components/charts/bbg-chart-panel"
+import { useBCRAData } from "@/client/hooks/use-bcra-data"
+import { BBGLineChart } from "@/client/components/charts/bbg-line-chart"
+import { BBGChartPanel } from "@/client/components/charts/bbg-chart-panel"
 
 function fmtVal(v: unknown): string {
   if (v == null) return "-"

@@ -1,5 +1,5 @@
 import { chromium, Browser, Page } from "playwright"
-import { prisma } from "@/lib/prisma"
+import { prisma } from "@/server/db/prisma"
 
 export interface ScrapeResult {
   success: boolean

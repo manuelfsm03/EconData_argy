@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { fetchMultipleSeries, mergeSeriesByDate, getPeriodDates } from "@/lib/bcra-api"
+import { fetchMultipleSeries, mergeSeriesByDate, getPeriodDates } from "@/server/sources/bcra-api"
 
 export async function POST(req: Request) {
   try {

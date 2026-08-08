@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { BBGChartPanel } from "@/components/charts/bbg-chart-panel"
+import { BBGChartPanel } from "@/client/components/charts/bbg-chart-panel"
 
 interface ArbOpportunity {
   id: string

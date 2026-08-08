@@ -10,8 +10,8 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx scripts/seed-from-excel.ts",
-    "scrape": "tsx -e \"import { runAllScrapers } from './src/scrapers'; runAllScrapers().then(console.log)\"",
-    "scrape:bcra": "tsx -e \"import { BCRAScraper } from './src/scrapers/bcra'; new BCRAScraper().run().then(console.log)\""
+    "scrape": "tsx -e \"import { runAllScrapers } from './src/server/scrapers'; runAllScrapers().then(console.log)\"",
+    "scrape:bcra": "tsx -e \"import { BCRAScraper } from './src/server/scrapers/bcra'; new BCRAScraper().run().then(console.log)\""
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

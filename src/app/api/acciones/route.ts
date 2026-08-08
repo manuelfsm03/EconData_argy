@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import { STOCK_CATEGORIES, MERVAL_TOP, type StockQuote } from "@/lib/stock-categories"
+import { STOCK_CATEGORIES, MERVAL_TOP, type StockQuote } from "@/server/domain/stock-categories"
 
 // api-merval/byma deshabilitado por criterio legal; acciones usa fuentes públicas permitidas
 // ── In-memory cache ────────────────────────────────────────────────────────────

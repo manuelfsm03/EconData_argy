@@ -16,7 +16,7 @@ import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LineChart, Line, ReferenceLine, Legend,
 } from "recharts"
-import { InfoTooltip } from "@/components/ui/info-tooltip"
+import { InfoTooltip } from "@/client/components/ui/info-tooltip"
 import { GLOSSARY } from "@/lib/glossary"
 
 // ── Types ─────────────────────────────────────────────────────────────────────

@@ -8,8 +8,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { BOND_DEFS, CAP_INSTRUMENT_DEFS, type BondDef } from "@/lib/bonds-data"
+import { prisma } from "@/server/db/prisma"
+import { BOND_DEFS, CAP_INSTRUMENT_DEFS, type BondDef } from "@/server/domain/bonds-data"
 
 type Cashflow = { fechaPago: Date; cupon: number; amortizacion: number; flujoTotal: number }
 

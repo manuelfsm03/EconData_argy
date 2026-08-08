@@ -1,9 +1,9 @@
 "use client"
 
-import { useBCRAData } from "@/hooks/use-bcra-data"
-import { BBGAreaChart } from "@/components/charts/bbg-area-chart"
-import { BBGDataTable } from "@/components/charts/bbg-data-table"
-import { BBGChartPanel } from "@/components/charts/bbg-chart-panel"
+import { useBCRAData } from "@/client/hooks/use-bcra-data"
+import { BBGAreaChart } from "@/client/components/charts/bbg-area-chart"
+import { BBGDataTable } from "@/client/components/charts/bbg-data-table"
+import { BBGChartPanel } from "@/client/components/charts/bbg-chart-panel"
 
 export function TabReservas() {
   const reservas = useBCRAData(["reservas"], "max")

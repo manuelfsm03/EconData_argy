@@ -14,7 +14,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, AreaChart, Area,
 } from "recharts"
-import { InfoTooltip } from "@/components/ui/info-tooltip"
+import { InfoTooltip } from "@/client/components/ui/info-tooltip"
 import { GLOSSARY } from "@/lib/glossary"
 
 function SubTabs({ tabs, active, onChange }: { tabs: { key: string; label: string }[]; active: string; onChange: (k: string) => void }) {

@@ -7,8 +7,8 @@
  */
 
 import { useState, useEffect } from "react"
-import { useBCRAData } from "@/hooks/use-bcra-data"
-import { InfoTooltip } from "@/components/ui/info-tooltip"
+import { useBCRAData } from "@/client/hooks/use-bcra-data"
+import { InfoTooltip } from "@/client/components/ui/info-tooltip"
 import { GLOSSARY } from "@/lib/glossary"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

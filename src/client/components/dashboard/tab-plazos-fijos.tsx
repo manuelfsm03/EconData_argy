@@ -1,10 +1,10 @@
 "use client"
 
 import { useMemo } from "react"
-import { useBCRAData } from "@/hooks/use-bcra-data"
-import { BBGAreaChart } from "@/components/charts/bbg-area-chart"
-import { BBGLineChart } from "@/components/charts/bbg-line-chart"
-import { BBGChartPanel } from "@/components/charts/bbg-chart-panel"
+import { useBCRAData } from "@/client/hooks/use-bcra-data"
+import { BBGAreaChart } from "@/client/components/charts/bbg-area-chart"
+import { BBGLineChart } from "@/client/components/charts/bbg-line-chart"
+import { BBGChartPanel } from "@/client/components/charts/bbg-chart-panel"
 
 export function TabPlazosFijos() {
   // Fetch all series needed for this tab

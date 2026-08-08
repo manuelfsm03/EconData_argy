@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getScraper, runAllScrapers, ScraperName } from "@/scrapers"
+import { getScraper, runAllScrapers, ScraperName } from "@/server/scrapers"
 
 export async function POST(
   request: NextRequest,

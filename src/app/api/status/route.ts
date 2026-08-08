@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { prisma } from "@/server/db/prisma"
 
 type HealthCheck = {
   source: string

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { runAllScrapers } from "@/scrapers"
+import { runAllScrapers } from "@/server/scrapers"
 
 // This endpoint is designed to be called by Vercel Cron
 // Configure in vercel.json to run at 17:00 Argentina time (20:00 UTC)

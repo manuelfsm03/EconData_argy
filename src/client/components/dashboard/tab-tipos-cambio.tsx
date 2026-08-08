@@ -15,7 +15,7 @@ import {
   ComposedChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts"
-import { InfoTooltip } from "@/components/ui/info-tooltip"
+import { InfoTooltip } from "@/client/components/ui/info-tooltip"
 import { GLOSSARY } from "@/lib/glossary"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
