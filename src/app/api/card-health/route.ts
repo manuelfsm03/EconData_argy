@@ -26,7 +26,7 @@ interface CardHealthPayload {
 const CACHE_TTL_MS = 45_000
 const cache = new Map<string, CachedHealth>()
 
-async function probe(request: NextRequest, path: string, label: string): Promise<EndpointHealth> {
+async function probe(request: NextRequest, path: string, label: string, method: "GET" | "POST" = "GET", body?: Record<string, unknown>): Promise<EndpointHealth> {
   const startedAt = performance.now()
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 8_000)
@@ -34,10 +34,14 @@ async function probe(request: NextRequest, path: string, label: string): Promise
   try {
     const target = new URL(path, request.nextUrl.origin)
     const response = await fetch(target, {
-      method: "GET",
+      method,
       cache: "no-store",
       signal: controller.signal,
-      headers: { "x-lapizarra-health-check": "1" },
+      headers: {
+        "x-lapizarra-health-check": "1",
+        ...(method === "POST" ? { "Content-Type": "application/json" } : {}),
+      },
+      body: method === "POST" ? JSON.stringify(body ?? {}) : undefined,
     })
     return {
       label,
@@ -75,7 +79,7 @@ export async function GET(request: NextRequest) {
   }
 
   const endpoints = await Promise.all(
-    definition.endpoints.map((endpoint) => probe(request, endpoint.path, endpoint.label))
+    definition.endpoints.map((endpoint) => probe(request, endpoint.path, endpoint.label, endpoint.method, endpoint.body))
   )
   const payload: CardHealthPayload = {
     cardId,

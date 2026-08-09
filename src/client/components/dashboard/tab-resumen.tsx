@@ -100,7 +100,7 @@ const TC_LINES = [
 
 type NavigateFn = (tab: string, subtab?: string | null, bcra?: string | null) => void
 
-function TCStrip({ onNavigate }: { onNavigate: NavigateFn }) {
+export function TCStrip({ onNavigate }: { onNavigate: NavigateFn }) {
   const [data, setData] = useState<TCEntry[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -225,7 +225,7 @@ function TCStrip({ onNavigate }: { onNavigate: NavigateFn }) {
 
 // ── IPC Block ─────────────────────────────────────────────────────────────────
 
-function IPCBlock({ onNavigate }: { onNavigate: NavigateFn }) {
+export function IPCBlock({ onNavigate }: { onNavigate: NavigateFn }) {
   const [mensual, setMensual]       = useState<number | null>(null)
   const [interanual, setInteranual] = useState<number | null>(null)
   const [periodo, setPeriodo]       = useState<string>("")
@@ -291,7 +291,7 @@ function IPCBlock({ onNavigate }: { onNavigate: NavigateFn }) {
 
 // ── Riesgo País Block ─────────────────────────────────────────────────────────
 
-function RiesgoPaisBlock({ onNavigate }: { onNavigate: NavigateFn }) {
+export function RiesgoPaisBlock({ onNavigate }: { onNavigate: NavigateFn }) {
   const [bps, setBps]       = useState<number | null>(null)
   const [var1w, setVar1w]   = useState<number | null>(null)
   const [var1m, setVar1m]   = useState<number | null>(null)
@@ -371,7 +371,7 @@ function RiesgoPaisBlock({ onNavigate }: { onNavigate: NavigateFn }) {
 
 // ── Reservas + Badlar Block ───────────────────────────────────────────────────
 
-function ReservasBadlarBlock({ onNavigate }: { onNavigate: NavigateFn }) {
+export function ReservasBadlarBlock({ onNavigate }: { onNavigate: NavigateFn }) {
   const { data, loading } = useBCRAData(["reservas", "badlar"], "1m")
 
   const latest = data[data.length - 1]
@@ -453,7 +453,7 @@ const CAT_COLORS: Record<string, string> = {
   commodities: "#81c784",
 }
 
-function HeadlinesBlock({ onNavigate }: { onNavigate: NavigateFn }) {
+export function HeadlinesBlock({ onNavigate }: { onNavigate: NavigateFn }) {
   const [items, setItems]   = useState<RSSItem[]>([])
   const [loading, setLoading] = useState(true)
 

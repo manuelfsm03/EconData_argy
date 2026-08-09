@@ -25,8 +25,8 @@ interface CanvasSheet {
   widgets: CanvasWidget[]
 }
 
-const STORAGE_KEY = "lapizarra.canvas.sheets.v1"
-const ACTIVE_KEY = "lapizarra.canvas.active-sheet.v1"
+const STORAGE_KEY = "lapizarra.canvas.sheets.v2"
+const ACTIVE_KEY = "lapizarra.canvas.active-sheet.v2"
 
 function uid(prefix: string) {
   return `${prefix}-${typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Date.now().toString(36)}`
@@ -37,9 +37,10 @@ function initialSheets(): CanvasSheet[] {
     id: "mi-pizarra",
     name: "Mi Pizarra",
     widgets: [
-      { instanceId: "inicio-resumen", cardId: "resumen-ejecutivo", x: 0, y: 0, w: 12, h: 12 },
-      { instanceId: "inicio-riesgo", cardId: "riesgo-pais", x: 0, y: 12, w: 6, h: 10 },
-      { instanceId: "inicio-rem", cardId: "rem", x: 6, y: 12, w: 6, h: 10 },
+      { instanceId: "inicio-tipo-cambio", cardId: "resumen-tipo-cambio", x: 0, y: 0, w: 12, h: 7 },
+      { instanceId: "inicio-riesgo", cardId: "resumen-riesgo", x: 0, y: 7, w: 4, h: 6 },
+      { instanceId: "inicio-reservas", cardId: "resumen-reservas", x: 4, y: 7, w: 4, h: 7 },
+      { instanceId: "inicio-rem", cardId: "rem", x: 8, y: 7, w: 4, h: 10 },
     ],
   }]
 }

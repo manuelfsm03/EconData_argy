@@ -130,7 +130,7 @@ function SubTabs({ active, onChange }: SubTabsProps) {
 
 interface BCRAVar { fecha: string; valor: number }
 
-function PlazoFijoView() {
+export function PlazoFijoView() {
   const [data, setData] = useState<{ badlar: BCRAVar[]; tm20: BCRAVar[]; tpm: BCRAVar[]; pf30: BCRAVar[] } | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -249,7 +249,7 @@ function PlazoFijoView() {
 // M2 = M1 + var22     (+ cajas de ahorro)
 // M3 = M2 + var23     (+ plazos fijos)
 
-function AgregadosView() {
+export function AgregadosView() {
   const [data, setData] = useState<{
     base: BCRAVar[]; circulacion: BCRAVar[]; billetes: BCRAVar[]
     dep_cc: BCRAVar[]; cajas_ahorro: BCRAVar[]; dep_plazo: BCRAVar[]
@@ -384,7 +384,7 @@ function AgregadosView() {
 
 // ── Reservas Internacionales ───────────────────────────────────────────────────
 
-function ReservasView() {
+export function ReservasView() {
   const [data, setData] = useState<{
     brutas: BCRAVar[]
     netas: { fecha: string; brutas: number; netas: number; swap_china: number; encajes: number }[]
@@ -457,7 +457,7 @@ function ReservasView() {
 
 interface ComprasRow { fecha: string; monto: number; acumulado_mensual: number }
 
-function ComprasView() {
+export function ComprasView() {
   const [data, setData] = useState<{
     datos: ComprasRow[]
     resumen: { mes_actual: number | null; acumulado_anual: number; mayor_compra_periodo: number; mayor_venta_periodo: number }
@@ -573,7 +573,7 @@ interface RemKpis {
   fecha: string | null
 }
 
-function REMView() {
+export function REMView() {
   const [serie, setSerie] = useState<RemRow[]>([])
   const [kpis, setKpis]   = useState<RemKpis | null>(null)
   const [loading, setLoading] = useState(true)
@@ -802,7 +802,7 @@ interface TasasData {
   prestamos: BCRAVar[]
 }
 
-function TasasView() {
+export function TasasView() {
   const [data, setData]       = useState<TasasData | null>(null)
   const [loading, setLoading] = useState(true)
   const [showRows, setShowRows] = useState(30)

@@ -116,7 +116,7 @@ interface StockQuote {
   ask: number | null
 }
 
-function AccionesView() {
+export function AccionesView() {
   const [data, setData] = useState<{ byCategory: Record<string, StockQuote[]>; categories: string[] } | null>(null)
   const [loading, setLoading] = useState(true)
   const [cat, setCat] = useState("all")
@@ -335,7 +335,7 @@ interface BondRow {
   vnResidual: number
 }
 
-function BonosView() {
+export function BonosView() {
   const [bonos, setBonos] = useState<BondRow[]>([])
   const [lecaps, setLecaps] = useState<{ ticker: string; tipo: string; vencimiento: string; diasVencimiento: number; precio: number | null; tir: number | null; tea: number | null; tem: number | null }[]>([])
   const [tab, setTab] = useState<"soberanos" | "lecap">("soberanos")
@@ -603,7 +603,7 @@ interface RofexRow {
   source?: "matba" | "db"
 }
 
-function RofexView() {
+export function RofexView() {
   const [data, setData] = useState<RofexRow[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -746,7 +746,7 @@ const BANCOS_USD = [
 
 type PFMode = "ars" | "uva" | "usd"
 
-function PlazoFijoView() {
+export function PlazoFijoView() {
   const [data, setData] = useState<PlazoFijoData | null>(null)
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<PFMode>("ars")
@@ -1069,7 +1069,7 @@ const COMM_ALL = COMM_GROUPS.flatMap(g => g.items)
 interface AgroGrano { disponible: number | null; fobOficial: number | null; retencion: number; unidad: string }
 interface AgroLocalData { soja: AgroGrano; maiz: AgroGrano; trigo: AgroGrano; girasol: AgroGrano; source: string }
 
-function CommoditiesView() {
+export function CommoditiesView() {
   const [snap, setSnap] = useState<Record<string, WorldQuote | null>>({})
   const [histMap, setHistMap] = useState<Record<string, [string, number][]>>({})
   const [selected, setSelected] = useState<Set<string>>(new Set(["soja", "maiz", "trigo"]))
@@ -1375,7 +1375,7 @@ const NEXT_EARNINGS: { ticker: string; empresa: string; fecha: string; afterHour
   { ticker: "JPM",   empresa: "JPMorgan",   fecha: "2026-07-14", afterHours: false, sector: "Financiero" },
 ]
 
-function MundoView() {
+export function MundoView() {
   const [snap, setSnap] = useState<Record<string, WorldQuote | null>>({})
   const [hist, setHist] = useState<[string, number][]>([])
   const [selTicker, setSelTicker] = useState("sp500")
@@ -1550,7 +1550,7 @@ const CRYPTOS = [
 interface CriptoYaRate { ask: number; bid: number; totalAsk: number; totalBid: number; time: number }
 interface CriptoYaData { [exchange: string]: CriptoYaRate }
 
-function CryptoView() {
+export function CryptoView() {
   const [snap, setSnap] = useState<Record<string, WorldQuote | null>>({})
   const [hist, setHist] = useState<[string, number][]>([])
   const [selKey, setSelKey] = useState("bitcoin")

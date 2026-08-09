@@ -2238,7 +2238,7 @@ function BreakEvenSection() {
   )
 }
 
-function IpcView() {
+export function IpcView() {
   const [data, setData] = useState<MacroData | null>(null)
   const [loading, setLoading] = useState(true)
   const [ipcTab, setIpcTab] = useState("serie")
@@ -2843,7 +2843,7 @@ function PibHistoricoView() {
 
 // ── Pirámides Poblacionales ────────────────────────────────────────────────────
 
-function PiramidesView() {
+export function PiramidesView() {
   const [country, setCountry] = useState("32")
   const [year, setYear] = useState(2025)
   const [data, setData] = useState<PiramideRow[]>([])
@@ -2950,7 +2950,7 @@ type DesigualdadData = {
   desempleo_mundial: Record<string, unknown>[]
 }
 
-function DesigualdadView() {
+export function DesigualdadView() {
   const [data, setData] = useState<DesigualdadData | null>(null)
   const [loading, setLoading] = useState(true)
   const [subTab, setSubTab] = useState("gini_arg")
@@ -3357,7 +3357,7 @@ function TCRSubView() {
 
 // ── FX View principal ─────────────────────────────────────────────────────────
 
-function FXView() {
+export function FXView() {
   const [raw, setRaw]         = useState<FXEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [fxTab, setFxTab]     = useState<"cotizaciones" | "tcr">("cotizaciones")
@@ -3662,7 +3662,7 @@ interface BigMacData {
   ultima_fecha: string
 }
 
-function BigMacView() {
+export function BigMacView() {
   const [data, setData] = useState<BigMacData | null>(null)
   const [loading, setLoading] = useState(true)
   const [modo, setModo] = useState<"simple" | "ajustado">("simple")
@@ -3776,7 +3776,7 @@ interface RiesgoData {
   alertas: string[]
 }
 
-function RiesgoPaisView() {
+export function RiesgoPaisView() {
   const [data, setData] = useState<RiesgoData | null>(null)
   const [loading, setLoading] = useState(true)
   const chartRef = useRef<HTMLDivElement>(null)
@@ -4137,7 +4137,7 @@ function VencimientosFilter({ detalle }: { detalle: VencDet[] }) {
   )
 }
 
-function DeudaView() {
+export function DeudaView() {
   const [licitaciones, setLicitaciones] = useState<{
     fecha: string; adjudicado_bn: number | null; vencimientos_bn: number | null; rollover_pct: number | null; url: string
   }[] | null>(null)
@@ -4337,7 +4337,7 @@ type SenorejaData = {
 const kpiLabel: React.CSSProperties = { fontSize: 9, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }
 const kpiUnit:  React.CSSProperties = { fontSize: 9, color: "#bbb", marginTop: 2 }
 
-function SenorejaView() {
+export function SenorejaView() {
   const [data, setData] = useState<SenorejaData | null>(null)
   const [loading, setLoading] = useState(true)
 

@@ -102,22 +102,26 @@ export function Dashboard({ initialTab = "macro", initialSubtab = null, embedded
         padding: "0 24px", gap: 24,
         position: "sticky", top: embedded ? 48 : 0, zIndex: 50,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-          <div style={{
-            width: 28, height: 28, borderRadius: 7,
-            background: "var(--amber)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0,
-          }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: "var(--bg)", fontFamily: "var(--font-ui)", lineHeight: 1 }}>L</span>
-          </div>
-          <span style={{
-            fontSize: 15, fontWeight: 600, color: "var(--text)",
-            letterSpacing: -0.2, fontFamily: "var(--font-ui)",
-          }}>La Pizarra</span>
-        </div>
+        {!embedded && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: 7,
+                background: "var(--amber)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+              }}>
+                <span style={{ fontWeight: 700, fontSize: 14, color: "var(--bg)", fontFamily: "var(--font-ui)", lineHeight: 1 }}>L</span>
+              </div>
+              <span style={{
+                fontSize: 15, fontWeight: 600, color: "var(--text)",
+                letterSpacing: -0.2, fontFamily: "var(--font-ui)",
+              }}>La Pizarra</span>
+            </div>
 
-        <div style={{ width: 1, height: 20, background: "var(--border)", flexShrink: 0 }} />
+            <div style={{ width: 1, height: 20, background: "var(--border)", flexShrink: 0 }} />
+          </>
+        )}
 
         <div style={{ display: "flex", alignItems: "stretch", height: "100%", gap: 2 }}>
           {MAIN_TABS.map(({ key, label, Icon }) => {
@@ -171,11 +175,14 @@ export function Dashboard({ initialTab = "macro", initialSubtab = null, embedded
           }}>⌘K</span>
         </button>
 
-        <ThemeToggle />
-
-        <span style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "var(--font-data)", flexShrink: 0 }}>
-          {dateStr}
-        </span>
+        {!embedded && (
+          <>
+            <ThemeToggle />
+            <span style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "var(--font-data)", flexShrink: 0 }}>
+              {dateStr}
+            </span>
+          </>
+        )}
       </div>
 
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 8px" }}>

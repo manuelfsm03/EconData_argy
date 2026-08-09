@@ -3,7 +3,7 @@ import test from "node:test"
 import { CARD_CATEGORIES, DATA_CARD_CATALOG, searchDataCards } from "../src/lib/card-catalog"
 
 test("the data-card registry has unique ids and safe internal endpoints", () => {
-  assert.ok(DATA_CARD_CATALOG.length >= 20)
+  assert.ok(DATA_CARD_CATALOG.length >= 30)
   assert.equal(new Set(DATA_CARD_CATALOG.map((card) => card.id)).size, DATA_CARD_CATALOG.length)
 
   for (const card of DATA_CARD_CATALOG) {
@@ -23,4 +23,6 @@ test("every category is represented and search covers titles plus keywords", () 
   assert.ok(searchDataCards("bitcoin").some((card) => card.id === "cripto"))
   assert.ok(searchDataCards("embi").some((card) => card.id === "riesgo-pais"))
   assert.ok(searchDataCards("reservas", "bcra").every((card) => card.category === "bcra"))
+  assert.ok(searchDataCards("titulares").some((card) => card.id === "resumen-noticias"))
+  assert.equal(DATA_CARD_CATALOG.find((card) => card.id === "resumen-reservas")?.endpoints[0].method, "POST")
 })
