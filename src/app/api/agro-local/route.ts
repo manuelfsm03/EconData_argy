@@ -1,8 +1,11 @@
 /**
- * /api/agro-local — Precios locales de granos · Bolsa de Comercio de Rosario
+ * /api/agro-local — Precios locales de granos · pizarra Rosario (USD/tn)
  *
- * Fuente: BCR disponible (USD/tn FOB y disponible)
- *   Scraping de https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-actuales-0
+ * Fuente: mercado.rava.com/api/prices/indices — JSON público sin autenticación
+ * (panel gratuito "Rava Mercado"). El scraping anterior a bcr.com.ar dejó de
+ * funcionar: la BCR movió la página a cac.bcr.com.ar/es/precios-de-pizarra y
+ * ahora carga los precios por JavaScript, sin datos en el HTML estático.
+ * Girasol no está disponible en esta fuente — queda en null.
  *
  * Retenciones actuales vigentes (abril 2026, Resolución MEyF):
  *   Soja: 33%
@@ -10,8 +13,7 @@
  *   Trigo: 12%
  *   Girasol: 7%
  *
- * FOB teórico = precio_CBOT_USD × (1 - retención%) − gastos_portuarios_estimados
- * Los precios reales se obtienen por scraping de BCR.
+ * FOB teórico = precio_disponible_USD × (1 - retención%) − gastos_portuarios_estimados
  */
 
 import { NextResponse } from "next/server"
@@ -48,60 +50,40 @@ interface AgroLocalData {
   source: string
 }
 
-async function scrapeBCR(): Promise<AgroLocalData | null> {
+async function fetchRavaGranos(): Promise<AgroLocalData | null> {
   try {
-    const res = await fetch(
-      "https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-actuales-0",
-      {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/121.0.0.0",
-          Accept: "text/html,application/xhtml+xml",
-        },
-        signal: AbortSignal.timeout(10000),
-      }
-    )
+    const res = await fetch("https://mercado.rava.com/api/prices/indices", {
+      headers: { "User-Agent": "Mozilla/5.0 PanelDeControl/2.0", Accept: "application/json" },
+      signal: AbortSignal.timeout(10000),
+    })
     if (!res.ok) return null
 
-    const html = await res.text()
-
-    // Extraer precios de la tabla BCR
-    // La BCR muestra precios en una tabla con formato: Soja / Maíz / Trigo / Girasol
-    // Buscamos patrones numéricos en el contexto del grano
-
-    const extractPrice = (grain: string, text: string): number | null => {
-      // Patrón para encontrar precio USD/tn después del nombre del grano
-      const patterns = [
-        new RegExp(`${grain}[^0-9]{1,50}([0-9]{3,4}(?:[.,][0-9]{1,2})?)`, "i"),
-        new RegExp(`([0-9]{3,4}(?:[.,][0-9]{1,2})?)[^0-9]{1,30}${grain}`, "i"),
-      ]
-      for (const pattern of patterns) {
-        const m = text.match(pattern)
-        if (m?.[1]) {
-          const val = parseFloat(m[1].replace(/\./g, "").replace(",", "."))
-          if (!isNaN(val) && val > 50 && val < 1000) return val
-        }
-      }
-      return null
+    const json = await res.json()
+    const rows: { especie: string; ultimo: string }[] = json?.datos ?? []
+    const get = (especie: string): number | null => {
+      const row = rows.find(r => r.especie === especie)
+      const val = row ? parseFloat(row.ultimo) : NaN
+      return !isNaN(val) && val > 0 ? val : null
     }
 
-    const soja    = extractPrice("Soja", html)
-    const maiz    = extractPrice("Ma[íi]z", html)
-    const trigo   = extractPrice("Trigo", html)
-    const girasol = extractPrice("Girasol", html)
+    // "* ROSARIO" = precio disponible pizarra Rosario en USD/tn.
+    const soja  = get("SOJA ROSARIO")
+    const maiz  = get("MAIZ ROSARIO")
+    const trigo = get("TRIGO ROSARIO")
+    // Girasol no está disponible en esta fuente.
 
-    // Si no conseguimos ningún precio, el scraping falló
     if (!soja && !maiz && !trigo) return null
 
     return {
-      soja:    { disponible: soja,    fobOficial: soja    ? soja    * (1 - RETENCIONES.soja)    - GASTOS_PORTUARIOS : null, retencion: RETENCIONES.soja * 100,    unidad: "USD/tn" },
-      maiz:    { disponible: maiz,    fobOficial: maiz    ? maiz    * (1 - RETENCIONES.maiz)    - GASTOS_PORTUARIOS : null, retencion: RETENCIONES.maiz * 100,    unidad: "USD/tn" },
-      trigo:   { disponible: trigo,   fobOficial: trigo   ? trigo   * (1 - RETENCIONES.trigo)   - GASTOS_PORTUARIOS : null, retencion: RETENCIONES.trigo * 100,   unidad: "USD/tn" },
-      girasol: { disponible: girasol, fobOficial: girasol ? girasol * (1 - RETENCIONES.girasol) - GASTOS_PORTUARIOS : null, retencion: RETENCIONES.girasol * 100, unidad: "USD/tn" },
+      soja:    { disponible: soja,  fobOficial: soja  ? soja  * (1 - RETENCIONES.soja)  - GASTOS_PORTUARIOS : null, retencion: RETENCIONES.soja * 100,    unidad: "USD/tn" },
+      maiz:    { disponible: maiz,  fobOficial: maiz  ? maiz  * (1 - RETENCIONES.maiz)  - GASTOS_PORTUARIOS : null, retencion: RETENCIONES.maiz * 100,    unidad: "USD/tn" },
+      trigo:   { disponible: trigo, fobOficial: trigo ? trigo * (1 - RETENCIONES.trigo) - GASTOS_PORTUARIOS : null, retencion: RETENCIONES.trigo * 100,   unidad: "USD/tn" },
+      girasol: { disponible: null,  fobOficial: null,  retencion: RETENCIONES.girasol * 100, unidad: "USD/tn" },
       updated_at: new Date().toISOString(),
-      source: "BCR (scraping)",
+      source: "mercado.rava.com (pizarra Rosario)",
     }
   } catch (e) {
-    console.warn("[agro-local] scraping BCR falló:", e)
+    console.warn("[agro-local] fetch mercado.rava.com falló:", e)
     return null
   }
 }
@@ -112,7 +94,7 @@ export async function GET() {
     return NextResponse.json(_cache.data)
   }
 
-  const data = await scrapeBCR()
+  const data = await fetchRavaGranos()
 
   if (data) {
     _cache = { data, expiry: Date.now() + 900_000 }
@@ -126,7 +108,7 @@ export async function GET() {
     trigo:   { disponible: null, fobOficial: null, retencion: RETENCIONES.trigo * 100,   unidad: "USD/tn" },
     girasol: { disponible: null, fobOficial: null, retencion: RETENCIONES.girasol * 100, unidad: "USD/tn" },
     updated_at: new Date().toISOString(),
-    source: "BCR no disponible",
+    source: "fuente no disponible",
   }
   return NextResponse.json(empty, { status: 206 })
 }

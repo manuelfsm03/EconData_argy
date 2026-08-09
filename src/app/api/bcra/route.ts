@@ -160,40 +160,28 @@ async function getReservas() {
 }
 
 // ── Endpoint Compras / Ventas BCRA (MULC) ────────────────────────────────────
+// Fuente: BCRA API v4.0, variable 78 "Variación de reservas internacionales
+// por compra de divisas" (en millones de USD, flujo diario). El endpoint que
+// se usaba antes (argentinadatos.com/v1/finanzas/compras-dolar-bcra) fue dado
+// de baja por ese proveedor — esta variable oficial mide lo mismo.
 async function getCompras() {
-  const cacheKey = "bcra_compras"
+  const cacheKey = "bcra_compras_v2"
   const cached = getCache(cacheKey)
   if (cached) return cached
 
-  let datos: { fecha: string; monto: number; acumulado_mensual: number }[] = []
+  const from = dateYearsAgo(1)
+  const serie = await fetchVar(78, from)
 
-  try {
-    const res = await fetch("https://argentinadatos.com/api/v1/finanzas/compras-dolar-bcra", {
-      signal: AbortSignal.timeout(8000),
-    })
-    if (res.ok) {
-      const json = await res.json()
-      if (Array.isArray(json)) {
-        // Calcular acumulado mensual
-        let mesActual = ""
-        let acum = 0
-        datos = json
-          .filter((r: Record<string, unknown>) => r.fecha && r.compra != null)
-          .sort((a: Record<string, unknown>, b: Record<string, unknown>) =>
-            String(a.fecha).localeCompare(String(b.fecha)))
-          .map((r: Record<string, unknown>) => {
-            const mes = String(r.fecha).slice(0, 7)
-            if (mes !== mesActual) { mesActual = mes; acum = 0 }
-            const monto = Number(r.compra)
-            acum += monto
-            return { fecha: String(r.fecha), monto, acumulado_mensual: acum }
-          })
-          .slice(-60)
-      }
-    }
-  } catch {
-    // Sin datos
-  }
+  const datos = serie.map(r => ({ fecha: r.fecha, monto: r.valor }))
+    .reduce<{ fecha: string; monto: number; acumulado_mensual: number }[]>((acc, r) => {
+      const mesAnterior = acc.at(-1)
+      const acum = (mesAnterior && mesAnterior.fecha.slice(0, 7) === r.fecha.slice(0, 7))
+        ? mesAnterior.acumulado_mensual + r.monto
+        : r.monto
+      acc.push({ fecha: r.fecha, monto: r.monto, acumulado_mensual: acum })
+      return acc
+    }, [])
+    .slice(-60)
 
   const ultimos30 = datos.slice(-30)
   const mesActualData = datos.filter(r => r.fecha.slice(0, 7) === new Date().toISOString().slice(0, 7))
@@ -210,7 +198,7 @@ async function getCompras() {
       },
     },
     updated_at: new Date().toISOString(),
-    source: "argentinadatos.com",
+    source: "BCRA API v4.0 · Variable 78 (Variación de reservas por compra de divisas, USD MM)",
   }
   setCache(cacheKey, result, 900) // 15 min
   return result

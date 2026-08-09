@@ -17,52 +17,15 @@ function limpiarNumero(x: unknown): number | null {
   return isNaN(n) ? null : n
 }
 
-const MESES_ES: Record<string, string> = {
-  ene: "Jan", feb: "Feb", mar: "Mar", abr: "Apr", may: "May", jun: "Jun",
-  jul: "Jul", ago: "Aug", sep: "Sep", oct: "Oct", nov: "Nov", dic: "Dec",
-}
-
-function parsearFecha(f: unknown): string | null {
-  if (f == null) return null
-  if (f instanceof Date) {
-    if (isNaN(f.getTime())) return null
-    return f.toISOString().slice(0, 7)
-  }
-  if (typeof f === "number") {
-    try { const d = XLSX.SSF.parse_date_code(f); return d ? `${d.y}-${String(d.m).padStart(2, "0")}` : null } catch { return null }
-  }
-  const s = String(f).trim().toLowerCase()
-  if (/^\d{4}-\d{2}/.test(s)) return s.slice(0, 7)
-  const partes = s.split(/[-\/]/)
-  if (partes.length >= 2) {
-    const mesEn = MESES_ES[partes[0].slice(0, 3)]
-    if (mesEn) {
-      const anio = partes[1].length === 2 ? `20${partes[1]}` : partes[1]
-      try {
-        const d = new Date(`${mesEn} 01 ${anio}`)
-        if (!isNaN(d.getTime())) return `${anio}-${String(d.getMonth() + 1).padStart(2, "0")}`
-      } catch { /* skip */ }
-    }
-  }
-  return null
-}
+// URL estable del acumulado histórico completo (incluye la hoja "Base de Datos
+// Completa" en formato largo). El link "último informe" de la página del REM
+// cambia de nombre cada mes (…-jul-2026.xlsx) y sólo trae un resumen del mes,
+// sin la serie histórica — por eso usamos directamente el acumulado.
+const REM_XLSX_URL = "https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/informes/historico-relevamiento-expectativas-mercado.xlsx"
 
 async function fetchRemExcel(): Promise<Buffer> {
-  const URL_HOME = "https://www.bcra.gob.ar/PublicacionesEstadisticas/Relevamiento_Expectativas_de_Mercado.asp"
   const headers = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }
-  let excelUrl: string | null = null
-  try {
-    const htmlRes = await fetch(URL_HOME, { headers, signal: AbortSignal.timeout(10000) })
-    if (htmlRes.ok) {
-      const html = await htmlRes.text()
-      const match = html.match(/href="([^"]+\.xlsx)"/i)
-      if (match) excelUrl = match[1].startsWith("http") ? match[1] : `https://www.bcra.gob.ar${match[1]}`
-    }
-  } catch { /* fallback */ }
-  if (!excelUrl) {
-    excelUrl = "https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/informes/historico-relevamiento-expectativas-mercado.xlsx"
-  }
-  const res = await fetch(excelUrl, { headers, signal: AbortSignal.timeout(15000) })
+  const res = await fetch(REM_XLSX_URL, { headers, signal: AbortSignal.timeout(20000) })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return Buffer.from(await res.arrayBuffer())
 }
@@ -86,102 +49,89 @@ interface RemParticipante {
 }
 
 // ── Parsear ───────────────────────────────────────────────────────────────────
+// Formato actual del Excel BCRA (2026+): hoja "Base de Datos Completa" en
+// formato largo — una fila por (Fecha de pronóstico, Variable, Referencia, Período).
+// Los pronósticos rolling ("próximos 12/24 meses") tienen el Período en texto
+// literal ("Próx. 12 meses" / "Próx. 24 meses"), no una fecha calendario.
+// BCRA dejó de publicar el desagregado por institución en este archivo
+// consolidado, así que "participantes" queda vacío (la UI lo maneja bien).
+interface RemLongRow {
+  fechaPronostico: Date
+  variable: string
+  referencia: string
+  periodo: string
+  mediana: number | null
+}
+
 function parseRemExcel(buf: Buffer): { serie: RemRow[]; participantes: RemParticipante[] } {
   const wb = XLSX.read(buf, { type: "buffer", cellDates: true })
-  const ws = wb.Sheets[wb.SheetNames[0]]
+  const ws = wb.Sheets["Base de Datos Completa"]
+  if (!ws) {
+    console.error(`[rem] Hoja "Base de Datos Completa" no encontrada. Hojas disponibles: ${wb.SheetNames.join(", ")}`)
+    return { serie: [], participantes: [] }
+  }
   const raw = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1 }) as unknown[][]
 
-  if (raw.length < 3) return { serie: [], participantes: [] }
-
-  const fechas: (string | null)[] = (raw[1] as unknown[]).slice(1).map(parsearFecha)
-  const lastColIdx = fechas.length  // última columna = más reciente
-
-  const PATTERNS: Record<string, RegExp> = {
-    inflacion_12m: /IPC nivel general.*próx.*12 meses/i,
-    inflacion_24m: /IPC nivel general.*próx.*24 meses/i,
-    nucleo_12m:    /IPC núcleo.*próx.*12 meses/i,
-    dolar_12m:     /tipo de cambio nominal.*próx.*12 meses/i,
-    tasa_12m:      /tasa de interés.*próx.*12 meses/i,
+  const rows: RemLongRow[] = []
+  for (let i = 2; i < raw.length; i++) {
+    const r = raw[i]
+    if (!r || !(r[0] instanceof Date)) continue
+    rows.push({
+      fechaPronostico: r[0] as Date,
+      variable: String(r[1] ?? ""),
+      referencia: String(r[2] ?? ""),
+      periodo: String(r[3] ?? ""),
+      mediana: limpiarNumero(r[4]),
+    })
   }
 
-  const extraido: Record<string, (number | null)[]> = {}
-  // Para top-10: guardamos el índice de fila donde empieza cada bloque de participantes
-  const participanteBlocks: Record<string, number> = {}
+  const fechasUnicas = [...new Set(rows.map(r => r.fechaPronostico.getTime()))].sort((a, b) => a - b)
 
-  for (let i = 0; i < raw.length; i++) {
-    const nombreCelda = String(raw[i]?.[0] ?? "").trim()
-    for (const [key, regex] of Object.entries(PATTERNS)) {
-      if (!(key in extraido) && regex.test(nombreCelda)) {
-        // Fila i+1 = Mediana (o primera fila de datos)
-        // Detectar si fila i+1 dice "Mediana" o similar
-        const labelSig = String(raw[i + 1]?.[0] ?? "").trim().toLowerCase()
-        const filaMediana = labelSig.includes("mediana") || labelSig.includes("media") ? i + 1 : i + 1
-        const rowData = raw[filaMediana] as unknown[]
-        extraido[key] = rowData.slice(1).map(limpiarNumero)
-        // Bloque de participantes empieza en fila i+2 (o i+3 si había "Mediana")
-        participanteBlocks[key] = filaMediana + 1
-      }
+  function buscar(fechaMs: number, variable: string, refPrefix: string, periodo: string): number | null {
+    const match = rows.find(r =>
+      r.fechaPronostico.getTime() === fechaMs &&
+      r.variable === variable &&
+      r.referencia.startsWith(refPrefix) &&
+      r.periodo === periodo
+    )
+    return match?.mediana ?? null
+  }
+
+  const serie: RemRow[] = fechasUnicas.map(ms => {
+    const fecha = new Date(ms).toISOString().slice(0, 7)
+    const inf12 = buscar(ms, "Precios minoristas (IPC nivel general; INDEC)", "var. % i.a.", "Próx. 12 meses")
+    const inf24 = buscar(ms, "Precios minoristas (IPC nivel general; INDEC)", "var. % i.a.", "Próx. 24 meses")
+    const nuc12 = buscar(ms, "Precios minoristas (IPC núcleo; INDEC)", "var. % i.a.", "Próx. 12 meses")
+    const usd12 = buscar(ms, "Tipo de cambio nominal", "$/USD", "Próx. 12 meses")
+    // La tasa de referencia surveada cambió de nombre a través de los años
+    // (Lebac → Pases → LELIQ → BADLAR → TAMAR); tomamos la que exista para esa fecha.
+    const tasaVariables = [
+      "Tasa de interés (TAMAR)", "Tasa de interés (BADLAR)", "Tasa de interés (LELIQ)",
+      "Tasa de política monetaria (LELIQ)", "Tasa de política monetaria (Pase 7 días)",
+      "Tasa de política monetaria (Lebac)",
+    ]
+    let tas12: number | null = null
+    for (const v of tasaVariables) {
+      tas12 = buscar(ms, v, "", "Próx. 12 meses")
+      if (tas12 != null) break
     }
-  }
-
-  // ── Serie histórica ────────────────────────────────────────────────────────
-  const serie: RemRow[] = []
-  for (let j = 0; j < fechas.length; j++) {
-    const fecha = fechas[j]
-    if (!fecha) continue
-    const inf12  = extraido.inflacion_12m?.[j] ?? null
-    const inf24  = extraido.inflacion_24m?.[j] ?? null
-    const nuc12  = extraido.nucleo_12m?.[j] ?? null
-    const usd12  = extraido.dolar_12m?.[j] ?? null
-    const tas12  = extraido.tasa_12m?.[j] ?? null
     let tasaReal: number | null = null
     if (tas12 != null && inf12 != null && inf12 > 0) {
       tasaReal = ((1 + tas12 / 100) / (1 + inf12 / 100) - 1) * 100
     }
-    serie.push({ fecha, inflacion_12m: inf12, inflacion_24m: inf24, nucleo_12m: nuc12, dolar_12m: usd12, tasa_12m: tas12, tasa_real_12m: tasaReal })
-  }
-
-  // ── Top participantes (último relevamiento = última columna) ──────────────
-  const participantes: RemParticipante[] = []
-  const infBlock = participanteBlocks["inflacion_12m"] ?? 0
-  const usdBlock = participanteBlocks["dolar_12m"] ?? 0
-  const tasBlock = participanteBlocks["tasa_12m"] ?? 0
-
-  if (infBlock > 0) {
-    for (let i = infBlock; i < Math.min(infBlock + 30, raw.length); i++) {
-      const row = raw[i] as unknown[]
-      const nombre = String(row?.[0] ?? "").trim()
-      // Terminar si la fila está vacía o es el siguiente bloque de variable
-      if (!nombre || nombre.length === 0) break
-      // Saltar filas que parezcan headers de variable
-      if (/IPC|tipo de cambio|tasa|inflac/i.test(nombre) && nombre.length > 30) break
-
-      const inf12   = limpiarNumero(row[lastColIdx])
-      // Buscar el valor en la misma fila en los bloques de USD y tasa
-      const usdRow  = (raw[usdBlock + (i - infBlock)] as unknown[]) ?? []
-      const tasRow  = (raw[tasBlock + (i - infBlock)] as unknown[]) ?? []
-      const usd12   = limpiarNumero(usdRow[lastColIdx])
-      const tasa12  = limpiarNumero(tasRow[lastColIdx])
-
-      if (inf12 != null && nombre.length > 2) {
-        participantes.push({ institucion: nombre, inflacion_12m: inf12, dolar_12m: usd12, tasa_12m: tasa12 })
-      }
-    }
-  }
-
-  // Ordenar participantes por inflación 12M ascendente
-  participantes.sort((a, b) => (a.inflacion_12m ?? 0) - (b.inflacion_12m ?? 0))
+    return { fecha, inflacion_12m: inf12, inflacion_24m: inf24, nucleo_12m: nuc12, dolar_12m: usd12, tasa_12m: tas12, tasa_real_12m: tasaReal }
+  })
 
   return {
     serie: serie.filter(r => r.inflacion_12m != null || r.dolar_12m != null)
                .sort((a, b) => a.fecha.localeCompare(b.fecha)),
-    participantes: participantes.slice(0, 20),  // máx 20
+    participantes: [],
   }
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 export async function GET() {
-  const cacheKey = "rem_v2"
+  const cacheKey = "rem_v4"
   const cached = getCache(cacheKey)
   if (cached) return NextResponse.json(cached)
 

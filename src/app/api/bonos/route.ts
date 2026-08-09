@@ -24,11 +24,6 @@ type BondLike = {
   cashflows: Cashflow[]
 }
 
-const RAVA_HEADERS = {
-  "User-Agent": "Mozilla/5.0 PanelDeControl/2.0",
-  Accept: "text/html,application/json",
-}
-
 const _cache: Record<string, { data: unknown; expiry: number }> = {}
 function getCache<T>(key: string): T | null {
   const e = _cache[key]
@@ -37,15 +32,6 @@ function getCache<T>(key: string): T | null {
 }
 function setCache(key: string, data: unknown, ttlSec: number) {
   _cache[key] = { data, expiry: Date.now() + ttlSec * 1000 }
-}
-
-function parseLocaleNumber(raw: string | null | undefined): number | null {
-  if (!raw) return null
-  const cleaned = raw.replace(/\s+/g, " ").trim()
-  const match = cleaned.match(/-?[\d.]+(?:,\d+)?/)
-  if (!match) return null
-  const value = Number(match[0].replace(/\./g, "").replace(",", "."))
-  return Number.isFinite(value) ? value : null
 }
 
 function calcularTIR(precio: number, cashflows: { fechaPago: Date; flujoTotal: number }[]): number | null {
@@ -94,29 +80,51 @@ function calcularDuration(precio: number, cashflows: { fechaPago: Date; flujoTot
   return Number((macaulay / (1 + r)).toFixed(4))
 }
 
-async function scrapePrecioRava(ticker: string): Promise<{ precio: number | null; precioCci: number | null }> {
-  const url = `https://www.rava.com/perfil/${ticker.toLowerCase()}`
+// ── Price scraping ─────────────────────────────────────────────────────────────
+//
+// Fuente: mercado.rava.com/api/prices/bonos — JSON público sin autenticación
+// que alimenta el panel gratuito "Rava Mercado" (mercado.rava.com/bonos).
+// El viejo api.rava.com/app/cotiz/... está muerto (404) y www.rava.com/perfil/*
+// es una SPA sin datos en el HTML estático, por eso el scraper anterior no
+// traía nada. El ticker con sufijo "D" cotiza directo en USD (billete/CCL
+// implícito del propio bono) — va a `precioCci`. El ticker sin sufijo es el
+// nominal en pesos — va a `precio`, y se dolariza más abajo contra el CCL de
+// referencia si no vino ya un `precioCci`.
+
+let _ravaBonosCache: { data: Map<string, { precio: number; tir: number | null }>; expiry: number } | null = null
+
+async function fetchRavaBonosMap(): Promise<Map<string, { precio: number; tir: number | null }>> {
+  if (_ravaBonosCache && _ravaBonosCache.expiry > Date.now()) return _ravaBonosCache.data
+
+  const map = new Map<string, { precio: number; tir: number | null }>()
   try {
-    const res = await fetch(url, {
-      headers: RAVA_HEADERS,
-      signal: AbortSignal.timeout(12000),
-      next: { revalidate: 300 },
+    const res = await fetch("https://mercado.rava.com/api/prices/bonos", {
+      headers: { "User-Agent": "Mozilla/5.0 PanelDeControl/2.0", Accept: "application/json" },
+      signal: AbortSignal.timeout(10000),
     })
-    if (!res.ok) return { precio: null, precioCci: null }
-
-    const html = await res.text()
-    const precio =
-      parseLocaleNumber(html.match(/Precio:<\/span>\s*<span class="bolder">([^<]+)</i)?.[1]) ??
-      parseLocaleNumber(html.match(/class="[^"]*precio[^"]*"[^>]*>([^<]+)</i)?.[1])
-
-    const precioCci =
-      parseLocaleNumber(html.match(/Precio\s*CCL:<\/span>\s*<span class="bolder">([^<]+)</i)?.[1]) ??
-      parseLocaleNumber(html.match(/CCL[^<]{0,50}<\/span>\s*<span class="bolder">([^<]+)</i)?.[1])
-
-    return { precio, precioCci }
-  } catch {
-    return { precio: null, precioCci: null }
+    if (res.ok) {
+      const json = await res.json()
+      const rows: { especie: string; precio: string; tir: string }[] = json?.datos ?? []
+      for (const r of rows) {
+        const precio = parseFloat(r.precio)
+        if (!isNaN(precio) && precio > 0) {
+          map.set(r.especie, { precio, tir: r.tir != null ? parseFloat(r.tir) * 100 : null })
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[bonos] fetch mercado.rava.com falló:", e)
   }
+
+  if (map.size > 0) _ravaBonosCache = { data: map, expiry: Date.now() + 300_000 } // 5 min
+  return map
+}
+
+async function scrapePrecioRava(ticker: string): Promise<{ precio: number | null; precioCci: number | null }> {
+  const map = await fetchRavaBonosMap()
+  const ars = map.get(ticker)
+  const usd = map.get(`${ticker}D`)
+  return { precio: ars?.precio ?? null, precioCci: usd?.precio ?? null }
 }
 
 async function fetchCclReference(): Promise<number | null> {

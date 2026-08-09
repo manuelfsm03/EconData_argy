@@ -1,8 +1,12 @@
 /**
  * /api/rofex — Futuros de dólar ROFEX
  *
- * Fuente primaria: Matba Rofex API pública
- *   https://apicem.matbarofex.com.ar/api/v2/closing-prices?market=ROFX&product=DLR
+ * Fuente primaria: mercado.rava.com/api/prices/arg — JSON público sin
+ * autenticación (panel gratuito "Rava Mercado"), filtrado a especies con
+ * securitytype "FUT" y símbolo "DLR/MMMYY" (mismo formato que usaba la vieja
+ * API de Matba). El endpoint público viejo de Matba
+ * (apicem.matbarofex.com.ar) está congelado desde enero 2020 — devolvía datos
+ * reales pero solo hasta esa fecha.
  *
  * Fuente secundaria: Prisma DB (poblada por cron scraping)
  *
@@ -18,22 +22,18 @@ import { prisma } from "@/lib/prisma"
 
 export const runtime = "nodejs"
 
-const MATBA_URL = "https://apicem.matbarofex.com.ar/api/v2/closing-prices?market=ROFX&product=DLR"
+const RAVA_ARG_URL = "https://mercado.rava.com/api/prices/arg"
 
 // In-memory cache (TTL 5 min)
 let _cache: { data: RofexRow[]; expiry: number } | null = null
 
-interface MatbaRow {
-  symbol: string
-  trade_date?: string
-  settlement_date?: string
-  settlement?: string | null
-  last?: number | null
-  close?: number | null
-  open_interest?: number | null
-  volume?: number | null
-  // may have other fields
-  [key: string]: unknown
+interface RavaRow {
+  especie: string
+  simbolo: string
+  securitytype: string
+  ultimo: string
+  volnominal?: string
+  fecha: string
 }
 
 interface RofexRow {
@@ -49,7 +49,7 @@ interface RofexRow {
   cft: number | null
   volume: number | null
   openInterest: number | null
-  source: "matba" | "db"
+  source: "rava" | "db"
 }
 
 function parseMatbaSymbol(symbol: string): { label: string; maturityDate: string } | null {
@@ -71,65 +71,62 @@ function parseMatbaSymbol(symbol: string): { label: string; maturityDate: string
 
 async function fetchFromMatba(): Promise<RofexRow[] | null> {
   try {
-    const res = await fetch(MATBA_URL, {
-      signal: AbortSignal.timeout(8000),
-      headers: { Accept: "application/json" },
+    const res = await fetch(RAVA_ARG_URL, {
+      signal: AbortSignal.timeout(15000),
+      headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 PanelDeControl/2.0" },
     })
     if (!res.ok) return null
 
     const json = await res.json()
-    // La respuesta puede ser { data: [...] } o directamente [...]
-    const rows: MatbaRow[] = Array.isArray(json) ? json : (json?.data ?? json?.results ?? [])
+    const allRows: RavaRow[] = json?.datos ?? []
+    // Símbolo "DLR/MMMYY" exacto (sin variantes tipo DLR/ABR26A o DLR/ABR26M)
+    const rows = allRows.filter(r => r.securitytype === "FUT" && /^DLR\/[A-Z]{3}\d{2}$/.test(r.simbolo))
     if (!rows.length) return null
 
     const today = new Date()
     const todayStr = today.toISOString().slice(0, 10)
 
-    // Spot = primer contrato (más cercano) o buscar "spot" explícito
-    // Usamos el precio mínimo entre futuros < 10% del último como proxy spot
-    const prices = rows.map(r => Number(r.last ?? r.close ?? 0)).filter(p => p > 0)
-    const spot = prices.length ? Math.min(...prices) : null
+    // Solo contratos vigentes (no vencidos) para spot y para el resultado
+    const vigentes = rows
+      .map(row => ({ row, parsed: parseMatbaSymbol(row.simbolo), price: Number(row.ultimo) }))
+      .filter((r): r is { row: RavaRow; parsed: { label: string; maturityDate: string }; price: number } =>
+        r.parsed != null && r.price > 0 && new Date(r.parsed.maturityDate) >= today
+      )
+    if (!vigentes.length) return null
+
+    // Spot = precio del contrato más cercano a vencer (proxy, igual que antes)
+    const spot = Math.min(...vigentes.map(r => r.price))
     if (!spot) return null
 
-    const result: RofexRow[] = []
-
-    for (const row of rows) {
-      const parsed = parseMatbaSymbol(row.symbol)
-      if (!parsed) continue
-
-      const price = Number(row.last ?? row.close ?? 0)
-      if (!price || price <= 0) continue
-
-      const maturityDate = parsed.maturityDate
-      const matDate = new Date(maturityDate)
+    const result: RofexRow[] = vigentes.map(({ row, parsed, price }) => {
+      const matDate = new Date(parsed.maturityDate)
       const diasAlVto = Math.max(1, Math.round((matDate.getTime() - today.getTime()) / 86_400_000))
       const mesesAlVto = diasAlVto / 30
 
       const devaluation = ((price / spot) - 1) * 100
       const monthlyDevaluation = mesesAlVto > 0 ? devaluation / mesesAlVto : 0
-      // TNA anualizada: (precio/spot)^(365/dias) - 1
       const tna = (Math.pow(price / spot, 365 / diasAlVto) - 1) * 100
 
-      result.push({
-        id: row.symbol,
+      return {
+        id: row.simbolo,
         date: todayStr,
-        position: row.symbol,
-        maturity: maturityDate,
+        position: row.simbolo,
+        maturity: parsed.maturityDate,
         maturityLabel: parsed.label,
         price,
         devaluation: parseFloat(devaluation.toFixed(2)),
         monthlyDevaluation: parseFloat(monthlyDevaluation.toFixed(2)),
         tna: parseFloat(tna.toFixed(2)),
         cft: parseFloat(tna.toFixed(2)),
-        volume: row.volume != null ? Number(row.volume) : null,
-        openInterest: row.open_interest != null ? Number(row.open_interest) : null,
-        source: "matba",
-      })
-    }
+        volume: row.volnominal != null ? Number(row.volnominal) : null,
+        openInterest: null,
+        source: "rava" as const,
+      }
+    })
 
     return result.sort((a, b) => a.maturity.localeCompare(b.maturity))
   } catch (e) {
-    console.warn("[rofex] Matba API falló:", e)
+    console.warn("[rofex] fetch mercado.rava.com falló:", e)
     return null
   }
 }
