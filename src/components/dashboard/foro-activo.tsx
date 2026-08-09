@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, type ReactNode } from "react"
+import { useState, useEffect, useCallback, useRef, type ReactNode } from "react"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -24,6 +24,17 @@ interface ForoActivoProps {
 const PAGE_SIZE = 20
 const EMOJIS = ["👍", "🔥", "🤔"] as const
 const AUTHOR_KEY = "foro_author_name"
+const MY_POSTS_KEY = "foro_my_posts" // { [postId]: deleteToken } — para borrar los propios
+const POLL_MS = 20000               // cada cuánto chequeamos si hay posts nuevos
+
+// Lee el mapa de posts propios (id → token) desde localStorage
+function readMyPosts(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(MY_POSTS_KEY) || "{}")
+  } catch {
+    return {}
+  }
+}
 
 // Renderiza el contenido de un post con formato ligero:
 //  - $TICKER  → chip clicable
@@ -161,11 +172,18 @@ export function ForoActivo({ assetType, ticker, onTickerClick }: ForoActivoProps
   const [searchInput, setSearchInput] = useState("")
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<"cron" | "votados">("cron")
+  // Posts propios (id→token) para el botón de borrar
+  const [myPosts, setMyPosts] = useState<Record<string, string>>({})
+  // Auto-refresh: total conocido + cuántos posts nuevos hay sin ver
+  const [newCount, setNewCount] = useState(0)
+  const totalRef = useRef(0)        // total según la última carga que vio el usuario
+  const pendingTotalRef = useRef(0) // total según el último poll (para saltar a la última página)
 
   // Persistir nombre en localStorage
   useEffect(() => {
     const saved = localStorage.getItem(AUTHOR_KEY)
     if (saved) setAuthorName(saved)
+    setMyPosts(readMyPosts())
   }, [])
 
   useEffect(() => {
@@ -187,6 +205,10 @@ export function ForoActivo({ assetType, ticker, onTickerClick }: ForoActivoProps
       .then(j => {
         setPosts(Array.isArray(j.data) ? j.data : [])
         setTotalPages(j.totalPages ?? 1)
+        // Sincronizamos el total conocido y limpiamos el aviso de "nuevos"
+        totalRef.current = j.total ?? 0
+        pendingTotalRef.current = j.total ?? 0
+        setNewCount(0)
       })
       .catch(() => setPosts([]))
       .finally(() => setLoading(false))
@@ -204,6 +226,34 @@ export function ForoActivo({ assetType, ticker, onTickerClick }: ForoActivoProps
   useEffect(() => { setPage(1) }, [query, sort])
 
   useEffect(() => { load(page) }, [load, page])
+
+  // Auto-refresh: chequeamos el total cada POLL_MS solo en la vista "viva"
+  // (orden cronológico y sin búsqueda). Si crece, mostramos "Ver nuevos (N)".
+  useEffect(() => {
+    if (query || sort !== "cron") return
+    const id = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/foro/${assetType}/${ticker}?page=1&pageSize=1&sort=cron`)
+        const j = await res.json()
+        const serverTotal = j.total ?? 0
+        if (serverTotal > totalRef.current) {
+          pendingTotalRef.current = serverTotal
+          setNewCount(serverTotal - totalRef.current)
+        }
+      } catch {
+        /* silencioso: es un chequeo en background */
+      }
+    }, POLL_MS)
+    return () => clearInterval(id)
+  }, [assetType, ticker, query, sort])
+
+  // Al tocar "Ver nuevos": vamos a la última página (los nuevos entran al final en orden cronológico)
+  function handleVerNuevos() {
+    const lastPage = Math.max(1, Math.ceil(pendingTotalRef.current / PAGE_SIZE))
+    setNewCount(0)
+    if (page === lastPage) load(page)
+    else setPage(lastPage)
+  }
 
   // Actualiza reacciones de un post en el estado local sin refetch
   function handleReact(postId: string, _emoji: string, newReacciones: Record<string, number>, newMia: string | null) {
@@ -225,6 +275,12 @@ export function ForoActivo({ assetType, ticker, onTickerClick }: ForoActivoProps
         setError(j.error ?? "No se pudo publicar el mensaje")
         return
       }
+      // Guardamos el token del post recién creado para poder borrarlo luego
+      if (j.data?.id && j.deleteToken) {
+        const next = { ...readMyPosts(), [j.data.id]: j.deleteToken }
+        localStorage.setItem(MY_POSTS_KEY, JSON.stringify(next))
+        setMyPosts(next)
+      }
       setContent("")
       setReplyTo(null)
       const lastPage = Math.max(1, totalPages)
@@ -237,6 +293,33 @@ export function ForoActivo({ assetType, ticker, onTickerClick }: ForoActivoProps
       setError("No se pudo publicar el mensaje")
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  // Borra un post propio usando el token guardado en localStorage
+  async function handleDelete(postId: string) {
+    const token = myPosts[postId]
+    if (!token) return
+    if (!confirm("¿Borrar este post? No se puede deshacer.")) return
+    try {
+      const res = await fetch(`/api/foro/${assetType}/${ticker}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postId, token }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setError(j.error ?? "No se pudo borrar el post")
+        return
+      }
+      // Sacamos el post del localStorage y recargamos
+      const next = readMyPosts()
+      delete next[postId]
+      localStorage.setItem(MY_POSTS_KEY, JSON.stringify(next))
+      setMyPosts(next)
+      load(page)
+    } catch {
+      setError("No se pudo borrar el post")
     }
   }
 
@@ -273,6 +356,17 @@ export function ForoActivo({ assetType, ticker, onTickerClick }: ForoActivoProps
             ))}
           </div>
         </div>
+
+        {/* Aviso de posts nuevos (auto-refresh) */}
+        {newCount > 0 && (
+          <button onClick={handleVerNuevos} style={{
+            width: "100%", marginBottom: 10, padding: "5px 0", cursor: "pointer",
+            background: "rgba(255,160,40,0.12)", border: "1px solid rgba(255,160,40,0.4)", borderRadius: 2,
+            color: "var(--amber)", fontFamily: "var(--font-data)", fontSize: 10,
+          }}>
+            🔄 Ver {newCount} {newCount === 1 ? "post nuevo" : "posts nuevos"}
+          </button>
+        )}
 
         {loading ? (
           <div style={{ padding: 20, textAlign: "center", color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 10 }}>
@@ -334,6 +428,17 @@ export function ForoActivo({ assetType, ticker, onTickerClick }: ForoActivoProps
                     >
                       ↩ Responder
                     </button>
+                    {myPosts[post.id] && (
+                      <button
+                        onClick={() => handleDelete(post.id)}
+                        style={{
+                          background: "none", border: "none", cursor: "pointer",
+                          fontSize: 9, color: "var(--negative)", fontFamily: "var(--font-data)", padding: 0,
+                        }}
+                      >
+                        🗑 Borrar
+                      </button>
+                    )}
                   </div>
                 </div>
               )

@@ -315,6 +315,7 @@ model ForumPost {
   replies     ForumPost[]      @relation("PostReplies")
   reactions   ForumReaction[]
   authorIp    String?          @map("author_ip")    // solo para rate-limit server-side, nunca expuesto en la API
+  deleteToken String?          @map("delete_token") // secreto para borrar el propio post (sin cuenta); nunca expuesto en el GET
   createdAt   DateTime         @default(now()) @map("created_at")
 
   @@index([assetType, assetTicker, createdAt])

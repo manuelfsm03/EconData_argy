@@ -116,11 +116,36 @@ interface StockQuote {
   ask: number | null
 }
 
+// Conteo de posts del foro por activo (para el badge 💬 en las tablas).
+// Una sola llamada batch, keyed por "assetType:ticker".
+function useForoCounts() {
+  const [counts, setCounts] = useState<Record<string, number>>({})
+  useEffect(() => {
+    fetch("/api/foro/counts")
+      .then(r => r.json())
+      .then(j => setCounts(j.counts ?? {}))
+      .catch(() => setCounts({}))
+  }, [])
+  return counts
+}
+
+// Badge 💬N junto al ticker — solo si hay comentarios
+function ForoBadge({ n }: { n: number }) {
+  if (!n) return null
+  return (
+    <span title={`${n} comentario${n === 1 ? "" : "s"} en el foro`} style={{
+      marginLeft: 5, fontSize: 8, fontFamily: "var(--font-data)", color: "var(--text-dim)",
+      background: "var(--bg-elev-2)", border: "1px solid var(--border)", borderRadius: 10, padding: "0 5px",
+    }}>💬{n}</span>
+  )
+}
+
 function AccionesView({ focusTicker }: { focusTicker?: string | null }) {
   const [data, setData] = useState<{ byCategory: Record<string, StockQuote[]>; categories: string[] } | null>(null)
   const [loading, setLoading] = useState(true)
   const [cat, setCat] = useState("all")
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null)
+  const foroCounts = useForoCounts()
 
   useEffect(() => {
     fetch("/api/acciones?category=all")
@@ -213,7 +238,7 @@ function AccionesView({ focusTicker }: { focusTicker?: string | null }) {
                       background: selectedTicker === s.ticker ? "var(--bg-elev-2)" : "transparent",
                     }}
                   >
-                    <td style={{ padding: "3px 8px", color: "var(--amber)", fontWeight: 700 }}>{s.ticker}</td>
+                    <td style={{ padding: "3px 8px", color: "var(--amber)", fontWeight: 700 }}>{s.ticker}<ForoBadge n={foroCounts[`accion:${s.ticker}`] ?? 0} /></td>
                     <td style={{ padding: "3px 8px", color: "var(--text-dim)" }}>{s.category}</td>
                     <td style={{ padding: "3px 8px", color: "var(--text)", textAlign: "right" }}>{fmtNum(s.lastPrice, 2)}</td>
                     <td style={{ padding: "3px 8px", color: changeColor(s.change1D), textAlign: "right", fontWeight: 700 }}>
@@ -346,6 +371,7 @@ function BonosView({ focusTicker }: { focusTicker?: string | null }) {
   const [tab, setTab] = useState<"soberanos" | "lecap">("soberanos")
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<{ type: "bono" | "cap"; ticker: string } | null>(null)
+  const foroCounts = useForoCounts()
 
   useEffect(() => {
     Promise.all([
@@ -451,7 +477,7 @@ function BonosView({ focusTicker }: { focusTicker?: string | null }) {
                         background: selected?.type === "bono" && selected.ticker === b.ticker ? "var(--bg-elev-2)" : "transparent",
                       }}
                     >
-                      <td style={{ padding: "3px 6px", color: "var(--amber)", fontWeight: 700 }}>{b.ticker}</td>
+                      <td style={{ padding: "3px 6px", color: "var(--amber)", fontWeight: 700 }}>{b.ticker}<ForoBadge n={foroCounts[`bono:${b.ticker}`] ?? 0} /></td>
                       <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{b.ley}</td>
                       <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{b.vencimiento?.slice(0, 7)}</td>
                       <td style={{ padding: "3px 6px", color: "var(--text)", textAlign: "right" }}>{b.precio != null ? fmtNum(b.precio, 2) : "—"}</td>
@@ -509,7 +535,7 @@ function BonosView({ focusTicker }: { focusTicker?: string | null }) {
                           background: selected?.type === "cap" && selected.ticker === l.ticker ? "var(--bg-elev-2)" : "transparent",
                         }}
                       >
-                        <td style={{ padding: "3px 6px", color: "var(--amber)", fontWeight: 700 }}>{l.ticker}</td>
+                        <td style={{ padding: "3px 6px", color: "var(--amber)", fontWeight: 700 }}>{l.ticker}<ForoBadge n={foroCounts[`cap:${l.ticker}`] ?? 0} /></td>
                         <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{l.tipo}</td>
                         <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{l.vencimiento}</td>
                         <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{l.diasVencimiento}</td>

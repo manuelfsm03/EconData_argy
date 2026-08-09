@@ -161,14 +161,65 @@ export async function POST(
       }
     }
 
+    // Token secreto para que el autor pueda borrar su post luego (sin cuenta).
+    // Se devuelve SOLO en esta respuesta de creación; el GET nunca lo expone.
+    const deleteToken = crypto.randomUUID()
+
     const post = await prisma.forumPost.create({
-      data: { assetType, assetTicker, authorName, content, parentId, authorIp: ip },
+      data: { assetType, assetTicker, authorName, content, parentId, authorIp: ip, deleteToken },
       select: { id: true, authorName: true, content: true, parentId: true, createdAt: true },
     })
 
-    return NextResponse.json({ data: post }, { status: 201 })
+    return NextResponse.json({ data: post, deleteToken }, { status: 201 })
   } catch (error) {
     console.error("[/api/foro] POST", error)
     return NextResponse.json({ error: "Error al crear el post" }, { status: 500 })
+  }
+}
+
+// DELETE /api/foro/[assetType]/[ticker]  { postId, token }
+// Borra un post solo si el token coincide con el deleteToken guardado al crearlo.
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ assetType: string; ticker: string }> }
+) {
+  const { assetType, ticker } = await params
+
+  if (!isValidAssetType(assetType)) {
+    return NextResponse.json({ error: "assetType inválido" }, { status: 400 })
+  }
+  const assetTicker = ticker.toUpperCase()
+
+  let body: { postId?: unknown; token?: unknown }
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: "Body inválido" }, { status: 400 })
+  }
+
+  const postId = typeof body.postId === "string" ? body.postId : ""
+  const token = typeof body.token === "string" ? body.token : ""
+  if (!postId || !token) {
+    return NextResponse.json({ error: "postId y token requeridos" }, { status: 400 })
+  }
+
+  try {
+    const post = await prisma.forumPost.findFirst({
+      where: { id: postId, assetType, assetTicker },
+      select: { id: true, deleteToken: true },
+    })
+    if (!post) {
+      return NextResponse.json({ error: "Post no encontrado" }, { status: 404 })
+    }
+    if (!post.deleteToken || post.deleteToken !== token) {
+      return NextResponse.json({ error: "No autorizado para borrar este post" }, { status: 403 })
+    }
+
+    // Borrado físico: las reacciones cascadean y los replies quedan con parentId = null
+    await prisma.forumPost.delete({ where: { id: postId } })
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    console.error("[/api/foro] DELETE", error)
+    return NextResponse.json({ error: "Error al borrar el post" }, { status: 500 })
   }
 }
