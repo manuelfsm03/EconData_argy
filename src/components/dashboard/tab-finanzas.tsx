@@ -6,6 +6,7 @@ import {
   ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Legend, ReferenceLine, Cell,
 } from "recharts"
+import { ForoActivo } from "./foro-activo"
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -119,6 +120,7 @@ function AccionesView() {
   const [data, setData] = useState<{ byCategory: Record<string, StockQuote[]>; categories: string[] } | null>(null)
   const [loading, setLoading] = useState(true)
   const [cat, setCat] = useState("all")
+  const [selectedTicker, setSelectedTicker] = useState<string | null>(null)
 
   useEffect(() => {
     fetch("/api/acciones?category=all")
@@ -197,7 +199,15 @@ function AccionesView() {
               </thead>
               <tbody>
                 {withPrice.map((s, i) => (
-                  <tr key={i} style={{ borderBottom: "1px solid var(--bg-elev-2)" }}>
+                  <tr
+                    key={i}
+                    onClick={() => setSelectedTicker(prev => prev === s.ticker ? null : s.ticker)}
+                    style={{
+                      borderBottom: "1px solid var(--bg-elev-2)",
+                      cursor: "pointer",
+                      background: selectedTicker === s.ticker ? "var(--bg-elev-2)" : "transparent",
+                    }}
+                  >
                     <td style={{ padding: "3px 8px", color: "var(--amber)", fontWeight: 700 }}>{s.ticker}</td>
                     <td style={{ padding: "3px 8px", color: "var(--text-dim)" }}>{s.category}</td>
                     <td style={{ padding: "3px 8px", color: "var(--text)", textAlign: "right" }}>{fmtNum(s.lastPrice, 2)}</td>
@@ -215,9 +225,96 @@ function AccionesView() {
         </div>
       </div>
 
+      {selectedTicker && <AccionDetailPanel ticker={selectedTicker} onClose={() => setSelectedTicker(null)} />}
+
       <div style={{ padding: "6px 14px", fontSize: 8, color: "var(--text-dim)", borderTop: "1px solid var(--bg-elev-2)", fontFamily: "var(--font-data)" }}>
         Fuente: api-merval (Railway) · Precios en tiempo real BYMA 24hs
       </div>
+    </div>
+  )
+}
+
+// ── Panel de detalle de acción (Detalle / Gráfico / Foro) ─────────────────────
+
+interface StockDetail {
+  ticker: string
+  lastPrice: number | null
+  closePrice: number | null
+  change1D: number | null
+  change1DPct: number | null
+  high52w: number | null
+  low52w: number | null
+  volume: number | null
+  avgVolume: number | null
+  currency: string
+  history: { date: string; close: number | null }[]
+}
+
+function AccionDetailPanel({ ticker, onClose }: { ticker: string; onClose: () => void }) {
+  const [detailTab, setDetailTab] = useState<"detalle" | "grafico" | "foro">("detalle")
+  const [detail, setDetail] = useState<StockDetail | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    fetch(`/api/acciones/${ticker}?range=3m`)
+      .then(r => r.json())
+      .then(j => setDetail(j.data ?? null))
+      .catch(() => setDetail(null))
+      .finally(() => setLoading(false))
+  }, [ticker])
+
+  const panelTabs = [
+    { key: "detalle", label: "Detalle" },
+    { key: "grafico", label: "Gráfico" },
+    { key: "foro", label: "Foro" },
+  ] as const
+
+  return (
+    <div style={{ background: "var(--bg)", borderTop: "1px solid var(--bg-elev-2)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 14px" }}>
+        <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)" }}>
+          {panelTabs.map(t => (
+            <button key={t.key} onClick={() => setDetailTab(t.key)} style={{
+              background: detailTab === t.key ? "var(--bg-elev-2)" : "transparent",
+              color: detailTab === t.key ? "var(--amber)" : "var(--text-mute)",
+              border: "none",
+              borderBottom: detailTab === t.key ? "2px solid var(--amber)" : "2px solid transparent",
+              padding: "6px 16px", fontSize: 10,
+              textTransform: "uppercase", letterSpacing: 1, cursor: "pointer",
+            }}>{t.label}</button>
+          ))}
+        </div>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 14 }}>✕</button>
+      </div>
+
+      {loading ? (
+        <Loading />
+      ) : (
+        <div style={{ padding: "0 14px 14px" }}>
+          {detailTab === "detalle" && (
+            <div style={{ display: "flex", gap: 1, flexWrap: "wrap", background: "var(--bg-elev-2)", padding: 1 }}>
+              <KPI label="Último" value={detail ? fmtNum(detail.lastPrice, 2) : null} unit={detail?.currency} />
+              <KPI label="Var. 1D" value={detail?.change1DPct != null ? fmtPct(detail.change1DPct) : null} valueColor={changeColor(detail?.change1DPct)} />
+              <KPI label="Máx 52sem" value={detail ? fmtNum(detail.high52w, 2) : null} />
+              <KPI label="Mín 52sem" value={detail ? fmtNum(detail.low52w, 2) : null} />
+              <KPI label="Volumen" value={detail?.volume != null ? fmtNum(detail.volume / 1e6, 2) + "M" : null} />
+            </div>
+          )}
+          {detailTab === "grafico" && (
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={(detail?.history ?? []).map(h => ({ date: h.date, close: h.close }))} margin={{ top: 8, right: 20, left: 0, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
+                <XAxis dataKey="date" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} />
+                <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} domain={["auto", "auto"]} />
+                <Tooltip {...tooltipStyle} />
+                <Line type="monotone" dataKey="close" stroke="var(--amber)" strokeWidth={2} dot={false} isAnimationActive={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+          {detailTab === "foro" && <ForoActivo assetType="accion" ticker={ticker} />}
+        </div>
+      )}
     </div>
   )
 }
@@ -243,6 +340,7 @@ function BonosView() {
   const [lecaps, setLecaps] = useState<{ ticker: string; tipo: string; vencimiento: string; diasVencimiento: number; precio: number | null; tir: number | null; tea: number | null; tem: number | null }[]>([])
   const [tab, setTab] = useState<"soberanos" | "lecap">("soberanos")
   const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState<{ type: "bono" | "cap"; ticker: string } | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -326,7 +424,15 @@ function BonosView() {
                 </thead>
                 <tbody>
                   {bonos.map((b, i) => (
-                    <tr key={i} style={{ borderBottom: "1px solid var(--bg-elev-2)" }}>
+                    <tr
+                      key={i}
+                      onClick={() => setSelected(prev => prev?.type === "bono" && prev.ticker === b.ticker ? null : { type: "bono", ticker: b.ticker })}
+                      style={{
+                        borderBottom: "1px solid var(--bg-elev-2)",
+                        cursor: "pointer",
+                        background: selected?.type === "bono" && selected.ticker === b.ticker ? "var(--bg-elev-2)" : "transparent",
+                      }}
+                    >
                       <td style={{ padding: "3px 6px", color: "var(--amber)", fontWeight: 700 }}>{b.ticker}</td>
                       <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{b.ley}</td>
                       <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{b.vencimiento?.slice(0, 7)}</td>
@@ -376,7 +482,15 @@ function BonosView() {
                   </thead>
                   <tbody>
                     {lecaps.sort((a, b) => a.diasVencimiento - b.diasVencimiento).map((l, i) => (
-                      <tr key={i} style={{ borderBottom: "1px solid var(--bg-elev-2)" }}>
+                      <tr
+                        key={i}
+                        onClick={() => setSelected(prev => prev?.type === "cap" && prev.ticker === l.ticker ? null : { type: "cap", ticker: l.ticker })}
+                        style={{
+                          borderBottom: "1px solid var(--bg-elev-2)",
+                          cursor: "pointer",
+                          background: selected?.type === "cap" && selected.ticker === l.ticker ? "var(--bg-elev-2)" : "transparent",
+                        }}
+                      >
                         <td style={{ padding: "3px 6px", color: "var(--amber)", fontWeight: 700 }}>{l.ticker}</td>
                         <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{l.tipo}</td>
                         <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{l.vencimiento}</td>
@@ -394,8 +508,78 @@ function BonosView() {
         </div>
       )}
 
+      {selected && (
+        <BonoDetailPanel
+          assetType={selected.type}
+          ticker={selected.ticker}
+          bono={selected.type === "bono" ? bonos.find(b => b.ticker === selected.ticker) ?? null : null}
+          onClose={() => setSelected(null)}
+        />
+      )}
+
       <div style={{ padding: "6px 14px", fontSize: 8, color: "var(--text-dim)", borderTop: "1px solid var(--bg-elev-2)", fontFamily: "var(--font-data)" }}>
         Fuente: base local + Rava Bursátil (precios) · TIR calculada por Newton-Raphson sobre flujos futuros
+      </div>
+    </div>
+  )
+}
+
+// ── Panel de detalle de bono/LECAP (Detalle / Gráfico / Foro) ─────────────────
+
+function BonoDetailPanel({ assetType, ticker, bono, onClose }: {
+  assetType: "bono" | "cap"; ticker: string; bono: BondRow | null; onClose: () => void
+}) {
+  const [detailTab, setDetailTab] = useState<"detalle" | "grafico" | "foro">("detalle")
+
+  const panelTabs = [
+    { key: "detalle", label: "Detalle" },
+    { key: "grafico", label: "Gráfico" },
+    { key: "foro", label: "Foro" },
+  ] as const
+
+  return (
+    <div style={{ background: "var(--bg)", borderTop: "1px solid var(--bg-elev-2)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 14px" }}>
+        <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)" }}>
+          {panelTabs.map(t => (
+            <button key={t.key} onClick={() => setDetailTab(t.key)} style={{
+              background: detailTab === t.key ? "var(--bg-elev-2)" : "transparent",
+              color: detailTab === t.key ? "var(--amber)" : "var(--text-mute)",
+              border: "none",
+              borderBottom: detailTab === t.key ? "2px solid var(--amber)" : "2px solid transparent",
+              padding: "6px 16px", fontSize: 10,
+              textTransform: "uppercase", letterSpacing: 1, cursor: "pointer",
+            }}>{t.label}</button>
+          ))}
+        </div>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 14 }}>✕</button>
+      </div>
+
+      <div style={{ padding: "0 14px 14px" }}>
+        {detailTab === "detalle" && (
+          bono ? (
+            <div style={{ display: "flex", gap: 1, flexWrap: "wrap", background: "var(--bg-elev-2)", padding: 1 }}>
+              <KPI label="Precio" value={fmtNum(bono.precio, 2)} unit="USD" />
+              <KPI label="TIR" value={bono.tir != null ? fmtPct(bono.tir) : null} valueColor="var(--amber)" />
+              <KPI label="Paridad" value={bono.paridad != null ? fmtPct(bono.paridad) : null} />
+              <KPI label="Curr. Yield" value={bono.currentYield != null ? fmtPct(bono.currentYield) : null} />
+              <KPI label="Dur. Mod" value={bono.durationMod != null ? fmtNum(bono.durationMod, 2) : null} unit="años" />
+              <KPI label="Cupón" value={fmtPct(bono.cupon)} unit="s.a." />
+              <KPI label="Vencimiento" value={bono.vencimiento?.slice(0, 10) ?? null} />
+              <KPI label="VN Residual" value={fmtNum(bono.vnResidual, 2)} unit="% orig" />
+            </div>
+          ) : (
+            <div style={{ padding: 20, textAlign: "center", color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 10 }}>
+              Sin datos de detalle para {ticker}
+            </div>
+          )
+        )}
+        {detailTab === "grafico" && (
+          <div style={{ padding: 20, textAlign: "center", color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 10 }}>
+            Gráfico de histórico próximamente
+          </div>
+        )}
+        {detailTab === "foro" && <ForoActivo assetType={assetType} ticker={ticker} />}
       </div>
     </div>
   )
