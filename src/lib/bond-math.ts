@@ -31,7 +31,42 @@ export interface Cashflow {
   amortizacion: number
 }
 
-export interface MetricasBono {
+/**
+ * Métricas que salen sólo del prospecto y la fecha: NO necesitan precio de
+ * mercado. Se pueden calcular apenas se carga un bono, antes de tener
+ * conectada ninguna fuente de precios.
+ */
+export interface MetricasDevengadas {
+  /** Capital pendiente de amortizar, por cada 100 de VN original. */
+  valorResidual: number
+  /** Porcentaje del capital original ya devuelto. */
+  amortizado: number
+  /** Intereses devengados y no cobrados a la fecha de liquidación. */
+  interesesCorridos: number
+  /** Valor residual + intereses corridos. */
+  valorTecnico: number
+  /** Tasa nominal anual vigente en el período en curso. */
+  tasaVigente: number
+  /** Fecha de cobro del próximo flujo, ya corrida a día hábil. */
+  proximoPago: Date
+  /** Renta + amortización del próximo flujo. */
+  proximoFlujo: number
+  /** Suma de todo lo que falta cobrar, sin descontar. */
+  flujoRemanente: number
+  /** Renta de los próximos 12 meses. */
+  rentaProximos12m: number
+  /** Vida promedio del capital (WAL), en años. No depende del precio. */
+  vidaPromedio: number
+  /** Años hasta el último pago. */
+  plazoResidual: number
+}
+
+/**
+ * Métricas que requieren un precio de mercado. Mientras no haya fuente de
+ * precios conectada, esto se calcula sólo para los tickers que tengan precio
+ * cargado a mano, y siempre declarando de dónde salió.
+ */
+export interface MetricasDeMercado {
   /** TIR anual efectiva, en porcentaje. */
   tir: number
   /** Duration de Macaulay, en años. */
@@ -39,12 +74,6 @@ export interface MetricasBono {
   /** Duration modificada, en años. */
   durationMod: number
   convexity: number
-  /** Capital pendiente de amortizar, por cada 100 de VN original. */
-  valorResidual: number
-  /** Intereses devengados y no cobrados a la fecha de liquidación. */
-  interesesCorridos: number
-  /** Valor residual + intereses corridos. */
-  valorTecnico: number
   /** Precio dirty / valor técnico, en porcentaje. */
   paridad: number
   /** Cupones de los próximos 12 meses sobre precio clean, en porcentaje. */
@@ -52,6 +81,8 @@ export interface MetricasBono {
   /** Precio dirty menos intereses corridos. */
   precioClean: number
 }
+
+export type MetricasBono = MetricasDevengadas & MetricasDeMercado
 
 /**
  * Flujos que todavía no se cobraron a la fecha de liquidación.
@@ -207,18 +238,84 @@ export function currentYield(
   return (renta / precioClean) * 100
 }
 
-/** Calcula todas las métricas de un bono para un precio dirty dado. */
-export function calcularMetricas(
-  precioDirty: number,
+/**
+ * Vida promedio del capital (weighted average life): el plazo promedio en que
+ * se devuelve el principal, ponderando cada amortización por su tamaño.
+ *
+ *   WAL = SUM( t_i x amortizacion_i ) / SUM( amortizacion_i )
+ *
+ * A diferencia de la duration, no descuenta ni usa el precio: es una propiedad
+ * del prospecto. Por eso se puede calcular sin tener datos de mercado.
+ */
+export function vidaPromedio(futuros: Cashflow[], liquidacion: Date): number {
+  const capital = futuros.reduce((suma, cf) => suma + cf.amortizacion, 0)
+  if (capital <= 0) return 0
+
+  const ponderado = futuros.reduce((suma, cf) => {
+    const t = yearFracAct365(liquidacion, cf.fechaPago)
+    return suma + t * cf.amortizacion
+  }, 0)
+
+  return ponderado / capital
+}
+
+/** Renta a cobrar en los próximos 12 meses desde la liquidación. */
+export function rentaProximos12m(futuros: Cashflow[], liquidacion: Date): number {
+  const limite = new Date(liquidacion.getTime())
+  limite.setUTCFullYear(limite.getUTCFullYear() + 1)
+  return futuros
+    .filter((cf) => cf.fechaDevengamiento.getTime() <= limite.getTime())
+    .reduce((suma, cf) => suma + cf.cupon, 0)
+}
+
+/**
+ * Todo lo que se puede saber de un bono SIN precio de mercado.
+ *
+ * Esta es la mitad del motor que ya funciona hoy: apenas se carga el esquema de
+ * un bono nuevo, estas métricas quedan disponibles sin depender de ninguna
+ * fuente externa.
+ */
+export function metricasDevengadas(
   cashflows: Cashflow[],
   liquidacion: Date,
-): MetricasBono | null {
+): MetricasDevengadas | null {
   const futuros = flujosFuturos(cashflows, liquidacion)
   if (futuros.length === 0) return null
 
+  const proximo = futuros[0]
   const vr = valorResidual(cashflows, liquidacion)
   const corridos = interesesCorridos(cashflows, liquidacion)
-  const valorTecnico = vr + corridos
+  const ultimo = futuros[futuros.length - 1]
+
+  return {
+    valorResidual: vr,
+    amortizado: 100 - vr,
+    interesesCorridos: corridos,
+    valorTecnico: vr + corridos,
+    tasaVigente: proximo.tasa,
+    proximoPago: proximo.fechaPago,
+    proximoFlujo: proximo.cupon + proximo.amortizacion,
+    flujoRemanente: futuros.reduce((suma, cf) => suma + cf.cupon + cf.amortizacion, 0),
+    rentaProximos12m: rentaProximos12m(futuros, liquidacion),
+    vidaPromedio: vidaPromedio(futuros, liquidacion),
+    plazoResidual: yearFracAct365(liquidacion, ultimo.fechaPago),
+  }
+}
+
+/**
+ * Las métricas que necesitan un precio. Separadas a propósito: mientras no
+ * haya fuente de precios conectada, el resto del motor funciona igual.
+ */
+export function metricasDeMercado(
+  precioDirty: number,
+  cashflows: Cashflow[],
+  liquidacion: Date,
+): MetricasDeMercado | null {
+  const futuros = flujosFuturos(cashflows, liquidacion)
+  if (futuros.length === 0 || precioDirty <= 0) return null
+
+  const corridos = interesesCorridos(cashflows, liquidacion)
+  const valorTecnico = valorResidual(cashflows, liquidacion) + corridos
   const precioClean = precioDirty - corridos
 
   const tirCalculada = tir(precioDirty, futuros, liquidacion)
@@ -234,11 +331,20 @@ export function calcularMetricas(
     duration: macaulay,
     durationMod: macaulay / (1 + tirCalculada / 100),
     convexity: cx,
-    valorResidual: vr,
-    interesesCorridos: corridos,
-    valorTecnico,
     paridad: valorTecnico > 0 ? (precioDirty / valorTecnico) * 100 : 0,
     currentYield: cy,
     precioClean,
   }
+}
+
+/** Las dos mitades juntas, para cuando hay precio disponible. */
+export function calcularMetricas(
+  precioDirty: number,
+  cashflows: Cashflow[],
+  liquidacion: Date,
+): MetricasBono | null {
+  const devengadas = metricasDevengadas(cashflows, liquidacion)
+  const mercado = metricasDeMercado(precioDirty, cashflows, liquidacion)
+  if (devengadas === null || mercado === null) return null
+  return { ...devengadas, ...mercado }
 }
