@@ -25,15 +25,19 @@ export async function POST(req: Request) {
     }
 
     const merged = mergeSeriesByDate(seriesData)
-    return NextResponse.json({
-      data: merged,
-      metadata: {
-        source: "BCRA_API_v4.0",
-        period,
-        series: series_ids,
-        last_updated: new Date().toISOString(),
+    // BCRA publica datos una vez por día — 1h de caché no pierde frescura
+    return NextResponse.json(
+      {
+        data: merged,
+        metadata: {
+          source: "BCRA_API_v4.0",
+          period,
+          series: series_ids,
+          last_updated: new Date().toISOString(),
+        },
       },
-    })
+      { headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=7200" } }
+    )
   } catch (error) {
     console.error("BCRA data error:", error)
     return NextResponse.json({ error: "Failed to fetch BCRA data" }, { status: 500 })
