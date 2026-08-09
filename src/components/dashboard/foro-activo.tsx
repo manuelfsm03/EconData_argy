@@ -9,6 +9,7 @@ interface ForumPost {
   authorName: string
   content: string
   parentId: string | null
+  parent: { authorName: string; content: string } | null
   createdAt: string
   reacciones: Record<string, number>
   miReaccion: string | null
@@ -239,8 +240,6 @@ export function ForoActivo({ assetType, ticker, onTickerClick }: ForoActivoProps
     }
   }
 
-  const findParent = (id: string | null) => posts.find(p => p.id === id) ?? null
-
   return (
     <div className="bbg-panel" style={{ marginTop: 1 }}>
       <div className="bbg-panel-header">Foro · {ticker}</div>
@@ -288,7 +287,6 @@ export function ForoActivo({ assetType, ticker, onTickerClick }: ForoActivoProps
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
             {posts.map(post => {
-              const parent = findParent(post.parentId)
               return (
                 <div key={post.id} style={{ borderBottom: "1px solid var(--bg-elev-2)", paddingBottom: 8 }}>
                   {post.parentId && (
@@ -300,14 +298,14 @@ export function ForoActivo({ assetType, ticker, onTickerClick }: ForoActivoProps
                       color: "var(--text-dim)",
                       fontFamily: "var(--font-ui)",
                     }}>
-                      {parent ? (
+                      {post.parent ? (
                         <>
-                          <span style={{ color: "var(--amber)", fontWeight: 600 }}>{parent.authorName}</span>
+                          <span style={{ color: "var(--amber)", fontWeight: 600 }}>{post.parent.authorName}</span>
                           {": "}
-                          {parent.content.length > 80 ? `${parent.content.slice(0, 80)}…` : parent.content}
+                          {post.parent.content.length >= 100 ? `${post.parent.content.slice(0, 80)}…` : post.parent.content}
                         </>
                       ) : (
-                        "Respuesta a un post anterior"
+                        "Respuesta a un post eliminado"
                       )}
                     </div>
                   )}

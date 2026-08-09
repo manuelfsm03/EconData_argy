@@ -75,20 +75,27 @@ export async function GET(
           content: true,
           parentId: true,
           createdAt: true,
+          // Traemos autor + fragmento del post citado para que la preview del quote
+          // no dependa de que el padre esté en la misma página (importa al ordenar por votados)
+          parent: { select: { authorName: true, content: true } },
           reactions: { select: { emoji: true, authorIp: true } },
         },
       }),
       prisma.forumPost.count({ where }),
     ])
 
-    const data = posts.map(({ reactions, ...post }) => {
+    const data = posts.map(({ reactions, parent, ...post }) => {
       const reacciones: Record<string, number> = {}
       let miReaccion: string | null = null
       for (const r of reactions) {
         reacciones[r.emoji] = (reacciones[r.emoji] ?? 0) + 1
         if (r.authorIp === ip) miReaccion = r.emoji
       }
-      return { ...post, reacciones, miReaccion }
+      // Recortamos el contenido del padre a 100 chars (la preview no necesita más)
+      const parentPreview = parent
+        ? { authorName: parent.authorName, content: parent.content.slice(0, 100) }
+        : null
+      return { ...post, parent: parentPreview, reacciones, miReaccion }
     })
 
     return NextResponse.json({
