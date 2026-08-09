@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { prisma } from "@/server/db/prisma"
 import { toMidnightUTC } from "@/lib/dates"
 
 type MacroIPCResponse = {

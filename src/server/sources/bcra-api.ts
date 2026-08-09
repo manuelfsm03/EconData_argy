@@ -7,7 +7,7 @@ import {
   bcraOfficialApi, 
   BCRA_VARIABLE_MAPPING,
   type BCRAVariableKey 
-} from "@/lib/bcra-official-api"
+} from "@/server/sources/bcra-official-api"
 
 // BCRA Variable definitions (for backwards compatibility)
 export const BCRA_VARIABLES: Record<string, { id: string; label: string; unit: string }> = {

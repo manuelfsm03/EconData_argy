@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import { fetchOWIDCSV } from "@/lib/owid-csv-fetcher"
+import { fetchOWIDCSV } from "@/server/sources/owid-csv-fetcher"
 
 const OWID_CONFIGS: Record<
   string,

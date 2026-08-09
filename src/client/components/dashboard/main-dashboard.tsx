@@ -7,7 +7,7 @@ import { TabFinanzas } from "./tab-finanzas"
 import { NewsFeed } from "./news-feed"
 import { TickerTape } from "./ticker-tape"
 import { CommandPalette } from "./command-palette"
-import { ThemeToggle } from "@/components/ui/theme-toggle"
+import { ThemeToggle } from "@/client/components/ui/theme-toggle"
 import {
   LayoutDashboard, TrendingUp, BarChart2, Landmark, Newspaper, Search,
 } from "lucide-react"

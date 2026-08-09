@@ -2,35 +2,32 @@
 
 import { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceLine, Legend,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Legend,
 } from "recharts"
-import { InfoTooltip } from "@/components/ui/info-tooltip"
+import { InfoTooltip } from "@/client/components/ui/info-tooltip"
 import { GLOSSARY } from "@/lib/glossary"
 
 export type DateRange = "1w" | "1m" | "3m" | "6m" | "1y" | "ytd" | "all"
 
-interface LineConfig {
+interface AreaConfig {
   key: string
   name: string
   color: string
-  yAxisId?: "left" | "right"
-  dashed?: boolean
+  fillOpacity?: number
 }
 
-interface BBGLineChartProps {
+interface BBGAreaChartProps {
   data: Record<string, unknown>[]
-  lines: LineConfig[]
+  areas: AreaConfig[]
   title: string
   glossaryKey?: string
   yAxisLabel?: string
-  yAxisRight?: { label: string; format?: (v: number) => string }
   height?: number
-  showZeroLine?: boolean
+  stacked?: boolean
   formatValue?: (v: number) => string
   enableDateRange?: boolean
   defaultRange?: DateRange
-  enableLineToggle?: boolean
 }
 
 function compactNum(v: number): string {
@@ -44,24 +41,16 @@ function compactNum(v: number): string {
 
 function fmtDateShort(dateStr: string): string {
   try {
-    const d = parseDate(String(dateStr))
-    if (isNaN(d.getTime())) return String(dateStr)
+    const d = new Date(dateStr + "T00:00:00")
     return d.toLocaleDateString("es-AR", { month: "short", year: "2-digit" })
-  } catch { return String(dateStr) }
+  } catch { return dateStr }
 }
 
 function fmtDateFull(dateStr: string): string {
   try {
-    const d = parseDate(String(dateStr))
-    if (isNaN(d.getTime())) return String(dateStr)
+    const d = new Date(dateStr + "T00:00:00")
     return d.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })
-  } catch { return String(dateStr) }
-}
-
-function parseDate(dateStr: string): Date {
-  if (!dateStr) return new Date(NaN)
-  const normalized = /^\d{4}-\d{2}$/.test(dateStr) ? dateStr + "-01" : dateStr
-  return new Date(normalized + (normalized.includes("T") ? "" : "T00:00:00"))
+  } catch { return dateStr }
 }
 
 function filterDataByRange(data: Record<string, unknown>[], range: DateRange): Record<string, unknown>[] {
@@ -80,18 +69,12 @@ function filterDataByRange(data: Record<string, unknown>[], range: DateRange): R
     default: return data
   }
 
-  const filtered = data.filter(d => {
-    const date = parseDate(d.date as string)
-    if (isNaN(date.getTime())) return true
+  return data.filter(d => {
+    const dateStr = d.date as string
+    if (!dateStr) return false
+    const date = new Date(dateStr + "T00:00:00")
     return date >= cutoff
   })
-
-  if (filtered.length < 2) {
-    const months = range === "1w" ? 0 : range === "1m" ? 1 : range === "3m" ? 3 : range === "6m" ? 6 : range === "1y" ? 12 : 6
-    return data.slice(-Math.max(months * 4, 12))
-  }
-
-  return filtered
 }
 
 const RANGE_OPTIONS: { value: DateRange; label: string }[] = [
@@ -104,30 +87,21 @@ const RANGE_OPTIONS: { value: DateRange; label: string }[] = [
   { value: "all", label: "MAX" },
 ]
 
-export function BBGLineChart({
-  data, lines, title, glossaryKey, yAxisLabel, yAxisRight, height = 180,
-  showZeroLine, formatValue, enableDateRange = true, defaultRange = "1m",
-  enableLineToggle = false,
-}: BBGLineChartProps) {
+export function BBGAreaChart({
+  data, areas, title, glossaryKey, yAxisLabel, height = 180, stacked, formatValue,
+  enableDateRange = true, defaultRange = "1m"
+}: BBGAreaChartProps) {
   const [range, setRange] = useState<DateRange>(defaultRange)
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
   const fmt = formatValue || compactNum
 
-  const toggleLine = (key: string) =>
-    setHidden(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s })
-
-  const visibleLines = enableLineToggle ? lines.filter(l => !hidden.has(l.key)) : lines
-
   const filteredData = useMemo(() => {
-    if (!data || data.length === 0) return []
     return filterDataByRange(data, range)
   }, [data, range])
 
-  const yDomainLeft = useMemo(() => {
-    const leftLines = lines.filter((l) => !l.yAxisId || l.yAxisId === "left")
+  const yDomain = useMemo(() => {
     const values: number[] = filteredData.flatMap((d) =>
-      leftLines.flatMap((l) => {
-        const v = d[l.key]
+      areas.flatMap((a) => {
+        const v = d[a.key]
         return typeof v === "number" ? [v] : []
       })
     )
@@ -136,36 +110,19 @@ export function BBGLineChart({
     const max = Math.max(...values)
     const pad = Math.max((max - min) * 0.05, Math.abs(max) * 0.02)
     return [min - pad, max + pad] as const
-  }, [filteredData, lines])
-
-  const yDomainRight = useMemo(() => {
-    if (!yAxisRight) return [0, 100] as const
-    const rightLines = lines.filter((l) => l.yAxisId === "right")
-    const values: number[] = filteredData.flatMap((d) =>
-      rightLines.flatMap((l) => {
-        const v = d[l.key]
-        return typeof v === "number" ? [v] : []
-      })
-    )
-    if (values.length === 0) return [0, 100] as const
-    const min = Math.min(...values)
-    const max = Math.max(...values)
-    const pad = Math.max((max - min) * 0.05, Math.abs(max) * 0.02)
-    return [min - pad, max + pad] as const
-  }, [filteredData, lines, yAxisRight])
+  }, [filteredData, areas])
 
   // Y drag-to-scale state
   const [yOverride, setYOverride] = useState<{ min: number; max: number } | null>(null)
   const yDragRef = useRef<{ startY: number; startMin: number; startMax: number } | null>(null)
   const chartWrapperRef = useRef<HTMLDivElement>(null)
 
-  const effectiveDomainLeft = useMemo((): [number, number] => {
+  const effectiveDomain = useMemo((): [number, number] => {
     if (yOverride) return [yOverride.min, yOverride.max]
-    return [yDomainLeft[0], yDomainLeft[1]]
-  }, [yDomainLeft, yOverride])
+    return [yDomain[0], yDomain[1]]
+  }, [yDomain, yOverride])
 
-  // Reset Y override when range or data changes (auto-rescale)
-  // Only reset if user hasn't explicitly set it
+  // Reset Y override when range changes
   const prevRangeRef = useRef(range)
   useEffect(() => {
     if (prevRangeRef.current !== range) {
@@ -176,7 +133,7 @@ export function BBGLineChart({
 
   const startYDrag = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
-    const domain = yOverride ?? { min: yDomainLeft[0], max: yDomainLeft[1] }
+    const domain = yOverride ?? { min: yDomain[0], max: yDomain[1] }
     yDragRef.current = { startY: e.clientY, startMin: domain.min, startMax: domain.max }
 
     const onMove = (ev: MouseEvent) => {
@@ -184,7 +141,6 @@ export function BBGLineChart({
       const dy = ev.clientY - yDragRef.current.startY
       const span = yDragRef.current.startMax - yDragRef.current.startMin
       const center = (yDragRef.current.startMax + yDragRef.current.startMin) / 2
-      // drag down → expand range (zoom out); drag up → compress (zoom in)
       const factor = Math.max(0.05, 1 + dy * 0.005)
       const newSpan = span * factor
       setYOverride({ min: center - newSpan / 2, max: center + newSpan / 2 })
@@ -196,16 +152,16 @@ export function BBGLineChart({
     }
     window.addEventListener("mousemove", onMove)
     window.addEventListener("mouseup", onUp)
-  }, [yDomainLeft, yOverride])
+  }, [yDomain, yOverride])
 
-  // Wheel zoom on chart — attached as non-passive to allow preventDefault
+  // Wheel zoom — non-passive to allow preventDefault
   useEffect(() => {
     const el = chartWrapperRef.current
     if (!el) return
     const handler = (e: WheelEvent) => {
       e.preventDefault()
       setYOverride((prev) => {
-        const base = prev ?? { min: yDomainLeft[0], max: yDomainLeft[1] }
+        const base = prev ?? { min: yDomain[0], max: yDomain[1] }
         const factor = e.deltaY > 0 ? 1.08 : 0.925
         const center = (base.max + base.min) / 2
         const newSpan = (base.max - base.min) * factor
@@ -214,11 +170,11 @@ export function BBGLineChart({
     }
     el.addEventListener("wheel", handler, { passive: false })
     return () => el.removeEventListener("wheel", handler)
-  }, [yDomainLeft])
+  }, [yDomain])
 
   return (
     <div className="bbg-panel">
-      <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
+      <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
         <span style={{ display: "flex", alignItems: "center" }}>
           {title}
           {glossaryKey && GLOSSARY[glossaryKey] && (
@@ -230,21 +186,7 @@ export function BBGLineChart({
             />
           )}
         </span>
-        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
-          {enableLineToggle && lines.map(l => (
-            <button
-              key={l.key}
-              onClick={() => toggleLine(l.key)}
-              style={{
-                fontSize: "9px", padding: "2px 7px", border: "none", borderRadius: "2px", cursor: "pointer",
-                background: hidden.has(l.key) ? "var(--bg-elev-2)" : l.color,
-                color: hidden.has(l.key) ? "var(--text-mute)" : "var(--bg)",
-                fontWeight: 700, letterSpacing: 0.5,
-                opacity: hidden.has(l.key) ? 0.5 : 1,
-              }}
-            >{l.name}</button>
-          ))}
-          {enableLineToggle && <span style={{ width: 1, height: 12, background: "var(--border)", margin: "0 2px" }} />}
+        <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
           {yOverride && (
             <button
               onClick={() => setYOverride(null)}
@@ -256,21 +198,25 @@ export function BBGLineChart({
             >AUTO</button>
           )}
           {enableDateRange && (
-            <>
-              <span style={{ width: 1, height: 12, background: "var(--border)", margin: "0 2px" }} />
+            <div style={{ display: "flex", gap: "2px" }}>
               {RANGE_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => setRange(opt.value)}
                   style={{
-                    fontSize: "9px", padding: "2px 6px", border: "none",
+                    fontSize: "9px",
+                    padding: "2px 6px",
+                    border: "none",
                     background: range === opt.value ? "var(--amber)" : "transparent",
                     color: range === opt.value ? "var(--bg)" : "var(--text-dim)",
-                    cursor: "pointer", borderRadius: "2px",
+                    cursor: "pointer",
+                    borderRadius: "2px",
                   }}
-                >{opt.label}</button>
+                >
+                  {opt.label}
+                </button>
               ))}
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -292,7 +238,15 @@ export function BBGLineChart({
           }}
         />
         <ResponsiveContainer width="100%" height={height}>
-          <LineChart data={filteredData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+          <AreaChart data={filteredData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+            <defs>
+              {areas.map((a) => (
+                <linearGradient key={a.key} id={`grad-${a.key}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={a.color} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={a.color} stopOpacity={0.05} />
+                </linearGradient>
+              ))}
+            </defs>
             <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
             <XAxis
               dataKey="date" tickFormatter={fmtDateShort}
@@ -302,26 +256,13 @@ export function BBGLineChart({
               interval="preserveStartEnd"
             />
             <YAxis
-              yAxisId="left"
-              domain={effectiveDomainLeft}
+              domain={effectiveDomain}
               tick={{ fill: "var(--text-mute)", fontSize: 9 }}
               axisLine={{ stroke: "var(--border-hi)" }}
               tickLine={false}
               tickFormatter={fmt}
               label={yAxisLabel ? { value: yAxisLabel, angle: -90, position: "insideLeft", fill: "var(--text-mute)", fontSize: 9 } : undefined}
             />
-            {yAxisRight && (
-              <YAxis
-                yAxisId="right" orientation="right"
-                domain={yDomainRight}
-                tick={{ fill: "var(--text-mute)", fontSize: 9 }}
-                axisLine={{ stroke: "var(--border-hi)" }}
-                tickLine={false}
-                tickFormatter={yAxisRight.format || fmt}
-                label={yAxisRight.label ? { value: yAxisRight.label, angle: 90, position: "insideRight", fill: "var(--text-mute)", fontSize: 9 } : undefined}
-              />
-            )}
-            {showZeroLine && <ReferenceLine y={0} stroke="var(--border-hi)" yAxisId="left" />}
             <Tooltip
               contentStyle={{ background: "var(--bg-elev)", border: "1px solid var(--border-hi)", fontSize: "10px", color: "var(--amber)" }}
               labelFormatter={(label) => fmtDateFull(String(label))}
@@ -329,23 +270,23 @@ export function BBGLineChart({
             />
             <Legend
               wrapperStyle={{ fontSize: "9px", color: "#888888" }}
-              iconType="line" iconSize={10}
+              iconType="rect" iconSize={10}
             />
-            {visibleLines.map((l) => (
-              <Line
-                key={l.key}
+            {areas.map((a) => (
+              <Area
+                key={a.key}
                 type="monotone"
-                dataKey={l.key}
-                name={l.name}
-                stroke={l.color}
-                yAxisId={l.yAxisId || "left"}
-                dot={false}
+                dataKey={a.key}
+                name={a.name}
+                stroke={a.color}
+                fill={`url(#grad-${a.key})`}
+                fillOpacity={a.fillOpacity ?? 1}
                 strokeWidth={1.5}
-                strokeDasharray={l.dashed ? "4 2" : undefined}
+                stackId={stacked ? "1" : undefined}
                 connectNulls
               />
             ))}
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
     </div>

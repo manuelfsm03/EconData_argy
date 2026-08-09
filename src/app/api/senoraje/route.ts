@@ -13,7 +13,7 @@
  */
 
 import { NextResponse } from "next/server"
-import { bcraOfficialApi } from "@/lib/bcra-official-api"
+import { bcraOfficialApi } from "@/server/sources/bcra-official-api"
 
 // ── Cache ─────────────────────────────────────────────────────────────────────
 let _cache: { data: unknown; expiry: number } | null = null

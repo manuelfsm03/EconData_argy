@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getScraper, runAllScrapers, ScraperName } from "@/scrapers"
+import { getScraper, runAllScrapers, ScraperName } from "@/server/scrapers"
 
 function authorized(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET

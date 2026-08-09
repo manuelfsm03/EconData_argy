@@ -1,5 +1,5 @@
 import { BaseScraper, ScrapeResult } from "./base"
-import { prisma } from "@/lib/prisma"
+import { prisma } from "@/server/db/prisma"
 import Parser from "rss-parser"
 
 interface RSSFeed {
