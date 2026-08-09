@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, type ReactNode } from "react"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -24,37 +24,62 @@ const PAGE_SIZE = 20
 const EMOJIS = ["👍", "🔥", "🤔"] as const
 const AUTHOR_KEY = "foro_author_name"
 
-// Renderiza el contenido del post convirtiendo $TICKER en chips clicables
+// Renderiza el contenido de un post con formato ligero:
+//  - $TICKER  → chip clicable
+//  - **texto** → negrita, *texto* → itálica
+//  - URLs (http/https) → link clicable
+// Tokeniza en una sola pasada respetando el orden de aparición.
+const INLINE_RE = /(https?:\/\/[^\s]+)|(\$[A-Z0-9]{2,10})|(\*\*[^*]+\*\*)|(\*[^*]+\*)/g
+
 function PostContent({ content, onTickerClick }: { content: string; onTickerClick?: (t: string) => void }) {
-  const parts = content.split(/(\$[A-Z0-9]{2,10})/g)
+  const nodes: ReactNode[] = []
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+  INLINE_RE.lastIndex = 0
+
+  while ((match = INLINE_RE.exec(content)) !== null) {
+    // Texto plano previo al token
+    if (match.index > lastIndex) {
+      nodes.push(content.slice(lastIndex, match.index))
+    }
+    const [full, url, ticker, bold, italic] = match
+    const key = match.index
+
+    if (url) {
+      nodes.push(
+        <a key={key} href={url} target="_blank" rel="noopener noreferrer"
+          style={{ color: "var(--amber)", textDecoration: "underline", wordBreak: "break-all" }}>
+          {url}
+        </a>
+      )
+    } else if (ticker) {
+      const tk = ticker.slice(1)
+      nodes.push(
+        <button key={key} onClick={() => onTickerClick?.(tk)} style={{
+          background: "rgba(255,160,40,0.1)", border: "1px solid rgba(255,160,40,0.35)",
+          borderRadius: 3, color: "var(--amber)", fontFamily: "var(--font-data)",
+          fontSize: 10, fontWeight: 700, padding: "0 4px",
+          cursor: onTickerClick ? "pointer" : "default", margin: "0 1px",
+        }}>
+          {ticker}
+        </button>
+      )
+    } else if (bold) {
+      nodes.push(<strong key={key} style={{ fontWeight: 700 }}>{bold.slice(2, -2)}</strong>)
+    } else if (italic) {
+      nodes.push(<em key={key} style={{ fontStyle: "italic" }}>{italic.slice(1, -1)}</em>)
+    }
+
+    lastIndex = match.index + full.length
+  }
+  // Cola de texto plano restante
+  if (lastIndex < content.length) {
+    nodes.push(content.slice(lastIndex))
+  }
+
   return (
     <span style={{ fontSize: 11, color: "var(--text)", fontFamily: "var(--font-ui)", whiteSpace: "pre-wrap", lineHeight: 1.4 }}>
-      {parts.map((part, i) => {
-        if (/^\$[A-Z0-9]{2,10}$/.test(part)) {
-          const ticker = part.slice(1)
-          return (
-            <button
-              key={i}
-              onClick={() => onTickerClick?.(ticker)}
-              style={{
-                background: "rgba(255,160,40,0.1)",
-                border: "1px solid rgba(255,160,40,0.35)",
-                borderRadius: 3,
-                color: "var(--amber)",
-                fontFamily: "var(--font-data)",
-                fontSize: 10,
-                fontWeight: 700,
-                padding: "0 4px",
-                cursor: onTickerClick ? "pointer" : "default",
-                margin: "0 1px",
-              }}
-            >
-              {part}
-            </button>
-          )
-        }
-        return <span key={i}>{part}</span>
-      })}
+      {nodes}
     </span>
   )
 }
@@ -131,6 +156,10 @@ export function ForoActivo({ assetType, ticker, onTickerClick }: ForoActivoProps
   const [replyTo, setReplyTo] = useState<ForumPost | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Búsqueda (input inmediato + valor con debounce que dispara el fetch) y orden
+  const [searchInput, setSearchInput] = useState("")
+  const [query, setQuery] = useState("")
+  const [sort, setSort] = useState<"cron" | "votados">("cron")
 
   // Persistir nombre en localStorage
   useEffect(() => {
@@ -142,9 +171,17 @@ export function ForoActivo({ assetType, ticker, onTickerClick }: ForoActivoProps
     if (authorName) localStorage.setItem(AUTHOR_KEY, authorName)
   }, [authorName])
 
+  // Debounce del texto de búsqueda (300ms) para no pegarle a la API en cada tecla
+  useEffect(() => {
+    const t = setTimeout(() => setQuery(searchInput.trim()), 300)
+    return () => clearTimeout(t)
+  }, [searchInput])
+
   const load = useCallback((p: number) => {
     setLoading(true)
-    fetch(`/api/foro/${assetType}/${ticker}?page=${p}&pageSize=${PAGE_SIZE}`)
+    const params = new URLSearchParams({ page: String(p), pageSize: String(PAGE_SIZE), sort })
+    if (query) params.set("q", query)
+    fetch(`/api/foro/${assetType}/${ticker}?${params.toString()}`)
       .then(r => r.json())
       .then(j => {
         setPosts(Array.isArray(j.data) ? j.data : [])
@@ -152,12 +189,18 @@ export function ForoActivo({ assetType, ticker, onTickerClick }: ForoActivoProps
       })
       .catch(() => setPosts([]))
       .finally(() => setLoading(false))
-  }, [assetType, ticker])
+  }, [assetType, ticker, query, sort])
 
   useEffect(() => {
     setPage(1)
     setReplyTo(null)
+    setSearchInput("")
+    setQuery("")
+    setSort("cron")
   }, [assetType, ticker])
+
+  // Al cambiar búsqueda u orden, volvemos a la primera página
+  useEffect(() => { setPage(1) }, [query, sort])
 
   useEffect(() => { load(page) }, [load, page])
 
@@ -203,13 +246,44 @@ export function ForoActivo({ assetType, ticker, onTickerClick }: ForoActivoProps
       <div className="bbg-panel-header">Foro · {ticker}</div>
 
       <div style={{ padding: "10px 14px" }}>
+        {/* Barra de búsqueda + orden */}
+        <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
+          <input
+            type="text"
+            placeholder="Buscar en el foro…"
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            style={{
+              flex: "1 1 140px", background: "var(--bg-elev-2)", border: "1px solid var(--border)",
+              color: "var(--text)", padding: "3px 8px", fontSize: 10, outline: "none",
+              fontFamily: "var(--font-ui)", borderRadius: 2,
+            }}
+          />
+          {searchInput && (
+            <button onClick={() => setSearchInput("")} style={{
+              background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 11, padding: "0 2px",
+            }}>✕</button>
+          )}
+          <div style={{ display: "flex", gap: 0, border: "1px solid var(--border)", borderRadius: 20, overflow: "hidden" }}>
+            {([["cron", "Reciente"], ["votados", "Más votados"]] as const).map(([key, label]) => (
+              <button key={key} onClick={() => setSort(key)} style={{
+                fontSize: 9, fontFamily: "var(--font-data)", padding: "3px 10px", cursor: "pointer", border: "none",
+                background: sort === key ? "rgba(255,160,40,0.12)" : "transparent",
+                color: sort === key ? "var(--amber)" : "var(--text-dim)",
+              }}>{label}</button>
+            ))}
+          </div>
+        </div>
+
         {loading ? (
           <div style={{ padding: 20, textAlign: "center", color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 10 }}>
             Cargando…
           </div>
         ) : posts.length === 0 ? (
           <div style={{ padding: 20, textAlign: "center", color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 10 }}>
-            Sin posts todavía. Sé el primero en comentar {ticker}.
+            {query
+              ? `Sin resultados para "${query}".`
+              : `Sin posts todavía. Sé el primero en comentar ${ticker}.`}
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>

@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 
 const VALID_ASSET_TYPES = ["accion", "bono", "cap"] as const
@@ -41,14 +42,31 @@ export async function GET(
   const { searchParams } = new URL(request.url)
   const page = Math.max(1, Number(searchParams.get("page")) || 1)
   const pageSize = Math.min(50, Math.max(1, Number(searchParams.get("pageSize")) || 20))
+  const q = (searchParams.get("q") ?? "").trim()
+  const sort = searchParams.get("sort") === "votados" ? "votados" : "cron"
 
   const ip = getClientIp(request)
+
+  // Filtro base + búsqueda opcional por contenido o autor (LIKE, case-insensitive en SQLite ASCII)
+  const where: Prisma.ForumPostWhereInput = { assetType, assetTicker }
+  if (q) {
+    where.OR = [
+      { content: { contains: q } },
+      { authorName: { contains: q } },
+    ]
+  }
+
+  // Orden: cronológico (más viejo primero, como foro.rava.com) o por más reaccionados
+  const orderBy: Prisma.ForumPostOrderByWithRelationInput[] =
+    sort === "votados"
+      ? [{ reactions: { _count: "desc" } }, { createdAt: "asc" }]
+      : [{ createdAt: "asc" }]
 
   try {
     const [posts, total] = await Promise.all([
       prisma.forumPost.findMany({
-        where: { assetType, assetTicker },
-        orderBy: { createdAt: "asc" },
+        where,
+        orderBy,
         skip: (page - 1) * pageSize,
         take: pageSize,
         select: {
@@ -60,7 +78,7 @@ export async function GET(
           reactions: { select: { emoji: true, authorIp: true } },
         },
       }),
-      prisma.forumPost.count({ where: { assetType, assetTicker } }),
+      prisma.forumPost.count({ where }),
     ])
 
     const data = posts.map(({ reactions, ...post }) => {
