@@ -25,7 +25,7 @@ const REM_XLSX_URL = "https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadis
 
 async function fetchRemExcel(): Promise<Buffer> {
   const headers = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }
-  const res = await fetch(REM_XLSX_URL, { headers, signal: AbortSignal.timeout(20000) })
+  const res = await fetch(REM_XLSX_URL, { headers, signal: AbortSignal.timeout(20000), cache: "no-store" })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return Buffer.from(await res.arrayBuffer())
 }

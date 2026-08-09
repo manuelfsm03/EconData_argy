@@ -27,7 +27,7 @@ const SERIES = {
 async function fetchSerie(id: string, limit = 60): Promise<{ fecha: string; valor: number }[]> {
   try {
     const url = `https://apis.datos.gob.ar/series/api/series/?ids=${id}&limit=${limit}&sort=desc&format=json`
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000), next: { revalidate: 300 } })
     if (!res.ok) return []
     const json = await res.json()
     return ((json.data ?? []) as [string, number | null][])
@@ -46,7 +46,7 @@ function getBaseUrl(): string {
 
 async function fetchLecaps(): Promise<{ ticker: string; vencimiento: string; tem: number | null; tir: number | null; diasVto: number }[]> {
   try {
-    const res = await fetch(`${getBaseUrl()}/api/bonos?tipo=lecap`, { signal: AbortSignal.timeout(5000) })
+    const res = await fetch(`${getBaseUrl()}/api/bonos?tipo=lecap`, { signal: AbortSignal.timeout(5000), next: { revalidate: 300 } })
     if (!res.ok) return []
     const json = await res.json()
     return (json.data ?? []).filter((d: Record<string, unknown>) => d.tir != null || d.tem != null)
@@ -55,7 +55,7 @@ async function fetchLecaps(): Promise<{ ticker: string; vencimiento: string; tem
 
 async function fetchRem(): Promise<{ inflacion_12m: number | null; dolar_12m: number | null; tasa_12m: number | null; fecha: string | null }> {
   try {
-    const res = await fetch(`${getBaseUrl()}/api/rem`, { signal: AbortSignal.timeout(14000) })
+    const res = await fetch(`${getBaseUrl()}/api/rem`, { signal: AbortSignal.timeout(14000), next: { revalidate: 300 } })
     if (!res.ok) return { inflacion_12m: null, dolar_12m: null, tasa_12m: null, fecha: null }
     const json = await res.json()
     return json.data?.kpis ?? { inflacion_12m: null, dolar_12m: null, tasa_12m: null, fecha: null }

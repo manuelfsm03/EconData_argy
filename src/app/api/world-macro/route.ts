@@ -48,6 +48,7 @@ async function fetchWBIndicator(code: string): Promise<Record<string, [string, n
     const res = await fetch(url, {
       headers: { "User-Agent": "PanelDeControl/2.0" },
       signal: AbortSignal.timeout(15000),
+      next: { revalidate: 21600 },
     })
     if (!res.ok) throw new Error(`World Bank API ${res.status}`)
 

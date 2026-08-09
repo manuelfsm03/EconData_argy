@@ -74,6 +74,7 @@ async function fetchFromMatba(): Promise<RofexRow[] | null> {
     const res = await fetch(RAVA_ARG_URL, {
       signal: AbortSignal.timeout(15000),
       headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 PanelDeControl/2.0" },
+      next: { revalidate: 300 },
     })
     if (!res.ok) return null
 

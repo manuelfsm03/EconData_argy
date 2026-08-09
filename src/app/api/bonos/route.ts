@@ -101,6 +101,7 @@ async function fetchRavaBonosMap(): Promise<Map<string, { precio: number; tir: n
     const res = await fetch("https://mercado.rava.com/api/prices/bonos", {
       headers: { "User-Agent": "Mozilla/5.0 PanelDeControl/2.0", Accept: "application/json" },
       signal: AbortSignal.timeout(10000),
+      next: { revalidate: 300 },
     })
     if (res.ok) {
       const json = await res.json()

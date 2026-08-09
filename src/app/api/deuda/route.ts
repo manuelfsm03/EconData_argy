@@ -271,6 +271,7 @@ async function fetchExcelUrl(): Promise<string> {
   const res = await fetch(`${BASE_GOB}/economia/finanzas/datos-mensuales-de-la-deuda/datos`, {
     headers: { "User-Agent": "PanelDeControl/2.0" },
     signal: AbortSignal.timeout(10000),
+    next: { revalidate: 3600 },
   })
   if (!res.ok) throw new Error(`Finanzas page ${res.status}`)
   const html = await res.text()
@@ -284,7 +285,7 @@ async function fetchIndecGdp(): Promise<Record<string, number>> {
   // Cada observación trimestral representa el GDP anual con el tipo de cambio de ese trimestre
   const res = await fetch(
     `${INDEC_BASE}?ids=9.2_PDPC_2004_T_30&limit=100&sort=asc`,
-    { headers: { "User-Agent": "PanelDeControl/2.0" }, signal: AbortSignal.timeout(8000) },
+    { headers: { "User-Agent": "PanelDeControl/2.0" }, signal: AbortSignal.timeout(8000), next: { revalidate: 3600 } },
   )
   if (!res.ok) throw new Error(`INDEC GDP ${res.status}`)
   const raw = await res.json()
@@ -320,6 +321,7 @@ async function getStockDeuda() {
     const xlsxRes = await fetch(xlsxUrl, {
       headers: { "User-Agent": "PanelDeControl/2.0" },
       signal: AbortSignal.timeout(30000),
+      cache: "no-store", // >2MB: Next no puede cachearlo igual (ver log), evita el intento fallido
     })
     if (!xlsxRes.ok) throw new Error(`Excel download ${xlsxRes.status}`)
 

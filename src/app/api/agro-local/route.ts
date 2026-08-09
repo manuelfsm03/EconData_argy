@@ -55,6 +55,7 @@ async function fetchRavaGranos(): Promise<AgroLocalData | null> {
     const res = await fetch("https://mercado.rava.com/api/prices/indices", {
       headers: { "User-Agent": "Mozilla/5.0 PanelDeControl/2.0", Accept: "application/json" },
       signal: AbortSignal.timeout(10000),
+      next: { revalidate: 900 },
     })
     if (!res.ok) return null
 

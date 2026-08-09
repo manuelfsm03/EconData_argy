@@ -60,7 +60,7 @@ async function fetchExportSeries(seriesId: string): Promise<{ value: number; yea
   try {
     const res = await fetch(
       `https://apis.datos.gob.ar/series/api/series/?ids=${seriesId}&sort=desc&limit=1`,
-      { signal: AbortSignal.timeout(10000) },
+      { signal: AbortSignal.timeout(10000), next: { revalidate: 21600 } },
     )
     if (!res.ok) return null
     const json = await res.json()

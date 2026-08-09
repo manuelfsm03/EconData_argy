@@ -97,6 +97,7 @@ async function getReservas() {
   try {
     const res = await fetch("https://argentinadatos.com/api/v1/finanzas/reservas", {
       signal: AbortSignal.timeout(8000),
+      next: { revalidate: 3600 },
     })
     if (res.ok) {
       const json = await res.json()
