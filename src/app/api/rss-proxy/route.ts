@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
   // Validate domain
   try {
     const parsedUrl = new URL(url)
-    const isAllowed = ALLOWED_DOMAINS.some(domain => parsedUrl.hostname.includes(domain))
+    const isAllowed = ALLOWED_DOMAINS.some(domain => parsedUrl.hostname === domain || parsedUrl.hostname.endsWith(`.${domain}`))
     if (!isAllowed) {
       return NextResponse.json({ error: "Domain not allowed" }, { status: 403 })
     }
