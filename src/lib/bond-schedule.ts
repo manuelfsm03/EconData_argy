@@ -44,6 +44,56 @@ export function totalAmortizado(esquema: EsquemaBono): number {
 }
 
 /**
+ * Chequea que un esquema sea internamente coherente antes de dejarlo entrar al
+ * motor. Devuelve la lista de problemas; vacía significa que está sano.
+ *
+ * Es la red de contención para bonos cargados desde un prospecto: el error
+ * típico no es de fórmula sino de transcripción, y estas invariantes lo cazan
+ * sin necesidad de conocer el bono. Los cinco esquemas rotos que hoy están en
+ * src/lib/bonds-data.ts habrían fallado la primera regla.
+ */
+export function validarEsquema(esquema: EsquemaBono): string[] {
+  const problemas: string[] = []
+
+  const total = totalAmortizado(esquema)
+  if (Math.abs(total - 100) > 1e-6) {
+    problemas.push(`las amortizaciones suman ${total.toFixed(3)} en vez de 100`)
+  }
+
+  if (esquema.filas.length === 0) {
+    problemas.push("no tiene ninguna fila de flujo")
+    return problemas
+  }
+
+  const fechas = esquema.filas.map((f) => f.fecha)
+  if (new Set(fechas).size !== fechas.length) {
+    problemas.push("hay fechas de pago repetidas")
+  }
+  if ([...fechas].sort().join() !== fechas.join()) {
+    problemas.push("las fechas no están en orden cronológico")
+  }
+
+  const ultima = fechas[fechas.length - 1]
+  if (ultima !== esquema.vencimiento) {
+    problemas.push(`el último flujo es ${ultima} pero el vencimiento declarado es ${esquema.vencimiento}`)
+  }
+  if (fechas[0] <= esquema.emision) {
+    problemas.push(`el primer flujo (${fechas[0]}) no es posterior a la emisión (${esquema.emision})`)
+  }
+
+  for (const fila of esquema.filas) {
+    if (fila.tasa < 0) problemas.push(`tasa negativa en ${fila.fecha}`)
+    if (fila.amortizacion < 0) problemas.push(`amortización negativa en ${fila.fecha}`)
+  }
+
+  if (esquema.fuente.trim() === "") {
+    problemas.push("no declara fuente (regla 5 del ROADMAP)")
+  }
+
+  return problemas
+}
+
+/**
  * Convierte el esquema en flujos de fondos calculando, para cada período:
  *   - el valor residual (100 menos lo ya amortizado),
  *   - el cupón: fracción del período (30/360) x tasa x residual,
