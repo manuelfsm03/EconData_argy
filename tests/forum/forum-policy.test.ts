@@ -5,7 +5,9 @@ import {
   ForumConfigurationError,
   deriveForumIdentity,
   getTrustedClientIp,
+  normalizeForumSearch,
   normalizeForumTicker,
+  normalizeForumVariable,
   requireForumRateLimitSecret,
 } from "../../src/server/forum/forum-policy"
 
@@ -13,6 +15,14 @@ test("ticker policy normalizes documented safe ticker characters", () => {
   assert.equal(normalizeForumTicker(" ggal "), "GGAL")
   assert.equal(normalizeForumTicker("brk.b"), "BRK.B")
   assert.equal(normalizeForumTicker("btc-usd"), "BTC-USD")
+})
+
+test("variable policy accepts reusable card identifiers without weakening ticker limits", () => {
+  assert.equal(normalizeForumVariable(" resumen-tipo-cambio "), "RESUMEN-TIPO-CAMBIO")
+  assert.equal(normalizeForumVariable("A".repeat(64)), "A".repeat(64))
+  assert.equal(normalizeForumVariable("A".repeat(65)), null)
+  assert.equal(normalizeForumVariable("tarjeta/con-ruta"), null)
+  assert.equal(normalizeForumSearch(`  ${"x".repeat(120)}  `).length, 100)
 })
 
 test("ticker policy rejects blank, path-like, overlong, and arbitrary symbols", () => {

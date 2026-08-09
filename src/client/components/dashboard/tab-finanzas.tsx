@@ -7,6 +7,8 @@ import {
   Legend, ReferenceLine, Cell,
 } from "recharts"
 import { ForoActivo } from "./foro-activo"
+import { AssetScreener } from "./screener-activos"
+import { RateScreener } from "./screener-tasas"
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -41,6 +43,8 @@ const FIN_TABS = [
   { key: "commodities", label: "Commodities",    icon: "◈" },
   { key: "mundo",      label: "Mercados Mundo", icon: "⬡" },
   { key: "crypto",     label: "Cripto",         icon: "₿" },
+  { key: "screener",   label: "Screener",       icon: "⌕" },
+  { key: "screener-tasas", label: "Screener Tasas", icon: "%" },
 ]
 
 function SubTabs({ active, onChange }: { active: string; onChange: (k: string) => void }) {
@@ -1741,6 +1745,8 @@ export function TabFinanzas({ initialSubtab }: { initialSubtab?: string | null }
       {activeTab === "commodities" && <CommoditiesView />}
       {activeTab === "mundo"      && <MundoView />}
       {activeTab === "crypto"    && <CryptoView />}
+      {activeTab === "screener" && <AssetScreener />}
+      {activeTab === "screener-tasas" && <RateScreener />}
     </div>
   )
 }

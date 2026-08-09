@@ -39,6 +39,8 @@ import {
 } from "@/client/components/dashboard/tab-bcra"
 import { NewsFeed } from "@/client/components/dashboard/news-feed"
 import { DATA_CARD_BY_ID } from "@/lib/card-catalog"
+import { AssetScreener } from "@/client/components/dashboard/screener-activos"
+import { RateScreener } from "@/client/components/dashboard/screener-tasas"
 
 const noopNavigate = () => {}
 
@@ -55,6 +57,8 @@ const CARD_COMPONENTS: Record<string, React.ComponentType> = {
   commodities: CommoditiesView,
   "mercados-mundo": MundoView,
   cripto: CryptoView,
+  "screener-activos": AssetScreener,
+  "screener-tasas": RateScreener,
   emae: EmaeView,
   ipc: IpcView,
   balanza: BalanzaView,

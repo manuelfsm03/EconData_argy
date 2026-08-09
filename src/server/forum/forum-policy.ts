@@ -4,6 +4,7 @@ import { isIP } from "node:net"
 export const FORUM_RATE_LIMIT_SECONDS = 20
 export const FORUM_PAGE_SIZE = 20
 export const MAX_FORUM_TICKER_LENGTH = 15
+export const MAX_FORUM_VARIABLE_LENGTH = 64
 
 const SAFE_TICKER = /^[A-Z0-9]+(?:[.-][A-Z0-9]+)*$/
 
@@ -18,6 +19,16 @@ export function normalizeForumTicker(value: string): string | null {
   const normalized = value.trim().toUpperCase()
   if (normalized.length === 0 || normalized.length > MAX_FORUM_TICKER_LENGTH) return null
   return SAFE_TICKER.test(normalized) ? normalized : null
+}
+
+export function normalizeForumVariable(value: string): string | null {
+  const normalized = value.trim().toUpperCase()
+  if (normalized.length === 0 || normalized.length > MAX_FORUM_VARIABLE_LENGTH) return null
+  return SAFE_TICKER.test(normalized) ? normalized : null
+}
+
+export function normalizeForumSearch(value: string | null): string {
+  return (value ?? "").trim().slice(0, 100)
 }
 
 export function getTrustedClientIp(

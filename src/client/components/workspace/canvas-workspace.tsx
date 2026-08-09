@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import GridLayout, { type Layout, useContainerWidth } from "react-grid-layout"
-import { Copy, GripHorizontal, LayoutGrid, Plus, Search, Trash2, X } from "lucide-react"
+import { Copy, GripHorizontal, LayoutGrid, MessageCircle, Plus, Search, Trash2, X } from "lucide-react"
 import { Button } from "@/client/components/ui/button"
+import { CardDiscussionProvider } from "@/client/components/ui/card-discussion-context"
 import { Input } from "@/client/components/ui/input"
+import { ForoActivo } from "@/client/components/dashboard/foro-activo"
 import { CardHealthBadge } from "./card-health-badge"
 import { DataCardRenderer } from "./data-card-renderer"
 import { CARD_CATEGORIES, DATA_CARD_BY_ID, searchDataCards, type CardCategory } from "@/lib/card-catalog"
@@ -57,6 +59,7 @@ export function CanvasWorkspace() {
   const [query, setQuery] = useState("")
   const [category, setCategory] = useState<CardCategory | "all">("all")
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [chatWidgetId, setChatWidgetId] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
   const { width, containerRef, mounted } = useContainerWidth()
 
@@ -217,11 +220,17 @@ export function CanvasWorkspace() {
                 const definition = DATA_CARD_BY_ID.get(widget.cardId)
                 if (!definition) return <div key={widget.instanceId} />
                 return (
-                  <div key={widget.instanceId} className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-elev)] shadow-sm">
+                  <div key={widget.instanceId} className="relative overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-elev)] shadow-sm">
                     <div className="canvas-card-handle flex h-10 cursor-grab items-center gap-2 border-b border-[var(--border)] bg-[var(--bg-elev)] px-3 active:cursor-grabbing">
                       <GripHorizontal size={15} className="shrink-0 text-[var(--text-mute)]" />
                       <span className="min-w-0 flex-1 truncate text-xs font-semibold text-[var(--text)]">{definition.title}</span>
                       <CardHealthBadge cardId={definition.id} />
+                      <Button
+                        variant="ghost" size="icon"
+                        className={cn("canvas-card-interactive h-7 w-7", chatWidgetId === widget.instanceId ? "bg-[var(--amber-soft)] text-[var(--amber)]" : "text-[var(--text-dim)] hover:text-[var(--amber)]")}
+                        onClick={() => setChatWidgetId((current) => current === widget.instanceId ? null : widget.instanceId)}
+                        title={`Conversar sobre ${definition.title}`}
+                      ><MessageCircle size={13} /></Button>
                       <Button
                         variant="ghost" size="icon"
                         className="canvas-card-interactive h-7 w-7 text-[var(--text-dim)] hover:text-[var(--negative)]"
@@ -230,7 +239,13 @@ export function CanvasWorkspace() {
                       ><X size={13} /></Button>
                     </div>
                     <div className="canvas-card-interactive h-[calc(100%-2.5rem)] overflow-auto bg-[var(--bg)]">
-                      <DataCardRenderer cardId={definition.id} />
+                      <CardDiscussionProvider title={definition.title} open={() => setChatWidgetId(widget.instanceId)}>
+                        {chatWidgetId === widget.instanceId ? (
+                          <ForoActivo assetType="variable" ticker={definition.id.toUpperCase()} compact />
+                        ) : (
+                          <DataCardRenderer cardId={definition.id} />
+                        )}
+                      </CardDiscussionProvider>
                     </div>
                   </div>
                 )

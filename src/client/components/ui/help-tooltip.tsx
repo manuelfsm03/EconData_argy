@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { MessageCircle } from "lucide-react"
+import { useCardDiscussion } from "./card-discussion-context"
 
 // ── HelpTooltip ──────────────────────────────────────────────────────────────
 
@@ -82,6 +84,7 @@ interface SectionMetaProps {
 }
 
 export function SectionMeta({ title, help, source }: SectionMetaProps) {
+  const discussion = useCardDiscussion()
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 7,
@@ -96,6 +99,21 @@ export function SectionMeta({ title, help, source }: SectionMetaProps) {
         {title}
       </span>
       <HelpTooltip text={help} side="bottom" />
+      {discussion && (
+        <button
+          type="button"
+          onClick={(event) => { event.stopPropagation(); discussion.open() }}
+          title={`Conversar sobre ${discussion.title}`}
+          aria-label={`Abrir conversación sobre ${discussion.title}`}
+          style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            width: 16, height: 16, borderRadius: "50%", border: "1px solid #333",
+            color: "#666", background: "transparent", cursor: "pointer", flexShrink: 0,
+          }}
+        >
+          <MessageCircle size={9} />
+        </button>
+      )}
       {source && (
         <span style={{
           fontSize: 8, color: "var(--text-mute)", fontFamily: "monospace",

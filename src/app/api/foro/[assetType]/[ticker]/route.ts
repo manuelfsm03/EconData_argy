@@ -2,7 +2,7 @@
  * /api/foro/[assetType]/[ticker] — Foro por activo
  *
  * Hilo único cronológico por (assetType, assetTicker), sin autenticación.
- * assetType: "accion" | "bono" | "cap"
+ * assetType: "accion" | "bono" | "cap" | "variable"
  */
 
 import { NextRequest, NextResponse } from "next/server"
@@ -13,6 +13,7 @@ import {
   ForumConfigurationError,
   getTrustedClientIp,
   normalizeForumTicker,
+  normalizeForumVariable,
   requireForumRateLimitSecret,
 } from "@/server/forum/forum-policy"
 import {
@@ -21,7 +22,7 @@ import {
   ForumRateLimitError,
 } from "@/server/forum/forum-service"
 
-const VALID_ASSET_TYPES = ["accion", "bono", "cap"] as const
+const VALID_ASSET_TYPES = ["accion", "bono", "cap", "variable"] as const
 type AssetType = (typeof VALID_ASSET_TYPES)[number]
 
 function isValidAssetType(value: string): value is AssetType {
@@ -46,7 +47,7 @@ export async function GET(
   if (!isValidAssetType(assetType)) {
     return NextResponse.json({ error: "assetType inválido" }, { status: 400 })
   }
-  const assetTicker = normalizeForumTicker(ticker)
+  const assetTicker = assetType === "variable" ? normalizeForumVariable(ticker) : normalizeForumTicker(ticker)
   if (!assetTicker) {
     return NextResponse.json({ error: "ticker inválido" }, { status: 400 })
   }
@@ -90,7 +91,7 @@ export async function POST(
   if (!isValidAssetType(assetType)) {
     return NextResponse.json({ error: "assetType inválido" }, { status: 400 })
   }
-  const assetTicker = normalizeForumTicker(ticker)
+  const assetTicker = assetType === "variable" ? normalizeForumVariable(ticker) : normalizeForumTicker(ticker)
   if (!assetTicker) {
     return NextResponse.json({ error: "ticker inválido" }, { status: 400 })
   }

@@ -12,14 +12,18 @@ interface ForumPost {
   createdAt: string
 }
 
+export type ForumAssetType = "accion" | "bono" | "cap" | "variable"
+
 interface ForoActivoProps {
-  assetType: "accion" | "bono" | "cap"
+  assetType: ForumAssetType
   ticker: string
+  compact?: boolean
+  onPost?: () => void
 }
 
 const PAGE_SIZE = 20
 
-export function ForoActivo({ assetType, ticker }: ForoActivoProps) {
+export function ForoActivo({ assetType, ticker, compact = false, onPost }: ForoActivoProps) {
   const [posts, setPosts] = useState<ForumPost[]>([])
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -79,6 +83,7 @@ export function ForoActivo({ assetType, ticker }: ForoActivoProps) {
       } else {
         setPage(createdPage)
       }
+      onPost?.()
     } catch {
       setError("No se pudo publicar el mensaje")
     } finally {
@@ -89,8 +94,8 @@ export function ForoActivo({ assetType, ticker }: ForoActivoProps) {
   const findParent = (id: string | null) => posts.find(p => p.id === id) ?? null
 
   return (
-    <div className="bbg-panel" style={{ marginTop: 1 }}>
-      <div className="bbg-panel-header">Foro · {ticker}</div>
+    <div className="bbg-panel" style={{ marginTop: compact ? 0 : 1, border: compact ? "none" : undefined }}>
+      <div className="bbg-panel-header">Conversación · {ticker}</div>
 
       <div style={{ padding: "10px 14px" }}>
         {loading ? (
@@ -196,7 +201,7 @@ export function ForoActivo({ assetType, ticker }: ForoActivoProps) {
             style={{
               width: "100%", background: "var(--bg-elev-2)", border: "1px solid var(--border-hi)",
               color: "var(--text)", padding: "4px 8px", fontSize: 11, outline: "none",
-              fontFamily: "var(--font-ui)", resize: "vertical", minHeight: 60, borderRadius: 2,
+              fontFamily: "var(--font-ui)", resize: "vertical", minHeight: compact ? 48 : 60, borderRadius: 2,
             }}
           />
           {error && (
