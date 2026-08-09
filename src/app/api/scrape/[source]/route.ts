@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getScraper, runAllScrapers, ScraperName } from "@/scrapers"
 
+function authorized(request: NextRequest): boolean {
+  const secret = process.env.CRON_SECRET
+  if (!secret) return true
+  return request.headers.get("authorization") === `Bearer ${secret}`
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ source: string }> }
 ) {
+  if (!authorized(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
   const { source } = await params
 
   try {
