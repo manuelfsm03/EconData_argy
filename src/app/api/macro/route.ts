@@ -309,9 +309,13 @@ export async function GET(request: NextRequest) {
     // ── EMAE SECTORIAL ──────────────────────────────────────────────────────
     if (endpoint === "emae_sectorial") {
       const rows = await fetchCSVData(CSV_URLS.emae_sectorial)
-      // Últimas 25 filas (para calcular variación interanual del mes más reciente)
+      // Rango en meses: default 25 (alcanza para variación interanual del mes más
+      // reciente, que es lo único que necesita hoy el consumidor por default).
+      // ?months=0 o ?months=all devuelve la serie completa (desde 2004).
+      const monthsParam = searchParams.get("months")
+      const monthsBack = monthsParam === "all" || monthsParam === "0" ? rows.length : Number(monthsParam) || 25
       const p = (r: Record<string, string>, k: string) => parseFloat(r[k] ?? "") || null
-      const recent = rows.slice(-25).map(r => ({
+      const recent = rows.slice(-monthsBack).map(r => ({
         date:          r.indice_tiempo ?? "",
         agro:          p(r, "agricultura_ganaderia_caza_silvicultura"),
         pesca:         p(r, "pesca"),
