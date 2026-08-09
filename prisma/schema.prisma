@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -313,9 +313,8 @@ model ForumPost {
   parentId    String?     @map("parent_id")    // quote/reply opcional a otro post
   parent      ForumPost?  @relation("PostReplies", fields: [parentId], references: [id], onDelete: SetNull)
   replies     ForumPost[] @relation("PostReplies")
-  authorIp    String?     @map("author_ip")    // solo para rate-limit server-side, nunca expuesto en la API
   createdAt   DateTime    @default(now()) @map("created_at")
 
   @@index([assetType, assetTicker, createdAt])
-  @@map("forum_posts")
+  @@map("asset_forum_posts")
 }

@@ -3,26 +3,36 @@
  *
  * Hilo único cronológico por (assetType, assetTicker), sin autenticación.
  * assetType: "accion" | "bono" | "cap"
- *
- * GET  ?page=1&pageSize=20  → posts en orden ascendente (más viejo primero, como foro.rava.com)
- * POST { authorName, content, parentId? } → crea un post nuevo
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { prisma } from "@/server/db/prisma"
+import {
+  deriveForumIdentity,
+  FORUM_PAGE_SIZE,
+  ForumConfigurationError,
+  getTrustedClientIp,
+  normalizeForumTicker,
+  requireForumRateLimitSecret,
+} from "@/server/forum/forum-policy"
+import {
+  createForumPostAtomic,
+  ForumParentScopeError,
+  ForumRateLimitError,
+} from "@/server/forum/forum-service"
 
 const VALID_ASSET_TYPES = ["accion", "bono", "cap"] as const
 type AssetType = (typeof VALID_ASSET_TYPES)[number]
 
-function isValidAssetType(v: string): v is AssetType {
-  return (VALID_ASSET_TYPES as readonly string[]).includes(v)
+function isValidAssetType(value: string): value is AssetType {
+  return (VALID_ASSET_TYPES as readonly string[]).includes(value)
 }
 
-function getClientIp(request: NextRequest): string {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
+function boundedInteger(value: string | null, fallback: number, minimum: number, maximum: number): number {
+  if (!value || !/^\d+$/.test(value)) return fallback
+  return Math.min(maximum, Math.max(minimum, Number.parseInt(value, 10)))
 }
 
-const RATE_LIMIT_SECONDS = 20
 const MAX_AUTHOR_LEN = 40
 const MIN_AUTHOR_LEN = 2
 const MAX_CONTENT_LEN = 2000
@@ -36,17 +46,20 @@ export async function GET(
   if (!isValidAssetType(assetType)) {
     return NextResponse.json({ error: "assetType inválido" }, { status: 400 })
   }
+  const assetTicker = normalizeForumTicker(ticker)
+  if (!assetTicker) {
+    return NextResponse.json({ error: "ticker inválido" }, { status: 400 })
+  }
 
-  const assetTicker = ticker.toUpperCase()
   const { searchParams } = new URL(request.url)
-  const page = Math.max(1, Number(searchParams.get("page")) || 1)
-  const pageSize = Math.min(50, Math.max(1, Number(searchParams.get("pageSize")) || 20))
+  const page = boundedInteger(searchParams.get("page"), 1, 1, 1_000_000)
+  const pageSize = boundedInteger(searchParams.get("pageSize"), FORUM_PAGE_SIZE, 1, 50)
 
   try {
     const [posts, total] = await Promise.all([
       prisma.forumPost.findMany({
         where: { assetType, assetTicker },
-        orderBy: { createdAt: "asc" },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
         select: { id: true, authorName: true, content: true, parentId: true, createdAt: true },
@@ -77,8 +90,10 @@ export async function POST(
   if (!isValidAssetType(assetType)) {
     return NextResponse.json({ error: "assetType inválido" }, { status: 400 })
   }
-
-  const assetTicker = ticker.toUpperCase()
+  const assetTicker = normalizeForumTicker(ticker)
+  if (!assetTicker) {
+    return NextResponse.json({ error: "ticker inválido" }, { status: 400 })
+  }
 
   let body: { authorName?: unknown; content?: unknown; parentId?: unknown }
   try {
@@ -98,32 +113,46 @@ export async function POST(
     return NextResponse.json({ error: `El mensaje debe tener entre 1 y ${MAX_CONTENT_LEN} caracteres` }, { status: 400 })
   }
 
-  const ip = getClientIp(request)
+  const trustedIp = getTrustedClientIp(request.headers)
+  if (!trustedIp) {
+    return NextResponse.json({ error: "No se pudo validar la identidad de red" }, { status: 503 })
+  }
+
+  let identityToken: string
+  try {
+    identityToken = deriveForumIdentity(trustedIp, requireForumRateLimitSecret())
+  } catch (error) {
+    if (error instanceof ForumConfigurationError) {
+      console.error("[/api/foro] POST configuración de rate limit ausente")
+      return NextResponse.json({ error: "Foro temporalmente no disponible" }, { status: 503 })
+    }
+    throw error
+  }
 
   try {
-    const lastFromIp = await prisma.forumPost.findFirst({
-      where: { authorIp: ip },
-      orderBy: { createdAt: "desc" },
-      select: { createdAt: true },
+    const created = await createForumPostAtomic(prisma, {
+      assetType,
+      assetTicker,
+      authorName,
+      content,
+      parentId,
+      identityToken,
     })
-    if (lastFromIp && Date.now() - lastFromIp.createdAt.getTime() < RATE_LIMIT_SECONDS * 1000) {
+
+    return NextResponse.json({
+      data: created.post,
+      total: created.total,
+      totalPages: created.totalPages,
+      page: created.totalPages,
+      pageSize: FORUM_PAGE_SIZE,
+    }, { status: 201 })
+  } catch (error) {
+    if (error instanceof ForumRateLimitError) {
       return NextResponse.json({ error: "Estás posteando muy rápido, esperá unos segundos" }, { status: 429 })
     }
-
-    if (parentId) {
-      const parent = await prisma.forumPost.findUnique({ where: { id: parentId }, select: { id: true } })
-      if (!parent) {
-        return NextResponse.json({ error: "El post citado no existe" }, { status: 400 })
-      }
+    if (error instanceof ForumParentScopeError) {
+      return NextResponse.json({ error: "El post citado no pertenece a este activo" }, { status: 400 })
     }
-
-    const post = await prisma.forumPost.create({
-      data: { assetType, assetTicker, authorName, content, parentId, authorIp: ip },
-      select: { id: true, authorName: true, content: true, parentId: true, createdAt: true },
-    })
-
-    return NextResponse.json({ data: post }, { status: 201 })
-  } catch (error) {
     console.error("[/api/foro] POST", error)
     return NextResponse.json({ error: "Error al crear el post" }, { status: 500 })
   }

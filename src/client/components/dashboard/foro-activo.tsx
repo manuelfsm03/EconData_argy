@@ -30,16 +30,22 @@ export function ForoActivo({ assetType, ticker }: ForoActivoProps) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback((p: number) => {
+  const load = useCallback(async (p: number) => {
     setLoading(true)
-    fetch(`/api/foro/${assetType}/${ticker}?page=${p}&pageSize=${PAGE_SIZE}`)
-      .then(r => r.json())
-      .then(j => {
-        setPosts(Array.isArray(j.data) ? j.data : [])
-        setTotalPages(j.totalPages ?? 1)
-      })
-      .catch(() => setPosts([]))
-      .finally(() => setLoading(false))
+    setError(null)
+    try {
+      const response = await fetch(`/api/foro/${assetType}/${ticker}?page=${p}&pageSize=${PAGE_SIZE}`)
+      const payload = await response.json().catch(() => null)
+      if (!response.ok || !payload || !Array.isArray(payload.data)) {
+        throw new Error(payload?.error ?? "No se pudo cargar el foro")
+      }
+      setPosts(payload.data)
+      setTotalPages(payload.totalPages ?? 1)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "No se pudo cargar el foro")
+    } finally {
+      setLoading(false)
+    }
   }, [assetType, ticker])
 
   useEffect(() => {
@@ -66,11 +72,12 @@ export function ForoActivo({ assetType, ticker }: ForoActivoProps) {
       }
       setContent("")
       setReplyTo(null)
-      const lastPage = Math.max(1, totalPages)
-      if (page === lastPage) {
-        load(page)
+      const createdPage = Number.isInteger(j.page) && j.page > 0 ? j.page : 1
+      setTotalPages(Number.isInteger(j.totalPages) && j.totalPages > 0 ? j.totalPages : createdPage)
+      if (page === createdPage) {
+        await load(createdPage)
       } else {
-        setPage(lastPage)
+        setPage(createdPage)
       }
     } catch {
       setError("No se pudo publicar el mensaje")

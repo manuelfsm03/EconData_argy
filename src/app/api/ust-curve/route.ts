@@ -38,9 +38,15 @@ export async function GET() {
     if (lines.length < 2) throw new Error("CSV vacío")
 
     const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, ""))
-    const lastLine = lines[lines.length - 1].split(",").map(v => v.trim().replace(/"/g, ""))
+    const dateIndex = headers.indexOf("Date")
+    if (dateIndex < 0) throw new Error("CSV sin columna Date")
+    const latestLine = lines.slice(1)
+      .map(line => line.split(",").map(v => v.trim().replace(/"/g, "")))
+      .filter(values => Number.isFinite(Date.parse(values[dateIndex] ?? "")))
+      .sort((a, b) => Date.parse(b[dateIndex]) - Date.parse(a[dateIndex]))[0]
+    if (!latestLine) throw new Error("CSV sin filas válidas")
     const row: Record<string, string> = {}
-    headers.forEach((h, i) => { row[h] = lastLine[i] })
+    headers.forEach((h, i) => { row[h] = latestLine[i] })
 
     const date = row["Date"] ?? null
     const curve = MATURITIES.map(m => {

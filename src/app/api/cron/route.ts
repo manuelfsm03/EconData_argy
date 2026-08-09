@@ -6,7 +6,7 @@ import { runAllScrapers } from "@/server/scrapers"
 
 function authorized(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET
-  if (!secret) return true
+  if (!secret) return false
   return request.headers.get("authorization") === `Bearer ${secret}`
 }
 
