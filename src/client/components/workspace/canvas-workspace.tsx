@@ -1,8 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import GridLayout, { type Layout, useContainerWidth } from "react-grid-layout"
-import { Copy, GripHorizontal, LayoutGrid, MessageCircle, Plus, Search, Trash2, X } from "lucide-react"
+import { Copy, GripHorizontal, LayoutGrid, MessageCircle, Minimize2, Plus, Search, Trash2, X } from "lucide-react"
 import { Button } from "@/client/components/ui/button"
 import { CardDiscussionProvider } from "@/client/components/ui/card-discussion-context"
 import { Input } from "@/client/components/ui/input"
@@ -19,6 +19,7 @@ interface CanvasWidget {
   y: number
   w: number
   h: number
+  autoFit?: boolean
 }
 
 interface CanvasSheet {
@@ -27,8 +28,59 @@ interface CanvasSheet {
   widgets: CanvasWidget[]
 }
 
-const STORAGE_KEY = "lapizarra.canvas.sheets.v2"
-const ACTIVE_KEY = "lapizarra.canvas.active-sheet.v2"
+const STORAGE_KEY = "lapizarra.canvas.sheets.v3"
+const ACTIVE_KEY = "lapizarra.canvas.active-sheet.v3"
+const LEGACY_STORAGE_KEY = "lapizarra.canvas.sheets.v2"
+const LEGACY_ACTIVE_KEY = "lapizarra.canvas.active-sheet.v2"
+const LEGACY_HEIGHT_SCALE = 2
+const GRID_ROW_HEIGHT = 22
+const GRID_ROW_GAP = 6
+const CARD_HEADER_HEIGHT = 40
+
+function pixelsToRows(contentHeight: number, minH: number, maxH: number) {
+  const measured = Math.ceil((CARD_HEADER_HEIGHT + contentHeight + GRID_ROW_GAP) / (GRID_ROW_HEIGHT + GRID_ROW_GAP))
+  return Math.max(minH, Math.min(maxH, measured))
+}
+
+function MeasuredCardContent({
+  widgetId,
+  enabled,
+  minH,
+  maxH,
+  onFit,
+  children,
+}: {
+  widgetId: string
+  enabled: boolean
+  minH: number
+  maxH: number
+  onFit: (widgetId: string, height: number) => void
+  children: ReactNode
+}) {
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    if (!enabled || !contentRef.current) return
+    const element = contentRef.current
+    let frame = 0
+    const measure = () => {
+      window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(() => {
+        const contentHeight = Math.ceil(Math.max(element.scrollHeight, element.getBoundingClientRect().height))
+        if (contentHeight > 0) onFit(widgetId, pixelsToRows(contentHeight, minH, maxH))
+      })
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
+  }, [enabled, maxH, minH, onFit, widgetId])
+
+  return <div ref={contentRef} className="min-w-0">{children}</div>
+}
 
 function uid(prefix: string) {
   return `${prefix}-${typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Date.now().toString(36)}`
@@ -39,10 +91,10 @@ function initialSheets(): CanvasSheet[] {
     id: "mi-pizarra",
     name: "Mi Pizarra",
     widgets: [
-      { instanceId: "inicio-tipo-cambio", cardId: "resumen-tipo-cambio", x: 0, y: 0, w: 12, h: 7 },
-      { instanceId: "inicio-riesgo", cardId: "resumen-riesgo", x: 0, y: 7, w: 4, h: 6 },
-      { instanceId: "inicio-reservas", cardId: "resumen-reservas", x: 4, y: 7, w: 4, h: 7 },
-      { instanceId: "inicio-rem", cardId: "rem", x: 8, y: 7, w: 4, h: 10 },
+      { instanceId: "inicio-tipo-cambio", cardId: "resumen-tipo-cambio", x: 0, y: 0, w: 12, h: 10, autoFit: true },
+      { instanceId: "inicio-riesgo", cardId: "resumen-riesgo", x: 0, y: 10, w: 4, h: 8, autoFit: true },
+      { instanceId: "inicio-reservas", cardId: "resumen-reservas", x: 4, y: 10, w: 4, h: 10, autoFit: true },
+      { instanceId: "inicio-rem", cardId: "rem", x: 8, y: 10, w: 4, h: 20, autoFit: true },
     ],
   }]
 }
@@ -50,6 +102,18 @@ function initialSheets(): CanvasSheet[] {
 function isValidStoredSheets(value: unknown): value is CanvasSheet[] {
   if (!Array.isArray(value) || value.length === 0) return false
   return value.every((sheet) => sheet && typeof sheet.id === "string" && typeof sheet.name === "string" && Array.isArray(sheet.widgets))
+}
+
+function migrateLegacySheets(sheets: CanvasSheet[]): CanvasSheet[] {
+  return sheets.map((sheet) => ({
+    ...sheet,
+    widgets: sheet.widgets.map((widget) => ({
+      ...widget,
+      y: widget.y * LEGACY_HEIGHT_SCALE,
+      h: widget.h * LEGACY_HEIGHT_SCALE,
+      autoFit: widget.autoFit ?? true,
+    })),
+  }))
 }
 
 export function CanvasWorkspace() {
@@ -66,8 +130,13 @@ export function CanvasWorkspace() {
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null")
-      if (isValidStoredSheets(stored)) setSheets(stored)
-      const storedActive = localStorage.getItem(ACTIVE_KEY)
+      if (isValidStoredSheets(stored)) {
+        setSheets(stored)
+      } else {
+        const legacy = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY) ?? "null")
+        if (isValidStoredSheets(legacy)) setSheets(migrateLegacySheets(legacy))
+      }
+      const storedActive = localStorage.getItem(ACTIVE_KEY) ?? localStorage.getItem(LEGACY_ACTIVE_KEY)
       if (storedActive) setActiveId(storedActive)
     } catch {
       // A corrupt local draft should never block the workspace.
@@ -106,6 +175,10 @@ export function CanvasWorkspace() {
     }))
   }, [updateActiveWidgets])
 
+  const fitWidgetHeight = useCallback((instanceId: string, height: number) => {
+    updateActiveWidgets((widgets) => widgets.map((widget) => widget.instanceId === instanceId && widget.h !== height ? { ...widget, h: height } : widget))
+  }, [updateActiveWidgets])
+
   function addWidget(cardId: string) {
     const definition = DATA_CARD_BY_ID.get(cardId)
     if (!definition) return
@@ -113,7 +186,7 @@ export function CanvasWorkspace() {
     updateActiveWidgets((widgets) => [...widgets, {
       instanceId: uid(cardId), cardId,
       x: 0, y: bottom,
-      w: definition.defaultW, h: definition.defaultH,
+      w: definition.defaultW, h: definition.defaultH * LEGACY_HEIGHT_SCALE, autoFit: true,
     }])
   }
 
@@ -154,7 +227,7 @@ export function CanvasWorkspace() {
       w: compactLayout ? 1 : widget.w,
       h: widget.h,
       minW: compactLayout ? 1 : definition?.minW ?? 4,
-      minH: definition?.minH ?? 6,
+      minH: (definition?.minH ?? 6) * LEGACY_HEIGHT_SCALE,
     }
   })
 
@@ -211,10 +284,14 @@ export function CanvasWorkspace() {
             <GridLayout
               width={width}
               layout={layout}
-              gridConfig={{ cols: compactLayout ? 1 : 12, rowHeight: 44, margin: [10, 10], containerPadding: [0, 0] }}
+              gridConfig={{ cols: compactLayout ? 1 : 12, rowHeight: GRID_ROW_HEIGHT, margin: [10, GRID_ROW_GAP], containerPadding: [0, 0] }}
               dragConfig={{ enabled: !compactLayout, handle: ".canvas-card-handle", cancel: ".canvas-card-interactive" }}
               resizeConfig={{ enabled: !compactLayout, handles: ["se"] }}
               onLayoutChange={compactLayout ? undefined : handleLayoutChange}
+              onResizeStop={compactLayout ? undefined : (_layout, _oldItem, newItem) => {
+                if (!newItem) return
+                updateActiveWidgets((widgets) => widgets.map((widget) => widget.instanceId === newItem.i ? { ...widget, w: newItem.w, h: newItem.h, autoFit: false } : widget))
+              }}
             >
               {activeSheet.widgets.map((widget) => {
                 const definition = DATA_CARD_BY_ID.get(widget.cardId)
@@ -225,6 +302,12 @@ export function CanvasWorkspace() {
                       <GripHorizontal size={15} className="shrink-0 text-[var(--text-mute)]" />
                       <span className="min-w-0 flex-1 truncate text-xs font-semibold text-[var(--text)]">{definition.title}</span>
                       <CardHealthBadge cardId={definition.id} />
+                      <Button
+                        variant="ghost" size="icon"
+                        className={cn("canvas-card-interactive h-7 w-7", widget.autoFit !== false ? "text-[var(--amber)]" : "text-[var(--text-dim)] hover:text-[var(--amber)]")}
+                        onClick={() => updateActiveWidgets((widgets) => widgets.map((item) => item.instanceId === widget.instanceId ? { ...item, autoFit: true } : item))}
+                        title="Ajustar altura al contenido"
+                      ><Minimize2 size={13} /></Button>
                       <Button
                         variant="ghost" size="icon"
                         className={cn("canvas-card-interactive h-7 w-7", chatWidgetId === widget.instanceId ? "bg-[var(--amber-soft)] text-[var(--amber)]" : "text-[var(--text-dim)] hover:text-[var(--amber)]")}
@@ -239,13 +322,21 @@ export function CanvasWorkspace() {
                       ><X size={13} /></Button>
                     </div>
                     <div className="canvas-card-interactive h-[calc(100%-2.5rem)] overflow-auto bg-[var(--bg)]">
-                      <CardDiscussionProvider title={definition.title} open={() => setChatWidgetId(widget.instanceId)}>
-                        {chatWidgetId === widget.instanceId ? (
-                          <ForoActivo assetType="variable" ticker={definition.id.toUpperCase()} compact />
-                        ) : (
-                          <DataCardRenderer cardId={definition.id} />
-                        )}
-                      </CardDiscussionProvider>
+                      <MeasuredCardContent
+                        widgetId={widget.instanceId}
+                        enabled={widget.autoFit !== false && chatWidgetId !== widget.instanceId}
+                        minH={definition.minH * LEGACY_HEIGHT_SCALE}
+                        maxH={definition.defaultH * LEGACY_HEIGHT_SCALE}
+                        onFit={fitWidgetHeight}
+                      >
+                        <CardDiscussionProvider title={definition.title} open={() => setChatWidgetId(widget.instanceId)}>
+                          {chatWidgetId === widget.instanceId ? (
+                            <ForoActivo assetType="variable" ticker={definition.id.toUpperCase()} compact />
+                          ) : (
+                            <DataCardRenderer cardId={definition.id} />
+                          )}
+                        </CardDiscussionProvider>
+                      </MeasuredCardContent>
                     </div>
                   </div>
                 )
