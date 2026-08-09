@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     const data: DolarAPIResponse[] = await dolarApiRes.json()
     
     // Parse historical data for variation calculation
-    let previousRates: Record<string, { compra: number; venta: number }> = {}
+    const previousRates: Record<string, { compra: number; venta: number }> = {}
     if (bluelyticsRes.ok) {
       const evolution: BluelyticsEvolution[] = await bluelyticsRes.json()
       const today = new Date().toISOString().split('T')[0]

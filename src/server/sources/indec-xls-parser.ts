@@ -3,7 +3,7 @@
  * Descarga XLS en runtime, parsea en memoria, cachea 24h
  */
 
-const XLSX = require("xlsx")
+import * as XLSX from "xlsx"
 
 const _cache: Record<string, { data: unknown; expiry: number }> = {}
 

@@ -267,7 +267,7 @@ function SnapshotView({ bonds }: { bonds: SovereignBond[] }) {
       )}
 
       <div style={{ padding: "4px 8px", fontSize: 9, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
-        TIR: Newton-Raphson · Precios: api-merval (real-time) · Flujos: prospectos MECON
+        Métricas: backend de La Pizarra · Precios: API Merval / Rava · Flujos: prospectos MECON
       </div>
     </div>
   )
@@ -735,14 +735,7 @@ export function TabBonos() {
     setLoading(true)
     setLoadError(null)
     try {
-      const mervalSymbols = ["GD30D", "GD35D", "GD41D", "AL29D", "AL30D", "AL35D", "AE38D"]
-      const params = mervalSymbols.map((s) => `symbols=${s}:24hs`).join("&")
-      const mervalUrl = `https://api-merval-production.up.railway.app/v1/quotes/batch?${params}&depth=1`
-
-      const [bonosRes, mervalJson] = await Promise.all([
-        fetch("/api/bonos"),
-        fetch(mervalUrl).then((r) => r.json()).catch(() => null),
-      ])
+      const bonosRes = await fetch("/api/bonos")
 
       const bonosJson = bonosRes.ok ? await bonosRes.json() : { data: [], error: `bonos http ${bonosRes.status}` }
       const rawBonds: SovereignBond[] = bonosJson.data ?? []
@@ -751,21 +744,8 @@ export function TabBonos() {
         setLoadError(bonosJson.error ?? "no se pudieron cargar bonos")
       }
 
-      const changeMap = new Map<string, number | null>()
-      if (mervalJson?.quotes) {
-        for (const q of mervalJson.quotes) {
-          const sym = (q.symbol as string).replace(/D$/, "")
-          const md = q.marketData
-          const last = md?.LA?.price ? parseFloat(md.LA.price) : null
-          const close = md?.CL?.price ? parseFloat(md.CL.price) : null
-          const chg = last != null && close != null && close > 0 ? ((last - close) / close) * 100 : null
-          changeMap.set(sym, chg)
-        }
-      }
-
       setBonds(rawBonds.map((b) => ({
         ...b,
-        change1D: changeMap.get(b.ticker) ?? null,
         outstanding: OUTSTANDING[b.ticker],
       })))
     } catch {

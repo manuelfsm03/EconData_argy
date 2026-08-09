@@ -2,8 +2,14 @@
 
 Dashboard de datos económicos de Argentina en tiempo real, con estética Bloomberg terminal (dark mode). Construido con Next.js 14 + TypeScript + Recharts.
 
-**Deploy:** [econ-data-argy.vercel.app](https://econ-data-argy.vercel.app)
-**Rama de desarrollo activa:** `juan`
+**Producción:** [lapizarra.ar](https://lapizarra.ar)
+
+## Repositorio canónico y espejo
+
+- `manuelfsm03/EconData_argy` es la fuente canónica de producto.
+- `000gon/paneldecontrol` es un espejo operativo exacto de `EconData_argy/main` y alimenta el deploy de `lapizarra.ar`.
+- Las features se integran primero en el repositorio canónico. El workflow `sync-upstream.yml` replica después el mismo commit a `paneldecontrol/main`.
+- Una release no está completa hasta verificar igualdad de árbol entre ambos `main` y hacer smoke test de producción.
 
 ---
 

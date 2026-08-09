@@ -9,6 +9,8 @@ import {
 import { ForoActivo } from "./foro-activo"
 import { AssetScreener } from "./screener-activos"
 import { RateScreener } from "./screener-tasas"
+import { TabBonos } from "./tab-bonos"
+import { TabMundo } from "./tab-mundo"
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -38,10 +40,12 @@ function changeColor(v: number | null | undefined): string {
 const FIN_TABS = [
   { key: "acciones",   label: "Acciones",     icon: "▲" },
   { key: "bonos",      label: "Renta Fija",   icon: "§" },
+  { key: "bonos-avanzado", label: "Renta Fija +", icon: "§" },
   { key: "rofex",      label: "ROFEX",        icon: "⇄" },
   { key: "plazofijo",  label: "Plazo Fijo",   icon: "%" },
   { key: "commodities", label: "Commodities",    icon: "◈" },
   { key: "mundo",      label: "Mercados Mundo", icon: "⬡" },
+  { key: "mundo-avanzado", label: "Economía Mundial +", icon: "⬡" },
   { key: "crypto",     label: "Cripto",         icon: "₿" },
   { key: "screener",   label: "Screener",       icon: "⌕" },
   { key: "screener-tasas", label: "Screener Tasas", icon: "%" },
@@ -1740,10 +1744,12 @@ export function TabFinanzas({ initialSubtab }: { initialSubtab?: string | null }
       <SubTabs active={activeTab} onChange={setActiveTab} />
       {activeTab === "acciones"  && <AccionesView />}
       {activeTab === "bonos"     && <BonosView />}
+      {activeTab === "bonos-avanzado" && <TabBonos />}
       {activeTab === "rofex"     && <RofexView />}
       {activeTab === "plazofijo" && <PlazoFijoView />}
       {activeTab === "commodities" && <CommoditiesView />}
       {activeTab === "mundo"      && <MundoView />}
+      {activeTab === "mundo-avanzado" && <TabMundo />}
       {activeTab === "crypto"    && <CryptoView />}
       {activeTab === "screener" && <AssetScreener />}
       {activeTab === "screener-tasas" && <RateScreener />}

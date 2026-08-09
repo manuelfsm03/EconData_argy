@@ -26,17 +26,21 @@ const MAIN_TABS: NavTab[] = [
   { key: "noticias", label: "Noticias", Icon: Newspaper        },
 ]
 
+function BCRAError() {
+  return (
+    <div style={{ padding: 40, textAlign: "center", fontFamily: "var(--font-data)", color: "var(--text-mute)", fontSize: 11 }}>
+      BCRA — ERROR AL CARGAR
+    </div>
+  )
+}
+
 function TabBCRALazy({ initialSubtab }: { initialSubtab?: string | null }) {
   const [Component, setComponent] = useState<React.ComponentType<{ initialSubtab?: string | null }> | null>(null)
 
   useEffect(() => {
     import("./tab-bcra")
       .then((m) => setComponent(() => m.TabBCRA))
-      .catch(() => setComponent(() => () => (
-        <div style={{ padding: 40, textAlign: "center", fontFamily: "var(--font-data)", color: "var(--text-mute)", fontSize: 11 }}>
-          BCRA — ERROR AL CARGAR
-        </div>
-      )))
+      .catch(() => setComponent(() => BCRAError))
   }, [])
 
   if (!Component) return (

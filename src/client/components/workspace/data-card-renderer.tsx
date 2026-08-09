@@ -41,6 +41,8 @@ import { NewsFeed } from "@/client/components/dashboard/news-feed"
 import { DATA_CARD_BY_ID } from "@/lib/card-catalog"
 import { AssetScreener } from "@/client/components/dashboard/screener-activos"
 import { RateScreener } from "@/client/components/dashboard/screener-tasas"
+import { TabBonos } from "@/client/components/dashboard/tab-bonos"
+import { TabMundo } from "@/client/components/dashboard/tab-mundo"
 
 const noopNavigate = () => {}
 
@@ -52,10 +54,12 @@ const CARD_COMPONENTS: Record<string, React.ComponentType> = {
   "resumen-noticias": () => <HeadlinesBlock onNavigate={noopNavigate} />,
   acciones: AccionesView,
   bonos: BonosView,
+  "renta-fija-avanzada": TabBonos,
   rofex: RofexView,
   "plazo-fijo-mercado": FinanzasPlazoFijoView,
   commodities: CommoditiesView,
   "mercados-mundo": MundoView,
+  "mundo-avanzado": TabMundo,
   cripto: CryptoView,
   "screener-activos": AssetScreener,
   "screener-tasas": RateScreener,

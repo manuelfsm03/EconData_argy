@@ -429,7 +429,7 @@ function IAView() {
                 </tr>
               </thead>
               <tbody>
-                {(data as Array<any>).map((model, idx) => (
+                {(data as Array<{ model: string; company: string; mmlu: number; humaneval: number; gsm8k: number; math: number }>).map((model, idx) => (
                   <tr key={idx} style={{ borderBottom: "1px solid var(--bg-elev-2)" }}>
                     <td style={{ padding: "6px 8px" }}>{model.model}</td>
                     <td style={{ textAlign: "center", padding: "6px 8px", fontSize: 8, color: "var(--text-dim)" }}>{model.company}</td>
@@ -462,7 +462,7 @@ function IAView() {
             TOP MODELOS HUGGING FACE — Por descargas
           </div>
           <div style={{ padding: 8 }}>
-            {(data as Array<any>).map((model, idx) => (
+            {(data as Array<{ id: string; downloads: number; likes: number; tags?: string[] }>).map((model, idx) => (
               <div key={idx} style={{ padding: "8px", borderBottom: "1px solid var(--bg-elev-2)", fontSize: 9 }}>
                 <div style={{ color: "var(--amber)", fontWeight: 600, marginBottom: 2 }}>
                   #{idx + 1} {model.id}
@@ -483,7 +483,7 @@ function IAView() {
             ))}
           </div>
           <div style={{ padding: "4px 8px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)", background: "var(--bg-elev)" }}>
-            Fuente: Hugging Face Hub API · Datos: modelos con tag 'gpt' ordenados por descargas
+            Fuente: Hugging Face Hub API · Datos: modelos con tag &apos;gpt&apos; ordenados por descargas
           </div>
         </div>
       )}

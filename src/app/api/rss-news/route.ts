@@ -203,13 +203,13 @@ function extractItems(xml: string, feed: RSSFeed): RSSItem[] {
 }
 
 // Cache por instancia (secundario — el CDN de Vercel es la capa primaria)
-let _cache: { items: RSSItem[]; ts: number } | null = null
+let _cache: { items: RSSItem[]; ts: number; v: number } | null = null
 // Versión del cache — cambiar para forzar invalidación
 const CACHE_VERSION = 4
 const INSTANCE_TTL = 5 * 60 * 1000
 
 export async function GET() {
-  if (_cache && Date.now() - _cache.ts < INSTANCE_TTL && ((_cache as any).v === CACHE_VERSION)) {
+  if (_cache && Date.now() - _cache.ts < INSTANCE_TTL && _cache.v === CACHE_VERSION) {
     return NextResponse.json(_cache.items, {
       headers: { "Cache-Control": "public, s-maxage=900, stale-while-revalidate=900" },
     })
@@ -235,7 +235,7 @@ export async function GET() {
   )
 
   allItems.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime())
-  _cache = { items: allItems, ts: Date.now(), v: CACHE_VERSION } as any
+  _cache = { items: allItems, ts: Date.now(), v: CACHE_VERSION }
 
   return NextResponse.json(allItems, {
     headers: { "Cache-Control": "public, s-maxage=900, stale-while-revalidate=900" },

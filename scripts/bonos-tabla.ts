@@ -16,7 +16,7 @@
  */
 
 import { metricasDeMercado, metricasDevengadas } from "../src/lib/bond-math"
-import { PRECIOS, antiguedadEnDias, estaVigente, precioDe } from "../src/lib/bond-prices"
+import { antiguedadEnDias, estaVigente, precioDe } from "../src/lib/bond-prices"
 import { ESQUEMAS, construirCashflows, totalAmortizado, validarEsquema } from "../src/lib/bond-schedule"
 import { aISO, fechaUTC, siguienteDiaHabil } from "../src/lib/market-calendar"
 
