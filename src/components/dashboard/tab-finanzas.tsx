@@ -1206,21 +1206,10 @@ function MundoView() {
       .then(j => setSnap(j.data ?? {}))
       .finally(() => setLoading(false))
 
-    // US Treasury yield curve — Treasury.gov CSV
-    const year = new Date().getFullYear()
-    fetch(`https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/${year}/all?type=daily_treasury_yield_curve&field_tdr_date_value=${year}&csv=true`)
-      .then(r => r.text())
-      .then(csv => {
-        const lines = csv.trim().split("\n")
-        if (lines.length < 2) return
-        const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, ""))
-        const lastLine = lines[lines.length - 1].split(",").map(v => v.trim().replace(/"/g, ""))
-        const row: Record<string, string> = {}
-        headers.forEach((h, i) => { row[h] = lastLine[i] })
-        const curve = UST_CURVE_MATURITIES.map(m => {
-          const val = parseFloat(row[m.field] ?? "")
-          return { label: m.label, yield: isNaN(val) ? 0 : val }
-        }).filter(p => p.yield > 0)
+    fetch("/api/ust-curve")
+      .then(r => r.json())
+      .then(j => {
+        const curve = (j.curve ?? []).filter((p: { yield: number | null }) => p.yield != null && p.yield > 0)
         if (curve.length >= 4) setUstCurve(curve)
       })
       .catch(() => {})
@@ -1393,16 +1382,12 @@ function CryptoView() {
       .then(j => setSnap(j.data ?? {}))
       .finally(() => setLoading(false))
 
-    // CoinGecko global — dominancia BTC
-    fetch("https://api.coingecko.com/api/v3/global")
+    fetch("/api/cripto")
       .then(r => r.json())
-      .then(j => setDominance(j?.data?.market_cap_percentage?.btc ?? null))
-      .catch(() => {})
-
-    // CriptoYa — USDT/ARS por exchange
-    fetch("https://criptoya.com/api/USDT/ARS/0.1")
-      .then(r => r.json())
-      .then(j => setUsdtArs(j))
+      .then(j => {
+        if (j.btc_dominance != null) setDominance(j.btc_dominance)
+        if (j.usdt_ars != null) setUsdtArs(j.usdt_ars)
+      })
       .catch(() => {})
   }, [])
 
