@@ -1,3 +1,6 @@
+@import "tailwindcss";
+@import "react-grid-layout/css/styles.css";
+
 :root,
 [data-theme="dark"] {
   --bg:          #121214;
@@ -155,3 +158,15 @@ td.num, th.num { text-align: right; }
 .status-dot.running { background: var(--amber); animation: pulse-slow 1s infinite; }
 
 ::selection { background: var(--amber); color: var(--bg); }
+
+.react-grid-item.react-grid-placeholder {
+  background: var(--amber);
+  border-radius: 10px;
+  opacity: 0.12;
+}
+
+.react-grid-item > .react-resizable-handle::after {
+  border-color: var(--amber);
+  height: 8px;
+  width: 8px;
+}

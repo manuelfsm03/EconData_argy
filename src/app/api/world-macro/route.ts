@@ -47,7 +47,8 @@ async function fetchWBIndicator(code: string): Promise<Record<string, [string, n
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": "PanelDeControl/2.0" },
-      signal: AbortSignal.timeout(15000),
+      // Mantenerse por debajo del timeout del health monitor y de Vercel Hobby.
+      signal: AbortSignal.timeout(7000),
     })
     if (!res.ok) throw new Error(`World Bank API ${res.status}`)
 

@@ -84,6 +84,33 @@ const ALLOWED_DOMAINS = [
   "perfil.com",
 ]
 
+function isAllowedUrl(value: string): boolean {
+  const parsed = new URL(value)
+  return parsed.protocol === "https:" && ALLOWED_DOMAINS.some(
+    domain => parsed.hostname === domain || parsed.hostname.endsWith(`.${domain}`)
+  )
+}
+
+async function fetchAllowedFeed(initialUrl: string): Promise<Response> {
+  let currentUrl = initialUrl
+  for (let redirects = 0; redirects <= 3; redirects += 1) {
+    if (!isAllowedUrl(currentUrl)) throw new Error("Domain not allowed")
+    const response = await fetch(currentUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; PanelDeControl/1.0; +https://terminal.solulith.com)",
+        Accept: "application/rss+xml, application/xml, text/xml, application/atom+xml",
+      },
+      redirect: "manual",
+      signal: AbortSignal.timeout(8000),
+    })
+    if (response.status < 300 || response.status >= 400) return response
+    const location = response.headers.get("location")
+    if (!location) throw new Error("Redirect without location")
+    currentUrl = new URL(location, currentUrl).toString()
+  }
+  throw new Error("Too many redirects")
+}
+
 export async function GET(request: NextRequest) {
   const url = request.nextUrl.searchParams.get("url")
 
@@ -93,9 +120,7 @@ export async function GET(request: NextRequest) {
 
   // Validate domain
   try {
-    const parsedUrl = new URL(url)
-    const isAllowed = ALLOWED_DOMAINS.some(domain => parsedUrl.hostname.includes(domain))
-    if (!isAllowed) {
+    if (!isAllowedUrl(url)) {
       return NextResponse.json({ error: "Domain not allowed" }, { status: 403 })
     }
   } catch {
@@ -103,13 +128,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; PanelDeControl/1.0; +https://terminal.solulith.com)",
-        Accept: "application/rss+xml, application/xml, text/xml, application/atom+xml",
-      },
-      signal: AbortSignal.timeout(8000),
-    })
+    const response = await fetchAllowedFeed(url)
 
     if (!response.ok) {
       return NextResponse.json({ error: `Feed returned ${response.status}` }, { status: 502 })

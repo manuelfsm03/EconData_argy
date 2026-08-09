@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -298,4 +298,23 @@ model BCRAMonetaryData {
 
   @@unique([date])
   @@map("bcra_monetary_data")
+}
+
+// ─── Foro por Activo ───────────────────────────────────────────────────────
+
+// Post de foro — un hilo cronológico único por (assetType, assetTicker).
+// No hay modelo ForumThread: el "thread" es implícito, derivado de assetType+assetTicker.
+model ForumPost {
+  id          String      @id @default(cuid())
+  assetType   String      @map("asset_type")   // "accion" | "bono" | "cap"
+  assetTicker String      @map("asset_ticker") // ej. GGAL, AL29 — siempre uppercase
+  authorName  String      @map("author_name")  // texto libre, sin cuenta
+  content     String                           // texto plano, max 2000 chars (validado en API)
+  parentId    String?     @map("parent_id")    // quote/reply opcional a otro post
+  parent      ForumPost?  @relation("PostReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies     ForumPost[] @relation("PostReplies")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  @@index([assetType, assetTicker, createdAt])
+  @@map("asset_forum_posts")
 }

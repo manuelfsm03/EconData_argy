@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { bcraOfficialApi } from "@/lib/bcra-official-api"
+import { bcraOfficialApi } from "@/server/sources/bcra-official-api"
 
 // ── Cache en memoria ──────────────────────────────────────────────────────────
 const cache = new Map<string, { data: unknown; expiry: number }>()

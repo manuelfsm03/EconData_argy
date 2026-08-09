@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
-import { runAllScrapers } from "@/scrapers"
+import { runAllScrapers } from "@/server/scrapers"
 
 // This endpoint is designed to be called by Vercel Cron
 // Configure in vercel.json to run at 17:00 Argentina time (20:00 UTC)
 
-export async function GET(request: NextRequest) {
-  // Verify the request is from Vercel Cron (optional but recommended)
-  const authHeader = request.headers.get("authorization")
+function authorized(request: NextRequest): boolean {
+  const secret = process.env.CRON_SECRET
+  if (!secret) return false
+  return request.headers.get("authorization") === `Bearer ${secret}`
+}
 
-  // In production, you might want to verify the cron secret
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    // Allow in development or if no secret is set
-    if (process.env.NODE_ENV === "production" && process.env.CRON_SECRET) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+export async function GET(request: NextRequest) {
+  if (!authorized(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   console.log("Starting scheduled scrape at", new Date().toISOString())

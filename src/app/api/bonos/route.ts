@@ -8,8 +8,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { BOND_DEFS, CAP_INSTRUMENT_DEFS, type BondDef } from "@/lib/bonds-data"
+import { prisma } from "@/server/db/prisma"
+import { BOND_DEFS, CAP_INSTRUMENT_DEFS, type BondDef } from "@/server/domain/bonds-data"
+import { metricasDeMercado, metricasDevengadas } from "@/lib/bond-math"
+import { construirCashflows, GD30 } from "@/lib/bond-schedule"
+import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
 
 type Cashflow = { fechaPago: Date; cupon: number; amortizacion: number; flujoTotal: number }
 
@@ -132,6 +135,52 @@ async function fetchCclReference(): Promise<number | null> {
   } catch {
     return null
   }
+}
+
+interface MervalBondQuote {
+  precio: number | null
+  change1D: number | null
+}
+
+async function fetchMervalBondQuotes(tickers: string[]): Promise<Map<string, MervalBondQuote>> {
+  const quotes = new Map<string, MervalBondQuote>()
+  if (tickers.length === 0) return quotes
+
+  try {
+    const params = new URLSearchParams({ depth: "1" })
+    for (const ticker of tickers) params.append("symbols", `${ticker}D:24hs`)
+    const response = await fetch(`https://api-merval-production.up.railway.app/v1/quotes/batch?${params}`, {
+      headers: RAVA_HEADERS,
+      signal: AbortSignal.timeout(8000),
+      next: { revalidate: 60 },
+    })
+    if (!response.ok) return quotes
+
+    const payload = await response.json() as {
+      quotes?: Array<{
+        symbol?: string
+        marketData?: { LA?: { price?: string | null }; CL?: { price?: string | null } }
+      }>
+    }
+    for (const quote of payload.quotes ?? []) {
+      const ticker = quote.symbol?.replace(/D$/, "")
+      if (!ticker) continue
+      const precio = Number(quote.marketData?.LA?.price)
+      const cierre = Number(quote.marketData?.CL?.price)
+      const precioValido = Number.isFinite(precio) && precio > 0 ? precio : null
+      const cierreValido = Number.isFinite(cierre) && cierre > 0 ? cierre : null
+      quotes.set(ticker, {
+        precio: precioValido,
+        change1D: precioValido != null && cierreValido != null
+          ? ((precioValido - cierreValido) / cierreValido) * 100
+          : null,
+      })
+    }
+  } catch {
+    // La ruta conserva Rava y metadata estática como fallbacks.
+  }
+
+  return quotes
 }
 
 function staticBondToRuntime(bond: BondDef): BondLike {
@@ -296,7 +345,10 @@ export async function GET(request: NextRequest) {
 
   try {
     const { bonds, sourceMode } = await loadRuntimeBonds(tickerParam)
-    const cclReference = await fetchCclReference()
+    const [cclReference, mervalQuotes] = await Promise.all([
+      fetchCclReference(),
+      fetchMervalBondQuotes(bonds.map((bond) => bond.ticker)),
+    ])
 
     if (bonds.length === 0) {
       return NextResponse.json(
@@ -306,27 +358,55 @@ export async function GET(request: NextRequest) {
     }
 
     const hoy = new Date()
+    const liquidacion = siguienteDiaHabil(fechaUTC(hoy.toISOString().slice(0, 10)))
     const screener = await Promise.all(
       bonds.map(async (bond) => {
-        const flujosFF = bond.cashflows.filter((cf) => cf.fechaPago > hoy)
+        const esquemaVerificado = bond.ticker === GD30.ticker ? GD30 : null
+        const cashflowsVerificados = esquemaVerificado ? construirCashflows(esquemaVerificado) : null
+        const devengadas = cashflowsVerificados
+          ? metricasDevengadas(cashflowsVerificados, liquidacion)
+          : null
+        const flujosFF = cashflowsVerificados
+          ? cashflowsVerificados
+              .filter((cf) => cf.fechaDevengamiento > liquidacion)
+              .map((cf) => ({
+                fechaPago: cf.fechaPago,
+                cupon: cf.cupon,
+                amortizacion: cf.amortizacion,
+                flujoTotal: cf.cupon + cf.amortizacion,
+              }))
+          : bond.cashflows.filter((cf) => cf.fechaPago > hoy)
 
         let precio = bond.precio
-        let fuente = precio ? "db" : "rava"
+        let fuente = precio ? "db" : "api_merval"
         if (!precio) {
-          const scraped = await scrapePrecioRava(bond.ticker)
-          const precioNominal = scraped.precio
-          const precioDolarizado = scraped.precioCci ?? (precioNominal && cclReference ? precioNominal / cclReference : precioNominal)
-          precio = precioDolarizado && precioDolarizado > 1000 && cclReference ? precioDolarizado / cclReference : precioDolarizado
-          fuente = precio ? "rava" : sourceMode.includes("fallback") ? "fallback_sin_precio" : "db_sin_precio"
+          precio = mervalQuotes.get(bond.ticker)?.precio ?? null
+          if (!precio) {
+            const scraped = await scrapePrecioRava(bond.ticker)
+            const precioNominal = scraped.precio
+            const precioDolarizado = scraped.precioCci ?? (precioNominal && cclReference ? precioNominal / cclReference : precioNominal)
+            precio = precioDolarizado && precioDolarizado > 1000 && cclReference ? precioDolarizado / cclReference : precioDolarizado
+            fuente = precio ? "rava" : sourceMode.includes("fallback") ? "fallback_sin_precio" : "db_sin_precio"
+          }
         }
 
-        const vnResidual = flujosFF.reduce((sum, cf) => sum + cf.amortizacion, 0)
-        const paridad = vnResidual > 0 && precio ? (precio / vnResidual) * 100 : null
-        const currentYield = precio && precio > 0 ? (bond.cupon / precio) * 100 : null
+        const vnResidual = devengadas?.valorResidual ?? flujosFF.reduce((sum, cf) => sum + cf.amortizacion, 0)
+        let paridad = vnResidual > 0 && precio ? (precio / vnResidual) * 100 : null
+        let currentYield = precio && precio > 0 ? (bond.cupon / precio) * 100 : null
 
         let tir: number | null = null
         let durationMod: number | null = null
-        if (precio && flujosFF.length > 0) {
+        let precioDirty: number | null = null
+        if (precio && cashflowsVerificados && devengadas) {
+          // Las cotizaciones de mercado se tratan como clean; el motor verificado
+          // suma los intereses corridos para descontar contra precio dirty.
+          precioDirty = precio + devengadas.interesesCorridos
+          const mercado = metricasDeMercado(precioDirty, cashflowsVerificados, liquidacion)
+          tir = mercado?.tir ?? null
+          durationMod = mercado?.durationMod ?? null
+          paridad = mercado?.paridad ?? null
+          currentYield = mercado?.currentYield ?? null
+        } else if (precio && flujosFF.length > 0) {
           tir = calcularTIR(precio, flujosFF)
           if (tir !== null) durationMod = calcularDuration(precio, flujosFF, tir)
         }
@@ -349,14 +429,25 @@ export async function GET(request: NextRequest) {
           ticker: bond.ticker,
           nombre: bond.nombre,
           ley: bond.ley,
-          cupon: bond.cupon,
+          cupon: devengadas ? Number((devengadas.tasaVigente * 100).toFixed(4)) : bond.cupon,
           vencimiento: bond.vencimiento.toISOString().split("T")[0],
           precio: precio ? Number(precio.toFixed(2)) : null,
-          paridad: paridad ? Number(paridad.toFixed(2)) : null,
-          tir: tir ? Number(tir.toFixed(2)) : null,
-          currentYield: currentYield ? Number(currentYield.toFixed(2)) : null,
-          durationMod: durationMod ? Number(durationMod.toFixed(2)) : null,
+          precioDirty: precioDirty != null ? Number(precioDirty.toFixed(4)) : null,
+          paridad: paridad != null ? Number(paridad.toFixed(2)) : null,
+          tir: tir != null ? Number(tir.toFixed(2)) : null,
+          currentYield: currentYield != null ? Number(currentYield.toFixed(2)) : null,
+          durationMod: durationMod != null ? Number(durationMod.toFixed(2)) : null,
           vnResidual: Number(vnResidual.toFixed(4)),
+          interesesCorridos: devengadas ? Number(devengadas.interesesCorridos.toFixed(4)) : null,
+          valorTecnico: devengadas ? Number(devengadas.valorTecnico.toFixed(4)) : null,
+          proximoPago: devengadas?.proximoPago.toISOString().split("T")[0] ?? null,
+          vidaPromedio: devengadas ? Number(devengadas.vidaPromedio.toFixed(4)) : null,
+          plazoResidual: devengadas ? Number(devengadas.plazoResidual.toFixed(4)) : null,
+          calculationModel: esquemaVerificado ? "excel_parity_verified" : "legacy_unverified_schedule",
+          dataQuality: esquemaVerificado
+            ? "prospectus_schedule_verified"
+            : "legacy_schedule_pending_source_verification",
+          change1D: mervalQuotes.get(bond.ticker)?.change1D ?? null,
           flujosFF: tickerParam
             ? flujosFF.map((cf) => ({
                 fecha: cf.fechaPago.toISOString().split("T")[0],
@@ -378,7 +469,7 @@ export async function GET(request: NextRequest) {
       count: screener.length,
       updated_at: new Date().toISOString(),
       source: sourceMode,
-      nota: "si prisma no está disponible, la vista usa metadata embebida + scraping público de rava",
+      nota: "GD30 usa el motor verificado contra la planilla; los demás bonos conservan el cálculo legado y se marcan como pendientes de validar contra fuente primaria",
     })
   } catch (error) {
     console.error("[/api/bonos]", error)

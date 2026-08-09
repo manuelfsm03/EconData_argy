@@ -10,6 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
+import { parseFirstProbability, parseVolumeString } from "@/server/sources/polymarket-parser"
 
 // Cache en memoria
 const _cache: Record<string, { data: unknown; expiry: number }> = {}
@@ -22,6 +23,16 @@ function getCache<T>(key: string): T | null {
 
 function setCache(key: string, data: unknown, ttlSec: number) {
   _cache[key] = { data, expiry: Date.now() + ttlSec * 1000 }
+}
+
+interface PolymarketSummary {
+  question: string
+  slug: string
+  probability: number
+  volume24h: number
+  liquidity: number
+  category: string
+  endDate: string
 }
 
 // Mapeo de categorías para filtrar
@@ -42,31 +53,12 @@ function categorizeMarket(question: string): string {
   return "other"
 }
 
-function parseVolumeString(volumeStr: string): number {
-  if (!volumeStr) return 0
-  const match = volumeStr.match(/\$([\d.]+)([KMB]?)/)
-  if (!match) return 0
-  const num = parseFloat(match[1])
-  const multiplier: Record<string, number> = { K: 1000, M: 1_000_000, B: 1_000_000_000 }
-  return num * (multiplier[match[2]] || 1)
-}
-
 async function fetchPolymarketMarkets(
   category: string
-): Promise<
-  Array<{
-    question: string
-    slug: string
-    probability: number
-    volume24h: number
-    liquidity: number
-    category: string
-    endDate: string
-  }>
-> {
+): Promise<PolymarketSummary[]> {
   const cacheKey = `polymarket_${category}`
   const cached = getCache(cacheKey)
-  if (cached) return cached as Array<any>
+  if (cached) return cached as PolymarketSummary[]
 
   try {
     // Para Argentina, usar búsqueda específica
@@ -85,9 +77,9 @@ async function fetchPolymarketMarkets(
     const allMarkets = (await res.json()) as Array<{
       question: string
       slug: string
-      outcomePrices?: number[]
-      volume24hr?: string
-      liquidity?: string
+      outcomePrices?: string | Array<string | number>
+      volume24hr?: string | number
+      liquidity?: string | number
       endDate?: string
     }>
 
@@ -95,13 +87,13 @@ async function fetchPolymarketMarkets(
     const filtered = allMarkets
       .map((m) => {
         const cat = categorizeMarket(m.question)
-        const prob = m.outcomePrices?.[0] != null ? Math.round(m.outcomePrices[0] * 100) : 50
+        const prob = parseFirstProbability(m.outcomePrices)
         return {
           question: m.question,
           slug: m.slug || "",
           probability: prob,
-          volume24h: parseVolumeString(m.volume24hr || "$0"),
-          liquidity: parseVolumeString(m.liquidity || "$0"),
+          volume24h: parseVolumeString(m.volume24hr),
+          liquidity: parseVolumeString(m.liquidity),
           category: cat,
           endDate: m.endDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
         }
