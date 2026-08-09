@@ -1070,6 +1070,10 @@ function TasasView() {
 export function TabBCRA({ initialSubtab }: { initialSubtab?: string | null }) {
   const [activeTab, setActiveTab] = useState(initialSubtab ?? "plazofijo")
 
+  useEffect(() => {
+    if (initialSubtab) setActiveTab(initialSubtab)
+  }, [initialSubtab])
+
   return (
     <div>
       {/* Header */}

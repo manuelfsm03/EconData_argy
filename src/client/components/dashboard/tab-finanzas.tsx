@@ -1727,6 +1727,10 @@ function CryptoView() {
 export function TabFinanzas({ initialSubtab }: { initialSubtab?: string | null }) {
   const [activeTab, setActiveTab] = useState(initialSubtab ?? "acciones")
 
+  useEffect(() => {
+    if (initialSubtab) setActiveTab(initialSubtab)
+  }, [initialSubtab])
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       <SubTabs active={activeTab} onChange={setActiveTab} />

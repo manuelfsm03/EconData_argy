@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { DATA_CARD_CATALOG } from "@/lib/card-catalog"
 
 export interface SearchItem {
   label: string
@@ -9,29 +10,12 @@ export interface SearchItem {
   description?: string
 }
 
-const SEARCH_INDEX: SearchItem[] = [
-  // Macro
-  { label: "EMAE — Actividad Económica",       tab: "macro",    subtab: "emae",        description: "Estimador Mensual de Actividad Económica" },
-  { label: "IPC — Inflación",                  tab: "macro",    subtab: "ipc",         description: "Índice de Precios al Consumidor" },
-  { label: "Balanza Comercial",                tab: "macro",    subtab: "balanza",     description: "Exportaciones, importaciones y saldo" },
-  { label: "Resultado Fiscal",                 tab: "macro",    subtab: "fiscal",      description: "Superávit/déficit primario y financiero" },
-  { label: "Desigualdad — Gini / PBI",         tab: "macro",    subtab: "desigualdad", description: "Coeficiente Gini y distribución del ingreso" },
-  { label: "Pirámides Poblacionales",          tab: "macro",    subtab: "piramides",   description: "Pirámide poblacional Argentina + proyecciones" },
-  { label: "Tipo de Cambio Real (ITCRM)",      tab: "macro",    subtab: "tcr",         description: "Índice de Tipo de Cambio Real Multilateral" },
-  { label: "Big Mac Index",                    tab: "macro",    subtab: "bigmac",      description: "Paridad del poder adquisitivo via hamburguesas" },
-  { label: "Riesgo País (EMBI+)",              tab: "macro",    subtab: "riesgo",      description: "Spread soberano Argentina vs Treasury" },
-  { label: "Deuda Pública",                    tab: "macro",    subtab: "deuda",       description: "Stock, composición y perfil de vencimientos" },
-  // BCRA
-  { label: "Plazo Fijo — Tasas",               tab: "bcra",     subtab: "plazofijo",   description: "BADLAR, TM20, Tasa PM, plazo fijo UVA" },
-  { label: "Agregados Monetarios",             tab: "bcra",     subtab: "agregados",   description: "Base monetaria, M1, M2, depósitos" },
-  { label: "Reservas Internacionales",         tab: "bcra",     subtab: "reservas",    description: "Reservas brutas y netas (metodología F. Machado)" },
-  { label: "Reservas Netas (Fede Machado)",    tab: "bcra",     subtab: "reservas",    description: "Cálculo de reservas netas descontando pasivos" },
-  { label: "Compras y Ventas BCRA",            tab: "bcra",     subtab: "compras",     description: "Posición compradora/vendedora en el MULC" },
-  // Noticias
-  { label: "Noticias Locales",                 tab: "noticias", subtab: null,          description: "RSS: Ámbito, Infobae, Cronista, La Nación" },
-  { label: "Noticias Internacionales",         tab: "noticias", subtab: null,          description: "RSS: WSJ, FT, BBC, Guardian, DW, Al Jazeera" },
-  { label: "EN VIVO — Canales",                tab: "noticias", subtab: null,          description: "C5N, DW News, BBC News, Euronews" },
-]
+const SEARCH_INDEX: SearchItem[] = DATA_CARD_CATALOG.map((item) => ({
+  label: item.title,
+  tab: item.tab,
+  subtab: item.subtab,
+  description: item.description,
+}))
 
 interface CommandPaletteProps {
   isOpen: boolean

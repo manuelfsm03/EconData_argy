@@ -4574,6 +4574,10 @@ const MACRO_TABS = [
 export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
   const [activeTab, setActiveTab] = useState(initialSubtab ?? "emae")
 
+  useEffect(() => {
+    if (initialSubtab) setActiveTab(initialSubtab)
+  }, [initialSubtab])
+
   return (
     <div>
       <SubTabs tabs={MACRO_TABS} active={activeTab} onChange={setActiveTab} />

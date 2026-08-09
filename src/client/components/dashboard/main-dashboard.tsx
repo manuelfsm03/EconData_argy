@@ -49,10 +49,11 @@ function TabBCRALazy({ initialSubtab }: { initialSubtab?: string | null }) {
 
 function TabNoticias() { return <NewsFeed /> }
 
-export function Dashboard() {
-  const [activeTab, setActiveTab] = useState("macro")
-  const [macroSubtab, setMacroSubtab] = useState<string | null>(null)
-  const [bcraSubtab, setBcraSubtab]   = useState<string | null>(null)
+export function Dashboard({ initialTab = "macro", initialSubtab = null, embedded = false }: { initialTab?: string; initialSubtab?: string | null; embedded?: boolean }) {
+  const [activeTab, setActiveTab] = useState(initialTab)
+  const [macroSubtab, setMacroSubtab] = useState<string | null>(initialTab === "macro" ? initialSubtab : null)
+  const [financeSubtab, setFinanceSubtab] = useState<string | null>(initialTab === "finanzas" ? initialSubtab : null)
+  const [bcraSubtab, setBcraSubtab] = useState<string | null>(initialTab === "bcra" ? initialSubtab : null)
   const [searchOpen, setSearchOpen] = useState(false)
   const macroRef = useRef<{ setSubtab?: (s: string) => void }>({})
 
@@ -70,9 +71,18 @@ export function Dashboard() {
     return () => window.removeEventListener("keydown", handler)
   }, [])
 
+  useEffect(() => {
+    setActiveTab(initialTab)
+    setMacroSubtab(initialTab === "macro" ? initialSubtab : null)
+    setFinanceSubtab(initialTab === "finanzas" ? initialSubtab : null)
+    setBcraSubtab(initialTab === "bcra" ? initialSubtab : null)
+  }, [initialSubtab, initialTab])
+
   const handleNavigate = useCallback((tab: string, subtab?: string | null, bcra?: string | null) => {
     setActiveTab(tab)
-    setMacroSubtab(subtab ?? null)
+    if (tab === "macro") setMacroSubtab(subtab ?? null)
+    if (tab === "finanzas") setFinanceSubtab(subtab ?? null)
+    if (tab === "bcra") setBcraSubtab(subtab ?? null)
     if (bcra !== undefined) setBcraSubtab(bcra)
   }, [])
 
@@ -90,7 +100,7 @@ export function Dashboard() {
         borderBottom: "1px solid var(--border)",
         height: 56, display: "flex", alignItems: "center",
         padding: "0 24px", gap: 24,
-        position: "sticky", top: 0, zIndex: 50,
+        position: "sticky", top: embedded ? 48 : 0, zIndex: 50,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           <div style={{
@@ -170,7 +180,7 @@ export function Dashboard() {
 
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 8px" }}>
         {activeTab === "resumen"   && <TabResumen onNavigate={handleNavigate} />}
-        {activeTab === "finanzas"  && <TabFinanzas />}
+        {activeTab === "finanzas"  && <TabFinanzas initialSubtab={financeSubtab} />}
         {activeTab === "macro"     && <TabMacro initialSubtab={macroSubtab} />}
         {activeTab === "bcra"      && <TabBCRALazy initialSubtab={bcraSubtab} />}
         {activeTab === "noticias"  && <TabNoticias />}
