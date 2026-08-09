@@ -8,6 +8,7 @@
  * Endpoints:
  *   GET /api/macro?endpoint=emae      — EMAE + variaciones
  *   GET /api/macro?endpoint=ipc       — IPC nacional + componentes
+ *   GET /api/macro?endpoint=ipc_divisiones — IPC nacional por las 12 divisiones INDEC
  *   GET /api/macro?endpoint=ipi       — IPI manufacturero + ISAC
  *   GET /api/macro?endpoint=balanza   — Balanza comercial
  *   GET /api/macro?endpoint=fiscal    — Resultado fiscal + recaudación
@@ -45,7 +46,7 @@ const SERIES_IDS: Record<string, string> = {
   isac: "33.2_ISAC_NIVELRAL_0_M_18_63",
   // COMERCIO EXTERIOR
   exportaciones: "74.3_IET_0_M_16",
-  importaciones: "74.3_IIR_0_M_23",
+  importaciones: "74.3_IIT_0_M_25", // ica_importaciones_TOTALES (antes _IIR = "resto", daba ~131M en vez de ~6800M). Verificado: expo - impo = saldo exacto.
   saldo_comercial: "74.3_ISC_0_M_19",
   // PRECIOS IPC (base dic 2016)
   ipc_general: "148.3_INIVELNAL_DICI_M_26",
@@ -82,6 +83,29 @@ const SERIES_IDS: Record<string, string> = {
   mortalidad_indec: "tmi_arg",                 // Tasa mortalidad infantil
   smvm:             "57.1_SMVMM_0_M_34",       // Salario Mínimo Vital y Móvil (mensual)
 }
+
+// ── IPC POR DIVISIÓN (INDEC — dataset 146.3, nivel nacional, base dic-2016) ───
+// Las 12 divisiones de la canasta del IPC Nacional. Son NIVELES de índice
+// (base dic-2016 = 100); la variación mensual/interanual se calcula acá desde
+// los niveles (NUNCA se hardcodean valores de inflación — solo los IDs de serie,
+// que son config, igual que el resto de SERIES_IDS).
+// Escalable: para sumar/quitar una división, se edita solo esta lista.
+const IPC_DIVISIONES: { key: string; id: string; nombre: string }[] = [
+  { key: "ipc_div_alimentos",   id: "146.3_IALIMENNAL_DICI_M_45", nombre: "Alimentos y bebidas no alcohólicas" },
+  { key: "ipc_div_bebidas",     id: "146.3_IBEBIDANAL_DICI_M_39", nombre: "Bebidas alcohólicas y tabaco" },
+  { key: "ipc_div_prendas",     id: "146.3_IPRENDANAL_DICI_M_35", nombre: "Prendas de vestir y calzado" },
+  { key: "ipc_div_vivienda",    id: "146.3_IVIVIENNAL_DICI_M_52", nombre: "Vivienda, agua, electricidad, gas y otros combustibles" },
+  { key: "ipc_div_equipamiento",id: "146.3_IEQUIPANAL_DICI_M_46", nombre: "Equipamiento y mantenimiento del hogar" },
+  { key: "ipc_div_salud",       id: "146.3_ISALUDNAL_DICI_M_18",  nombre: "Salud" },
+  { key: "ipc_div_transporte",  id: "146.3_ITRANSPNAL_DICI_M_23", nombre: "Transporte" },
+  { key: "ipc_div_comunicacion",id: "146.3_ICOMUNINAL_DICI_M_27", nombre: "Comunicación" },
+  { key: "ipc_div_recreacion",  id: "146.3_IRECREANAL_DICI_M_31", nombre: "Recreación y cultura" },
+  { key: "ipc_div_educacion",   id: "146.3_IEDUCACNAL_DICI_M_22", nombre: "Educación" },
+  { key: "ipc_div_restaurantes",id: "146.3_IRESTAUNAL_DICI_M_33", nombre: "Restaurantes y hoteles" },
+  { key: "ipc_div_varios",      id: "146.3_IBIENESNAL_DICI_M_36", nombre: "Bienes y servicios varios" },
+]
+// Registramos los IDs en SERIES_IDS para poder reusar getMultiserie() y su cache.
+for (const d of IPC_DIVISIONES) SERIES_IDS[d.key] = d.id
 
 // In-memory cache
 const _cache: Record<string, { data: unknown; expiry: number }> = {}
@@ -687,8 +711,68 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // ── IPC POR DIVISIÓN (las 12 divisiones INDEC de la canasta) ─────────────
+    if (endpoint === "ipc_divisiones") {
+      const keys = IPC_DIVISIONES.map((d) => d.key)
+      // 24 meses: alcanza para variación mensual (2 puntos) e interanual (13)
+      const niveles = await getMultiserie(keys, 24)
+
+      // getMultiserie devuelve cada serie ordenada de más nueva a más vieja.
+      const divisiones = IPC_DIVISIONES.map((d) => {
+        const serie = niveles[d.key] ?? []            // [[fecha, nivel], ...] desc
+        const actual = serie[0]?.[1] ?? null           // nivel más reciente
+        const previo = serie[1]?.[1] ?? null           // mes anterior
+        const anioAtras = serie[12]?.[1] ?? null        // 12 meses atrás
+        const varMensual =
+          actual != null && previo ? parseFloat(((actual / previo - 1) * 100).toFixed(2)) : null
+        const varInteranual =
+          actual != null && anioAtras ? parseFloat(((actual / anioAtras - 1) * 100).toFixed(2)) : null
+        return {
+          key: d.key,
+          nombre: d.nombre,
+          data_date: serie[0]?.[0] ?? null,
+          nivel: actual,
+          var_mensual: varMensual,     // % (calculado desde niveles, no hardcodeado)
+          var_interanual: varInteranual,
+          serie,                        // niveles crudos por si el front los grafica
+        }
+      })
+
+      // Provenance honesto: si NINGUNA división trajo datos, marcamos error.
+      const conDatos = divisiones.filter((d) => d.var_mensual != null)
+      if (conDatos.length === 0) {
+        return NextResponse.json(
+          {
+            status: "error",
+            detalle: "fuente no conectada",
+            source: "apis.datos.gob.ar · INDEC IPC Nacional por división (dataset 146.3)",
+            fetched_at: new Date().toISOString(),
+            data_date: null,
+            divisiones: [],
+          },
+          { status: 502 },
+        )
+      }
+
+      // Fecha de dato = la más reciente entre las divisiones que trajeron datos.
+      const dataDate = conDatos
+        .map((d) => d.data_date as string)
+        .sort()
+        .at(-1) ?? null
+
+      return NextResponse.json({
+        status: "ok",
+        source: "apis.datos.gob.ar · INDEC — IPC Nacional por división (dataset 146.3, base dic-2016)",
+        fetched_at: new Date().toISOString(),
+        data_date: dataDate,
+        cantidad: divisiones.length,
+        divisiones,
+        nota: "Variaciones calculadas desde niveles de índice (base dic-2016). Sin valores hardcodeados.",
+      })
+    }
+
     return NextResponse.json(
-      { error: "endpoint no válido. Usar ?endpoint=emae|ipc|ipi|balanza|fiscal|fiscal_sankey|automotriz|patentamientos|ponderaciones" },
+      { error: "endpoint no válido. Usar ?endpoint=emae|ipc|ipc_divisiones|ipi|balanza|fiscal|fiscal_sankey|automotriz|patentamientos|ponderaciones" },
       { status: 400 },
     )
   } catch (error) {

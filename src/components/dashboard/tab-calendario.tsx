@@ -1,9 +1,12 @@
 /**
  * TabCalendario — Calendario de mercados (bonos, vencimientos, LECAPs, macro, Fed, earnings)
  *
- * Datos REALES: pagos de bonos, vencimientos y LECAPs derivados de src/lib/bonds-data.ts
- *   (BOND_DEFS.cashflows + BOND_DEFS.vencimiento + CAP_INSTRUMENT_DEFS.vencimiento),
- *   solo fechas FUTURAS desde HOY (2026-08-09).
+ * FECHAS (aproximadas): pagos de bonos, vencimientos y LECAPs derivados de src/lib/bonds-data.ts
+ *   (BOND_DEFS.cashflows + BOND_DEFS.vencimiento + CAP_INSTRUMENT_DEFS.vencimiento), solo futuras
+ *   desde HOY (2026-08-09). Son fechas de PROSPECTO: aproximadas (los soberanos HD suelen figurar
+ *   9-jul, feriado, y liquidar el día hábil siguiente).
+ * ⚠️ MONTOS NO VALIDADOS: los cupón%/amort% de bonds-data.ts tienen errores conocidos (Donna) y
+ *   NO se muestran como dato firme. Se validarán con el motor de bonos → futuro `bond-schedule.ts`.
  * Fuente NO conectada (sin fechas inventadas): macro AR (INDEC IPC/EMAE, BCRA REM, BCRA IPOM),
  *   licitaciones del Tesoro, FOMC (Fed) y earnings de empresas AR — capacidad ya visible en la UI.
  * Alarmas ("avisarme N días antes"): SOLO UI de preferencias (vista previa). La entrega
@@ -17,7 +20,8 @@ import { BOND_DEFS, CAP_INSTRUMENT_DEFS } from "@/lib/bonds-data"
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
 type TipoEvento = "bono" | "vencimiento" | "lecap" | "licitacion" | "macro" | "internacional" | "earnings"
-type Impacto = "alto" | "medio" | "bajo"
+// "pendiente" = impacto sin clasificar (montos de bono en revisión — no marcar ALTO por montos falsos)
+type Impacto = "alto" | "medio" | "bajo" | "pendiente"
 interface CalEvent {
   fecha: string
   tipo: TipoEvento
@@ -33,7 +37,12 @@ interface CalEvent {
 }
 
 // ── Constantes ──────────────────────────────────────────────────────────────
-const HOY = "2026-08-09"
+// HOY dinámico en zona horaria de Argentina (evita corrimientos cerca de medianoche
+// si el server corre en otro huso). en-CA formatea como YYYY-MM-DD.
+function hoyEnAR(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(now)
+}
+const HOY = hoyEnAR()
 
 const TIPO_META: Record<TipoEvento, { label: string; short: string; color: string; real: boolean }> = {
   bono:          { label: "Bono (pago)",   short: "BONO",  color: "var(--amber)",    real: true  },
@@ -108,26 +117,36 @@ const ASSET_META: Record<string, AssetMeta> = {
   CEPU: { nombre: "Central Puerto", clase: "Empresa AR · Energía", color: "var(--positive)", empresa: true },
 }
 
-// ── Derivación de eventos reales desde bonds-data.ts ─────────────────────────
-function fmtPct(n: number): string { return String(n) }
+// ── Derivación de eventos desde bonds-data.ts (FECHAS aprox.; montos NO validados) ──
 function derivarEventos(): CalEvent[] {
   const out: CalEvent[] = []
+  // ⚠️ HONESTIDAD DE DATOS — bonds-data.ts es el PROSPECTO:
+  //   • Las FECHAS sirven como aproximadas (los soberanos HD suelen figurar 9-jul, feriado, y
+  //     liquidar el día hábil siguiente), por eso estado = "fecha aprox.".
+  //   • Los MONTOS de cupón%/amort% tienen errores conocidos (Donna): NO se muestran como dato
+  //     firme y NO se usan para clasificar impacto (impacto de pago de bono = "pendiente").
+  //   👉 PUNTO DE CAMBIO: cuando exista `bond-schedule.ts` (motor de bonos de Donna, con cupón/
+  //      amort/fechas validados y liquidación en día hábil), reemplazar esta derivación por su
+  //      lectura → ahí sí: mostrar montos, clasificar impacto real y estado = "confirmado".
   for (const b of BOND_DEFS) {
     for (const cf of b.cashflows) {
       if (cf.fecha >= HOY) {
-        let detalle = `cupón ${fmtPct(cf.cupon)}%`
-        if (cf.amortizacion > 0) detalle += ` + amort ${fmtPct(cf.amortizacion)}%`
-        const impacto: Impacto = cf.amortizacion >= 10 ? "alto" : cf.amortizacion > 0 ? "medio" : "bajo"
-        out.push({ fecha: cf.fecha, tipo: "bono", pais: "AR", activo: b.ticker, titulo: `Pago ${b.ticker}`, detalle, fuente: "bonds-data.ts", impacto, estado: "confirmado", cupon: cf.cupon, amortizacion: cf.amortizacion })
+        out.push({
+          fecha: cf.fecha, tipo: "bono", pais: "AR", activo: b.ticker,
+          titulo: `Pago ${b.ticker}`, detalle: "cupón + amort. (montos sin validar)",
+          fuente: "bonds-data.ts (prospecto)", impacto: "pendiente", estado: "fecha aprox.",
+          // Montos del prospecto — NO validados; se guardan pero NO se renderizan como firmes.
+          cupon: cf.cupon, amortizacion: cf.amortizacion,
+        })
       }
     }
     if (b.vencimiento >= HOY) {
-      out.push({ fecha: b.vencimiento, tipo: "vencimiento", pais: "AR", activo: b.ticker, titulo: `Vencimiento ${b.ticker}`, detalle: "vencimiento final del bono", fuente: "bonds-data.ts", impacto: "alto", estado: "confirmado" })
+      out.push({ fecha: b.vencimiento, tipo: "vencimiento", pais: "AR", activo: b.ticker, titulo: `Vencimiento ${b.ticker}`, detalle: "vencimiento final del bono", fuente: "bonds-data.ts (prospecto)", impacto: "alto", estado: "fecha aprox." })
     }
   }
   for (const l of CAP_INSTRUMENT_DEFS) {
     if (l.vencimiento >= HOY) {
-      out.push({ fecha: l.vencimiento, tipo: "lecap", pais: "AR", activo: l.ticker, titulo: `Vencimiento LECAP ${l.ticker}`, detalle: `${l.tipo} — vencimiento`, fuente: "bonds-data.ts", impacto: "medio", estado: "confirmado" })
+      out.push({ fecha: l.vencimiento, tipo: "lecap", pais: "AR", activo: l.ticker, titulo: `Vencimiento LECAP ${l.ticker}`, detalle: `${l.tipo} — vencimiento`, fuente: "bonds-data.ts (prospecto)", impacto: "medio", estado: "fecha aprox." })
     }
   }
   out.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : a.activo < b.activo ? -1 : 1))
@@ -154,9 +173,9 @@ function relTexto(fecha: string): string {
 }
 function mix(color: string, pct: number): string { return `color-mix(in srgb, ${color} ${pct}%, transparent)` }
 function descEvento(ev: CalEvent): string {
-  if (ev.tipo === "bono") return `Pago de renta del bono ${ev.activo}: cobro de cupón de intereses${ev.amortizacion && ev.amortizacion > 0 ? " junto con una amortización parcial del capital" : ""}. Se acredita a los tenedores en la fecha efectiva.`
-  if (ev.tipo === "vencimiento") return `Vencimiento final del bono ${ev.activo}: se paga el capital remanente y el título deja de cotizar.`
-  if (ev.tipo === "lecap") return `Vencimiento de la letra capitalizable ${ev.activo}: al vencimiento se cobra el capital más los intereses capitalizados.`
+  if (ev.tipo === "bono") return `Pago de renta del bono ${ev.activo} (cupón y/o amortización). Los MONTOS están pendientes de validación (motor de bonos en revisión) y no se muestran como firmes. La fecha es aproximada del prospecto: los soberanos suelen figurar 9-jul (feriado) y liquidar el día hábil siguiente.`
+  if (ev.tipo === "vencimiento") return `Vencimiento final del bono ${ev.activo}: se paga el capital remanente y el título deja de cotizar. Fecha aproximada del prospecto (liquidación el día hábil siguiente).`
+  if (ev.tipo === "lecap") return `Vencimiento de la letra capitalizable ${ev.activo}: al vencimiento se cobra el capital más los intereses capitalizados. Fecha aproximada del prospecto.`
   return ev.detalle
 }
 
@@ -175,8 +194,9 @@ type Detail =
 
 // ── Sub-componentes de presentación ─────────────────────────────────────────
 function ImpactoBadge({ imp }: { imp: Impacto }) {
-  const c = imp === "alto" ? "var(--negative)" : imp === "medio" ? "var(--amber)" : "var(--text-dim)"
-  return <span style={{ fontSize: 8.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, padding: "2px 8px", borderRadius: 999, color: c, background: mix(c, 15) }}>{imp}</span>
+  const c = imp === "alto" ? "var(--negative)" : imp === "medio" ? "var(--amber)" : imp === "bajo" ? "var(--text-dim)" : "var(--text-mute)"
+  const label = imp === "pendiente" ? "s/ validar" : imp
+  return <span title={imp === "pendiente" ? "impacto sin clasificar — montos de bono en revisión" : undefined} style={{ fontSize: 8.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, padding: "2px 8px", borderRadius: 999, color: c, background: mix(c, 15) }}>{label}</span>
 }
 function Tag({ tipo }: { tipo: TipoEvento }) {
   const m = TIPO_META[tipo]
@@ -202,7 +222,8 @@ export function TabCalendario() {
   // ── Derivados ──
   const q = busqueda.trim().toLowerCase()
   const eventosFiltrados = EVENTOS.filter(e =>
-    tipos[e.tipo] && paises[e.pais] && impactos[e.impacto] &&
+    // "pendiente" (pagos de bono, impacto sin validar) no se filtra por impacto: siempre visible
+    tipos[e.tipo] && paises[e.pais] && (e.impacto === "pendiente" || impactos[e.impacto]) &&
     (!q || (e.activo + " " + e.titulo + " " + e.detalle).toLowerCase().includes(q))
   )
   const placeholdersFiltrados = PLACEHOLDERS.filter(p =>
@@ -347,7 +368,7 @@ export function TabCalendario() {
           <button style={nav} onClick={() => cambiarMes(1)} title="Mes siguiente" onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--amber)"; e.currentTarget.style.color = "var(--amber)" }} onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border-hi)"; e.currentTarget.style.color = "var(--text)" }}>›</button>
           <button style={btn} onClick={() => setMes(mesInicial())} onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--amber)"; e.currentTarget.style.color = "var(--amber)" }} onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-dim)" }}>Próximo evento ›</button>
           <button style={btn} onClick={() => { const d = parseFecha(HOY); setMes({ y: d.getFullYear(), m: d.getMonth() }) }} onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--amber)"; e.currentTarget.style.color = "var(--amber)" }} onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-dim)" }}>Hoy</button>
-          <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-dim)" }}>{delMes.length} evento(s) con fecha real en {MESES[m].toLowerCase()}</span>
+          <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-dim)" }}>{delMes.length} evento(s) programado(s) en {MESES[m].toLowerCase()}</span>
         </div>
         <Legend />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 7, marginBottom: 7 }}>
@@ -356,7 +377,7 @@ export function TabCalendario() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gridAutoRows: "1fr", gap: 7 }}>{celdas}</div>
         {delMes.length === 0 && (
           <div style={{ textAlign: "center", color: "var(--text-mute)", padding: "28px 20px", fontSize: 12.5, lineHeight: 1.6 }}>
-            Este mes no tiene eventos con fecha real.<br />Próximo evento real: <b style={{ color: "var(--amber)" }}>{proxFecha ? fmtCorta(proxFecha) : "—"}</b> — usá «Próximo evento ›».
+            Este mes no tiene eventos programados.<br />Próximo evento: <b style={{ color: "var(--amber)" }}>{proxFecha ? fmtCorta(proxFecha) : "—"}</b> — usá «Próximo evento ›».
           </div>
         )}
       </div>
@@ -365,7 +386,7 @@ export function TabCalendario() {
 
   // ── Vista AGENDA (secundaria) ──
   const VistaAgenda = () => {
-    if (!eventosFiltrados.length) return <div style={{ textAlign: "center", color: "var(--text-mute)", padding: "36px 20px", fontSize: 12.5, lineHeight: 1.6 }}>Sin eventos con fecha real para estos filtros.<br /><span style={{ fontSize: 11 }}>Solo bonos/LECAPs tienen fecha real; el resto está en «fuentes pendientes» abajo.</span></div>
+    if (!eventosFiltrados.length) return <div style={{ textAlign: "center", color: "var(--text-mute)", padding: "36px 20px", fontSize: 12.5, lineHeight: 1.6 }}>Sin eventos programados para estos filtros.<br /><span style={{ fontSize: 11 }}>Solo bonos/LECAPs tienen fecha (aprox.); el resto está en «fuentes pendientes» abajo.</span></div>
     const grupos: Record<string, CalEvent[]> = {}
     eventosFiltrados.forEach(e => { (grupos[e.fecha] = grupos[e.fecha] || []).push(e) })
     return (
@@ -388,7 +409,7 @@ export function TabCalendario() {
                   <span onClick={e => { e.stopPropagation(); openAsset(ev.activo) }} title={`Ver página de ${ev.activo}`} style={{ fontSize: 11, fontWeight: 700, color: "var(--text)", background: "var(--bg-elev-2)", border: "1px solid var(--border-hi)", padding: "2px 9px", borderRadius: 5, flex: "0 0 auto", fontFamily: "var(--font-data)", cursor: "pointer" }}>{ev.activo}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{ev.titulo}</div>
-                    <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 1 }}>{ev.detalle} · fuente <span style={{ fontFamily: "var(--font-data)" }}>{ev.fuente}</span> · <span style={{ fontStyle: "italic", color: "var(--positive)" }}>{ev.estado}</span></div>
+                    <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 1 }}>{ev.detalle} · fuente <span style={{ fontFamily: "var(--font-data)" }}>{ev.fuente}</span> · <span style={{ fontStyle: "italic", color: "var(--yellow)" }}>{ev.estado}</span></div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 7, flex: "0 0 auto" }}>
                     <AlarmBadge t={ev.tipo} />
@@ -411,9 +432,9 @@ export function TabCalendario() {
   const KPIs = () => (
     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
       {[
-        { label: "Eventos con fecha real", value: String(eventosFiltrados.length), sub: `de ${EVENTOS.length} (bonds-data.ts)`, big: true },
-        { label: "Próximo evento real", value: proximo ? `${proximo.activo} · ${fmtCorta(proximo.fecha)}` : "—", sub: proximo ? relTexto(proximo.fecha) : "sin próximos", big: false },
-        { label: "Fuentes conectadas", value: `${tiposConFuente} / ${TIPOS.length}`, sub: "bonos · vencimientos · lecaps", big: true },
+        { label: "Eventos programados", value: String(eventosFiltrados.length), sub: `de ${EVENTOS.length} · fechas aprox. (prospecto)`, big: true },
+        { label: "Próximo evento", value: proximo ? `${proximo.activo} · ${fmtCorta(proximo.fecha)}` : "—", sub: proximo ? relTexto(proximo.fecha) : "sin próximos", big: false },
+        { label: "Con fecha (aprox.)", value: `${tiposConFuente} / ${TIPOS.length}`, sub: "bonos/lecaps · montos sin validar", big: true },
         { label: "Fuentes pendientes", value: String(PLACEHOLDERS.length), sub: "macro (INDEC/BCRA) · fed · licit. · earnings", big: true },
       ].map((k, i) => (
         <div key={i} style={{ background: "var(--bg-elev)", border: "1px solid var(--border)", borderLeft: `3px solid ${kpiAccents[i]}`, borderRadius: 12, padding: "12px 16px", flex: "1 1 170px", boxShadow: "0 1px 2px rgba(0,0,0,.12)" }}>
@@ -468,11 +489,12 @@ export function TabCalendario() {
   // ── Render principal ──
   return (
     <div style={{ padding: "12px 6px 50px", fontFamily: "var(--font-ui)" }}>
-      {/* Nota de datos */}
+      {/* Nota de datos — HONESTIDAD: fechas aprox. del prospecto; montos de bono SIN validar */}
       <div style={{ background: "var(--amber-soft)", border: "1px solid var(--border-hi)", borderRadius: 10, color: "var(--text-dim)", fontSize: 11, padding: "9px 15px", marginBottom: 14, lineHeight: 1.5 }}>
-        <b style={{ color: "var(--amber)" }}>Datos:</b> bonos y LECAPs con fechas <b style={{ color: "var(--amber)" }}>reales</b> (derivadas de bonds-data.ts).
+        <b style={{ color: "var(--amber)" }}>Datos:</b> las FECHAS de bonos/LECAPs son <b style={{ color: "var(--amber)" }}>aproximadas</b> del prospecto (bonds-data.ts); los <b style={{ color: "var(--amber)" }}>montos de cupón/amortización están pendientes de validación</b> (motor de bonos → futuro <span style={{ fontFamily: "var(--font-data)" }}>bond-schedule.ts</span>) y no se muestran como firmes.
         Macro (INDEC/BCRA, incl. IPOM) / licitaciones / FOMC / earnings: <b style={{ color: "var(--amber)" }}>fuente no conectada</b> (sin fechas simuladas).
         Alarmas: <b style={{ color: "var(--amber)" }}>vista previa</b> (entrega = fase 2).
+        <div style={{ marginTop: 5, fontSize: 10, color: "var(--text-mute)" }}>⚠️ Los pagos HD suelen figurar 9-jul (feriado) y liquidar el día hábil siguiente; las fechas exactas llegan al conectar el motor de bonos.</div>
       </div>
 
       {/* Título */}
@@ -481,7 +503,7 @@ export function TabCalendario() {
           <div style={{ fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--amber)", fontWeight: 700 }}>Calendario de mercados</div>
           <h1 style={{ margin: "3px 0 0", fontSize: 24, fontWeight: 700, letterSpacing: -0.4 }}>Calendario</h1>
         </div>
-        <div style={{ fontSize: 11.5, color: "var(--text-dim)", paddingBottom: 2 }}>Pagos de bonos, vencimientos y LECAPs (datos reales) · macro AR, Fed, licitaciones y earnings (capacidad, fuente pendiente)</div>
+        <div style={{ fontSize: 11.5, color: "var(--text-dim)", paddingBottom: 2 }}>Pagos de bonos, vencimientos y LECAPs (fechas aprox. del prospecto · montos sin validar) · macro AR, Fed, licitaciones y earnings (capacidad, fuente pendiente)</div>
       </div>
 
       <KPIs />
@@ -616,7 +638,7 @@ export function TabCalendario() {
               <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--border)", borderTop: `3px solid ${tmeta.color}` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 9 }}>
                   <Tag tipo={tipo} />
-                  <span style={{ fontSize: 8.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: ev ? "var(--positive)" : "var(--text-mute)", background: ev ? mix("var(--positive)", 14) : "var(--bg-elev-2)", border: `1px solid ${ev ? mix("var(--positive)", 35) : "var(--border)"}`, padding: "2px 8px", borderRadius: 999 }}>{ev ? ev.estado : "fuente no conectada"}</span>
+                  <span style={{ fontSize: 8.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: ev ? "var(--yellow)" : "var(--text-mute)", background: ev ? mix("var(--yellow)", 14) : "var(--bg-elev-2)", border: `1px solid ${ev ? mix("var(--yellow)", 35) : "var(--border)"}`, padding: "2px 8px", borderRadius: 999 }}>{ev ? ev.estado : "fuente no conectada"}</span>
                   <button onClick={() => setDetail(null)} style={{ marginLeft: "auto", background: "transparent", border: "none", color: "var(--text-dim)", fontSize: 20, cursor: "pointer" }}>✕</button>
                 </div>
                 <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: -0.2, lineHeight: 1.2 }}>{ev ? ev.titulo : src!.titulo}</div>
@@ -626,7 +648,7 @@ export function TabCalendario() {
               {/* Body */}
               <div style={{ padding: "6px 18px 30px", overflowY: "auto", flex: 1 }}>
                 <Row k="Tipo">{tmeta.label}</Row>
-                <Row k="Fecha efectiva">{ev ? <span style={{ fontFamily: "var(--font-data)" }}>{ev.fecha}</span> : <span style={{ color: "var(--text-mute)", fontFamily: "var(--font-data)" }}>— (sin conectar)</span>}</Row>
+                <Row k="Fecha efectiva">{ev ? <span style={{ fontFamily: "var(--font-data)" }}>{ev.fecha} <span style={{ color: "var(--text-mute)", fontFamily: "var(--font-ui)", fontStyle: "italic" }}>· aprox. (prospecto)</span></span> : <span style={{ color: "var(--text-mute)", fontFamily: "var(--font-data)" }}>— (sin conectar)</span>}</Row>
                 <Row k="País">{ev ? ev.pais : src!.pais}</Row>
                 <Row k="Activo">
                   {conAsset
@@ -634,21 +656,21 @@ export function TabCalendario() {
                     : <span style={{ fontFamily: "var(--font-data)" }}>{ticker || "—"}</span>}
                 </Row>
                 <Row k="Fuente"><span style={{ fontFamily: "var(--font-data)", fontSize: 11 }}>{ev ? ev.fuente : src!.fuente}</span></Row>
-                {ev && <Row k="Impacto"><ImpactoBadge imp={ev.impacto} /></Row>}
+                {ev && <Row k="Impacto">{ev.impacto === "pendiente" ? <span style={{ color: "var(--text-mute)" }}>pendiente — sin clasificar (montos de bono en revisión)</span> : <ImpactoBadge imp={ev.impacto} />}</Row>}
                 {src && <Row k="Frecuencia">{src.freq}</Row>}
                 <Row k="Alarma">{alarmaDe(tipo) !== null ? <AlarmBadge t={tipo} /> : <span style={{ color: "var(--text-mute)" }}>sin alarma — activala en <b style={{ color: "var(--text-dim)" }}>Config &amp; Alarmas</b></span>}</Row>
 
-                {/* Bono: cupón / amortización */}
+                {/* Bono: montos NO validados — no se muestran números (bonds-data.ts tiene errores conocidos).
+                    👉 al conectar bond-schedule.ts, mostrar acá cupón/amort validados. */}
                 {ev && ev.tipo === "bono" && (
                   <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-                    <div style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px" }}>
-                      <div style={{ ...eyebrow, marginBottom: 4 }}>Cupón</div>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: "var(--amber)", fontFamily: "var(--font-data)" }}>{ev.cupon != null ? `${fmtPct(ev.cupon)}%` : "—"}</div>
-                    </div>
-                    <div style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px" }}>
-                      <div style={{ ...eyebrow, marginBottom: 4 }}>Amortización</div>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: ev.amortizacion && ev.amortizacion > 0 ? "var(--sky)" : "var(--text-mute)", fontFamily: "var(--font-data)" }}>{ev.amortizacion != null && ev.amortizacion > 0 ? `${fmtPct(ev.amortizacion)}%` : "—"}</div>
-                    </div>
+                    {(["Cupón", "Amortización"] as const).map(k => (
+                      <div key={k} style={{ flex: 1, background: mix("var(--yellow)", 8), border: `1px dashed ${mix("var(--yellow)", 45)}`, borderRadius: 10, padding: "10px 12px" }}>
+                        <div style={{ ...eyebrow, marginBottom: 4 }}>{k}</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--yellow)", fontFamily: "var(--font-data)" }}>s/ validar</div>
+                        <div style={{ fontSize: 9, color: "var(--text-mute)", marginTop: 3 }}>motor de bonos en revisión</div>
+                      </div>
+                    ))}
                   </div>
                 )}
 
@@ -725,7 +747,7 @@ export function TabCalendario() {
                     if (!evs.length) return <div style={{ textAlign: "center", color: "var(--text-mute)", padding: "34px 14px", fontSize: 12 }}><span style={{ fontSize: 26, display: "block", marginBottom: 8 }}>📅</span>Sin eventos futuros para <b>${asset.ticker}</b>.</div>
                     return (
                       <div>
-                        <p style={{ ...eyebrow, margin: "0 0 8px" }}>Próximos eventos · {evs.length} (bonds-data.ts)</p>
+                        <p style={{ ...eyebrow, margin: "0 0 8px" }}>Próximos eventos · {evs.length} · fechas aprox. (prospecto)</p>
                         {evs.map((ev, i) => {
                           const m2 = TIPO_META[ev.tipo]
                           return (
@@ -733,7 +755,7 @@ export function TabCalendario() {
                               <span style={{ fontSize: 10.5, fontFamily: "var(--font-data)", color: "var(--text)", fontWeight: 600, width: 74, flex: "0 0 auto" }}>{fmtCorta(ev.fecha)}</span>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ fontSize: 11.5, fontWeight: 600 }}>{m2.short} · {ev.titulo}</div>
-                                <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 1 }}>{ev.detalle} · <span style={{ fontStyle: "italic", color: "var(--positive)" }}>{ev.estado}</span></div>
+                                <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 1 }}>{ev.detalle} · <span style={{ fontStyle: "italic", color: "var(--yellow)" }}>{ev.estado}</span></div>
                               </div>
                               <AlarmBadge t={ev.tipo} />
                               <span style={{ color: "var(--text-mute)", fontSize: 14 }}>›</span>
@@ -777,7 +799,7 @@ export function TabCalendario() {
                       <Tag tipo={e.tipo} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 11.5, fontWeight: 600 }}>{e.titulo.split(e.activo)[0]}<span onClick={ev2 => { ev2.stopPropagation(); openAsset(e.activo) }} title={`Ver página de ${e.activo}`} style={{ cursor: "pointer", color: "var(--amber)", textDecoration: "underline dotted", textUnderlineOffset: 2 }}>{e.activo}</span>{e.titulo.split(e.activo)[1] || ""}</div>
-                        <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 1 }}>{e.detalle} · <span style={{ fontStyle: "italic", color: "var(--positive)" }}>{e.estado}</span></div>
+                        <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 1 }}>{e.detalle} · <span style={{ fontStyle: "italic", color: "var(--yellow)" }}>{e.estado}</span></div>
                       </div>
                       <AlarmBadge t={e.tipo} />
                       <span style={{ color: "var(--text-mute)", fontSize: 14 }}>›</span>
