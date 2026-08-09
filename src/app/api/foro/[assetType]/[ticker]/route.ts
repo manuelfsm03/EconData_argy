@@ -42,6 +42,8 @@ export async function GET(
   const page = Math.max(1, Number(searchParams.get("page")) || 1)
   const pageSize = Math.min(50, Math.max(1, Number(searchParams.get("pageSize")) || 20))
 
+  const ip = getClientIp(request)
+
   try {
     const [posts, total] = await Promise.all([
       prisma.forumPost.findMany({
@@ -49,13 +51,30 @@ export async function GET(
         orderBy: { createdAt: "asc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        select: { id: true, authorName: true, content: true, parentId: true, createdAt: true },
+        select: {
+          id: true,
+          authorName: true,
+          content: true,
+          parentId: true,
+          createdAt: true,
+          reactions: { select: { emoji: true, authorIp: true } },
+        },
       }),
       prisma.forumPost.count({ where: { assetType, assetTicker } }),
     ])
 
+    const data = posts.map(({ reactions, ...post }) => {
+      const reacciones: Record<string, number> = {}
+      let miReaccion: string | null = null
+      for (const r of reactions) {
+        reacciones[r.emoji] = (reacciones[r.emoji] ?? 0) + 1
+        if (r.authorIp === ip) miReaccion = r.emoji
+      }
+      return { ...post, reacciones, miReaccion }
+    })
+
     return NextResponse.json({
-      data: posts,
+      data,
       page,
       pageSize,
       total,
@@ -111,7 +130,7 @@ export async function POST(
     }
 
     if (parentId) {
-      const parent = await prisma.forumPost.findUnique({ where: { id: parentId }, select: { id: true } })
+      const parent = await prisma.forumPost.findFirst({ where: { id: parentId, assetType, assetTicker }, select: { id: true } })
       if (!parent) {
         return NextResponse.json({ error: "El post citado no existe" }, { status: 400 })
       }

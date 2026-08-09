@@ -305,17 +305,31 @@ model BCRAMonetaryData {
 // Post de foro — un hilo cronológico único por (assetType, assetTicker).
 // No hay modelo ForumThread: el "thread" es implícito, derivado de assetType+assetTicker.
 model ForumPost {
-  id          String      @id @default(cuid())
-  assetType   String      @map("asset_type")   // "accion" | "bono" | "cap"
-  assetTicker String      @map("asset_ticker") // ej. GGAL, AL29 — siempre uppercase
-  authorName  String      @map("author_name")  // texto libre, sin cuenta
-  content     String                           // texto plano, max 2000 chars (validado en API)
-  parentId    String?     @map("parent_id")    // quote/reply opcional a otro post
-  parent      ForumPost?  @relation("PostReplies", fields: [parentId], references: [id], onDelete: SetNull)
-  replies     ForumPost[] @relation("PostReplies")
-  authorIp    String?     @map("author_ip")    // solo para rate-limit server-side, nunca expuesto en la API
-  createdAt   DateTime    @default(now()) @map("created_at")
+  id          String           @id @default(cuid())
+  assetType   String           @map("asset_type")   // "accion" | "bono" | "cap"
+  assetTicker String           @map("asset_ticker") // ej. GGAL, AL29 — siempre uppercase
+  authorName  String           @map("author_name")  // texto libre, sin cuenta
+  content     String                                // texto plano, max 2000 chars (validado en API)
+  parentId    String?          @map("parent_id")    // quote/reply opcional a otro post
+  parent      ForumPost?       @relation("PostReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies     ForumPost[]      @relation("PostReplies")
+  reactions   ForumReaction[]
+  authorIp    String?          @map("author_ip")    // solo para rate-limit server-side, nunca expuesto en la API
+  createdAt   DateTime         @default(now()) @map("created_at")
 
   @@index([assetType, assetTicker, createdAt])
   @@map("forum_posts")
+}
+
+// Reacciones por post — toggle por IP (un emoji por IP por post).
+model ForumReaction {
+  id        String    @id @default(cuid())
+  postId    String    @map("post_id")
+  post      ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  emoji     String    // "👍" | "🔥" | "🤔"
+  authorIp  String    @map("author_ip")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@unique([postId, authorIp, emoji])
+  @@map("forum_reactions")
 }

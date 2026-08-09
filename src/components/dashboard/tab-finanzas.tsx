@@ -116,7 +116,7 @@ interface StockQuote {
   ask: number | null
 }
 
-function AccionesView() {
+function AccionesView({ focusTicker }: { focusTicker?: string | null }) {
   const [data, setData] = useState<{ byCategory: Record<string, StockQuote[]>; categories: string[] } | null>(null)
   const [loading, setLoading] = useState(true)
   const [cat, setCat] = useState("all")
@@ -128,6 +128,11 @@ function AccionesView() {
       .then(j => setData(j.data))
       .finally(() => setLoading(false))
   }, [])
+
+  // Foco externo (widget de trending o mención $TICKER)
+  useEffect(() => {
+    if (focusTicker) setSelectedTicker(focusTicker)
+  }, [focusTicker])
 
   if (loading) return <Loading />
   if (!data) return <div style={{ padding: 40, color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 10 }}>Sin datos</div>
@@ -225,7 +230,7 @@ function AccionesView() {
         </div>
       </div>
 
-      {selectedTicker && <AccionDetailPanel ticker={selectedTicker} onClose={() => setSelectedTicker(null)} />}
+      {selectedTicker && <AccionDetailPanel ticker={selectedTicker} onClose={() => setSelectedTicker(null)} onTickerClick={setSelectedTicker} />}
 
       <div style={{ padding: "6px 14px", fontSize: 8, color: "var(--text-dim)", borderTop: "1px solid var(--bg-elev-2)", fontFamily: "var(--font-data)" }}>
         Fuente: api-merval (Railway) · Precios en tiempo real BYMA 24hs
@@ -250,7 +255,7 @@ interface StockDetail {
   history: { date: string; close: number | null }[]
 }
 
-function AccionDetailPanel({ ticker, onClose }: { ticker: string; onClose: () => void }) {
+function AccionDetailPanel({ ticker, onClose, onTickerClick }: { ticker: string; onClose: () => void; onTickerClick?: (t: string) => void }) {
   const [detailTab, setDetailTab] = useState<"detalle" | "grafico" | "foro">("detalle")
   const [detail, setDetail] = useState<StockDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -312,7 +317,7 @@ function AccionDetailPanel({ ticker, onClose }: { ticker: string; onClose: () =>
               </LineChart>
             </ResponsiveContainer>
           )}
-          {detailTab === "foro" && <ForoActivo assetType="accion" ticker={ticker} />}
+          {detailTab === "foro" && <ForoActivo assetType="accion" ticker={ticker} onTickerClick={onTickerClick} />}
         </div>
       )}
     </div>
@@ -335,7 +340,7 @@ interface BondRow {
   vnResidual: number
 }
 
-function BonosView() {
+function BonosView({ focusTicker }: { focusTicker?: string | null }) {
   const [bonos, setBonos] = useState<BondRow[]>([])
   const [lecaps, setLecaps] = useState<{ ticker: string; tipo: string; vencimiento: string; diasVencimiento: number; precio: number | null; tir: number | null; tea: number | null; tem: number | null }[]>([])
   const [tab, setTab] = useState<"soberanos" | "lecap">("soberanos")
@@ -351,6 +356,19 @@ function BonosView() {
       setLecaps(Array.isArray(l.data) ? l.data : [])
     }).finally(() => setLoading(false))
   }, [])
+
+  // Foco externo (widget de trending o mención $TICKER): resuelve el tipo mirando en qué lista está
+  useEffect(() => {
+    if (!focusTicker) return
+    const t = focusTicker.toUpperCase()
+    if (lecaps.some(l => l.ticker === t)) {
+      setTab("lecap")
+      setSelected({ type: "cap", ticker: t })
+    } else {
+      setTab("soberanos")
+      setSelected({ type: "bono", ticker: t })
+    }
+  }, [focusTicker, lecaps])
 
   if (loading) return <Loading />
 
@@ -514,6 +532,11 @@ function BonosView() {
           ticker={selected.ticker}
           bono={selected.type === "bono" ? bonos.find(b => b.ticker === selected.ticker) ?? null : null}
           onClose={() => setSelected(null)}
+          onTickerClick={(t) => {
+            const tk = t.toUpperCase()
+            if (lecaps.some(l => l.ticker === tk)) setSelected({ type: "cap", ticker: tk })
+            else setSelected({ type: "bono", ticker: tk })
+          }}
         />
       )}
 
@@ -526,8 +549,8 @@ function BonosView() {
 
 // ── Panel de detalle de bono/LECAP (Detalle / Gráfico / Foro) ─────────────────
 
-function BonoDetailPanel({ assetType, ticker, bono, onClose }: {
-  assetType: "bono" | "cap"; ticker: string; bono: BondRow | null; onClose: () => void
+function BonoDetailPanel({ assetType, ticker, bono, onClose, onTickerClick }: {
+  assetType: "bono" | "cap"; ticker: string; bono: BondRow | null; onClose: () => void; onTickerClick?: (t: string) => void
 }) {
   const [detailTab, setDetailTab] = useState<"detalle" | "grafico" | "foro">("detalle")
 
@@ -579,7 +602,7 @@ function BonoDetailPanel({ assetType, ticker, bono, onClose }: {
             Gráfico de histórico próximamente
           </div>
         )}
-        {detailTab === "foro" && <ForoActivo assetType={assetType} ticker={ticker} />}
+        {detailTab === "foro" && <ForoActivo assetType={assetType} ticker={ticker} onTickerClick={onTickerClick} />}
       </div>
     </div>
   )
@@ -1739,14 +1762,79 @@ function CryptoView() {
 
 // ── Main export ────────────────────────────────────────────────────────────────
 
+// ── Widget: Activos más comentados en el foro ─────────────────────────────────
+
+interface TrendingItem {
+  assetType: "accion" | "bono" | "cap"
+  ticker: string
+  posts: number
+}
+
+function TrendingForo({ onSelect }: { onSelect: (assetType: "accion" | "bono" | "cap", ticker: string) => void }) {
+  const [items, setItems] = useState<TrendingItem[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/foro/trending?hours=24&limit=5")
+      .then(r => r.json())
+      .then(j => setItems(Array.isArray(j.data) ? j.data : []))
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false))
+  }, [])
+
+  // Si no hay actividad en el foro, no ocupamos espacio
+  if (loading || items.length === 0) return null
+
+  const typeLabel: Record<string, string> = { accion: "Acción", bono: "Bono", cap: "LECAP" }
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+      padding: "8px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)",
+    }}>
+      <span style={{ fontSize: 8, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "var(--font-data)" }}>
+        🔥 Más comentados (24h)
+      </span>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {items.map(it => (
+          <button
+            key={`${it.assetType}-${it.ticker}`}
+            onClick={() => onSelect(it.assetType, it.ticker)}
+            style={{
+              display: "flex", alignItems: "center", gap: 5,
+              background: "rgba(255,160,40,0.08)", border: "1px solid rgba(255,160,40,0.3)",
+              borderRadius: 20, cursor: "pointer", padding: "3px 10px",
+              fontFamily: "var(--font-data)",
+            }}
+            title={typeLabel[it.assetType] ?? it.assetType}
+          >
+            <span style={{ fontSize: 10, color: "var(--amber)", fontWeight: 700 }}>{it.ticker}</span>
+            <span style={{ fontSize: 9, color: "var(--text-dim)" }}>{it.posts}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function TabFinanzas({ initialSubtab }: { initialSubtab?: string | null }) {
   const [activeTab, setActiveTab] = useState(initialSubtab ?? "acciones")
+  // Ticker a enfocar tras navegar desde el widget de trending (se limpia al consumirlo)
+  const [focusTicker, setFocusTicker] = useState<string | null>(null)
+
+  function handleTrendingSelect(assetType: "accion" | "bono" | "cap", ticker: string) {
+    setActiveTab(assetType === "accion" ? "acciones" : "bonos")
+    // Reset primero para re-disparar el efecto aunque sea el mismo ticker
+    setFocusTicker(null)
+    setTimeout(() => setFocusTicker(ticker), 0)
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       <SubTabs active={activeTab} onChange={setActiveTab} />
-      {activeTab === "acciones"  && <AccionesView />}
-      {activeTab === "bonos"     && <BonosView />}
+      <TrendingForo onSelect={handleTrendingSelect} />
+      {activeTab === "acciones"  && <AccionesView focusTicker={focusTicker} />}
+      {activeTab === "bonos"     && <BonosView focusTicker={focusTicker} />}
       {activeTab === "rofex"     && <RofexView />}
       {activeTab === "plazofijo" && <PlazoFijoView />}
       {activeTab === "commodities" && <CommoditiesView />}
