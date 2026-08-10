@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Image from "next/image"
-import { Database, LayoutDashboard, MessageSquareText } from "lucide-react"
+import { CalendarDays, Database, LayoutDashboard, MessageSquareText } from "lucide-react"
 import { ThemeToggle } from "@/client/components/ui/theme-toggle"
 import {
   Sidebar,
@@ -18,15 +18,17 @@ import {
 import { CanvasWorkspace } from "./canvas-workspace"
 import { DataLibrary } from "./data-library"
 import { ForumHub } from "./forum-hub"
+import { MarketCalendar } from "./market-calendar"
 import { DATA_CARD_CATALOG } from "@/lib/card-catalog"
 
-type WorkspaceSection = "canvas" | "library" | "forum"
+type WorkspaceSection = "canvas" | "library" | "calendar" | "forum"
 
 const SECTION_KEY = "lapizarra.workspace.section.v1"
 
 const SECTIONS = [
   { id: "canvas" as const, label: "Mi Pizarra", description: "Canvas personal", Icon: LayoutDashboard },
   { id: "library" as const, label: "Biblioteca de datos", description: `${DATA_CARD_CATALOG.length} tarjetas`, Icon: Database },
+  { id: "calendar" as const, label: "Calendario", description: "Pagos y vencimientos", Icon: CalendarDays },
   { id: "forum" as const, label: "Foro", description: "Conversaciones", Icon: MessageSquareText },
 ]
 
@@ -35,7 +37,7 @@ export function AppShell() {
 
   useEffect(() => {
     const stored = localStorage.getItem(SECTION_KEY)
-    if (stored === "canvas" || stored === "library" || stored === "forum") setSection(stored)
+    if (stored === "canvas" || stored === "library" || stored === "calendar" || stored === "forum") setSection(stored)
   }, [])
 
   useEffect(() => {
@@ -57,7 +59,7 @@ export function AppShell() {
           <div className="mb-2 px-3 pt-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-[var(--text-mute)]">Espacio de trabajo</div>
           <SidebarMenu>
             {SECTIONS.map(({ id, label, description, Icon }) => (
-              <SidebarMenuButton key={id} active={section === id} onClick={() => setSection(id)} className="h-12">
+              <SidebarMenuButton key={id} closeOnMobile active={section === id} onClick={() => setSection(id)} className="h-12">
                 <Icon size={17} strokeWidth={section === id ? 2.2 : 1.7} />
                 <span className="min-w-0"><span className="block truncate">{label}</span><span className="block truncate text-[9px] font-normal text-[var(--text-mute)]">{description}</span></span>
               </SidebarMenuButton>
@@ -82,6 +84,7 @@ export function AppShell() {
         </header>
         {section === "canvas" && <CanvasWorkspace />}
         {section === "library" && <DataLibrary />}
+        {section === "calendar" && <MarketCalendar />}
         {section === "forum" && <ForumHub />}
       </SidebarInset>
     </SidebarProvider>
