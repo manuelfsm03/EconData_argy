@@ -498,6 +498,7 @@ function PoblacionSerieChart({ country, selectedYear }: { country: string; selec
           .catch(() => null)
       )
     ).then(results => {
+
       setSerie(results.filter(Boolean) as SeriePt[])
       setLoading(false)
     })
@@ -998,6 +999,7 @@ export function EmaeView() {
       <SectionHeader
         title="EMAE — Apertura Sectorial"
         source="INDEC · Índice Base 2004=100 · Valores originales"
+
       />
       {emaeSectorialLoading ? (
         <div style={{ padding: 12, color: "var(--text-dim)", fontSize: 11 }}>Cargando EMAE sectorial...</div>
@@ -1499,6 +1501,7 @@ export function MiInflacionView() {
 
   const sumaPonderaciones = Object.values(ponderaciones).reduce((a, b) => a + b, 0)
 
+
   return (
     <div style={{ padding: "8px 12px" }}>
       {/* MODO INICIO */}
@@ -1998,6 +2001,7 @@ function IpcHistoricaView() {
         <span style={{ color: "var(--negative)" }}>■ ≥100% (hiperinflación)</span>
         <span style={{ color: "var(--amber)" }}>■ 50–99%</span>
         <span style={{ color: "var(--positive)" }}>■ 0–49%</span>
+
         <span style={{ color: "var(--sky)" }}>■ deflación</span>
       </div>
       <div style={{ fontSize: 8, color: "var(--text-mute)", marginTop: 4, fontFamily: "var(--font-data)" }}>
@@ -2499,8 +2503,6 @@ export function BalanzaView() {
     Saldo: r.saldo,
   }))
 
-  const fmtMillones = (v: number) => `$${Math.round(v).toLocaleString("es-AR")}M`
-
   return (
     <div>
       <SectionMeta title="Balanza Comercial" help="Diferencia entre exportaciones e importaciones de bienes. Saldo positivo = superávit comercial. Datos mensuales en millones de USD. Fuente: INDEC Intercambio Comercial Argentino." source="INDEC · datos.gob.ar" />
@@ -2588,114 +2590,75 @@ export function BalanzaView() {
 // ── Balanza Socios Comerciales ──────────────────────────────────────────────────
 
 function BalanzaSociosView() {
-  const [data, setData] = useState<{ nombre: string; expo: number; impo: number; saldo: number; total: number }[] | null>(null)
+  type Partner = { nombre: string; expo: number | null }
+  const [data, setData] = useState<Partner[] | null>(null)
+  const [meta, setMeta] = useState({ year: "", source: "", note: "" })
   const [loading, setLoading] = useState(true)
-  const [vista, setVista] = useState<"mapa" | "tabla">("mapa")
 
   useEffect(() => {
     fetch("/api/balanza-socios")
-      .then(r => r.json())
-      .then(j => {
-        const socios = j.data?.socios ?? j.data ?? j
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`balanza-socios ${response.status}`)
+        return response.json()
+      })
+      .then((payload) => {
+        const socios = payload.data?.socios
         if (Array.isArray(socios)) {
-          setData(socios.map((s: Record<string, unknown>) => ({
-            nombre: String(s.nombre ?? s.pais ?? ""),
-            expo:   Number(s.expo ?? s.exportaciones ?? 0),
-            impo:   Number(s.impo ?? s.importaciones ?? 0),
-            saldo:  Number(s.saldo ?? 0),
-            total:  Number(s.total ?? 0),
+          setData(socios.map((partner: Record<string, unknown>) => ({
+            nombre: String(partner.nombre ?? ""),
+            expo: typeof partner.expo === "number" && Number.isFinite(partner.expo) ? partner.expo : null,
           })))
         }
-        setLoading(false)
+        setMeta({
+          year: String(payload.data?.anio_referencia ?? ""),
+          source: String(payload.source ?? ""),
+          note: String(payload.nota ?? ""),
+        })
       })
-      .catch(() => setLoading(false))
+      .finally(() => setLoading(false))
   }, [])
 
-  const btnStyle = (active: boolean): React.CSSProperties => ({
-    background: "none", border: "none",
-    borderBottom: active ? "2px solid var(--amber)" : "2px solid transparent",
-    cursor: "pointer", padding: "5px 14px",
-    fontSize: 9, fontFamily: "var(--font-data)", color: active ? "var(--amber)" : "var(--text-mute)",
-    letterSpacing: 1, textTransform: "uppercase",
-  })
+  if (loading) {
+    return <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>Cargando...</div>
+  }
+
+  if (!data?.length) {
+    return <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>Sin datos verificados</div>
+  }
+
+  const maxExport = Math.max(...data.map((partner) => partner.expo ?? 0), 1)
 
   return (
-    <div>
-      <div style={{ background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)", display: "flex", paddingLeft: 8 }}>
-        <button style={btnStyle(vista === "mapa")}  onClick={() => setVista("mapa")}>Mapa</button>
-        <button style={btnStyle(vista === "tabla")} onClick={() => setVista("tabla")}>Tabla</button>
+    <div style={{ padding: "12px 16px" }}>
+      <div style={{ padding: "9px 12px", marginBottom: 12, background: "var(--amber-soft)", border: "1px solid var(--border-hi)", borderRadius: 6, color: "var(--text-dim)", fontSize: 10, lineHeight: 1.5 }}>
+        Ranking por <b style={{ color: "var(--amber)" }}>exportaciones verificadas</b>. Importaciones por país y saldo bilateral no se muestran porque no hay una fuente pública equivalente conectada.
       </div>
-
-      {vista === "mapa" && (
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
         <div>
-          <div style={{ padding: "6px 12px 4px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg-elev-2)" }}>
-            <div style={{ fontSize: 9, color: "var(--amber)", fontFamily: "var(--font-data)", letterSpacing: 1 }}>
-              SOCIOS COMERCIALES — AÑO DE REFERENCIA: 2023
-            </div>
-            <div style={{ display: "flex", gap: 10, fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>
-              <span style={{ color: "var(--positive)" }}>■</span> Superávit (ARG exporta más)
-              <span style={{ color: "var(--negative)" }}>■</span> Déficit (ARG importa más)
-            </div>
-          </div>
-          <iframe
-            src="/api/balanza-map"
-            style={{ width: "100%", height: 480, border: "none", background: "var(--bg)", display: "block" }}
-            title="Mapa socios comerciales Argentina 2023"
-            loading="lazy"
-          />
-          <div style={{ padding: "4px 12px", fontSize: 8, color: "var(--text-mute)", fontFamily: "var(--font-data)", borderTop: "1px solid #0e0e0e" }}>
-            Fuente: INDEC · Comtrade · datos 2023 · lapizarra.ar
+          <div style={{ fontSize: 9, color: "var(--amber)", letterSpacing: 1.5 }}>DESTINOS DE EXPORTACIÓN · USD MILLONES · {meta.year || "ÚLTIMO DATO"}</div>
+          <div style={{ marginTop: 3, fontSize: 8, color: "var(--text-mute)" }}>{meta.source}</div>
+        </div>
+        <DownloadCSV
+          data={data.map((partner) => ({ pais: partner.nombre, exportaciones_usd_m: partner.expo ?? "" }))}
+          filename="exportaciones_por_destino"
+        />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(110px, 160px) 1fr", gap: 8, marginBottom: 6 }}>
+        <div style={{ fontSize: 8, color: "var(--text-mute)", textAlign: "right", fontFamily: "var(--font-data)" }}>PAÍS</div>
+        <div style={{ fontSize: 8, color: "var(--positive)", fontFamily: "var(--font-data)" }}>EXPORTACIONES →</div>
+      </div>
+      {data.map((partner) => (
+        <div key={partner.nombre} style={{ display: "grid", gridTemplateColumns: "minmax(110px, 160px) 1fr", gap: 8, alignItems: "center", marginBottom: 5 }}>
+          <div style={{ fontSize: 9, color: "#ccc", textAlign: "right", fontFamily: "var(--font-data)" }}>{partner.nombre}</div>
+          <div style={{ position: "relative", height: 17, background: "var(--bg-elev-2)", borderRadius: 2, overflow: "hidden" }}>
+            {partner.expo != null && <div style={{ position: "absolute", inset: 0, right: "auto", background: "var(--positive)", opacity: 0.65, width: `${(partner.expo / maxExport * 100).toFixed(1)}%` }} />}
+            <span style={{ position: "absolute", right: 5, top: 2, fontSize: 8, color: partner.expo == null ? "var(--text-mute)" : "var(--positive)", fontFamily: "var(--font-data)" }}>
+              {partner.expo == null ? "N/D" : partner.expo.toLocaleString("es-AR", { maximumFractionDigits: 1 })}
+            </span>
           </div>
         </div>
-      )}
-
-      {vista === "tabla" && (
-        loading
-          ? <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>Cargando...</div>
-          : !data?.length
-            ? <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>Sin datos</div>
-            : (
-              <div style={{ padding: "12px 16px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <div style={{ fontSize: 9, color: "var(--amber)", letterSpacing: 1.5 }}>PRINCIPALES SOCIOS (USD millones · 2023/2024)</div>
-                  <DownloadCSV
-                    data={data.map(r => ({ pais: r.nombre, exportaciones_usd_m: r.expo, importaciones_usd_m: r.impo, saldo_usd_m: r.saldo }))}
-                    filename="balanza_socios"
-                  />
-                </div>
-                {/* Header */}
-                <div style={{ display: "grid", gridTemplateColumns: "120px 1fr 1fr 80px", gap: 8, marginBottom: 6 }}>
-                  <div style={{ fontSize: 8, color: "var(--text-mute)", textAlign: "right", fontFamily: "var(--font-data)" }}>PAÍS</div>
-                  <div style={{ fontSize: 8, color: "var(--positive)", fontFamily: "var(--font-data)" }}>EXPO →</div>
-                  <div style={{ fontSize: 8, color: "var(--negative)", fontFamily: "var(--font-data)" }}>IMPO ←</div>
-                  <div style={{ fontSize: 8, color: "var(--text-dim)", textAlign: "right", fontFamily: "var(--font-data)" }}>SALDO</div>
-                </div>
-                {[...data].sort((a, b) => b.total - a.total).map(r => {
-                  const maxVal = Math.max(...data.flatMap(d => [d.expo, d.impo]))
-                  return (
-                    <div key={r.nombre} style={{ display: "grid", gridTemplateColumns: "120px 1fr 1fr 80px", gap: 8, alignItems: "center", marginBottom: 4 }}>
-                      <div style={{ fontSize: 9, color: "#ccc", textAlign: "right", fontFamily: "var(--font-data)" }}>{r.nombre}</div>
-                      <div style={{ position: "relative", height: 14, background: "var(--bg-elev-2)" }}>
-                        <div style={{ position: "absolute", height: "100%", background: "var(--positive)", opacity: 0.7, width: `${(r.expo / maxVal * 100).toFixed(1)}%` }} />
-                        <span style={{ position: "absolute", right: 4, top: 1, fontSize: 8, color: "var(--positive)", fontFamily: "var(--font-data)" }}>{r.expo.toLocaleString("es-AR")}</span>
-                      </div>
-                      <div style={{ position: "relative", height: 14, background: "var(--bg-elev-2)" }}>
-                        <div style={{ position: "absolute", height: "100%", background: "var(--negative)", opacity: 0.6, width: `${(r.impo / maxVal * 100).toFixed(1)}%` }} />
-                        <span style={{ position: "absolute", right: 4, top: 1, fontSize: 8, color: "var(--negative)", fontFamily: "var(--font-data)" }}>{r.impo.toLocaleString("es-AR")}</span>
-                      </div>
-                      <div style={{ fontSize: 9, fontFamily: "var(--font-data)", textAlign: "right", color: r.saldo >= 0 ? "var(--positive)" : "var(--negative)", fontWeight: 700 }}>
-                        {r.saldo >= 0 ? "+" : ""}{r.saldo.toLocaleString("es-AR")}
-                      </div>
-                    </div>
-                  )
-                })}
-                <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
-                  <span style={{ fontSize: 8, color: "var(--positive)" }}>■ Exportaciones</span>
-                  <span style={{ fontSize: 8, color: "var(--negative)" }}>■ Importaciones</span>
-                </div>
-              </div>
-            )
-      )}
+      ))}
+      {meta.note && <div style={{ marginTop: 10, fontSize: 8, color: "var(--text-mute)", lineHeight: 1.5 }}>{meta.note}</div>}
     </div>
   )
 }
@@ -2998,6 +2961,7 @@ export function DesigualdadView() {
           <KPI label="Máximo histórico" value={giniMax ? fmtNum(giniMax[1], 1) : null}
             unit={`Mayor desigualdad · ${giniMax?.[0]?.slice(0, 4) ?? ""}`} valueColor="var(--negative)" />
         </div>
+
         <div style={{ padding: "8px 0" }}>
           <BBGLineChart title="COEFICIENTE DE GINI — ARGENTINA 1974-2024" data={giniArgData}
             lines={[{ key: "gini", name: "Gini", color: "var(--amber)" }]}
@@ -3499,6 +3463,7 @@ export function FXView() {
         )}
       </div>
 
+
       {/* Toggle de series + descarga */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -3997,6 +3962,7 @@ function VencimientosFilter({ detalle }: { detalle: VencDet[] }) {
         <div style={{ fontSize: 9, color: "var(--amber)", letterSpacing: 1.5, whiteSpace: "nowrap", fontFamily: "var(--font-data)" }}>
           VENCIMIENTOS PRÓXIMOS
         </div>
+
 
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           {/* Moneda */}
@@ -4498,6 +4464,7 @@ export function SenorejaView() {
         {/* Saldos reales M/P */}
         <div style={{ background: "var(--bg)", padding: 16 }}>
           <div style={{ fontSize: 10, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, display: "flex", alignItems: "center" }}>
+
             Saldos Reales M/P (Base Monetaria)
             <InfoTooltip text={GLOSSARY["SALDOS REALES"].text} source={GLOSSARY["SALDOS REALES"].source} url={GLOSSARY["SALDOS REALES"].url} position="bottom" />
           </div>

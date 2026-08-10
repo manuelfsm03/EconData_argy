@@ -16,6 +16,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
+import { MACRO_TRADE_SERIES_IDS } from "@/lib/trade-data"
 
 const BASE_URL = "https://apis.datos.gob.ar/series/api/series/"
 
@@ -44,9 +45,9 @@ const SERIES_IDS: Record<string, string> = {
   ipi: "453.1_SERIE_ORIGNAL_0_0_14_46",
   isac: "33.2_ISAC_NIVELRAL_0_M_18_63",
   // COMERCIO EXTERIOR
-  exportaciones: "74.3_IET_0_M_16",
-  importaciones: "74.3_IIR_0_M_23",
-  saldo_comercial: "74.3_ISC_0_M_19",
+  exportaciones: MACRO_TRADE_SERIES_IDS.exportaciones,
+  importaciones: MACRO_TRADE_SERIES_IDS.importaciones,
+  saldo_comercial: MACRO_TRADE_SERIES_IDS.saldoComercial,
   // PRECIOS IPC (base dic 2016)
   ipc_general: "148.3_INIVELNAL_DICI_M_26",
   ipc_var_mensual: "145.3_INGNACUAL_DICI_M_38",
@@ -309,9 +310,13 @@ export async function GET(request: NextRequest) {
     // ── EMAE SECTORIAL ──────────────────────────────────────────────────────
     if (endpoint === "emae_sectorial") {
       const rows = await fetchCSVData(CSV_URLS.emae_sectorial)
-      // Últimas 25 filas (para calcular variación interanual del mes más reciente)
+      const monthsParam = searchParams.get("months")
+      const parsedMonths = Number.parseInt(monthsParam ?? "25", 10)
+      const monthsBack = monthsParam === "all" || monthsParam === "0"
+        ? rows.length
+        : Math.min(Math.max(Number.isFinite(parsedMonths) ? parsedMonths : 25, 1), 600)
       const p = (r: Record<string, string>, k: string) => parseFloat(r[k] ?? "") || null
-      const recent = rows.slice(-25).map(r => ({
+      const recent = rows.slice(-monthsBack).map(r => ({
         date:          r.indice_tiempo ?? "",
         agro:          p(r, "agricultura_ganaderia_caza_silvicultura"),
         pesca:         p(r, "pesca"),
