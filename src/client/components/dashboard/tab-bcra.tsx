@@ -463,15 +463,36 @@ export function ComprasView() {
     resumen: { mes_actual: number | null; acumulado_anual: number; mayor_compra_periodo: number; mayor_venta_periodo: number }
   } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch("/api/bcra?endpoint=compras")
-      .then(r => r.json())
-      .then(j => { setData(j.data); setLoading(false) })
-      .catch(() => setLoading(false))
+      .then(async r => {
+        const j = await r.json()
+        if (!r.ok || j.status === "degraded") {
+          setError(j.error ?? "La fuente de compras y ventas no está disponible.")
+          setLoading(false)
+          return
+        }
+        setData(j.data)
+        setLoading(false)
+      })
+      .catch(() => {
+        setError("No se pudo consultar la fuente de compras y ventas.")
+        setLoading(false)
+      })
   }, [])
 
   if (loading) return <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>Cargando compras/ventas...</div>
+
+  if (error) return (
+    <div>
+      <SectionMeta title="Compras BCRA — MULC" help="Intervenciones del BCRA en el mercado cambiario. La serie anterior dejó de estar publicada por su proveedor y no se reemplaza con estimaciones." source="Fuente en revisión" />
+      <div style={{ margin: 12, padding: "12px 14px", border: "1px solid var(--warning)", color: "var(--warning)", background: "color-mix(in srgb, var(--warning) 8%, transparent)", fontFamily: "var(--font-data)", fontSize: 10, lineHeight: 1.5 }}>
+        {error}
+      </div>
+    </div>
+  )
 
   const r = data?.resumen
   const chartData = (data?.datos ?? []).map(row => ({
