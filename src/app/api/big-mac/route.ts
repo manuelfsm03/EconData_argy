@@ -73,7 +73,7 @@ export async function GET() {
   try {
     // Fetch CSV de The Economist GitHub
     const csvUrl = "https://raw.githubusercontent.com/TheEconomist/big-mac-data/master/output-data/big-mac-full-index.csv"
-    const res = await fetch(csvUrl, { signal: AbortSignal.timeout(12000) })
+    const res = await fetch(csvUrl, { signal: AbortSignal.timeout(12000), next: { revalidate: 3600 } })
     if (!res.ok) throw new Error(`CSV fetch failed: ${res.status}`)
 
     const csvText = await res.text()

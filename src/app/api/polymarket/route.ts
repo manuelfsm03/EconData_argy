@@ -70,6 +70,7 @@ async function fetchPolymarketMarkets(
         "User-Agent": "PanelDeControl/2.0",
       },
       signal: AbortSignal.timeout(15000),
+      next: { revalidate: 300 },
     })
 
     if (!res.ok) throw new Error(`Gamma API ${res.status}`)

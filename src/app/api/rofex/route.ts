@@ -74,6 +74,7 @@ async function fetchFromMatba(): Promise<RofexRow[] | null> {
     const res = await fetch(MATBA_URL, {
       signal: AbortSignal.timeout(8000),
       headers: { Accept: "application/json" },
+      next: { revalidate: 300 },
     })
     if (!res.ok) return null
 
@@ -162,7 +163,7 @@ async function fetchFromDB(): Promise<RofexRow[]> {
   }
 }
 
-export async function GET(_req: NextRequest) {
+export async function GET() {
   // Serve from cache
   if (_cache && _cache.expiry > Date.now()) {
     return NextResponse.json(_cache.data)

@@ -130,6 +130,7 @@ async function fetchHuggingFaceTrending(): Promise<
       {
         headers: { "User-Agent": "PanelDeControl/2.0" },
         signal: AbortSignal.timeout(10000),
+        next: { revalidate: 3600 },
       }
     )
     if (!res.ok) throw new Error(`HF API ${res.status}`)

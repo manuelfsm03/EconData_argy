@@ -266,7 +266,10 @@ async function getStockDeuda() {
 
   try {
     const csvUrl = "https://infra.datos.gob.ar/catalog/otros/dataset/17/distribution/17.1/download/deuda-bruta.csv"
-    const res = await fetch(csvUrl, { signal: AbortSignal.timeout(10000) })
+    const res = await fetch(csvUrl, {
+      signal: AbortSignal.timeout(10000),
+      next: { revalidate: 86_400 },
+    })
     if (res.ok) {
       const text = await res.text()
       const lines = text.trim().split("\n").slice(1) // skip header

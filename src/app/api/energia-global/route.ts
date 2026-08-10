@@ -118,6 +118,7 @@ async function fetchEIAData(
     const res = await fetch(url, {
       headers: { "User-Agent": "PanelDeControl/2.0" },
       signal: AbortSignal.timeout(15000),
+      next: { revalidate: 21600 },
     })
     if (!res.ok) throw new Error(`EIA API ${res.status}`)
 
@@ -173,6 +174,7 @@ async function fetchEIAProduction(
     const res = await fetch(url, {
       headers: { "User-Agent": "PanelDeControl/2.0" },
       signal: AbortSignal.timeout(15000),
+      next: { revalidate: 21600 },
     })
     if (!res.ok) throw new Error(`EIA API ${res.status}`)
 
