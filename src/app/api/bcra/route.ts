@@ -199,7 +199,20 @@ async function getCompras() {
   const mesActualData = datos.filter(r => r.fecha.slice(0, 7) === new Date().toISOString().slice(0, 7))
   const anoActual = datos.filter(r => r.fecha.startsWith(new Date().getFullYear().toString()))
 
+  if (datos.length === 0) {
+    const unavailable = {
+      status: "degraded" as const,
+      error: "La fuente histórica de compras y ventas del BCRA fue retirada y no hay una serie oficial sustituta validada.",
+      data: null,
+      updated_at: new Date().toISOString(),
+      source: "ArgentinaDatos — endpoint retirado",
+    }
+    setCache(cacheKey, unavailable, 300)
+    return unavailable
+  }
+
   const result = {
+    status: "ok" as const,
     data: {
       datos: ultimos30,
       resumen: {
@@ -247,16 +260,20 @@ export async function GET(req: Request) {
 
   try {
     let data: unknown
+    let status = 200
     switch (endpoint) {
       case "plazofijo": data = await getPlazoFijo(); break
       case "agregados": data = await getAgregados(); break
       case "reservas":  data = await getReservas();  break
-      case "compras":   data = await getCompras();   break
+      case "compras":
+        data = await getCompras()
+        if ((data as { status?: string }).status === "degraded") status = 503
+        break
       case "tasas":     data = await getTasas();     break
       default:
         return NextResponse.json({ error: `Unknown endpoint: ${endpoint}` }, { status: 400 })
     }
-    return NextResponse.json(data)
+    return NextResponse.json(data, { status })
   } catch (err) {
     console.error(`BCRA endpoint ${endpoint} error:`, err)
     return NextResponse.json({ error: "Failed to fetch BCRA data" }, { status: 500 })
