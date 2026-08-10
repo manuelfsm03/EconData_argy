@@ -29,11 +29,26 @@ const FASE2_TS   = Date.UTC(2026, 0, 1)    // 1-ene-2026  00:00 UTC
 const PISO_INI   = 1000    // ARS/USD — piso inicial
 const TECHO_INI  = 1400    // ARS/USD — techo inicial
 const TASA_F1    = 0.01    // 1 % mensual — Fase 1
-const FALLBACK   = 0.0338  // tasa fallback si falta IPC T-2
+// Tasa de respaldo cuando falta el IPC T-2. Es el IPC de marzo 2026
+// (0.033826), congelado como constante. NO es un valor neutro: si el IPC se
+// atrasa, la banda se desliza a esa tasa y se aleja de la real todos los meses.
+// Por eso su uso ahora sale declarado en `advertencias` de la respuesta.
+const FALLBACK   = 0.0338
 
 // ── Cache en memoria ──────────────────────────────────────────────────────────
 
-const _cache: { data: unknown; expiry: number } = { data: null, expiry: 0 }
+interface RespuestaBandas {
+  data: PuntoBanda[]
+  meses_fase2: MesFase2[]
+  ipc_meses_disponibles: string[]
+  puntos_proyectados: number
+  fallback_tasa: number
+  advertencias: string[]
+  updated_at: string
+  source: string
+}
+
+const _cache: { payload: RespuestaBandas | null; expiry: number } = { payload: null, expiry: 0 }
 
 // ── Helpers (todos UTC) ───────────────────────────────────────────────────────
 
@@ -89,8 +104,9 @@ async function fetchIPCMensual(): Promise<Record<string, number>> {
 
 // ── Generación de la serie de bandas ─────────────────────────────────────────
 
-function generarFase1(): Array<{ date: string; piso: number; techo: number }> {
-  const result: Array<{ date: string; piso: number; techo: number }> = []
+// Fase 1 termina el 31-dic-2025: es toda historia, nunca proyección.
+function generarFase1(): PuntoBanda[] {
+  const result: PuntoBanda[] = []
 
   // Iterar día a día desde el 11-abr-2025 hasta el 31-dic-2025 (inclusive)
   const finTS = FASE2_TS - 86400 * 1000 // 31-dic-2025
@@ -102,16 +118,53 @@ function generarFase1(): Array<{ date: string; piso: number; techo: number }> {
       date:  new Date(ts).toISOString().slice(0, 10),
       piso:  Math.round((PISO_INI  * Math.pow(1 - TASA_F1, m)) * 100) / 100,
       techo: Math.round((TECHO_INI * Math.pow(1 + TASA_F1, m)) * 100) / 100,
+      proyectado: false,
     })
     ts += 86400 * 1000 // +1 día
   }
   return result
 }
 
+/**
+ * Cómo se deslizó cada mes de Fase 2 y de dónde salió la tasa.
+ *
+ * Existe para que el consumidor pueda distinguir un mes calculado con IPC real
+ * de uno que cayó a la tasa de respaldo. Antes esa sustitución era muda: la
+ * respuesta salía igual, y un IPC atrasado producía una banda equivocada que
+ * nadie tenía forma de detectar desde afuera.
+ */
+export interface MesFase2 {
+  /** Mes de la banda, "2026-08". */
+  mes: string
+  /** Tasa mensual de deslizamiento aplicada, en decimal. */
+  tasa: number
+  fuente: "ipc_t2" | "fallback"
+  /** Mes T-2 del que debería salir la tasa, "2026-06". */
+  ipc_mes: string
+}
+
+export interface PuntoBanda {
+  date: string
+  piso: number
+  techo: number
+  /**
+   * true = la fecha todavía no llegó. La serie se extiende tres meses hacia
+   * adelante, y sin esta marca el gráfico dibuja la proyección con la misma
+   * línea que lo ya ocurrido.
+   */
+  proyectado: boolean
+}
+
+function esFutura(fecha: string, hoy: string): boolean {
+  return fecha > hoy
+}
+
 function generarFase2(
-  ipcPorMes: Record<string, number>
-): Array<{ date: string; piso: number; techo: number }> {
-  const result: Array<{ date: string; piso: number; techo: number }> = []
+  ipcPorMes: Record<string, number>,
+  hoyISO: string,
+): { puntos: PuntoBanda[]; meses: MesFase2[] } {
+  const result: PuntoBanda[] = []
+  const meses: MesFase2[] = []
 
   // Base al inicio de Fase 2 (1-ene-2026), calculada desde Fase 1
   const mFase1   = mesesEntre(INICIO_TS, FASE2_TS)
@@ -139,17 +192,28 @@ function generarFase2(
     // T-2: usar IPC publicado 2 meses antes del mes actual
     const t2Year  = month >= 2 ? year : year - 1
     const t2Month = month >= 2 ? month - 2 : month + 10
-    const tasa    = ipcPorMes[ymKey(t2Year, t2Month)] ?? FALLBACK
+    const t2Key   = ymKey(t2Year, t2Month)
+    const ipcReal = ipcPorMes[t2Key]
+    const tasa    = ipcReal ?? FALLBACK
+
+    meses.push({
+      mes: ymKey(year, month),
+      tasa,
+      fuente: ipcReal != null ? "ipc_t2" : "fallback",
+      ipc_mes: t2Key,
+    })
 
     const dias   = daysInMonth(year, month)
     const stepP  = pisoBase  * tasa / dias   // decremento diario piso
     const stepT  = techoBase * tasa / dias   // incremento diario techo
 
     for (let d = 0; d < dias; d++) {
+      const date = new Date(Date.UTC(year, month, d + 1)).toISOString().slice(0, 10)
       result.push({
-        date:  new Date(Date.UTC(year, month, d + 1)).toISOString().slice(0, 10),
+        date,
         piso:  Math.round((pisoBase  - stepP * d) * 100) / 100,
         techo: Math.round((techoBase + stepT * d) * 100) / 100,
+        proyectado: esFutura(date, hoyISO),
       })
     }
 
@@ -163,29 +227,51 @@ function generarFase2(
     curMonth = next.month
   }
 
-  return result
+  return { puntos: result, meses }
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export async function GET() {
-  if (_cache.data && _cache.expiry > Date.now()) {
-    return NextResponse.json({ data: _cache.data, cached: true })
+  // Se cachea la respuesta ENTERA y no sólo `data`: antes el hit de caché
+  // devolvía los puntos sin `source` ni `ipc_meses_disponibles`, así que la
+  // procedencia del dato desaparecía en la mitad de las requests.
+  if (_cache.payload && _cache.expiry > Date.now()) {
+    return NextResponse.json({ ..._cache.payload, cached: true })
   }
 
   const ipcPorMes = await fetchIPCMensual()
+  const hoyISO    = new Date().toISOString().slice(0, 10)
 
   const fase1 = generarFase1()
-  const fase2 = generarFase2(ipcPorMes)
-  const data  = [...fase1, ...fase2]
+  const fase2 = generarFase2(ipcPorMes, hoyISO)
+  const data  = [...fase1, ...fase2.puntos]
 
-  _cache.data   = data
-  _cache.expiry = Date.now() + 12 * 3600 * 1000 // 12 h
+  const conFallback = fase2.meses.filter((m) => m.fuente === "fallback")
+  const proyectados = data.filter((p) => p.proyectado).length
 
-  return NextResponse.json({
+  const payload: RespuestaBandas = {
     data,
+    meses_fase2: fase2.meses,
     ipc_meses_disponibles: Object.keys(ipcPorMes).sort(),
+    puntos_proyectados: proyectados,
+    fallback_tasa: FALLBACK,
+    // Vacío cuando todo se calculó con IPC real. Si trae algo, la banda de
+    // esos meses no refleja la inflación observada y la UI tiene que decirlo.
+    advertencias: conFallback.length
+      ? [
+          `${conFallback.length} mes(es) se deslizaron con la tasa de respaldo ` +
+            `(${(FALLBACK * 100).toFixed(2)}% mensual) porque falta el IPC T-2: ` +
+            conFallback.map((m) => `${m.mes} (esperaba IPC de ${m.ipc_mes})`).join(", ") +
+            `. La banda de esos meses no refleja la inflación real.`,
+        ]
+      : [],
     updated_at: new Date().toISOString(),
     source: "INDEC vía datos.gob.ar (IPC T-2) + parámetros BCRA",
-  })
+  }
+
+  _cache.payload = payload
+  _cache.expiry  = Date.now() + 12 * 3600 * 1000 // 12 h
+
+  return NextResponse.json(payload)
 }
