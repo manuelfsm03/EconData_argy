@@ -30,6 +30,7 @@ interface CreateForumPostInput {
   content: string
   parentId: string | null
   identityToken: string
+  deleteTokenHash: string
   nowMs?: number
 }
 
@@ -70,6 +71,7 @@ export async function createForumPostAtomic(prisma: PrismaClient, input: CreateF
         authorName: input.authorName,
         content: input.content,
         parentId: input.parentId,
+        deleteTokenHash: input.deleteTokenHash,
       },
       select: PUBLIC_POST_SELECT,
     })
