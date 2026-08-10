@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Image from "next/image"
 import { Database, LayoutDashboard, MessageSquareText } from "lucide-react"
 import { ThemeToggle } from "@/client/components/ui/theme-toggle"
 import {
@@ -48,7 +49,7 @@ export function AppShell() {
       <Sidebar>
         <SidebarHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--amber)] text-sm font-bold text-[var(--bg)]">L</div>
+            <Image src="/logo.png" alt="" width={44} height={36} className="h-9 w-11 shrink-0 object-contain" />
             <div><div className="text-sm font-semibold text-[var(--text)]">La Pizarra</div><div className="font-mono text-[9px] uppercase tracking-widest text-[var(--text-mute)]">Canvas de datos</div></div>
           </div>
         </SidebarHeader>

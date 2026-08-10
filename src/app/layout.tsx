@@ -36,7 +36,6 @@ export default function RootLayout({
   return (
     <html lang="es" data-theme="dark" suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className={`${ibmPlexMono.variable} ${inter.variable}`}>

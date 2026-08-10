@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import Image from "next/image"
 import { TabMacro } from "./tab-macro"
 import { TabResumen } from "./tab-resumen"
 import { TabFinanzas } from "./tab-finanzas"
@@ -109,14 +110,14 @@ export function Dashboard({ initialTab = "macro", initialSubtab = null, embedded
         {!embedded && (
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-              <div style={{
-                width: 28, height: 28, borderRadius: 7,
-                background: "var(--amber)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                flexShrink: 0,
-              }}>
-                <span style={{ fontWeight: 700, fontSize: 14, color: "var(--bg)", fontFamily: "var(--font-ui)", lineHeight: 1 }}>L</span>
-              </div>
+              <Image
+                src="/logo.png"
+                alt=""
+                width={35}
+                height={28}
+                priority
+                style={{ width: 35, height: 28, objectFit: "contain", flexShrink: 0 }}
+              />
               <span style={{
                 fontSize: 15, fontWeight: 600, color: "var(--text)",
                 letterSpacing: -0.2, fontFamily: "var(--font-ui)",
