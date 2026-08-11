@@ -14,6 +14,7 @@
     "test:news-ui": "tsx --test tests/news-ui-policy.test.ts",
     "test:rava-sources": "tsx --test tests/rava-sources.test.ts",
     "test:inequality": "tsx --test tests/inequality-series.test.ts",
+    "test:debt-stock": "tsx --test tests/debt-stock.test.ts",
     "test:card-catalog": "tsx --test tests/card-catalog.test.ts",
     "test:cache-policy": "tsx --test tests/external-cache-policy.test.ts",
     "test:trade-data": "tsx --test tests/trade-data.test.ts",
