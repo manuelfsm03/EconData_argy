@@ -1,0 +1,184 @@
+"use client"
+
+import { useMemo, useState } from "react"
+import { CalendarDays, ChevronLeft, ChevronRight, Grid3X3, List, Search, X } from "lucide-react"
+import { deriveBondCalendarEvents, type BondCalendarEvent, todayInBuenosAires } from "@/lib/calendar-events"
+import { cn } from "@/lib/utils"
+
+const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+
+function utcDate(iso: string): Date {
+  return new Date(`${iso}T00:00:00.000Z`)
+}
+
+function isoDate(year: number, month: number, day: number): string {
+  return new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10)
+}
+
+function shortDate(iso: string): string {
+  return new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(utcDate(iso))
+}
+
+function formatAmount(value: number): string {
+  return new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(value)
+}
+
+function daysUntil(iso: string, today: string): number {
+  return Math.round((utcDate(iso).getTime() - utcDate(today).getTime()) / 86_400_000)
+}
+
+function RelativeDate({ iso, today }: { iso: string; today: string }) {
+  const days = daysUntil(iso, today)
+  const label = days === 0 ? "Hoy" : days === 1 ? "Mañana" : days < 30 ? `En ${days} días` : `En ${Math.round(days / 30)} meses`
+  return <span className="font-mono text-[9px] font-semibold uppercase tracking-wide text-[var(--amber)]">{label}</span>
+}
+
+function EventCard({ event, today, onSelect }: { event: BondCalendarEvent; today: string; onSelect: () => void }) {
+  return (
+    <button type="button" onClick={onSelect} className="w-full rounded-md border border-[var(--border)] bg-[var(--bg)] p-3 text-left transition hover:border-[var(--amber)]/60 hover:bg-[var(--bg-elev-2)]">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded bg-[var(--amber-soft)] px-2 py-0.5 font-mono text-[10px] font-bold text-[var(--amber)]">{event.ticker}</span>
+        <span className="text-xs font-semibold text-[var(--text)]">{event.title}</span>
+        <span className="ml-auto"><RelativeDate iso={event.paymentDate} today={today} /></span>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] text-[var(--text-dim)]">
+        <span>Pago {shortDate(event.paymentDate)}</span>
+        <span>Renta {formatAmount(event.coupon)}</span>
+        {event.amortization > 0 && <span>Amort. {formatAmount(event.amortization)}</span>}
+      </div>
+    </button>
+  )
+}
+
+export function MarketCalendar() {
+  const today = useMemo(() => todayInBuenosAires(), [])
+  const allEvents = useMemo(() => deriveBondCalendarEvents(today), [today])
+  const initial = allEvents[0] ? utcDate(allEvents[0].paymentDate) : utcDate(today)
+  const [month, setMonth] = useState({ year: initial.getUTCFullYear(), month: initial.getUTCMonth() })
+  const [view, setView] = useState<"month" | "agenda">("month")
+  const [query, setQuery] = useState("")
+  const [selected, setSelected] = useState<BondCalendarEvent | null>(null)
+
+  const events = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase("es")
+    if (!normalized) return allEvents
+    return allEvents.filter((event) => `${event.ticker} ${event.title} ${event.currency} ${event.law}`.toLocaleLowerCase("es").includes(normalized))
+  }, [allEvents, query])
+
+  const eventsByDay = useMemo(() => {
+    const result = new Map<string, BondCalendarEvent[]>()
+    for (const event of events) result.set(event.paymentDate, [...(result.get(event.paymentDate) ?? []), event])
+    return result
+  }, [events])
+
+  const monthCells = useMemo(() => {
+    const firstWeekday = (new Date(Date.UTC(month.year, month.month, 1)).getUTCDay() + 6) % 7
+    const daysInMonth = new Date(Date.UTC(month.year, month.month + 1, 0)).getUTCDate()
+    const cells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7
+    return Array.from({ length: cells }, (_, index) => {
+      const day = index - firstWeekday + 1
+      const date = new Date(Date.UTC(month.year, month.month, day))
+      return {
+        iso: isoDate(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+        day: date.getUTCDate(),
+        inMonth: date.getUTCMonth() === month.month,
+        weekday: index % 7,
+      }
+    })
+  }, [month])
+
+  function moveMonth(delta: number) {
+    const next = new Date(Date.UTC(month.year, month.month + delta, 1))
+    setMonth({ year: next.getUTCFullYear(), month: next.getUTCMonth() })
+  }
+
+  return (
+    <div className="min-h-[calc(100vh-49px)] bg-[var(--bg)] p-4 md:p-6">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-5 flex flex-wrap items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--amber-soft)] text-[var(--amber)]"><CalendarDays size={20} /></div>
+          <div>
+            <h1 className="text-lg font-semibold text-[var(--text)]">Calendario de mercado</h1>
+            <p className="text-xs text-[var(--text-dim)]">Pagos efectivos derivados del motor validado de bonos.</p>
+          </div>
+          <div className="ml-auto flex rounded-md border border-[var(--border)] bg-[var(--bg-elev)] p-1">
+            <button type="button" onClick={() => setView("month")} className={cn("flex h-7 items-center gap-1.5 rounded px-2.5 text-[10px]", view === "month" ? "bg-[var(--amber-soft)] text-[var(--amber)]" : "text-[var(--text-dim)]")}><Grid3X3 size={12} />Mes</button>
+            <button type="button" onClick={() => setView("agenda")} className={cn("flex h-7 items-center gap-1.5 rounded px-2.5 text-[10px]", view === "agenda" ? "bg-[var(--amber-soft)] text-[var(--amber)]" : "text-[var(--text-dim)]")}><List size={12} />Agenda</button>
+          </div>
+        </div>
+
+        <div className="mb-4 rounded-lg border border-[var(--border)] bg-[var(--bg-elev)] p-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <div className="relative flex-1">
+              <Search size={14} className="pointer-events-none absolute left-3 top-2.5 text-[var(--text-mute)]" />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar ticker o instrumento…" className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 text-xs text-[var(--text)] outline-none focus:border-[var(--amber)]" />
+            </div>
+            <div className="font-mono text-[10px] text-[var(--text-dim)]">{events.length} pagos futuros · corte {today}</div>
+          </div>
+          <div className="mt-3 rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[10px] leading-4 text-[var(--text-mute)]">
+            Cobertura actual: únicamente esquemas admitidos por el motor de bonos, con amortizaciones reconciliadas al 100%. La fecha mostrada es la fecha efectiva, corrida al siguiente día hábil según el calendario cargado; no se inventan eventos macro, licitaciones ni earnings.
+          </div>
+        </div>
+
+        {view === "month" ? (
+          <section className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-elev)]">
+            <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3">
+              <button type="button" onClick={() => moveMonth(-1)} className="flex h-8 w-8 items-center justify-center rounded border border-[var(--border)] text-[var(--text-dim)] hover:border-[var(--amber)] hover:text-[var(--amber)]"><ChevronLeft size={15} /></button>
+              <div className="min-w-44 text-center text-sm font-semibold text-[var(--text)]">{MONTHS[month.month]} {month.year}</div>
+              <button type="button" onClick={() => moveMonth(1)} className="flex h-8 w-8 items-center justify-center rounded border border-[var(--border)] text-[var(--text-dim)] hover:border-[var(--amber)] hover:text-[var(--amber)]"><ChevronRight size={15} /></button>
+              <button type="button" onClick={() => setMonth({ year: initial.getUTCFullYear(), month: initial.getUTCMonth() })} className="ml-2 rounded border border-[var(--border)] px-2.5 py-1.5 text-[9px] uppercase tracking-wide text-[var(--text-dim)] hover:text-[var(--amber)]">Próximo pago</button>
+            </div>
+            <div className="overflow-x-auto p-3">
+              <div className="min-w-[840px]">
+                <div className="mb-1 grid grid-cols-7 gap-1">{WEEKDAYS.map((day) => <div key={day} className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-[var(--text-mute)]">{day}</div>)}</div>
+                <div className="grid grid-cols-7 gap-1">
+                  {monthCells.map((cell) => {
+                    const dayEvents = eventsByDay.get(cell.iso) ?? []
+                    const isToday = cell.iso === today
+                    return (
+                      <div key={cell.iso} className={cn("min-h-28 rounded-md border p-2", cell.inMonth ? "border-[var(--border)] bg-[var(--bg)]" : "border-transparent bg-transparent opacity-40", isToday && "border-[var(--amber)] bg-[var(--amber-soft)]/30")}>
+                        <div className={cn("mb-2 font-mono text-[10px]", isToday ? "font-bold text-[var(--amber)]" : "text-[var(--text-dim)]")}>{cell.day}</div>
+                        <div className="space-y-1">
+                          {dayEvents.map((event) => <button key={event.id} type="button" onClick={() => setSelected(event)} className="block w-full truncate rounded border-l-2 border-[var(--amber)] bg-[var(--amber-soft)] px-1.5 py-1 text-left font-mono text-[9px] font-semibold text-[var(--text)] hover:bg-[var(--bg-elev-2)]">{event.ticker} · {event.amortization > 0 ? "R+A" : "Renta"}</button>)}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elev)] p-4">
+            {events.length === 0 ? <div className="p-10 text-center text-xs text-[var(--text-dim)]">No hay eventos para esta búsqueda.</div> : events.map((event) => <EventCard key={event.id} event={event} today={today} onSelect={() => setSelected(event)} />)}
+          </section>
+        )}
+      </div>
+
+      {selected && (
+        <>
+          <button type="button" aria-label="Cerrar detalle" onClick={() => setSelected(null)} className="fixed inset-0 z-[90] bg-black/50" />
+          <aside className="fixed inset-y-0 right-0 z-[91] w-full max-w-md overflow-y-auto border-l border-[var(--border)] bg-[var(--bg-elev)] shadow-2xl">
+            <div className="flex items-start gap-3 border-b border-[var(--border)] p-5">
+              <div className="rounded bg-[var(--amber-soft)] px-2 py-1 font-mono text-sm font-bold text-[var(--amber)]">{selected.ticker}</div>
+              <div><h2 className="text-base font-semibold text-[var(--text)]">{selected.title}</h2><p className="mt-1 text-[10px] text-[var(--text-dim)]">Pago efectivo {shortDate(selected.paymentDate)}</p></div>
+              <button type="button" onClick={() => setSelected(null)} className="ml-auto text-[var(--text-mute)] hover:text-[var(--text)]"><X size={17} /></button>
+            </div>
+            <div className="space-y-4 p-5 text-xs">
+              <dl className="grid grid-cols-[140px_1fr] gap-y-3">
+                <dt className="text-[var(--text-mute)]">Fecha prospecto</dt><dd className="font-mono text-[var(--text)]">{selected.accrualDate}</dd>
+                <dt className="text-[var(--text-mute)]">Fecha efectiva</dt><dd className="font-mono text-[var(--text)]">{selected.paymentDate}</dd>
+                <dt className="text-[var(--text-mute)]">Renta / VN 100</dt><dd className="font-mono text-[var(--text)]">{formatAmount(selected.coupon)} {selected.currency}</dd>
+                <dt className="text-[var(--text-mute)]">Amortización / VN 100</dt><dd className="font-mono text-[var(--text)]">{formatAmount(selected.amortization)}</dd>
+                <dt className="text-[var(--text-mute)]">Residual previo</dt><dd className="font-mono text-[var(--text)]">{formatAmount(selected.residualBeforePayment)}</dd>
+                <dt className="text-[var(--text-mute)]">Ley</dt><dd className="text-[var(--text)]">{selected.law === "NY" ? "Nueva York" : "Argentina"}</dd>
+              </dl>
+              <div className="rounded-md border border-[var(--border)] bg-[var(--bg)] p-3 text-[10px] leading-4 text-[var(--text-dim)]"><b className="text-[var(--text)]">Fuente:</b> {selected.source}</div>
+            </div>
+          </aside>
+        </>
+      )}
+    </div>
+  )
+}

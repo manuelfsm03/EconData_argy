@@ -68,22 +68,30 @@ export const SidebarMenu = ({ className, ...props }: React.HTMLAttributes<HTMLDi
 
 interface SidebarMenuButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   active?: boolean
+  closeOnMobile?: boolean
 }
 
 export const SidebarMenuButton = React.forwardRef<HTMLButtonElement, SidebarMenuButtonProps>(
-  ({ className, active, ...props }, ref) => (
-    <button
-      ref={ref}
-      data-active={active}
-      className={cn(
-        "flex h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium text-[var(--text-dim)] transition-colors",
-        "hover:bg-[var(--bg-elev-2)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--amber-soft)]",
-        active && "bg-[var(--amber-soft)] text-[var(--amber)]",
-        className
-      )}
-      {...props}
-    />
-  )
+  ({ className, active, closeOnMobile = false, onClick, ...props }, ref) => {
+    const { setOpen } = useSidebar()
+    return (
+      <button
+        ref={ref}
+        data-active={active}
+        className={cn(
+          "flex h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium text-[var(--text-dim)] transition-colors",
+          "hover:bg-[var(--bg-elev-2)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--amber-soft)]",
+          active && "bg-[var(--amber-soft)] text-[var(--amber)]",
+          className
+        )}
+        onClick={(event) => {
+          onClick?.(event)
+          if (closeOnMobile && window.matchMedia("(max-width: 767px)").matches) setOpen(false)
+        }}
+        {...props}
+      />
+    )
+  }
 )
 SidebarMenuButton.displayName = "SidebarMenuButton"
 
