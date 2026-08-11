@@ -170,3 +170,21 @@ td.num, th.num { text-align: right; }
   height: 8px;
   width: 8px;
 }
+
+@container news-feed (max-width: 720px) {
+  .news-feed-layout {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .news-feed-layout > div {
+    min-height: 320px;
+  }
+
+  .news-feed-columns,
+  .news-feed-row {
+    grid-template-columns: 44px minmax(62px, 80px) minmax(0, 1fr) !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+}
