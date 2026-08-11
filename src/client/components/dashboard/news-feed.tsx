@@ -41,7 +41,11 @@ const INITIAL = 8
 
 function fmtTime(d: string): string {
   try {
-    return new Date(d).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })
+    return new Date(d).toLocaleTimeString("es-AR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
   } catch {
     return "--:--"
   }
@@ -269,80 +273,91 @@ function CategoryBadge({ category }: { category: string }) {
   )
 }
 function NewsTable({ rows, extra, loading, expandedId, onToggle, onMore }: NewsTableProps) {
-  const visible   = rows.slice(0, INITIAL + extra)
+  const visible = rows.slice(0, INITIAL + extra)
   const remaining = rows.length - visible.length
+
+  if (visible.length === 0) {
+    return (
+      <div style={{ padding: 32, textAlign: "center", color: "var(--text-mute)", fontFamily: "var(--font-data)", fontSize: 10 }}>
+        {loading ? "CARGANDO NOTICIAS..." : "SIN RESULTADOS"}
+      </div>
+    )
+  }
 
   return (
     <>
-      <table>
-        <thead>
-          <tr>
-            <th style={{ width: 40 }}>Hora</th>
-            <th style={{ width: 100 }}>Fuente</th>
-            <th>Titular</th>
-          </tr>
-        </thead>
-        <tbody>
-          {visible.map((item, i) => (
-            <tr
-              key={item.id + i}
+      <div className="news-feed-columns" style={{ display: "grid", gridTemplateColumns: "54px minmax(70px, 90px) minmax(0, 1fr)", padding: "5px 12px", borderBottom: "1px solid var(--border)", background: "var(--bg)", position: "sticky", top: 0, zIndex: 1 }}>
+        {['HORA', 'FUENTE', 'TITULAR'].map((heading) => (
+          <span key={heading} style={{ color: "var(--text-mute)", fontFamily: "var(--font-data)", fontSize: 8, letterSpacing: 1 }}>
+            {heading}
+          </span>
+        ))}
+      </div>
+
+      <div>
+        {visible.map((item, index) => {
+          const isExpanded = expandedId === item.id
+          return (
+            <article
+              key={`${item.id}-${index}`}
+              className="news-feed-row"
+              onClick={() => item.description && onToggle(item.id)}
+              onKeyDown={(event) => {
+                if (item.description && (event.key === "Enter" || event.key === " ")) {
+                  event.preventDefault()
+                  onToggle(item.id)
+                }
+              }}
+              role={item.description ? "button" : undefined}
+              tabIndex={item.description ? 0 : undefined}
+              aria-expanded={item.description ? isExpanded : undefined}
               style={{
-                background: i % 2 === 0 ? "var(--bg)" : "var(--bg)",
+                display: "grid",
+                gridTemplateColumns: "54px minmax(70px, 90px) minmax(0, 1fr)",
+                padding: "9px 12px",
+                borderBottom: "1px solid var(--bg-elev-2)",
+                background: isExpanded ? "var(--bg-elev)" : index % 2 === 0 ? "var(--bg)" : "var(--bg-row-alt)",
                 cursor: item.description ? "pointer" : "default",
               }}
-              onClick={() => item.description && onToggle(item.id)}
             >
-              <td style={{ color: "var(--amber)", fontSize: 12, verticalAlign: "top", paddingTop: 10, paddingBottom: 10 }}>
+              <time dateTime={item.pubDate} style={{ paddingTop: 1, color: "var(--amber)", fontFamily: "var(--font-data)", fontSize: 11, whiteSpace: "nowrap" }}>
                 {fmtTime(item.pubDate)}
-              </td>
-              <td style={{ color: "#0068FF", fontSize: 12, verticalAlign: "top", fontWeight: 500, paddingTop: 10, paddingBottom: 10 }}>
-                {item.source.toUpperCase().slice(0, 14)}
-              </td>
-              <td style={{ whiteSpace: "normal", paddingTop: 10, paddingBottom: 10 }}>
-                <CategoryBadge category={item.category} />
-                <a
-                  href={item.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: "var(--text)", fontSize: 13, lineHeight: 1.5 }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {item.title}
-                </a>
-                {expandedId === item.id && item.description && (
-                  <div style={{ color: "#888888", fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
+              </time>
+              <span title={item.source} style={{ paddingTop: 1, overflow: "hidden", color: "var(--sky)", fontFamily: "var(--font-data)", fontSize: 10, fontWeight: 600, textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {item.source.toUpperCase().slice(0, 12)}
+              </span>
+              <div style={{ minWidth: 0 }}>
+                <div>
+                  <CategoryBadge category={item.category} />
+                  <a
+                    href={item.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "var(--text)", fontFamily: "var(--font-data)", fontSize: 13, lineHeight: 1.55, textDecoration: "none" }}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    {item.title}
+                  </a>
+                </div>
+                {isExpanded && item.description && (
+                  <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid var(--border)", color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 11, lineHeight: 1.6 }}>
                     {item.description}
                   </div>
                 )}
-              </td>
-            </tr>
-          ))}
-
-          {visible.length === 0 && (
-            <tr>
-              <td colSpan={3} style={{ color: "var(--text-mute)", textAlign: "center", padding: 20 }}>
-                {loading ? "CARGANDO NOTICIAS..." : "SIN RESULTADOS"}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+              </div>
+            </article>
+          )
+        })}
+      </div>
 
       {remaining > 0 && (
-        <div style={{ padding: "6px 12px", borderTop: "1px solid var(--bg-elev-2)" }}>
+        <div style={{ padding: "8px 12px", borderTop: "1px solid var(--border)", background: "var(--bg)" }}>
           <button
+            type="button"
             onClick={onMore}
-            style={{
-              color: "#0068FF",
-              fontSize: 10,
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-            }}
+            style={{ border: 0, background: "transparent", color: "var(--sky)", cursor: "pointer", fontFamily: "var(--font-data)", fontSize: 9, letterSpacing: "0.06em", textTransform: "uppercase" }}
           >
-            Ver {remaining} más ▼
+            Ver {remaining} noticias más ↓
           </button>
         </div>
       )}
@@ -393,7 +408,16 @@ export function NewsFeed() {
   const activeCat = CATEGORIES.find((c) => c.key === category)
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "calc(100dvh - 68px)" }}>
+    <div
+      className="news-feed"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "calc(100dvh - 68px)",
+        containerType: "inline-size",
+        containerName: "news-feed",
+      }}
+    >
       {/* Filtros de categoría — pill */}
       <div
         style={{
@@ -462,7 +486,7 @@ export function NewsFeed() {
       )}
 
       {/* Dos columnas: Argentina | Internacional */}
-      {viewMode === "lista" && <div style={{ display: "flex", gap: 1, background: "var(--bg-elev-2)", flex: 1, minHeight: 0 }}>
+      {viewMode === "lista" && <div className="news-feed-layout" style={{ display: "flex", gap: 1, background: "var(--bg-elev-2)", flex: 1, minHeight: 0 }}>
         {/* Argentina */}
         <div style={{ flex: 1, minWidth: 0, background: "var(--bg)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
           <div
