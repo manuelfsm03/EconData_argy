@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { bcraOfficialApi } from "@/server/sources/bcra-official-api"
+import { fetchReserveSeries, latestMeasuredNetReserves } from "@/server/sources/bcra-reserves"
 
 // ── Cache en memoria ──────────────────────────────────────────────────────────
 const cache = new Map<string, { data: unknown; expiry: number }>()
@@ -84,79 +85,46 @@ async function getAgregados() {
 }
 
 // ── Endpoint Reservas Internacionales ────────────────────────────────────────
-async function getReservas() {
-  const cacheKey = "bcra_reservas"
+async function getReservas(historico = false) {
+  const cacheKey = historico ? "bcra_reservas_historico" : "bcra_reservas"
   const cached = getCache(cacheKey)
   if (cached) return cached
 
-  const from = dateYearsAgo(2)
-  const brutas = await fetchVar(1, from) // Reservas internacionales brutas (USD MM)
-
-  // Intentar obtener datos de reservas netas desde argentinadatos.com
-  let netasData: { fecha: string; brutas: number; netas: number; swap_china: number; encajes: number }[] = []
-  try {
-    const res = await fetch("https://argentinadatos.com/api/v1/finanzas/reservas", {
-      signal: AbortSignal.timeout(8000),
-      next: { revalidate: 3600 },
-    })
-    if (res.ok) {
-      const json = await res.json()
-      // Argentinadatos devuelve array de objetos con fecha, reservas_netas, reservas_brutas
-      if (Array.isArray(json)) {
-        netasData = json
-          .filter((r: Record<string, unknown>) => r.fecha && r.reservas_brutas != null)
-          .map((r: Record<string, unknown>) => ({
-            fecha:      String(r.fecha),
-            brutas:     Number(r.reservas_brutas) * 1e6,
-            netas:      Number(r.reservas_netas ?? r.reservas_brutas) * 1e6,
-            swap_china: Number(r.swap_china ?? 0) * 1e6,
-            encajes:    Number(r.encajes ?? 0) * 1e6,
-          }))
-          .sort((a, b) => a.fecha.localeCompare(b.fecha))
-          .slice(-24)
-      }
-    }
-  } catch {
-    // Fallback: construir desde brutas con estimaciones
-  }
-
-  // Si no hay netas, construir desde brutas con ajustes estimados
-  if (netasData.length === 0 && brutas.length > 0) {
-    // Componentes a descontar (estimados en miles de millones USD):
-    // - Swap China activado: ~19B
-    // - Encajes USD bancos privados: ~7B
-    // - DEGs FMI: ~3B
-    const DESCUENTO_ESTIMADO = 28_000 // USD millones
-    netasData = brutas.slice(-24).map(r => ({
-      fecha:      r.fecha,
-      brutas:     r.valor,
-      netas:      r.valor - DESCUENTO_ESTIMADO,
-      swap_china: 19_000,
-      encajes:    7_000,
-    }))
-  }
+  const desde = historico ? "2000-01-01" : dateYearsAgo(2)
+  const hasta = new Date().toISOString().slice(0, 10)
+  const netasData = await fetchReserveSeries(desde, hasta)
+  const brutas = netasData.map(row => ({ fecha: row.fecha, valor: row.brutas }))
 
   const ultimo = brutas.at(-1)
-  const pen = brutas.at(-6)  // ~1 semana atrás (si hay datos diarios)
-  const varSemanal = ultimo && pen ? ultimo.valor - pen.valor : null
-
-  const netasUltimo = netasData.at(-1)
+  const penultimoSemanal = brutas.at(-6)
+  const ultimaNeta = latestMeasuredNetReserves(netasData)
+  const primeraNeta = netasData.find(row => row.netas !== null)
 
   const result = {
     data: {
       brutas,
       netas: netasData,
+      historico,
+      metadata: {
+        primera_fecha: brutas[0]?.fecha ?? null,
+        ultima_fecha: ultimo?.fecha ?? null,
+        primera_fecha_netas: primeraNeta?.fecha ?? null,
+        n_puntos: brutas.length,
+        metodologia_netas: "BCRA Var75 − Var1200 − Var1243 (metodología F. Machado)",
+        nota_netas: "No incluye un ajuste inventado por saldo neto con el FMI; si falta un componente diario, netas es null.",
+      },
       ultima: {
         brutas: ultimo?.valor ?? null,
-        netas:  netasUltimo?.netas ?? null,
-        fecha:  ultimo?.fecha ?? null,
-        var_semanal_brutas: varSemanal,
+        netas: ultimaNeta?.netas ?? null,
+        fecha: ultimo?.fecha ?? null,
+        fecha_netas: ultimaNeta?.fecha ?? null,
+        var_semanal_brutas: ultimo && penultimoSemanal ? ultimo.valor - penultimoSemanal.valor : null,
       },
     },
     updated_at: new Date().toISOString(),
-    source: "BCRA API v4.0 + argentinadatos.com",
+    source: "BCRA API v4.0 · Variables 1, 75, 1200 y 1243",
   }
-  setCache(cacheKey, result, 1800)
+  setCache(cacheKey, result, historico ? 14_400 : 1_800)
   return result
 }
 
@@ -258,6 +226,8 @@ async function getTasas() {
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const endpoint = searchParams.get("endpoint") ?? "plazofijo"
+  const historico = endpoint === "reservas"
+    && ["1", "true"].includes(searchParams.get("historico") ?? "")
 
   try {
     let data: unknown
@@ -265,7 +235,7 @@ export async function GET(req: Request) {
     switch (endpoint) {
       case "plazofijo": data = await getPlazoFijo(); break
       case "agregados": data = await getAgregados(); break
-      case "reservas":  data = await getReservas();  break
+      case "reservas":  data = await getReservas(historico); break
       case "compras":
         data = await getCompras()
         if ((data as { status?: string }).status === "degraded") status = 503

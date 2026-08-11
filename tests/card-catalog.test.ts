@@ -28,3 +28,14 @@ test("every category is represented and search covers titles plus keywords", () 
   assert.ok(searchDataCards("treasury").some((card) => card.id === "screener-tasas"))
   assert.equal(DATA_CARD_CATALOG.find((card) => card.id === "resumen-reservas")?.endpoints[0].method, "POST")
 })
+
+test("expone bancos como tarjeta BCRA con rango explícito", () => {
+  const bancos = DATA_CARD_CATALOG.find((card) => card.id === "bcra-bancos")
+  assert.ok(bancos)
+  assert.equal(bancos.category, "bcra")
+  assert.equal(bancos.subtab, "bancos")
+  assert.match(
+    bancos.endpoints[0].path,
+    /^\/api\/bcra-data\?endpoint=bancos&desde=\d{4}-\d{2}-\d{2}&hasta=\d{4}-\d{2}-\d{2}$/,
+  )
+})

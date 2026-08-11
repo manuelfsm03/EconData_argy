@@ -21,6 +21,7 @@ import { ChartDownload } from "../ui/chart-download"
 import { SectionMeta } from "../ui/help-tooltip"
 import { InfoTooltip } from "../ui/info-tooltip"
 import { GLOSSARY } from "@/lib/glossary"
+import { toWeightedSectorShares } from "@/lib/macro-sector-shares"
 import {
   BarChart, Bar, Cell, LineChart, Line,
   ComposedChart,
@@ -327,6 +328,40 @@ type EmaeSectorialRow = {
   imp_subsidios: number | null
 }
 
+// Ponderaciones VAB a precios básicos, base 2004 — INDEC Cuentas Nacionales
+// Representan el peso de cada sector en el VAB total del año base
+const POND_VAB_2004: Record<string, number> = {
+  agro:          5.11,
+  pesca:         0.28,
+  mineria:       3.88,
+  industria:    17.23,
+  energia:       2.19,
+  construccion:  5.10,
+  comercio:      8.54,
+  turismo:       1.53,
+  transporte:    8.14,
+  finanzas:      4.51,
+  inmobiliarias: 14.73,
+  adm_publica:   6.12,
+  ensenanza:     5.23,
+  salud:         5.04,
+  serv_comun:    3.79,
+}
+
+const EMAE_SECTOR_KEYS = Object.keys(POND_VAB_2004) as (keyof EmaeSectorialRow)[]
+
+// Para cada fila, calcula el % del VAB total a precios constantes 2004
+// Fórmula: share_j_t = (w_j × idx_j_t) / Σ_k(w_k × idx_k_t) × 100
+function computePctVAB(rows: EmaeSectorialRow[]): EmaeSectorialRow[] {
+  return rows.map(row => {
+    const indexes = Object.fromEntries(
+      EMAE_SECTOR_KEYS.map((key) => [key, row[key] as number | null]),
+    ) as Record<string, number | null>
+    const shares = toWeightedSectorShares(indexes, POND_VAB_2004)
+    return { date: row.date, ...shares, imp_subsidios: null } as EmaeSectorialRow
+  })
+}
+
 type UCIRow = {
   date: string
   nivel_general: number | null
@@ -587,6 +622,9 @@ export function EmaeView() {
   const [estructuralLoading, setEstructuralLoading] = useState(true)
   const [emaeSectorialData, setEmaeSectorialData] = useState<EmaeSectorialRow[]>([])
   const [emaeSectorialLoading, setEmaeSectorialLoading] = useState(true)
+  const [emaeSectorialCompleto, setEmaeSectorialCompleto] = useState<EmaeSectorialRow[]>([])
+  const [emaeSectorialCompletoLoading, setEmaeSectorialCompletoLoading] = useState(false)
+  const [emaeModoParticipacion, setEmaeModoPBI] = useState(false)
   const [emaeSubTab, setEmaeSubTab] = useState("actividad")
   const [emaeEstrTab, setEmaeEstrTab] = useState("indicadores")
   const [actividadData, setActividadData] = useState<ActividadData | null>(null)
@@ -1099,9 +1137,50 @@ export function EmaeView() {
 
           {/* Gráfico de líneas comparativo — todos los sectores con toggle */}
           <div style={{ padding: "8px 0" }}>
+            {/* Toggle de participación sectorial en el VAB */}
+            <div style={{ display: "flex", gap: 8, padding: "0 12px 6px", alignItems: "center" }}>
+              <button
+                onClick={() => {
+                  const next = !emaeModoParticipacion
+                  setEmaeModoPBI(next)
+                  if (next && emaeSectorialCompleto.length === 0 && !emaeSectorialCompletoLoading) {
+                    setEmaeSectorialCompletoLoading(true)
+                    fetch("/api/macro?endpoint=emae_sectorial_completo")
+                      .then(r => r.json())
+                      .then(j => { setEmaeSectorialCompleto(j.data ?? []); setEmaeSectorialCompletoLoading(false) })
+                      .catch(() => setEmaeSectorialCompletoLoading(false))
+                  }
+                }}
+                style={{
+                  fontSize: 8, letterSpacing: 1.5, fontFamily: "var(--font-data)", cursor: "pointer",
+                  padding: "3px 10px", border: "1px solid",
+                  borderColor: emaeModoParticipacion ? "var(--positive)" : "var(--border)",
+                  background: emaeModoParticipacion ? "color-mix(in srgb, var(--positive) 10%, transparent)" : "transparent",
+                  color: emaeModoParticipacion ? "var(--positive)" : "var(--text-mute)",
+                }}
+              >
+                {emaeModoParticipacion ? "▸ PARTICIPACIÓN EN VAB" : "PARTICIPACIÓN EN VAB"}
+              </button>
+              <span style={{ fontSize: 8, color: "var(--text-mute)", fontFamily: "var(--font-data)" }}>
+                {emaeModoParticipacion
+                  ? "% del VAB total · ponderaciones INDEC base 2004 · precios constantes"
+                  : "Índice base 2004=100 · valores originales INDEC"}
+              </span>
+              {emaeModoParticipacion && emaeSectorialCompletoLoading && (
+                <span style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>cargando serie completa...</span>
+              )}
+            </div>
             <BBGLineChart
-              title="EMAE — EVOLUCIÓN SECTORIAL (ÍNDICE BASE 2004)"
-              data={emaeSectorialData}
+              title={emaeModoParticipacion
+                ? "EMAE — PARTICIPACIÓN SECTORIAL EN EL VAB (BASE 2004)"
+                : "EMAE — EVOLUCIÓN SECTORIAL (ÍNDICE BASE 2004)"}
+              data={(() => {
+                if (!emaeModoParticipacion) return emaeSectorialData
+                const base = emaeSectorialCompleto.length > 0
+                  ? emaeSectorialCompleto
+                  : emaeSectorialData
+                return computePctVAB(base)
+              })()}
               enableLineToggle
               lines={[
                 { key: "agro",          name: "Agro",         color: "var(--positive)" },
@@ -1121,7 +1200,7 @@ export function EmaeView() {
                 { key: "serv_comun",    name: "Serv. Com.",   color: "#90A4AE" },
               ]}
               height={280}
-              yAxisLabel="Índice 2004=100"
+              yAxisLabel={emaeModoParticipacion ? "% del VAB" : "Índice 2004=100"}
               defaultRange="all"
             />
           </div>

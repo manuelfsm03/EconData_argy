@@ -308,7 +308,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ── EMAE SECTORIAL ──────────────────────────────────────────────────────
-    if (endpoint === "emae_sectorial") {
+    if (endpoint === "emae_sectorial" || endpoint === "emae_sectorial_completo") {
       const rows = await fetchCSVData(CSV_URLS.emae_sectorial)
       const monthsParam = searchParams.get("months")
       const parsedMonths = Number.parseInt(monthsParam ?? "25", 10)
@@ -316,7 +316,7 @@ export async function GET(request: NextRequest) {
         ? rows.length
         : Math.min(Math.max(Number.isFinite(parsedMonths) ? parsedMonths : 25, 1), 600)
       const p = (r: Record<string, string>, k: string) => parseFloat(r[k] ?? "") || null
-      const recent = rows.slice(-monthsBack).map(r => ({
+      const mapRow = (r: Record<string, string>) => ({
         date:          r.indice_tiempo ?? "",
         agro:          p(r, "agricultura_ganaderia_caza_silvicultura"),
         pesca:         p(r, "pesca"),
@@ -334,9 +334,15 @@ export async function GET(request: NextRequest) {
         salud:         p(r, "servicios_sociales_salud"),
         serv_comun:    p(r, "otras_actividades_servicios_comunitarias_sociales_personales"),
         imp_subsidios: p(r, "impuestos_netos_subsidios"),
-      }))
+      })
+      // emae_sectorial: rango configurable (25 por defecto; months=all soportado)
+      // emae_sectorial_completo: toda la serie desde 2004 para participación histórica en VAB
+      const selectedRows = endpoint === "emae_sectorial_completo"
+        ? rows
+        : rows.slice(-monthsBack)
+      const data = selectedRows.map(mapRow)
       return NextResponse.json({
-        data: recent,
+        data,
         updated_at: new Date().toISOString(),
         source: "datos.gob.ar · INDEC · EMAE Apertura Sectorial Base 2004",
       })

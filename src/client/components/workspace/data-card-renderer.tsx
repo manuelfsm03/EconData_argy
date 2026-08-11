@@ -31,6 +31,7 @@ import {
 import { FiscalSankeyView } from "@/client/components/dashboard/fiscal-sankey"
 import {
   AgregadosView,
+  BancosView,
   ComprasView,
   PlazoFijoView as BCRAPlazoFijoView,
   REMView,
@@ -78,6 +79,7 @@ const CARD_COMPONENTS: Record<string, React.ComponentType> = {
   "bcra-tasas": TasasView,
   "bcra-agregados": AgregadosView,
   "bcra-reservas": ReservasView,
+  "bcra-bancos": BancosView,
   "bcra-compras": ComprasView,
   rem: REMView,
   noticias: NewsFeed,
