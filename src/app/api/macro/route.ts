@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { MACRO_TRADE_SERIES_IDS } from "@/lib/trade-data"
 import { mergeOfficialSeries } from "@/server/domain/inequality-series"
+import { buildIcaTradeComposition, buildSitcShareComposition } from "@/server/domain/trade-composition"
 import {
   IPC_DIVISIONS,
   buildIpcDivisionSnapshot,
@@ -646,37 +647,53 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // ── ARGENDATA — COMPOSICIÓN COMERCIO EXTERIOR ────────────────────────────
+    // ── COMPOSICIÓN COMERCIO EXTERIOR — ICA INDEC MENSUAL ──────────────────
     if (endpoint === "argendata_comext") {
-      const BASE = "https://raw.githubusercontent.com/argendatafundar/data/main/COMEXT/"
-      const [expoRows, impoRows] = await Promise.all([
-        fetchCSVData(`${BASE}composicion_exportaciones_bienes_sitc_seccion.csv`),
-        fetchCSVData(`${BASE}composicion_importaciones_bienes_sitc_seccion.csv`),
-      ])
+      const ICA_CSV = "https://infra.datos.gob.ar/catalog/sspm/dataset/74/distribution/74.3/download/intercambio-comercial-argentino-mensual.csv"
+      const rows = await fetchCSVData(ICA_CSV, 3600)
+      const composition = buildIcaTradeComposition(rows)
 
-      const pivot = (rows: Record<string, string>[], valCol: string) => {
-        const byYear: Record<string, Record<string, unknown>> = {}
-        const catSet = new Set<string>()
-        for (const r of rows) {
-          if (r.geocodigoFundar !== "ARG") continue
-          const year = r.year ?? ""
-          const cat = r.sitc_product_name_es ?? "Otros"
-          const val = parseFloat(r[valCol] ?? "") || 0
-          catSet.add(cat)
-          if (!byYear[year]) byYear[year] = { date: `${year}-01-01` }
-          byYear[year][cat] = parseFloat(val.toFixed(2))
-        }
-        const series = Object.values(byYear).sort((a, b) =>
-          (a.date as string).localeCompare(b.date as string)
+      if (composition.expo.series.length === 0 || composition.impo.series.length === 0) {
+        return NextResponse.json(
+          { status: "degraded", error: "La composición mensual ICA no está disponible." },
+          { status: 503 },
         )
-        return { series, categorias: Array.from(catSet) }
       }
 
-      const expo = pivot(expoRows, "export_value_pc")
-      const impo = pivot(impoRows, "import_value_pc")
+      return NextResponse.json({
+        status: "ok",
+        data: { expo: composition.expo, impo: composition.impo },
+        metadata: { unidad: composition.unidad, frecuencia: composition.frecuencia },
+        updated_at: new Date().toISOString(),
+        source: "INDEC · Intercambio Comercial Argentino — CSV mensual",
+      })
+    }
+
+    // ── COMPOSICIÓN HISTÓRICA SITC — PARTICIPACIÓN PORCENTUAL ───────────────
+    if (endpoint === "comext_sitc") {
+      const BASE = "https://raw.githubusercontent.com/argendatafundar/data/main/COMEXT/"
+      const [expoRows, impoRows] = await Promise.all([
+        fetchCSVData(`${BASE}composicion_exportaciones_bienes_sitc_seccion.csv`, 21_600),
+        fetchCSVData(`${BASE}composicion_importaciones_bienes_sitc_seccion.csv`, 21_600),
+      ])
+      const expo = buildSitcShareComposition(expoRows, "export_value_pc")
+      const impo = buildSitcShareComposition(impoRows, "import_value_pc")
+
+      if (expo.series.length === 0 || impo.series.length === 0) {
+        return NextResponse.json(
+          { status: "degraded", error: "La composición histórica SITC no está disponible." },
+          { status: 503 },
+        )
+      }
 
       return NextResponse.json({
+        status: "ok",
         data: { expo, impo },
+        metadata: {
+          unidad: "% del total",
+          frecuencia: "anual",
+          nota: "Participaciones por sección SITC; no son montos en USD.",
+        },
         updated_at: new Date().toISOString(),
         source: "Argendata/Fundar — Atlas de Complejidad Económica, Harvard Growth Lab",
       })
