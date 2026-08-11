@@ -17,6 +17,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { MACRO_TRADE_SERIES_IDS } from "@/lib/trade-data"
+import { mergeOfficialSeries } from "@/server/domain/inequality-series"
 
 const BASE_URL = "https://apis.datos.gob.ar/series/api/series/"
 
@@ -78,7 +79,8 @@ const SERIES_IDS: Record<string, string> = {
   pbi_usd_indec:    "9.2_PDPC_2004_T_30",    // PIB en USD corrientes (trimestral → anual)
   pbi_percapita_usd:"9.2_PPCDC_2004_T_33",   // PIB per cápita USD corrientes
   poblacion_indec:  "9.2_P_2004_T_9",         // Población Argentina
-  gini_indec:       "65.1_CGI_0_0_21",         // Coeficiente Gini EPH (semestral)
+  gini_indec:       "65.1_CGI_0_0_21",         // Coeficiente Gini EPH (trimestral)
+  informalidad_indec:"52.1_ASDJ_0_0_37",        // Asalariados sin descuento jubilatorio EPH (anual)
   natalidad_indec:  "tn_arg",                  // Tasa de natalidad
   mortalidad_indec: "tmi_arg",                 // Tasa mortalidad infantil
   smvm:             "57.1_SMVMM_0_M_34",       // Salario Mínimo Vital y Móvil (mensual)
@@ -531,18 +533,26 @@ export async function GET(request: NextRequest) {
 
     // ── ARGENDATA — DESIGUALDAD E INFORMALIDAD ──────────────────────────────
     if (endpoint === "argendata_desigualdad") {
-      const [giniArgRows, giniMundoRows, informalRows, desempleoRows] = await Promise.all([
+      const [giniArgRows, giniMundoRows, informalRows, desempleoRows, giniIndec, informalIndec] = await Promise.all([
         fetchCSVData("https://raw.githubusercontent.com/argendatafundar/data/main/DESIGU/ISA_desigualdad_i2.csv"),
         fetchCSVData("https://raw.githubusercontent.com/argendatafundar/data/main/DESIGU/ISA_mundo_i1.csv"),
         fetchCSVData("https://raw.githubusercontent.com/argendatafundar/data/main/INFDES/tasa_informalidad_argentina_tipo_anio.csv"),
         fetchCSVData("https://raw.githubusercontent.com/argendatafundar/data/main/INFDES/tasa_desempleo_arg_mundial_modelada.csv"),
+        getMultiserie(["gini_indec"], 100),
+        getMultiserie(["informalidad_indec"], 30),
       ])
 
-      // Gini ARG: serie temporal (columna "ano")
-      const gini_arg: [string, number][] = giniArgRows
+      const giniHistorical: [string, number][] = giniArgRows
         .filter(r => r.ano && r.gini)
         .map(r => [`${r.ano}-01-01`, parseFloat(r.gini)] as [string, number])
-        .sort(([a], [b]) => (a as string).localeCompare(b as string))
+
+      const gini_arg = mergeOfficialSeries({
+        historical: giniHistorical,
+        official: giniIndec.gini_indec ?? [],
+        officialStartYear: 2003,
+        officialScale: 100,
+        decimals: 1,
+      })
 
       // Gini mundo: cross-sectional (sin anio)
       const gini_mundo = giniMundoRows
@@ -551,18 +561,25 @@ export async function GET(request: NextRequest) {
         .filter(r => !isNaN(r.gini))
         .sort((a, b) => a.gini - b.gini)
 
-      // Informalidad: dos series (Definición productiva / Definición legal)
+      // Informalidad: productiva Argendata + legal EPH oficial desde 2004.
       const productiva: [string, number][] = []
-      const legal: [string, number][] = []
+      const legalHistorical: [string, number][] = []
       for (const r of informalRows) {
         if (!r.anio || !r.valor) continue
         const date = `${r.anio}-01-01`
-        const val = parseFloat(r.valor)
-        if (r.tipo_informalidad === "Definición productiva") productiva.push([date, val])
-        else legal.push([date, val])
+        const value = parseFloat(r.valor)
+        if (!Number.isFinite(value)) continue
+        if (r.tipo_informalidad === "Definición productiva") productiva.push([date, value])
+        else legalHistorical.push([date, value])
       }
       productiva.sort(([a], [b]) => a.localeCompare(b))
-      legal.sort(([a], [b]) => a.localeCompare(b))
+      const legal = mergeOfficialSeries({
+        historical: legalHistorical,
+        official: informalIndec.informalidad_indec ?? [],
+        officialStartYear: 2004,
+        officialScale: 100,
+        decimals: 1,
+      })
 
       // Desempleo mundial: serie por país, valores en proporción → %
       const PAISES_DESEMP = new Set(["Argentina", "Brasil", "Chile", "México", "Uruguay", "Bolivia", "Mundo"])
@@ -582,7 +599,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         data: { gini_arg, gini_mundo, informalidad: { productiva, legal }, desempleo_mundial },
         updated_at: new Date().toISOString(),
-        source: "Argendata/Fundar — CEDLAS/EPH · SEDLAC · OIT/Banco Mundial",
+        source: "Argendata/Fundar — CEDLAS · Gini e informalidad: INDEC/EPH · OIT/Banco Mundial",
       })
     }
 
