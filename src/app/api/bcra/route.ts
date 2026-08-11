@@ -138,6 +138,7 @@ async function getCompras() {
 
   try {
     const res = await fetch("https://argentinadatos.com/api/v1/finanzas/compras-dolar-bcra", {
+      next: { revalidate: 900 },
       signal: AbortSignal.timeout(8000),
     })
     if (res.ok) {
