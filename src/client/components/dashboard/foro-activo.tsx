@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from "react"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
+import { Brain, Flame, ThumbsUp } from "lucide-react"
 
 interface ForumPost {
   id: string
@@ -26,7 +27,11 @@ interface ForoActivoProps {
 }
 
 const PAGE_SIZE = 20
-const EMOJIS = ["👍", "🔥", "🤔"] as const
+const REACTIONS = [
+  { emoji: "👍", label: "Me gusta", Icon: ThumbsUp },
+  { emoji: "🔥", label: "Importante", Icon: Flame },
+  { emoji: "🤔", label: "Para pensar", Icon: Brain },
+] as const
 const AUTHOR_KEY = "foro_author_name"
 const MY_POSTS_KEY = "foro_my_posts" // { [postId]: deleteToken } — para borrar los propios
 const POLL_MS = 20000               // cada cuánto chequeamos si hay posts nuevos
@@ -134,12 +139,15 @@ function ReactionBar({
 
   return (
     <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
-      {EMOJIS.map(emoji => {
+      {REACTIONS.map(({ emoji, label, Icon }) => {
         const count = reacciones[emoji] ?? 0
         const active = miReaccion === emoji
         return (
           <button
             key={emoji}
+            type="button"
+            title={label}
+            aria-label={count > 0 ? `${label}: ${count}` : label}
             onClick={() => handleReact(emoji)}
             disabled={loading}
             style={{
@@ -153,7 +161,7 @@ function ReactionBar({
               transition: "all 0.15s",
             }}
           >
-            <span style={{ fontSize: 11 }}>{emoji}</span>
+            <Icon size={11} strokeWidth={1.9} aria-hidden="true" />
             {count > 0 && <span>{count}</span>}
           </button>
         )
