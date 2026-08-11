@@ -18,6 +18,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { MACRO_TRADE_SERIES_IDS } from "@/lib/trade-data"
 import { mergeOfficialSeries } from "@/server/domain/inequality-series"
+import {
+  IPC_DIVISIONS,
+  buildIpcDivisionSnapshot,
+  chunkIpcDivisionKeys,
+} from "@/server/domain/ipc-divisions"
 
 const BASE_URL = "https://apis.datos.gob.ar/series/api/series/"
 
@@ -84,6 +89,10 @@ const SERIES_IDS: Record<string, string> = {
   natalidad_indec:  "tn_arg",                  // Tasa de natalidad
   mortalidad_indec: "tmi_arg",                 // Tasa mortalidad infantil
   smvm:             "57.1_SMVMM_0_M_34",       // Salario Mínimo Vital y Móvil (mensual)
+}
+
+for (const division of IPC_DIVISIONS) {
+  SERIES_IDS[division.key] = division.id
 }
 
 // In-memory cache
@@ -235,6 +244,40 @@ export async function GET(request: NextRequest) {
       // Variación interanual calculada desde nivel general
       data.ipc_var_interanual = calcInteranual(data.ipc_general || [])
       return NextResponse.json({ data, updated_at: new Date().toISOString(), source: "apis.datos.gob.ar" })
+    }
+
+    if (endpoint === "ipc_divisiones") {
+      const batches = await Promise.all(
+        chunkIpcDivisionKeys(3).map(keys => getMultiserie(keys, 24)),
+      )
+      const series = Object.assign({}, ...batches)
+      const divisiones = buildIpcDivisionSnapshot(series)
+      const withData = divisiones.filter(item => item.var_mensual !== null)
+
+      if (withData.length === 0) {
+        return NextResponse.json({
+          status: "error",
+          detail: "fuente no conectada",
+          source: "apis.datos.gob.ar · INDEC IPC Nacional por división",
+          data_date: null,
+          divisiones: [],
+        }, { status: 502 })
+      }
+
+      const dataDate = withData
+        .map(item => item.data_date)
+        .filter((date): date is string => date !== null)
+        .sort()
+        .at(-1) ?? null
+
+      return NextResponse.json({
+        status: "ok",
+        source: "apis.datos.gob.ar · INDEC IPC Nacional por división (base dic-2016)",
+        updated_at: new Date().toISOString(),
+        data_date: dataDate,
+        cantidad: IPC_DIVISIONS.length,
+        divisiones,
+      })
     }
 
     if (endpoint === "ipi") {
