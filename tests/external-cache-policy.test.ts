@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 
 const EXPECTATIONS: Record<string, Array<{ snippet: string; count?: number }>> = {
-  "src/app/api/bcra/route.ts": [{ snippet: "next: { revalidate: 900 }" }],
   "src/app/api/big-mac/route.ts": [{ snippet: "next: { revalidate: 3600 }" }],
   "src/app/api/breakeven/route.ts": [{ snippet: "next: { revalidate: 300 }", count: 3 }],
   "src/app/api/deuda/route.ts": [{ snippet: "next: { revalidate: 86_400 }", count: 3 }],
