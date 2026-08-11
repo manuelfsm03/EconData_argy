@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { buildBcraPurchaseSeries, summarizeBcraPurchases } from "@/server/domain/bcra-fx-purchases"
 import { bcraOfficialApi } from "@/server/sources/bcra-official-api"
 import { fetchReserveSeries, latestMeasuredNetReserves } from "@/server/sources/bcra-reserves"
 
@@ -128,74 +129,44 @@ async function getReservas(historico = false) {
   return result
 }
 
-// ── Endpoint Compras / Ventas BCRA (MULC) ────────────────────────────────────
+// ── Variación de reservas por compra de divisas — BCRA Var. 78 ─────────────
 async function getCompras() {
   const cacheKey = "bcra_compras"
   const cached = getCache(cacheKey)
   if (cached) return cached
 
-  let datos: { fecha: string; monto: number; acumulado_mensual: number }[] = []
+  const raw = await fetchVar(78, dateYearsAgo(2))
+  const series = buildBcraPurchaseSeries(raw)
 
-  try {
-    const res = await fetch("https://argentinadatos.com/api/v1/finanzas/compras-dolar-bcra", {
-      next: { revalidate: 900 },
-      signal: AbortSignal.timeout(8000),
-    })
-    if (res.ok) {
-      const json = await res.json()
-      if (Array.isArray(json)) {
-        // Calcular acumulado mensual
-        let mesActual = ""
-        let acum = 0
-        datos = json
-          .filter((r: Record<string, unknown>) => r.fecha && r.compra != null)
-          .sort((a: Record<string, unknown>, b: Record<string, unknown>) =>
-            String(a.fecha).localeCompare(String(b.fecha)))
-          .map((r: Record<string, unknown>) => {
-            const mes = String(r.fecha).slice(0, 7)
-            if (mes !== mesActual) { mesActual = mes; acum = 0 }
-            const monto = Number(r.compra)
-            acum += monto
-            return { fecha: String(r.fecha), monto, acumulado_mensual: acum }
-          })
-          .slice(-60)
-      }
-    }
-  } catch {
-    // Sin datos
-  }
-
-  const ultimos30 = datos.slice(-30)
-  const mesActualData = datos.filter(r => r.fecha.slice(0, 7) === new Date().toISOString().slice(0, 7))
-  const anoActual = datos.filter(r => r.fecha.startsWith(new Date().getFullYear().toString()))
-
-  if (datos.length === 0) {
+  if (series.length === 0) {
     const unavailable = {
       status: "degraded" as const,
-      error: "La fuente histórica de compras y ventas del BCRA fue retirada y no hay una serie oficial sustituta validada.",
+      error: "La serie oficial BCRA 78 no está disponible en este momento.",
       data: null,
       updated_at: new Date().toISOString(),
-      source: "ArgentinaDatos — endpoint retirado",
+      source: "BCRA API v4.0 · Variable 78",
     }
     setCache(cacheKey, unavailable, 300)
     return unavailable
   }
 
+  const summary = summarizeBcraPurchases(series, 30)
   const result = {
     status: "ok" as const,
     data: {
-      datos: ultimos30,
-      resumen: {
-        mes_actual:           mesActualData.at(-1)?.acumulado_mensual ?? null,
-        acumulado_anual:      anoActual.reduce((s, r) => s + r.monto, 0),
-        mayor_compra_periodo: Math.max(...ultimos30.filter(r => r.monto > 0).map(r => r.monto), 0),
-        mayor_venta_periodo:  Math.min(...ultimos30.filter(r => r.monto < 0).map(r => r.monto), 0),
+      ...summary,
+      metadata: {
+        id_variable: 78,
+        descripcion: "Variación de reservas internacionales por compra de divisas",
+        tipo_serie: "Flujo diario",
+        unidad: "millones de USD",
+        nota: "El signo y el valor corresponden a la variación de reservas atribuida por el BCRA a compras de divisas; no representan todo el resultado cambiario ni el MULC.",
       },
     },
     updated_at: new Date().toISOString(),
-    source: "argentinadatos.com",
+    source: "BCRA API v4.0 · Variable 78",
   }
-  setCache(cacheKey, result, 900) // 15 min
+  setCache(cacheKey, result, 900)
   return result
 }
 
