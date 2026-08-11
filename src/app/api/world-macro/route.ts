@@ -49,6 +49,7 @@ async function fetchWBIndicator(code: string): Promise<Record<string, [string, n
       headers: { "User-Agent": "PanelDeControl/2.0" },
       // Mantenerse por debajo del timeout del health monitor y de Vercel Hobby.
       signal: AbortSignal.timeout(7000),
+      next: { revalidate: 21_600 },
     })
     if (!res.ok) throw new Error(`World Bank API ${res.status}`)
 

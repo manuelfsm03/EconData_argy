@@ -37,7 +37,7 @@ async function fetchTCRVar(idVariable: number, from: string): Promise<{ fecha: s
 async function fetchTCRFallback(): Promise<{ fecha: string; itcrm: number }[]> {
   // Serie ID 174.1_ITCRM_2010_D_23 — ITCRM base dic 2010
   const url = "https://apis.datos.gob.ar/series/api/series/?ids=174.1_ITCRM_2010_D_23&limit=5000&format=json"
-  const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+  const res = await fetch(url, { signal: AbortSignal.timeout(8000), next: { revalidate: 3600 } })
   if (!res.ok) return []
   const json = await res.json()
   if (!json.data) return []
@@ -91,7 +91,6 @@ export async function GET() {
 
     // KPIs: último valor + variación mensual
     const ultItcrm     = itcrm.at(-1)
-    const penUltItcrm  = itcrm.at(-2)
     const hace30       = itcrm.length > 22 ? itcrm.at(-22) : null // ~1 mes de días hábiles
 
     const itcrmActual  = ultItcrm?.valor ?? null

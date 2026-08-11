@@ -12,6 +12,7 @@
     "db:seed": "tsx scripts/seed-from-excel.ts",
     "test:forum-policy": "tsx --test tests/forum/forum-policy.test.ts",
     "test:card-catalog": "tsx --test tests/card-catalog.test.ts",
+    "test:cache-policy": "tsx --test tests/external-cache-policy.test.ts",
     "test:bond-math": "tsx scripts/verify-bond-math.ts",
     "test:polymarket": "tsx --test tests/polymarket-parser.test.ts",
     "scrape": "tsx -e \"import { runAllScrapers } from './src/server/scrapers'; runAllScrapers().then(console.log)\"",
