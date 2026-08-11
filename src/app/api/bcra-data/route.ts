@@ -1,5 +1,31 @@
 import { NextResponse } from "next/server"
 import { fetchMultipleSeries, mergeSeriesByDate, getPeriodDates } from "@/server/sources/bcra-api"
+import { fetchBankingBalance, parseBankingDateRange } from "@/server/sources/bcra-banking"
+
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url)
+  const endpoint = searchParams.get("endpoint")
+  if (endpoint !== "bancos") {
+    return NextResponse.json({ error: `Unknown endpoint: ${endpoint ?? ""}` }, { status: 400 })
+  }
+
+  const desde = searchParams.get("desde")
+  const hasta = searchParams.get("hasta")
+  if (!desde || !hasta) {
+    return NextResponse.json({ error: "desde and hasta are required (YYYY-MM-DD)" }, { status: 400 })
+  }
+
+  try {
+    parseBankingDateRange(desde, hasta)
+    const data = await fetchBankingBalance(desde, hasta)
+    return NextResponse.json(data, { headers: { "Cache-Control": "no-store" } })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to fetch banking data"
+    const status = message.includes("YYYY-MM-DD") || message.includes("desde") ? 400 : 502
+    console.error("BCRA banking data error:", error)
+    return NextResponse.json({ error: message }, { status })
+  }
+}
 
 export async function POST(req: Request) {
   try {

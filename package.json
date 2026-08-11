@@ -18,6 +18,7 @@
     "test:calendar": "tsx --test tests/calendar-events.test.ts",
     "test:bond-math": "tsx scripts/verify-bond-math.ts",
     "test:polymarket": "tsx --test tests/polymarket-parser.test.ts",
+    "test:bcra": "tsx --test tests/bcra-banking.test.ts tests/bcra-reserves.test.ts",
     "scrape": "tsx -e \"import { runAllScrapers } from './src/server/scrapers'; runAllScrapers().then(console.log)\"",
     "scrape:bcra": "tsx -e \"import { BCRAScraper } from './src/server/scrapers/bcra'; new BCRAScraper().run().then(console.log)\""
   },
