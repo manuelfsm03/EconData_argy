@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto"
+import { createHash, createHmac, timingSafeEqual } from "node:crypto"
 import { isIP } from "node:net"
 
 export const FORUM_RATE_LIMIT_SECONDS = 20
@@ -61,4 +61,15 @@ export function requireForumRateLimitSecret(
 
 export function deriveForumIdentity(ip: string, secret: string): string {
   return createHmac("sha256", secret).update(`forum-rate-limit:v1:${ip}`).digest("hex")
+}
+
+export function hashForumDeleteToken(token: string): string {
+  return createHash("sha256").update(`forum-delete:v1:${token}`).digest("hex")
+}
+
+export function verifyForumDeleteToken(token: string, expectedHash: string): boolean {
+  if (!/^[a-f0-9]{64}$/.test(expectedHash)) return false
+  const actual = Buffer.from(hashForumDeleteToken(token), "hex")
+  const expected = Buffer.from(expectedHash, "hex")
+  return actual.length === expected.length && timingSafeEqual(actual, expected)
 }

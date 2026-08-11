@@ -5,10 +5,12 @@ import {
   ForumConfigurationError,
   deriveForumIdentity,
   getTrustedClientIp,
+  hashForumDeleteToken,
   normalizeForumSearch,
   normalizeForumTicker,
   normalizeForumVariable,
   requireForumRateLimitSecret,
+  verifyForumDeleteToken,
 } from "../../src/server/forum/forum-policy"
 
 test("ticker policy normalizes documented safe ticker characters", () => {
@@ -65,4 +67,14 @@ test("forum secret is mandatory and identity is a keyed pseudonym", () => {
   assert.notEqual(first, other)
   assert.match(first, /^[a-f0-9]{64}$/)
   assert.ok(!first.includes("203.0.113.10"))
+})
+
+test("delete tokens are stored as one-way hashes and checked exactly", () => {
+  const token = "opaque-owner-token-with-enough-entropy"
+  const hash = hashForumDeleteToken(token)
+  assert.match(hash, /^[a-f0-9]{64}$/)
+  assert.notEqual(hash, token)
+  assert.equal(verifyForumDeleteToken(token, hash), true)
+  assert.equal(verifyForumDeleteToken(`${token}-wrong`, hash), false)
+  assert.equal(verifyForumDeleteToken(token, "not-a-hash"), false)
 })
