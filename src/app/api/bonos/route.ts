@@ -13,6 +13,7 @@ import { BOND_DEFS, CAP_INSTRUMENT_DEFS, type BondDef } from "@/server/domain/bo
 import { metricasDeMercado, metricasDevengadas } from "@/lib/bond-math"
 import { construirCashflows, GD30 } from "@/lib/bond-schedule"
 import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
+import { parseRavaBondPrices, type RavaBondPrice } from "@/server/external/rava-prices"
 
 type Cashflow = { fechaPago: Date; cupon: number; amortizacion: number; flujoTotal: number }
 
@@ -40,15 +41,6 @@ function getCache<T>(key: string): T | null {
 }
 function setCache(key: string, data: unknown, ttlSec: number) {
   _cache[key] = { data, expiry: Date.now() + ttlSec * 1000 }
-}
-
-function parseLocaleNumber(raw: string | null | undefined): number | null {
-  if (!raw) return null
-  const cleaned = raw.replace(/\s+/g, " ").trim()
-  const match = cleaned.match(/-?[\d.]+(?:,\d+)?/)
-  if (!match) return null
-  const value = Number(match[0].replace(/\./g, "").replace(",", "."))
-  return Number.isFinite(value) ? value : null
 }
 
 function calcularTIR(precio: number, cashflows: { fechaPago: Date; flujoTotal: number }[]): number | null {
@@ -97,28 +89,40 @@ function calcularDuration(precio: number, cashflows: { fechaPago: Date; flujoTot
   return Number((macaulay / (1 + r)).toFixed(4))
 }
 
-async function scrapePrecioRava(ticker: string): Promise<{ precio: number | null; precioCci: number | null }> {
-  const url = `https://www.rava.com/perfil/${ticker.toLowerCase()}`
+let ravaBondCache: { data: Map<string, RavaBondPrice>; expiry: number } | null = null
+
+async function fetchRavaBondPrices(): Promise<Map<string, RavaBondPrice>> {
+  if (ravaBondCache && ravaBondCache.expiry > Date.now()) {
+    return ravaBondCache.data
+  }
+
   try {
-    const res = await fetch(url, {
-      headers: RAVA_HEADERS,
-      signal: AbortSignal.timeout(12000),
+    const response = await fetch("https://mercado.rava.com/api/prices/bonos", {
+      headers: {
+        "User-Agent": "Mozilla/5.0 PanelDeControl/2.0",
+        Accept: "application/json",
+      },
+      signal: AbortSignal.timeout(10000),
       next: { revalidate: 300 },
     })
-    if (!res.ok) return { precio: null, precioCci: null }
+    if (!response.ok) return new Map()
 
-    const html = await res.text()
-    const precio =
-      parseLocaleNumber(html.match(/Precio:<\/span>\s*<span class="bolder">([^<]+)</i)?.[1]) ??
-      parseLocaleNumber(html.match(/class="[^"]*precio[^"]*"[^>]*>([^<]+)</i)?.[1])
+    const prices = parseRavaBondPrices(await response.json())
+    if (prices.size > 0) {
+      ravaBondCache = { data: prices, expiry: Date.now() + 300_000 }
+    }
+    return prices
+  } catch (error) {
+    console.warn("[bonos] fetch mercado.rava.com falló:", error)
+    return new Map()
+  }
+}
 
-    const precioCci =
-      parseLocaleNumber(html.match(/Precio\s*CCL:<\/span>\s*<span class="bolder">([^<]+)</i)?.[1]) ??
-      parseLocaleNumber(html.match(/CCL[^<]{0,50}<\/span>\s*<span class="bolder">([^<]+)</i)?.[1])
-
-    return { precio, precioCci }
-  } catch {
-    return { precio: null, precioCci: null }
+async function scrapePrecioRava(ticker: string): Promise<{ precio: number | null; precioCci: number | null }> {
+  const prices = await fetchRavaBondPrices()
+  return {
+    precio: prices.get(ticker.toUpperCase())?.precio ?? null,
+    precioCci: prices.get(`${ticker.toUpperCase()}D`)?.precio ?? null,
   }
 }
 
