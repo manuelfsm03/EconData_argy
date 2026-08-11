@@ -12,6 +12,7 @@
     "db:seed": "tsx scripts/seed-from-excel.ts",
     "test:forum-policy": "tsx --test tests/forum/forum-policy.test.ts",
     "test:news-ui": "tsx --test tests/news-ui-policy.test.ts",
+    "test:rava-sources": "tsx --test tests/rava-sources.test.ts",
     "test:card-catalog": "tsx --test tests/card-catalog.test.ts",
     "test:cache-policy": "tsx --test tests/external-cache-policy.test.ts",
     "test:trade-data": "tsx --test tests/trade-data.test.ts",
