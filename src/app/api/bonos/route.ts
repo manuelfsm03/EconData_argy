@@ -215,7 +215,7 @@ async function loadRuntimeBonds(tickerParam: string | null): Promise<{ bonds: Bo
 
     if (bonds.length > 0) {
       return {
-        bonds: bonds.map((bond) => ({
+        bonds: bonds.map((bond: typeof bonds[number]) => ({
           id: bond.id,
           ticker: bond.ticker,
           nombre: bond.nombre,
