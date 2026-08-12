@@ -13,6 +13,7 @@
     "test:forum-policy": "tsx --test tests/forum/forum-policy.test.ts",
     "test:news-ui": "tsx --test tests/news-ui-policy.test.ts",
     "test:rava-sources": "tsx --test tests/rava-sources.test.ts",
+    "test:fomc-calendar": "tsx --test tests/fomc-calendar.test.ts",
     "test:rofex-rava": "tsx --test tests/rofex-rava.test.ts",
     "test:inequality": "tsx --test tests/inequality-series.test.ts",
     "test:debt-stock": "tsx --test tests/debt-stock.test.ts",
