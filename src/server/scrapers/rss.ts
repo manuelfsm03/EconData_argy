@@ -1,6 +1,7 @@
 import { BaseScraper, ScrapeResult } from "./base"
 import { prisma } from "@/server/db/prisma"
 import Parser from "rss-parser"
+import { fetchRegistered } from "@/server/http/fetch-source"
 
 interface RSSFeed {
   name: string
@@ -36,7 +37,7 @@ const RSS_FEEDS: RSSFeed[] = [
   },
   {
     name: "Perfil",
-    url: "http://www.perfil.com/feed/economia",
+    url: "https://www.perfil.com/feed/economia",
     category: "economia",
   },
   {
@@ -101,7 +102,11 @@ export class RSSScraper extends BaseScraper {
     let added = 0
 
     try {
-      const parsed = await this.parser.parseURL(feed.url)
+      const response = await fetchRegistered(feed.url, {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; PanelDeControl/1.0)" },
+      })
+      if (!response.ok) throw new Error(`RSS source returned ${response.status}`)
+      const parsed = await this.parser.parseString(await response.text())
 
       for (const item of parsed.items.slice(0, 20)) {
         if (!item.link || !item.title) continue

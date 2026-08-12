@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * INDEC XLS Parser — Para archivos XLS del INDEC
  * Descarga XLS en runtime, parsea en memoria, cachea 24h
@@ -29,7 +30,7 @@ export async function fetchINDECXLS(
   if (cached) return cached
 
   try {
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { "User-Agent": "PanelDeControl/2.0" },
       signal: AbortSignal.timeout(30000),
     })

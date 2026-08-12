@@ -1,93 +1,122 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 import { NextResponse } from "next/server"
 import { prisma } from "@/server/db/prisma"
+import { registeredHealthchecks, type SourceId } from "@/server/sources/registry"
+
+export const dynamic = "force-dynamic"
 
 type HealthCheck = {
-  source: string
+  source: SourceId
   name: string
   url: string
+  expectedStatuses: readonly number[]
 }
 
 type StatusRow = {
   name: string
   source: string
   lastRun: string | Date | null
-  status: "success" | "error" | "running" | "pending"
+  status: "success" | "error"
   recordsAdded?: number
-  message?: string
+  message: string
+  transport: {
+    status: "available" | "unavailable"
+    httpStatus: number | null
+    checkedAt: string
+    latencyMs: number
+  }
+  ingestion: {
+    status: "success" | "error" | "running" | "pending" | "unavailable"
+    lastRun: string | Date | null
+    recordsAdded?: number
+  }
+  freshness: {
+    status: "unknown"
+    asOf: null
+    reason: string
+  }
 }
 
-const CHECKS: HealthCheck[] = [
-  { source: "rava", name: "Rava.com", url: "https://www.rava.com/perfil/gd30" },
-  { source: "finanzasargy", name: "ArgentinaDatos Dólares", url: "https://api.argentinadatos.com/v1/cotizaciones/dolares" },
-  { source: "criptoya", name: "DolarAPI / Cripto", url: "https://dolarapi.com/v1/dolares" },
-  { source: "bcra", name: "BCRA / Macro", url: "https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais" },
-  { source: "indec", name: "INDEC / datos.gob.ar", url: "https://apis.datos.gob.ar/series/api/series/?ids=145.3_INGNACUAL_DICI_M_38&limit=2" },
-  { source: "rss", name: "RSS Feeds", url: "https://www.infobae.com/arc/outboundfeeds/rss/" },
-]
+const healthchecks = (): HealthCheck[] => registeredHealthchecks().map((definition) => ({
+  source: definition.id,
+  name: definition.displayName,
+  url: new URL(definition.healthcheck!.path, definition.baseUrl).toString(),
+  expectedStatuses: definition.healthcheck!.expectedStatuses,
+}))
 
-async function runHealthcheck(check: HealthCheck, dbError?: unknown): Promise<StatusRow> {
+async function runHealthcheck(check: HealthCheck) {
+  const checkedAt = new Date().toISOString()
+  const startedAt = Date.now()
   try {
-    const startedAt = Date.now()
-    const res = await fetch(check.url, {
+    const response = await fetchRegistered(check.url, {
       headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json,text/html,application/xml" },
-      signal: AbortSignal.timeout(10000),
       next: { revalidate: 900 },
     })
-    const duration = Date.now() - startedAt
-    const modePrefix = dbError ? "fallback healthcheck" : "healthcheck"
-
     return {
-      name: check.name,
-      source: check.source,
-      lastRun: null,
-      status: res.ok ? "success" : "error",
-      recordsAdded: undefined,
-      message: res.ok ? `${modePrefix} ok · ${duration}ms` : `${modePrefix} http ${res.status}`,
+      status: check.expectedStatuses.includes(response.status) ? "available" as const : "unavailable" as const,
+      httpStatus: response.status,
+      checkedAt,
+      latencyMs: Date.now() - startedAt,
     }
-  } catch (healthError) {
-    const modePrefix = dbError ? "fallback healthcheck" : "healthcheck"
+  } catch {
     return {
-      name: check.name,
-      source: check.source,
-      lastRun: null,
-      status: "error",
-      recordsAdded: undefined,
-      message: `${modePrefix} ${healthError instanceof Error ? healthError.message : "failed"}`,
+      status: "unavailable" as const,
+      httpStatus: null,
+      checkedAt,
+      latencyMs: Date.now() - startedAt,
     }
   }
 }
 
 export async function GET() {
-  try {
-    const dbStatuses = await Promise.all(
-      CHECKS.map(async (sourceCfg) => {
-        const log = await prisma.scrapeLog.findFirst({
+  const rows = await Promise.all(
+    healthchecks().map(async (sourceCfg): Promise<StatusRow> => {
+      const [transport, logResult] = await Promise.all([
+        runHealthcheck(sourceCfg),
+        prisma.scrapeLog.findFirst({
           where: { source: sourceCfg.source },
           orderBy: { startedAt: "desc" },
         })
+          .then((log) => ({ log, available: true as const }))
+          .catch(() => ({ log: null, available: false as const })),
+      ])
+      const log = logResult.log
+      const ingestionStatus = !logResult.available
+        ? "unavailable" as const
+        : log?.status === "success"
+        ? "success" as const
+        : log?.status === "error"
+        ? "error" as const
+        : log?.completedAt === null && log?.startedAt
+        ? "running" as const
+        : "pending" as const
+      const lastRun = log?.completedAt || log?.startedAt || null
 
-        return {
-          name: sourceCfg.name,
-          source: sourceCfg.source,
-          lastRun: log?.completedAt || log?.startedAt || null,
-          status: log?.status === "success"
-            ? "success"
-            : log?.status === "error"
-            ? "error"
-            : log?.completedAt === null && log?.startedAt
-            ? "running"
-            : "pending",
+      return {
+        name: sourceCfg.name,
+        source: sourceCfg.source,
+        lastRun,
+        status: transport.status === "available" ? "success" : "error",
+        recordsAdded: log?.recordsAdded || undefined,
+        message: transport.status === "available"
+          ? `transport ok · ${transport.latencyMs}ms`
+          : "transport unavailable",
+        transport,
+        ingestion: {
+          status: ingestionStatus,
+          lastRun,
           recordsAdded: log?.recordsAdded || undefined,
-          message: log?.message || undefined,
-        } satisfies StatusRow
-      })
-    )
+        },
+        freshness: {
+          status: "unknown",
+          asOf: null,
+          reason: "Dataset as-of is reported by dataset responses, not transport health",
+        },
+      }
+    }),
+  )
 
-    return NextResponse.json(dbStatuses)
-  } catch (error) {
-    console.error("Error fetching status from DB:", error)
-
-    const statuses = await Promise.all(CHECKS.map((check) => runHealthcheck(check, error)))
-    return NextResponse.json(statuses)
-  }
+  return NextResponse.json(rows, {
+    headers: { "Cache-Control": "private, max-age=0, s-maxage=60, stale-while-revalidate=120" },
+  })
 }

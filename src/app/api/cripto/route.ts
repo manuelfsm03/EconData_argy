@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 import { NextResponse } from "next/server"
 
 // Datos de cripto cambian por minutos; 2 min de caché es suficiente
@@ -21,11 +22,11 @@ interface CriptoYaExchange {
 
 export async function GET() {
   const [geckoRes, criptoyaRes] = await Promise.allSettled([
-    fetch("https://api.coingecko.com/api/v3/global", {
+    fetchRegistered("https://api.coingecko.com/api/v3/global", {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(6000),
     }),
-    fetch("https://criptoya.com/api/USDT/ARS/0.1", {
+    fetchRegistered("https://criptoya.com/api/USDT/ARS/0.1", {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(6000),
     }),

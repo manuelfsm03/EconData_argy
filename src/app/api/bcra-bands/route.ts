@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/bcra-bands — Bandas cambiarias BCRA (máxima precisión)
  *
@@ -84,7 +85,7 @@ async function fetchIPCMensual(): Promise<Record<string, number>> {
       "https://apis.datos.gob.ar/series/api/series/" +
       "?ids=145.3_INGNACUAL_DICI_M_38" +
       "&limit=36&sort=desc&format=json"
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { "User-Agent": "PanelDeControl/2.0" },
       signal: AbortSignal.timeout(10000),
       next: { revalidate: 43200 }, // 12 h

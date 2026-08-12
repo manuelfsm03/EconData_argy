@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/ipc-historico — Inflación anual Argentina 1943–presente
  *
@@ -93,7 +94,7 @@ const HISTORICO_FIJO = [
 async function fetchRecientes(): Promise<{ anio: number; inflacion: number; nota?: string }[]> {
   try {
     const url = "https://apis.datos.gob.ar/series/api/series/?ids=145.3_INGNACUAL_DICI_M_38&limit=120&sort=asc&format=json"
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000), next: { revalidate: 3600 } })
+    const res = await fetchRegistered(url, { signal: AbortSignal.timeout(10000), next: { revalidate: 3600 } })
     if (!res.ok) return []
     const json = await res.json()
     const data: [string, number | null][] = json.data ?? []

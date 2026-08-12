@@ -522,36 +522,13 @@ function SojaView() {
   useEffect(() => {
     setLoading(true)
     if (segmento === "produccion") {
-      fetch("https://ourworldindata.org/grapher/soybean-production.csv?tab=chart")
-        .then((r) => r.text())
-        .then((text) => {
-          const lines = text.trim().split("\n")
-          const byYear: Record<string, Record<string, unknown>> = {}
-          for (const line of lines.slice(1)) {
-            const parts = line.split(",")
-            const entity = parts[0]?.replace(/"/g, "").trim() ?? ""
-            if (!allCountriesAvailable.includes(entity)) continue
-            const year = parts[2]?.trim() ?? ""
-            const tonnes = parseFloat(parts[3]?.trim() ?? "")
-            if (!year || isNaN(tonnes)) continue
-            if (!byYear[year]) byYear[year] = { date: `${year}-01-01` }
-            byYear[year][entity] = parseFloat((tonnes / 1_000_000).toFixed(2)) // Convertir a millones de toneladas
-          }
-          const data = Object.values(byYear)
-            .sort((a, b) => (a.date as string).localeCompare(b.date as string))
-          setData(data)
-          setLoading(false)
+      fetch("/api/agro-soja")
+        .then((r) => {
+          if (!r.ok) throw new Error("Fuente de soja no disponible")
+          return r.json()
         })
-        .catch(() => {
-          // Usar mock data si OWID no está disponible
-          const mockData = [
-            { date: "2021-01-01", Brazil: 133.5, Argentina: 49.0, "United States": 120.0, China: 18.5, Paraguay: 10.0, India: 12.5 },
-            { date: "2022-01-01", Brazil: 123.0, Argentina: 46.0, "United States": 125.0, China: 15.0, Paraguay: 9.5, India: 14.0 },
-            { date: "2023-01-01", Brazil: 128.5, Argentina: 42.0, "United States": 130.0, China: 16.5, Paraguay: 10.5, India: 13.5 },
-          ]
-          setData(mockData)
-          setLoading(false)
-        })
+        .then((j) => { setData(j.data ?? null); setLoading(false) })
+        .catch(() => { setData(null); setLoading(false) })
     } else {
       // Precio: usar Yahoo Finance
       fetch("/api/mundo?ticker=soja&hist=5y")

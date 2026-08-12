@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/breakeven — Inflación implícita del mercado
  *
@@ -12,6 +13,8 @@
  *  - /api/rem: mediana REM analistas (benchmark)
  */
 import { NextResponse } from "next/server"
+import { parseRemExcel } from "@/server/domain/rem-data"
+import { prisma } from "@/server/db/prisma"
 
 const cache = new Map<string, { data: unknown; expiry: number }>()
 function getCache(k: string) { const e = cache.get(k); return e && Date.now() < e.expiry ? e.data : null }
@@ -27,7 +30,7 @@ const SERIES = {
 async function fetchSerie(id: string, limit = 60): Promise<{ fecha: string; valor: number }[]> {
   try {
     const url = `https://apis.datos.gob.ar/series/api/series/?ids=${id}&limit=${limit}&sort=desc&format=json`
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000), next: { revalidate: 300 } })
+    const res = await fetchRegistered(url, { signal: AbortSignal.timeout(8000), next: { revalidate: 300 } })
     if (!res.ok) return []
     const json = await res.json()
     return ((json.data ?? []) as [string, number | null][])
@@ -37,28 +40,36 @@ async function fetchSerie(id: string, limit = 60): Promise<{ fecha: string; valo
   } catch { return [] }
 }
 
-// Resuelve la URL base: NEXT_PUBLIC_BASE_URL tiene precedencia; en Vercel usa VERCEL_URL automático
-function getBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
-  return "http://localhost:3000"
-}
-
 async function fetchLecaps(): Promise<{ ticker: string; vencimiento: string; tem: number | null; tir: number | null; diasVto: number }[]> {
   try {
-    const res = await fetch(`${getBaseUrl()}/api/bonos?tipo=lecap`, { signal: AbortSignal.timeout(5000), next: { revalidate: 300 } })
-    if (!res.ok) return []
-    const json = await res.json()
-    return (json.data ?? []).filter((d: Record<string, unknown>) => d.tir != null || d.tem != null)
+    const instruments = await prisma.capInstrument.findMany({
+      where: { vencimiento: { gt: new Date() } },
+      orderBy: { vencimiento: "asc" },
+    })
+    return instruments.map((instrument) => ({
+      ticker: instrument.ticker,
+      vencimiento: instrument.vencimiento.toISOString().slice(0, 10),
+      tem: instrument.tem,
+      tir: instrument.tir,
+      diasVto: Math.round((instrument.vencimiento.getTime() - Date.now()) / 86_400_000),
+    }))
   } catch { return [] }
 }
 
 async function fetchRem(): Promise<{ inflacion_12m: number | null; dolar_12m: number | null; tasa_12m: number | null; fecha: string | null }> {
   try {
-    const res = await fetch(`${getBaseUrl()}/api/rem`, { signal: AbortSignal.timeout(14000), next: { revalidate: 300 } })
-    if (!res.ok) return { inflacion_12m: null, dolar_12m: null, tasa_12m: null, fecha: null }
-    const json = await res.json()
-    return json.data?.kpis ?? { inflacion_12m: null, dolar_12m: null, tasa_12m: null, fecha: null }
+    const res = await fetchRegistered("https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/informes/historico-relevamiento-expectativas-mercado.xlsx", {
+      cache: "no-store",
+    })
+    if (!res.ok) throw new Error(`BCRA REM ${res.status}`)
+    const { serie } = parseRemExcel(Buffer.from(await res.arrayBuffer()))
+    const latest = serie.at(-1)
+    return {
+      inflacion_12m: latest?.inflacion_12m ?? null,
+      dolar_12m: latest?.dolar_12m ?? null,
+      tasa_12m: latest?.tasa_12m ?? null,
+      fecha: latest?.fecha ?? null,
+    }
   } catch { return { inflacion_12m: null, dolar_12m: null, tasa_12m: null, fecha: null } }
 }
 

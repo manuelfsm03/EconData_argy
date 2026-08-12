@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/agro-local — Precios locales de granos · pizarra Rosario (USD/tn)
  *
@@ -53,7 +54,7 @@ function grainData(precio: number | null, retencion: number): GranoData {
 
 async function fetchRavaGranos(): Promise<AgroLocalData | null> {
   try {
-    const response = await fetch(RAVA_INDICES_URL, {
+    const response = await fetchRegistered(RAVA_INDICES_URL, {
       headers: {
         "User-Agent": "Mozilla/5.0 PanelDeControl/2.0",
         Accept: "application/json",
