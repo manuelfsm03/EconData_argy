@@ -223,7 +223,7 @@ async function loadRuntimeBonds(tickerParam: string | null): Promise<{ bonds: Bo
           cupon: bond.cupon,
           vencimiento: bond.vencimiento,
           precio: bond.precio,
-          cashflows: bond.cashflows.map((cf) => ({
+          cashflows: bond.cashflows.map((cf: typeof bond.cashflows[number]) => ({
             fechaPago: cf.fechaPago,
             cupon: cf.cupon,
             amortizacion: cf.amortizacion,
@@ -277,7 +277,7 @@ export async function GET(request: NextRequest) {
       })
 
       if (instrumentos.length > 0) {
-        const screener = instrumentos.map((inst) => {
+        const screener = instrumentos.map((inst: typeof instrumentos[number]) => {
           const hoy = new Date()
           const diasVto = Math.round((inst.vencimiento.getTime() - hoy.getTime()) / (24 * 3600 * 1000))
           const tcImplicito =
@@ -351,7 +351,7 @@ export async function GET(request: NextRequest) {
     const { bonds, sourceMode } = await loadRuntimeBonds(tickerParam)
     const [cclReference, mervalQuotes] = await Promise.all([
       fetchCclReference(),
-      fetchMervalBondQuotes(bonds.map((bond) => bond.ticker)),
+      fetchMervalBondQuotes(bonds.map((bond: BondLike) => bond.ticker)),
     ])
 
     if (bonds.length === 0) {
@@ -364,13 +364,13 @@ export async function GET(request: NextRequest) {
     const hoy = new Date()
     const liquidacion = siguienteDiaHabil(fechaUTC(hoy.toISOString().slice(0, 10)))
     const screener = await Promise.all(
-      bonds.map(async (bond) => {
+      bonds.map(async (bond: BondLike) => {
         const esquemaVerificado = bond.ticker === GD30.ticker ? GD30 : null
         const cashflowsVerificados = esquemaVerificado ? construirCashflows(esquemaVerificado) : null
         const devengadas = cashflowsVerificados
           ? metricasDevengadas(cashflowsVerificados, liquidacion)
           : null
-        const flujosFF = cashflowsVerificados
+        const flujosFF: Cashflow[] = cashflowsVerificados
           ? cashflowsVerificados
               .filter((cf) => cf.fechaDevengamiento > liquidacion)
               .map((cf) => ({
