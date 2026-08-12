@@ -1,6 +1,17 @@
 export type RavaBondPrice = {
   precio: number
   tir: number | null
+  nombre: string | null
+  /** Duration modificada ("dm" en el payload de Rava). */
+  dm: number | null
+  /** Paridad ya expresada en porcentaje (Rava la publica como fracción). */
+  paridad: number | null
+  valorTecnico: number | null
+  currentYield: number | null
+  /** Fecha ISO de vencimiento tal como la publica Rava, sin normalizar. */
+  vencimiento: string | null
+  /** Fecha ISO de la cotización. */
+  fecha: string | null
 }
 
 export type RosarioGrainPrices = {
@@ -20,6 +31,16 @@ function positiveNumber(value: unknown): number | null {
   if (typeof value !== "string" && typeof value !== "number") return null
   const parsed = Number(value)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+}
+
+function numberOrNull(value: unknown): number | null {
+  if (typeof value !== "string" && typeof value !== "number") return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function stringOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.trim() !== "" ? value : null
 }
 
 function payloadRows(payload: unknown): Record<string, unknown>[] {
@@ -55,9 +76,17 @@ export function parseRavaBondPrices(payload: unknown): Map<string, RavaBondPrice
     const rawTir = typeof row.tir === "string" || typeof row.tir === "number"
       ? Number(row.tir)
       : Number.NaN
+    const rawParidad = numberOrNull(row.paridad)
     prices.set(ticker, {
       precio,
       tir: Number.isFinite(rawTir) ? Number((rawTir * 100).toFixed(4)) : null,
+      nombre: stringOrNull(row.nombre),
+      dm: numberOrNull(row.dm),
+      paridad: rawParidad !== null ? Number((rawParidad * 100).toFixed(4)) : null,
+      valorTecnico: numberOrNull(row.valor_tecnico),
+      currentYield: numberOrNull(row.current_yield),
+      vencimiento: stringOrNull(row.vencimiento),
+      fecha: stringOrNull(row.fecha),
     })
   }
   return prices

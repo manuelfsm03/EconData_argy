@@ -14,6 +14,7 @@ import { metricasDeMercado, metricasDevengadas } from "@/lib/bond-math"
 import { construirCashflows, GD30 } from "@/lib/bond-schedule"
 import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
 import { parseRavaBondPrices, type RavaBondPrice } from "@/server/external/rava-prices"
+import { PESO_BOND_TICKERS } from "@/server/domain/peso-bonds"
 
 type Cashflow = { fechaPago: Date; cupon: number; amortizacion: number; flujoTotal: number }
 
@@ -248,6 +249,40 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const tickerParam = searchParams.get("ticker")
   const tipoParam = searchParams.get("tipo")
+
+  if (tipoParam === "pesos") {
+    const cacheKey = "bonos_pesos_screener"
+    const cached = getCache<unknown[]>(cacheKey)
+    if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), cached: true })
+
+    const ravaPrices = await fetchRavaBondPrices()
+    const screener = PESO_BOND_TICKERS.map((ticker) => {
+      const q = ravaPrices.get(ticker)
+      return {
+        ticker,
+        nombre: q?.nombre ?? ticker,
+        precio: q?.precio ?? null,
+        tir: q?.tir ?? null,
+        dm: q?.dm ?? null,
+        paridad: q?.paridad ?? null,
+        valorTecnico: q?.valorTecnico ?? null,
+        currentYield: q?.currentYield ?? null,
+        vencimiento: q?.vencimiento ? q.vencimiento.slice(0, 10) : null,
+        fechaCotizacion: q?.fecha ? q.fecha.slice(0, 10) : null,
+        fuente: q ? "rava" : "fuente no conectada",
+      }
+    })
+
+    setCache(cacheKey, screener, 300)
+    return NextResponse.json({
+      data: screener,
+      count: screener.length,
+      updated_at: new Date().toISOString(),
+      source: "rava",
+      dataQuality: "rava_passthrough_unverified",
+      nota: "Precio, TIR, duration modificada y paridad tal como los publica Rava. Son bonos ajustados por CER (y CER/TAMAR en los Bono DUAL); no pasan por el motor propio de bond-math (a diferencia de GD30), que hoy sólo soporta cronogramas fijos en dólares.",
+    })
+  }
 
   if (tipoParam === "lecap") {
     const cacheKey = "lecaps_screener"
