@@ -4549,10 +4549,8 @@ const MACRO_TABS = [
   { key: "desigualdad", label: "Desigualdad"      },
   { key: "piramides",   label: "Pirámides"        },
   { key: "fx",          label: "FX"               },
-  { key: "bigmac",      label: "Big Mac Index"    },
   { key: "riesgo",      label: "Riesgo País"      },
   { key: "deuda",       label: "Deuda Pública"    },
-  { key: "senoraje",   label: "Señoreaje"        },
 ]
 
 export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
@@ -4572,10 +4570,8 @@ export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
       {activeTab === "desigualdad" && <DesigualdadView />}
       {activeTab === "piramides"   && <PiramidesView />}
       {activeTab === "fx"          && <FXView />}
-      {activeTab === "bigmac"      && <BigMacView />}
       {activeTab === "riesgo"      && <RiesgoPaisView />}
       {activeTab === "deuda"       && <DeudaView />}
-      {activeTab === "senoraje"    && <SenorejaView />}
     </div>
   )
 }
