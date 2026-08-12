@@ -5,12 +5,14 @@ import Image from "next/image"
 import { TabMacro } from "./tab-macro"
 import { TabResumen } from "./tab-resumen"
 import { TabFinanzas } from "./tab-finanzas"
+import { TabCalendario } from "./tab-calendario"
+import { TabForo } from "./tab-foro"
 import { NewsFeed } from "./news-feed"
 import { TickerTape } from "./ticker-tape"
 import { CommandPalette } from "./command-palette"
 import { ThemeToggle } from "@/client/components/ui/theme-toggle"
 import {
-  LayoutDashboard, TrendingUp, BarChart2, Landmark, Newspaper, Search,
+  LayoutDashboard, TrendingUp, BarChart2, Landmark, Newspaper, Search, Calendar, MessagesSquare,
 } from "lucide-react"
 
 interface NavTab {
@@ -25,6 +27,8 @@ const MAIN_TABS: NavTab[] = [
   { key: "macro",    label: "Macro",    Icon: BarChart2        },
   { key: "bcra",     label: "BCRA",     Icon: Landmark         },
   { key: "noticias", label: "Noticias", Icon: Newspaper        },
+  { key: "calendario", label: "Calendario", Icon: Calendar       },
+  { key: "foro",       label: "Foro",       Icon: MessagesSquare },
 ]
 
 function BCRAError() {
@@ -196,6 +200,8 @@ export function Dashboard({ initialTab = "macro", initialSubtab = null, embedded
         {activeTab === "macro"     && <TabMacro initialSubtab={macroSubtab} />}
         {activeTab === "bcra"      && <TabBCRALazy initialSubtab={bcraSubtab} />}
         {activeTab === "noticias"  && <TabNoticias />}
+        {activeTab === "calendario" && <TabCalendario />}
+        {activeTab === "foro"       && <TabForo />}
       </div>
 
       <CommandPalette
