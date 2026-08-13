@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/senoraje — Señoreaje e inflación (modelo Cagan + Curva de Laffer)
  *
@@ -66,7 +67,7 @@ async function fetchBaseMon(): Promise<Record<string, number>> {
 async function fetchPBIanual(): Promise<Record<number, number>> {
   try {
     const url = "https://api.worldbank.org/v2/country/AR/indicator/NY.GDP.MKTP.CN?format=json&per_page=15&mrv=15"
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
+    const res = await fetchRegistered(url, { signal: AbortSignal.timeout(10000) })
     if (!res.ok) return {}
     const [, rows] = await res.json() as [unknown, Array<{ date: string; value: number | null }>]
     const result: Record<number, number> = {}
@@ -86,7 +87,7 @@ async function fetchIPC(): Promise<Record<string, number>> {
     const url =
       "https://apis.datos.gob.ar/series/api/series/" +
       "?ids=145.3_INGNACUAL_DICI_M_38&limit=120&sort=asc&format=json"
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { "User-Agent": "PanelDeControl/2.0" },
       signal: AbortSignal.timeout(10000),
       next: { revalidate: 43200 },

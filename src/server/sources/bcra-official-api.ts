@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * Official BCRA API v4.0 Client
  * 
@@ -370,7 +371,7 @@ export class BCRAOfficialApiClient {
     console.log(`🔍 Fetching: ${url}`)
     
     try {
-      const response = await fetch(url, {
+      const response = await fetchRegistered(url, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',

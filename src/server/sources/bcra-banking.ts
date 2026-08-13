@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 import * as XLSX from "xlsx"
 
 export type BankingSheetCell = number | string | null
@@ -159,7 +160,7 @@ export function parseBankingRows(
 
 export async function fetchBankingBalance(desde: string, hasta: string) {
   parseBankingDateRange(desde, hasta)
-  const response = await fetch(BANKING_WORKBOOK_URL, {
+  const response = await fetchRegistered(BANKING_WORKBOOK_URL, {
     headers: { "User-Agent": "Mozilla/5.0" },
     cache: "no-store",
     signal: AbortSignal.timeout(45_000),

@@ -13,6 +13,7 @@
     "test:forum-policy": "tsx --test tests/forum/forum-policy.test.ts",
     "test:news-ui": "tsx --test tests/news-ui-policy.test.ts",
     "test:rava-sources": "tsx --test tests/rava-sources.test.ts",
+    "test:peso-bonds": "tsx --test tests/peso-bonds.test.ts",
     "test:ust-bills": "tsx --test tests/ust-bills.test.ts",
     "test:rofex-rava": "tsx --test tests/rofex-rava.test.ts",
     "test:inequality": "tsx --test tests/inequality-series.test.ts",
@@ -21,6 +22,8 @@
     "test:ipc-divisions": "tsx --test tests/ipc-divisions.test.ts",
     "test:card-catalog": "tsx --test tests/card-catalog.test.ts",
     "test:cache-policy": "tsx --test tests/external-cache-policy.test.ts",
+    "test:source-contract": "tsx --test tests/source-contract.test.ts",
+    "test:source-runtime": "tsx --test tests/source-runtime-contract.test.ts",
     "test:trade-data": "tsx --test tests/trade-data.test.ts",
     "test:trade-composition": "tsx --test tests/trade-composition.test.ts",
     "smoke:trade-data": "tsx scripts/smoke-trade-integrity.ts",
@@ -28,8 +31,7 @@
     "test:bond-math": "tsx scripts/verify-bond-math.ts",
     "test:polymarket": "tsx --test tests/polymarket-parser.test.ts",
     "test:bcra": "tsx --test tests/bcra-banking.test.ts tests/bcra-reserves.test.ts",
-    "scrape": "tsx -e \"import { runAllScrapers } from './src/server/scrapers'; runAllScrapers().then(console.log)\"",
-    "scrape:bcra": "tsx -e \"import { BCRAScraper } from './src/server/scrapers/bcra'; new BCRAScraper().run().then(console.log)\""
+    "scrape": "tsx -e \"import { runAllScrapers } from './src/server/scrapers'; runAllScrapers().then(console.log)\""
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

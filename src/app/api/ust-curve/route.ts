@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 import { NextRequest, NextResponse } from "next/server"
 
 // La curva del Tesoro se publica una vez por día en días hábiles
@@ -40,7 +41,7 @@ async function fetchLatestTreasuryRow(type: string): Promise<Record<string, stri
     `https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/${year}/all` +
     `?type=${type}&field_tdr_date_value=${year}&csv=true`
 
-  const res = await fetch(url, {
+  const res = await fetchRegistered(url, {
     headers: { Accept: "text/csv" },
     signal: AbortSignal.timeout(8000),
   })

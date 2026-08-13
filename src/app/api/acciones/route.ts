@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/acciones — Screener de acciones argentinas (Merval)
  *
@@ -49,7 +50,7 @@ function extractRavaMetric(html: string, label: string): number | null {
 
 async function scrapeRavaQuote(symbol: string): Promise<StockQuote | null> {
   try {
-    const res = await fetch(`https://www.rava.com/perfil/${symbol.toLowerCase()}`, {
+    const res = await fetchRegistered(`https://www.rava.com/perfil/${symbol.toLowerCase()}`, {
       headers: { "User-Agent": "Mozilla/5.0 PanelDeControl/2.0", Accept: "text/html" },
       signal: AbortSignal.timeout(12000),
       next: { revalidate: 300 },

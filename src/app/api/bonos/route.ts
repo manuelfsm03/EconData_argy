@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/bonos — Screener de bonos soberanos hard dollar
  *
@@ -14,6 +15,7 @@ import { metricasDeMercado, metricasDevengadas } from "@/lib/bond-math"
 import { construirCashflows, GD30 } from "@/lib/bond-schedule"
 import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
 import { parseRavaBondPrices, type RavaBondPrice } from "@/server/external/rava-prices"
+import { PESO_BOND_TICKERS } from "@/server/domain/peso-bonds"
 
 type Cashflow = { fechaPago: Date; cupon: number; amortizacion: number; flujoTotal: number }
 
@@ -97,7 +99,7 @@ async function fetchRavaBondPrices(): Promise<Map<string, RavaBondPrice>> {
   }
 
   try {
-    const response = await fetch("https://mercado.rava.com/api/prices/bonos", {
+    const response = await fetchRegistered("https://mercado.rava.com/api/prices/bonos", {
       headers: {
         "User-Agent": "Mozilla/5.0 PanelDeControl/2.0",
         Accept: "application/json",
@@ -128,7 +130,7 @@ async function scrapePrecioRava(ticker: string): Promise<{ precio: number | null
 
 async function fetchCclReference(): Promise<number | null> {
   try {
-    const res = await fetch("https://dolarapi.com/v1/dolares/contadoconliqui", {
+    const res = await fetchRegistered("https://dolarapi.com/v1/dolares/contadoconliqui", {
       headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
       signal: AbortSignal.timeout(8000),
       next: { revalidate: 60 },
@@ -153,7 +155,7 @@ async function fetchMervalBondQuotes(tickers: string[]): Promise<Map<string, Mer
   try {
     const params = new URLSearchParams({ depth: "1" })
     for (const ticker of tickers) params.append("symbols", `${ticker}D:24hs`)
-    const response = await fetch(`https://api-merval-production.up.railway.app/v1/quotes/batch?${params}`, {
+    const response = await fetchRegistered(`https://api-merval-production.up.railway.app/v1/quotes/batch?${params}`, {
       headers: RAVA_HEADERS,
       signal: AbortSignal.timeout(8000),
       next: { revalidate: 60 },
@@ -215,7 +217,7 @@ async function loadRuntimeBonds(tickerParam: string | null): Promise<{ bonds: Bo
 
     if (bonds.length > 0) {
       return {
-        bonds: bonds.map((bond) => ({
+        bonds: bonds.map((bond: typeof bonds[number]) => ({
           id: bond.id,
           ticker: bond.ticker,
           nombre: bond.nombre,
@@ -223,7 +225,7 @@ async function loadRuntimeBonds(tickerParam: string | null): Promise<{ bonds: Bo
           cupon: bond.cupon,
           vencimiento: bond.vencimiento,
           precio: bond.precio,
-          cashflows: bond.cashflows.map((cf) => ({
+          cashflows: bond.cashflows.map((cf: typeof bond.cashflows[number]) => ({
             fechaPago: cf.fechaPago,
             cupon: cf.cupon,
             amortizacion: cf.amortizacion,
@@ -249,6 +251,40 @@ export async function GET(request: NextRequest) {
   const tickerParam = searchParams.get("ticker")
   const tipoParam = searchParams.get("tipo")
 
+  if (tipoParam === "pesos") {
+    const cacheKey = "bonos_pesos_screener"
+    const cached = getCache<unknown[]>(cacheKey)
+    if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), cached: true })
+
+    const ravaPrices = await fetchRavaBondPrices()
+    const screener = PESO_BOND_TICKERS.map((ticker) => {
+      const q = ravaPrices.get(ticker)
+      return {
+        ticker,
+        nombre: q?.nombre ?? ticker,
+        precio: q?.precio ?? null,
+        tir: q?.tir ?? null,
+        dm: q?.dm ?? null,
+        paridad: q?.paridad ?? null,
+        valorTecnico: q?.valorTecnico ?? null,
+        currentYield: q?.currentYield ?? null,
+        vencimiento: q?.vencimiento ? q.vencimiento.slice(0, 10) : null,
+        fechaCotizacion: q?.fecha ? q.fecha.slice(0, 10) : null,
+        fuente: q ? "rava" : "fuente no conectada",
+      }
+    })
+
+    setCache(cacheKey, screener, 300)
+    return NextResponse.json({
+      data: screener,
+      count: screener.length,
+      updated_at: new Date().toISOString(),
+      source: "rava",
+      dataQuality: "rava_passthrough_unverified",
+      nota: "Precio, TIR, duration modificada y paridad tal como los publica Rava. Son bonos ajustados por CER (y CER/TAMAR en los Bono DUAL); no pasan por el motor propio de bond-math (a diferencia de GD30), que hoy sólo soporta cronogramas fijos en dólares.",
+    })
+  }
+
   if (tipoParam === "lecap") {
     const cacheKey = "lecaps_screener"
     const cached = getCache<unknown[]>(cacheKey)
@@ -256,7 +292,7 @@ export async function GET(request: NextRequest) {
 
     let cclActual: number | null = null
     try {
-      const dolarRes = await fetch("https://dolarapi.com/v1/dolares", {
+      const dolarRes = await fetchRegistered("https://dolarapi.com/v1/dolares", {
         headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
         signal: AbortSignal.timeout(5000),
         next: { revalidate: 60 },
@@ -277,7 +313,7 @@ export async function GET(request: NextRequest) {
       })
 
       if (instrumentos.length > 0) {
-        const screener = instrumentos.map((inst) => {
+        const screener = instrumentos.map((inst: typeof instrumentos[number]) => {
           const hoy = new Date()
           const diasVto = Math.round((inst.vencimiento.getTime() - hoy.getTime()) / (24 * 3600 * 1000))
           const tcImplicito =
@@ -351,7 +387,7 @@ export async function GET(request: NextRequest) {
     const { bonds, sourceMode } = await loadRuntimeBonds(tickerParam)
     const [cclReference, mervalQuotes] = await Promise.all([
       fetchCclReference(),
-      fetchMervalBondQuotes(bonds.map((bond) => bond.ticker)),
+      fetchMervalBondQuotes(bonds.map((bond: BondLike) => bond.ticker)),
     ])
 
     if (bonds.length === 0) {
@@ -364,13 +400,13 @@ export async function GET(request: NextRequest) {
     const hoy = new Date()
     const liquidacion = siguienteDiaHabil(fechaUTC(hoy.toISOString().slice(0, 10)))
     const screener = await Promise.all(
-      bonds.map(async (bond) => {
+      bonds.map(async (bond: BondLike) => {
         const esquemaVerificado = bond.ticker === GD30.ticker ? GD30 : null
         const cashflowsVerificados = esquemaVerificado ? construirCashflows(esquemaVerificado) : null
         const devengadas = cashflowsVerificados
           ? metricasDevengadas(cashflowsVerificados, liquidacion)
           : null
-        const flujosFF = cashflowsVerificados
+        const flujosFF: Cashflow[] = cashflowsVerificados
           ? cashflowsVerificados
               .filter((cf) => cf.fechaDevengamiento > liquidacion)
               .map((cf) => ({
@@ -413,20 +449,6 @@ export async function GET(request: NextRequest) {
         } else if (precio && flujosFF.length > 0) {
           tir = calcularTIR(precio, flujosFF)
           if (tir !== null) durationMod = calcularDuration(precio, flujosFF, tir)
-        }
-
-        if (bond.id && precio) {
-          prisma.sovereignBond.update({
-            where: { id: bond.id },
-            data: {
-              precio,
-              tir: tir ?? undefined,
-              paridad: paridad ?? undefined,
-              currentYield: currentYield ?? undefined,
-              durationMod: durationMod ?? undefined,
-              updatedAt: new Date(),
-            },
-          }).catch(() => {})
         }
 
         return {

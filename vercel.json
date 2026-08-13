@@ -3,12 +3,7 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "crons": [
-    {
-      "path": "/api/cron",
-      "schedule": "0 20 * * 1-5"
-    }
-  ],
+
   "env": {
     "NEXT_TELEMETRY_DISABLED": "1"
   }

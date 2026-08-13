@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/noticias/[ticker] — Noticias por ticker
  *
@@ -82,7 +83,7 @@ async function fetchYFNews(ticker: string): Promise<NewsItem[]> {
 
   for (const url of urls) {
     try {
-      const res = await fetch(url, {
+      const res = await fetchRegistered(url, {
         headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/rss+xml,application/xml,text/xml" },
         signal: AbortSignal.timeout(8000),
         next: { revalidate: 1800 },
@@ -116,7 +117,7 @@ async function fetchLocalRSSNews(ticker: string): Promise<NewsItem[]> {
 
   for (const source of RSS_SOURCES) {
     try {
-      const res = await fetch(source.url, {
+      const res = await fetchRegistered(source.url, {
         headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/rss+xml,text/xml" },
         signal: AbortSignal.timeout(8000),
         next: { revalidate: 3600 },

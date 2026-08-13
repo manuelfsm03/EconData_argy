@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 import { NextResponse } from "next/server"
 
 // Datos de OWID son anuales; 7 días de caché no pierde nada relevante
@@ -12,7 +13,7 @@ const COUNTRIES = [
 
 export async function GET() {
   try {
-    const res = await fetch(OWID_URL, {
+    const res = await fetchRegistered(OWID_URL, {
       headers: { Accept: "text/csv" },
       signal: AbortSignal.timeout(10000),
     })

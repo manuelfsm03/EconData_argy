@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/internacional — Divisas y DXY internacionales
  *
@@ -34,7 +35,7 @@ function setCached(k: string, d: unknown, ttlSec: number) {
 async function getYFQuote(ticker: string): Promise<{ price: number | null; chg: number | null }> {
   try {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=5d`
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: YF_HEADERS,
       signal: AbortSignal.timeout(8000),
       next: { revalidate: 300 },

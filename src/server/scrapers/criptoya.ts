@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 import { BaseScraper, ScrapeResult } from "./base"
 import { prisma } from "@/server/db/prisma"
 import { todayUTC } from "@/lib/dates"
@@ -24,7 +25,7 @@ export class CriptoYaScraper extends BaseScraper {
 
     try {
       // CriptoYa has a public API
-      const response = await fetch("https://criptoya.com/api/usdt/ars")
+      const response = await fetchRegistered("https://criptoya.com/api/usdt/ars")
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)

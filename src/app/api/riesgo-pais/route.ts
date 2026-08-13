@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/riesgo-pais — Riesgo País EMBI+ Argentina
  *
@@ -21,7 +22,7 @@ const YF_HEADERS = {
 async function getYFPrice(ticker: string): Promise<number | null> {
   try {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=5d`
-    const res = await fetch(url, { headers: YF_HEADERS, signal: AbortSignal.timeout(8000), next: { revalidate: 900 } })
+    const res = await fetchRegistered(url, { headers: YF_HEADERS, signal: AbortSignal.timeout(8000), next: { revalidate: 900 } })
     if (!res.ok) return null
     const j = await res.json()
     return j?.chart?.result?.[0]?.meta?.regularMarketPrice ?? null
@@ -31,7 +32,7 @@ async function getYFPrice(ticker: string): Promise<number | null> {
 // Riesgo país desde argentinadatos.com (datos EMBI+ oficiales desde 1999)
 async function fetchArgDatosHistorico(): Promise<Array<{ fecha: string; valor: number }>> {
   try {
-    const res = await fetch("https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais", {
+    const res = await fetchRegistered("https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais", {
       headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
       signal: AbortSignal.timeout(12000),
       next: { revalidate: 3600 },

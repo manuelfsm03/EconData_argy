@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/tc-historico — Histórico de tipos de cambio ARS/USD
  *
@@ -46,7 +47,7 @@ function setCached(k: string, d: unknown, ttlSec: number) {
 
 async function fetchTipo(tipo: string): Promise<RawEntry[]> {
   try {
-    const res = await fetch(`${BASE}/${tipo}`, {
+    const res = await fetchRegistered(`${BASE}/${tipo}`, {
       headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
       signal: AbortSignal.timeout(10000),
       // No usar next.revalidate porque filtramos por period en memoria

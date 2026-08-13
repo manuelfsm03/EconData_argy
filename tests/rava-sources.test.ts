@@ -43,6 +43,16 @@ test("rejects malformed, non-positive, and non-finite grain values", () => {
   })
 })
 
+const EMPTY_BOND_FIELDS = {
+  nombre: null,
+  dm: null,
+  paridad: null,
+  valorTecnico: null,
+  currentYield: null,
+  vencimiento: null,
+  fecha: null,
+}
+
 test("parses ARS and D bond species into one validated map", () => {
   const prices = parseRavaBondPrices({
     datos: [
@@ -53,10 +63,41 @@ test("parses ARS and D bond species into one validated map", () => {
     ],
   })
 
-  assert.deepEqual(prices.get("GD30"), { precio: 88700, tir: 6.0654 })
-  assert.deepEqual(prices.get("GD30D"), { precio: 58, tir: 6.2169 })
+  assert.deepEqual(prices.get("GD30"), { precio: 88700, tir: 6.0654, ...EMPTY_BOND_FIELDS })
+  assert.deepEqual(prices.get("GD30D"), { precio: 58, tir: 6.2169, ...EMPTY_BOND_FIELDS })
   assert.equal(prices.has("BROKEN"), false)
   assert.equal(prices.has(""), false)
+})
+
+test("parses duration, paridad, valor tecnico y vencimiento de bonos en pesos", () => {
+  const prices = parseRavaBondPrices({
+    datos: [
+      {
+        especie: "TXMJ0",
+        nombre: "Bono DUAL 2030 $  CER/TAMAR+ 3% (TXMJ0)",
+        precio: "81.6",
+        tir: "0.264299103717",
+        dm: "2.87",
+        paridad: "0.9184",
+        valor_tecnico: "88.86",
+        current_yield: "3.5",
+        vencimiento: "2030-06-28T00:00:00.000Z",
+        fecha: "2026-08-11T00:00:00.000Z",
+      },
+    ],
+  })
+
+  assert.deepEqual(prices.get("TXMJ0"), {
+    precio: 81.6,
+    tir: 26.4299,
+    nombre: "Bono DUAL 2030 $  CER/TAMAR+ 3% (TXMJ0)",
+    dm: 2.87,
+    paridad: 91.84,
+    valorTecnico: 88.86,
+    currentYield: 3.5,
+    vencimiento: "2030-06-28T00:00:00.000Z",
+    fecha: "2026-08-11T00:00:00.000Z",
+  })
 })
 
 test("routes use Rava JSON endpoints and never the retired HTML sources", () => {
