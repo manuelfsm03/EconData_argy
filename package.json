@@ -14,6 +14,7 @@
     "test:news-ui": "tsx --test tests/news-ui-policy.test.ts",
     "test:rava-sources": "tsx --test tests/rava-sources.test.ts",
     "test:peso-bonds": "tsx --test tests/peso-bonds.test.ts",
+    "test:ust-bills": "tsx --test tests/ust-bills.test.ts",
     "test:rofex-rava": "tsx --test tests/rofex-rava.test.ts",
     "test:inequality": "tsx --test tests/inequality-series.test.ts",
     "test:debt-stock": "tsx --test tests/debt-stock.test.ts",
