@@ -1,6 +1,8 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/server/db/prisma"
 import { toMidnightUTC } from "@/lib/dates"
+import { requireAdminAuthorization } from "@/server/api/admin-auth"
 
 type DollarRow = {
   casa: string
@@ -38,7 +40,7 @@ function buildFallbackRows(rows: DollarRow[], limit: number, offset: number) {
 }
 
 async function fetchFallbackExchangeRates(limit: number, offset: number) {
-  const res = await fetch("https://api.argentinadatos.com/v1/cotizaciones/dolares", {
+  const res = await fetchRegistered("https://api.argentinadatos.com/v1/cotizaciones/dolares", {
     headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
     signal: AbortSignal.timeout(15000),
     next: { revalidate: 3600 },
@@ -81,6 +83,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const unauthorized = requireAdminAuthorization(request)
+  if (unauthorized) return unauthorized
   try {
     const data = await request.json()
 

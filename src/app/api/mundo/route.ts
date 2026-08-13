@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/mundo — Mercados globales vía Yahoo Finance chart API
  *
@@ -102,7 +103,7 @@ interface QuoteResult {
 async function getQuote(nombre: string, ticker: string): Promise<[string, QuoteResult | null]> {
   try {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=5d`
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: YF_HEADERS,
       next: { revalidate: 300 },
     })
@@ -169,7 +170,7 @@ async function getHistorico(nombre: string, period = "1y"): Promise<[string, num
 
   try {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=${period}`
-    const res = await fetch(url, { headers: YF_HEADERS, next: { revalidate: 3600 } })
+    const res = await fetchRegistered(url, { headers: YF_HEADERS, next: { revalidate: 3600 } })
     if (!res.ok) return []
 
     const json = await res.json()
@@ -202,14 +203,10 @@ export async function GET(request: NextRequest) {
   try {
     // ── MACRO COMPARADA LATINOAMERICANA ─────────────────────────────────────
     if (endpoint === "macro_comparada") {
-      const mockMacro = [
-        { date: "2020-01-01", Argentina: 2.4, Brazil: -4.0, Chile: -6.0, Colombia: -7.3, Mexico: -8.2 },
-        { date: "2021-01-01", Argentina: 10.4, Brazil: 4.6, Chile: 11.8, Colombia: 10.6, Mexico: 4.7 },
-        { date: "2022-01-01", Argentina: -0.9, Brazil: 2.0, Chile: -0.2, Colombia: 7.5, Mexico: 3.7 },
-        { date: "2023-01-01", Argentina: -2.1, Brazil: 2.9, Chile: 0.2, Colombia: 0.5, Mexico: 3.2 },
-        { date: "2024-01-01", Argentina: 2.5, Brazil: 2.0, Chile: 2.5, Colombia: 2.0, Mexico: 1.5 },
-      ]
-      return NextResponse.json({ data: mockMacro, updated_at: new Date().toISOString(), source: "World Bank (mock)" })
+      return NextResponse.json(
+        { error: { code: "SOURCE_NOT_CONFIGURED", message: "Usar /api/world-macro para macro comparada", retryable: false } },
+        { status: 503 },
+      )
     }
 
     // ── ELECTRICIDAD MUNDIAL (OWID) ─────────────────────────────────────────
@@ -220,7 +217,7 @@ export async function GET(request: NextRequest) {
 
       const OWID_ENTITIES = new Set(["Argentina", "Brazil", "China", "European Union (27)", "India", "United States"])
       const url = "https://ourworldindata.org/grapher/electricity-generation.csv?tab=chart"
-      const res = await fetch(url, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(15000) })
+      const res = await fetchRegistered(url, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(15000) })
       if (!res.ok) return NextResponse.json({ error: "OWID no disponible", data: [] }, { status: 502 })
 
       const text = await res.text()

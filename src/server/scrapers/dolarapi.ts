@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 import { BaseScraper, ScrapeResult } from "./base"
 import { prisma } from "@/server/db/prisma"
 import { todayUTC } from "@/lib/dates"
@@ -37,7 +38,7 @@ export class DolarAPIScraper extends BaseScraper {
 
     try {
       // Primary source: dolarapi.com
-      const response = await fetch("https://dolarapi.com/v1/dolares", {
+      const response = await fetchRegistered("https://dolarapi.com/v1/dolares", {
         headers: { "User-Agent": "PanelDeControl/1.0" },
       })
 
@@ -110,7 +111,7 @@ export class DolarAPIScraper extends BaseScraper {
     } catch (error) {
       // Fallback to Bluelytics if dolarapi fails
       try {
-        const response = await fetch("https://api.bluelytics.com.ar/v2/latest")
+        const response = await fetchRegistered("https://api.bluelytics.com.ar/v2/latest")
         if (response.ok) {
           const data: BluelyticsResponse = await response.json()
           
@@ -147,7 +148,7 @@ export async function fetchDolarRates(): Promise<{
   rates: Record<string, { compra: number; venta: number; variacion?: number }>
   timestamp: string
 }> {
-  const response = await fetch("https://dolarapi.com/v1/dolares")
+  const response = await fetchRegistered("https://dolarapi.com/v1/dolares")
   if (!response.ok) throw new Error("Failed to fetch rates")
 
   const data: DolarAPIResponse[] = await response.json()

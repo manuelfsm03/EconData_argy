@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/bandas-cambiarias — Datos dinámicos para gráfico de bandas cambiarias
  *
@@ -17,6 +18,7 @@
  */
 
 import { NextResponse } from "next/server"
+import { getCuratedDataset } from "@/server/sources/curated-registry"
 
 export const runtime = "nodejs"
 
@@ -24,11 +26,8 @@ export const runtime = "nodejs"
 
 // Valores iniciales de banda Fase 3 (14/04/2025). Actualizar si el BCRA los cambia.
 const BANDA_INICIAL = { date: "2025-04-14", inferior: 1000, superior: 1400 }
+const BANDA_POLICY = getCuratedDataset("bandas_cambiarias_policy")
 
-// REM de respaldo (actualizar mensualmente si el scraping falla)
-// Fuente: BCRA REM publicación Marzo 2025. Índice 0 = IPC feb 2025 (aplica a banda abr 2025)
-const REM_MEDIANA_FALLBACK = [2.4, 2.5, 2.5, 2.4, 2.3, 2.2, 2.1, 2.0, 2.0, 1.9, 1.9, 1.8]
-const REM_TOP10_FALLBACK   = [2.1, 2.1, 2.0, 1.9, 1.8, 1.7, 1.7, 1.6, 1.6, 1.5, 1.5, 1.4]
 
 // ── Cache ─────────────────────────────────────────────────────────────────────
 
@@ -47,7 +46,7 @@ function setCached(k: string, d: unknown, ttlSec: number) {
 async function fetchIPCHistorico(): Promise<Record<string, number>> {
   try {
     const url = "https://apis.datos.gob.ar/series/api/series/?ids=145.3_INGNACUAL_DICI_M_38&limit=24&sort=desc"
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { "User-Agent": "PanelDeControl/2.0" },
       signal: AbortSignal.timeout(10000),
       next: { revalidate: 86400 }, // IPC se publica 1x/mes
@@ -82,7 +81,7 @@ async function fetchREM(): Promise<{ mediana: number[]; top10: number[] } | null
   // Usamos la API pública del BCRA para series de expectativas
   try {
     const url = "https://api.bcra.gob.ar/estadisticas/v3.0/maestro/variables"
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
       signal: AbortSignal.timeout(8000),
       next: { revalidate: 86400 },
@@ -98,7 +97,7 @@ async function fetchREM(): Promise<{ mediana: number[]; top10: number[] } | null
       )
       if (remVar) {
         const dataUrl = `https://api.bcra.gob.ar/estadisticas/v3.0/monetarias/${remVar.idVariable}`
-        const dataRes = await fetch(dataUrl, {
+        const dataRes = await fetchRegistered(dataUrl, {
           headers: { "User-Agent": "PanelDeControl/2.0" },
           signal: AbortSignal.timeout(8000),
           next: { revalidate: 86400 },
@@ -108,7 +107,7 @@ async function fetchREM(): Promise<{ mediana: number[]; top10: number[] } | null
           const series: { fecha: string; valor: number }[] = dataJson.results ?? []
           if (series.length > 0) {
             const values = series.slice(0, 12).map((s) => parseFloat(s.valor.toFixed(2)))
-            return { mediana: values, top10: values.map((v) => Math.max(0, v - 0.3)) }
+            return { mediana: values, top10: [] }
           }
         }
       }
@@ -135,13 +134,13 @@ async function fetchREM(): Promise<{ mediana: number[]; top10: number[] } | null
 
     for (const url of candidateUrls) {
       try {
-        const res = await fetch(url, {
+        const res = await fetchRegistered(url, {
           method: "HEAD",
           headers: { "User-Agent": "PanelDeControl/2.0" },
           signal: AbortSignal.timeout(4000),
         })
         if (res.ok && res.headers.get("content-type")?.includes("csv")) {
-          const csvRes = await fetch(url, {
+          const csvRes = await fetchRegistered(url, {
             headers: { "User-Agent": "PanelDeControl/2.0" },
             signal: AbortSignal.timeout(8000),
             next: { revalidate: 86400 },
@@ -158,7 +157,7 @@ async function fetchREM(): Promise<{ mediana: number[]; top10: number[] } | null
 
   // Intento 3: argentinadatos.com (si incorporan REM en el futuro)
   try {
-    const res = await fetch("https://api.argentinadatos.com/v1/finanzas/rem/inflacion", {
+    const res = await fetchRegistered("https://api.argentinadatos.com/v1/finanzas/rem/inflacion", {
       headers: { "User-Agent": "PanelDeControl/2.0" },
       signal: AbortSignal.timeout(6000),
       next: { revalidate: 86400 },
@@ -166,16 +165,19 @@ async function fetchREM(): Promise<{ mediana: number[]; top10: number[] } | null
     if (res.ok) {
       const json = await res.json()
       if (Array.isArray(json) && json.length > 0) {
-        const mediana: number[] = json.slice(0, 12).map((e: { mediana?: number; valor?: number }) =>
-          parseFloat(((e.mediana ?? e.valor ?? 2.0)).toFixed(2))
-        )
-        const top10: number[] = json.slice(0, 12).map((e: { top10?: number; mediana?: number }) =>
-          parseFloat(((e.top10 ?? (e.mediana ?? 2.0) - 0.3)).toFixed(2))
-        )
+        const mediana = json.slice(0, 12)
+          .map((e: { mediana?: number; valor?: number }) => e.mediana ?? e.valor)
+          .filter((value: unknown): value is number => typeof value === "number" && Number.isFinite(value))
+          .map((value: number) => parseFloat(value.toFixed(2)))
+        const top10 = json.slice(0, 12)
+          .map((e: { top10?: number }) => e.top10)
+          .filter((value: unknown): value is number => typeof value === "number" && Number.isFinite(value))
+          .map((value: number) => parseFloat(value.toFixed(2)))
+        if (mediana.length === 0) return null
         return { mediana, top10 }
       }
     }
-  } catch { /* fallback */ }
+  } catch { /* source unavailable */ }
 
   return null
 }
@@ -202,7 +204,7 @@ function parseREMCsv(csv: string): { mediana: number[]; top10: number[] } | null
         .slice(0, 12)
 
     const mediana = parseRow(lines[medianaLineIdx])
-    const top10   = top10LineIdx !== -1 ? parseRow(lines[top10LineIdx]) : mediana.map((v) => Math.max(0, v - 0.3))
+    const top10 = top10LineIdx !== -1 ? parseRow(lines[top10LineIdx]) : []
 
     if (mediana.length === 0) return null
     return { mediana, top10 }
@@ -226,19 +228,29 @@ export async function GET() {
     fetchREM(),
   ])
 
-  const remMediana = remData?.mediana ?? REM_MEDIANA_FALLBACK
-  const remTop10   = remData?.top10   ?? REM_TOP10_FALLBACK
+  if (!remData) {
+    return NextResponse.json(
+      { error: { code: "SOURCE_UNAVAILABLE", message: "REM BCRA no disponible", retryable: true } },
+      { status: 502 },
+    )
+  }
 
   const result = {
     ipcHistorico,
-    remMediana,
-    remTop10,
+    remMediana: remData.mediana,
+    remTop10: remData.top10,
+    completeness: remData.top10.length > 0 && Object.keys(ipcHistorico).length > 0 ? "complete" : "partial",
+    warnings: [
+      ...(remData.top10.length === 0 ? ["REM top-10 no disponible en la fuente observada"] : []),
+      ...(Object.keys(ipcHistorico).length === 0 ? ["IPC histórico no disponible"] : []),
+    ],
     bandaInicial: BANDA_INICIAL,
     fuentes: {
       ipc:    Object.keys(ipcHistorico).length > 0 ? "apis.datos.gob.ar (INDEC — serie 145.3_INGNACUAL_DICI_M_38)" : "no disponible",
-      rem:    remData ? "BCRA (scraping automático)" : "fallback hardcodeado — actualizar con próximo REM",
-      banda:  "BCRA — Resolución 14/04/2025 (constante hardcodeada)",
+      rem:    "BCRA (scraping automático)",
+      banda:  BANDA_POLICY.reference,
     },
+    curated: BANDA_POLICY,
     updated_at: new Date().toISOString(),
   }
 

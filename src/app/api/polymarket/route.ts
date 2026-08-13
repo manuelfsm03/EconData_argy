@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/polymarket — Prediction Markets
  * Fuente: Polymarket Gamma API (público, sin auth)
@@ -65,7 +66,7 @@ async function fetchPolymarketMarkets(
     const apiUrl = category === "argentina"
       ? "https://gamma-api.polymarket.com/markets?search=argentina&limit=50&active=true"
       : "https://gamma-api.polymarket.com/markets?limit=200"
-    const res = await fetch(apiUrl, {
+    const res = await fetchRegistered(apiUrl, {
       headers: {
         "User-Agent": "PanelDeControl/2.0",
       },

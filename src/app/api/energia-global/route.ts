@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/energia-global — Producción mundial de petróleo
  * Fuente: U.S. Energy Information Administration (EIA) API v2
@@ -38,42 +39,6 @@ const COUNTRY_CODE_MAP: Record<string, string> = {
   MEX: "Mexico",
 }
 
-// Mock data for crude oil production (TBPD - barrels per day thousands)
-function getMockPetroleumData(countries: string[]): Record<string, [string, number][]> {
-  const mockData: Record<string, number> = {
-    "United States": 11800,
-    "Saudi Arabia": 10200,
-    "Russia": 10100,
-    "Canada": 4800,
-    "China": 3800,
-    "Brazil": 2700,
-    "Iran": 2300,
-    "Iraq": 4400,
-    "Kuwait": 2700,
-    "Mexico": 1700,
-    "Venezuela": 800,
-    "Argentina": 520,
-    "Colombia": 750,
-    "Ecuador": 510,
-    "United Arab Emirates": 3100,
-    "Qatar": 620,
-    "Bahrain": 350,
-  }
-
-  const months = ["202212", "202301", "202302", "202303", "202304", "202305", "202306", "202307", "202308", "202309", "202310", "202311", "202312", "202401", "202402", "202403"]
-  const result: Record<string, [string, number][]> = {}
-
-  for (const country of countries) {
-    const name = COUNTRY_CODE_MAP[country] || country
-    const baseValue = mockData[name] || 1000
-    result[name] = months.map(month => [
-      month,
-      Math.round(baseValue * (0.95 + Math.random() * 0.1))
-    ])
-  }
-
-  return result
-}
 
 // Cache en memoria
 const _cache: Record<string, { data: unknown; expiry: number }> = {}
@@ -115,7 +80,7 @@ async function fetchEIAData(
     const frequency = dataTypeId === "2" ? "annual" : "monthly"
     const url = `${EIA_BASE}/international/data/?api_key=${apiKey}&frequency=${frequency}&data[0]=value&facets[activityId][]=${dataConfig.activityId}&facets[productId][]=57&${countryFacets}&facets[unitId][]=${dataConfig.unit}&sort[0][column]=period&sort[0][direction]=desc&length=600`
 
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { "User-Agent": "PanelDeControl/2.0" },
       signal: AbortSignal.timeout(15000),
       next: { revalidate: 21600 },
@@ -162,16 +127,13 @@ async function fetchEIAProduction(
   if (cached) return cached
 
   const apiKey = process.env.EIA_API_KEY
-  if (!apiKey) {
-    // Return mock data when API key not configured
-    return getMockPetroleumData(countries)
-  }
+  if (!apiKey) throw new Error("SOURCE_NOT_CONFIGURED:EIA_API_KEY")
 
   try {
     const countryFacets = countries.map((c) => `facets[countryRegionId][]=${c}`).join("&")
     const url = `${EIA_BASE}/international/data/?api_key=${apiKey}&frequency=monthly&data[0]=value&facets[activityId][]=1&facets[productId][]=57&${countryFacets}&facets[unitId][]=TBPD&sort[0][column]=period&sort[0][direction]=desc&length=600`
 
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { "User-Agent": "PanelDeControl/2.0" },
       signal: AbortSignal.timeout(15000),
       next: { revalidate: 21600 },
@@ -292,6 +254,12 @@ export async function GET(request: NextRequest) {
     )
   } catch (error) {
     console.error("[/api/energia-global]", error)
+    if (error instanceof Error && error.message.startsWith("SOURCE_NOT_CONFIGURED")) {
+      return NextResponse.json(
+        { error: { code: "SOURCE_NOT_CONFIGURED", message: "Fuente EIA no configurada", retryable: false } },
+        { status: 503 },
+      )
+    }
     return NextResponse.json(
       { error: "Error EIA API", detail: String(error) },
       { status: 500 }

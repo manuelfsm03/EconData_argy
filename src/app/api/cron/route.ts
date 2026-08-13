@@ -10,7 +10,7 @@ function authorized(request: NextRequest): boolean {
   return request.headers.get("authorization") === `Bearer ${secret}`
 }
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   if (!authorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -37,9 +37,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
-}
-
-// Also support POST for manual triggers
-export async function POST(request: NextRequest) {
-  return GET(request)
 }

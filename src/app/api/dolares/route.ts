@@ -1,5 +1,6 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/server/db/prisma"
+
 
 interface DolarAPIResponse {
   moneda: string
@@ -17,22 +18,17 @@ interface BluelyticsEvolution {
   value_buy: number
 }
 
-// Get today at midnight UTC for DB storage
-function todayUTC(): Date {
-  const now = new Date()
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
-}
 
 // Real-time dollar rates from DolarAPI + historical variation
 export async function GET(request: NextRequest) {
   try {
     // Fetch current rates and historical data in parallel
     const [dolarApiRes, bluelyticsRes] = await Promise.all([
-      fetch("https://dolarapi.com/v1/dolares", {
+      fetchRegistered("https://dolarapi.com/v1/dolares", {
         headers: { "User-Agent": "PanelDeControl/1.0" },
         next: { revalidate: 60 },
       }),
-      fetch("https://api.bluelytics.com.ar/v2/evolution.json?days=7", {
+      fetchRegistered("https://api.bluelytics.com.ar/v2/evolution.json?days=7", {
         headers: { "User-Agent": "PanelDeControl/1.0" },
         next: { revalidate: 300 },
       }),
@@ -119,30 +115,6 @@ export async function GET(request: NextRequest) {
       brechaCclMep: mep ? ((ccl - mep) / mep) * 100 : null,
     }
 
-    // Save to database for historical tracking (fire and forget)
-    const today = todayUTC()
-    prisma.exchangeRate.upsert({
-      where: { date: today },
-      update: {
-        blue: rates.blue?.venta ?? null,
-        oficial: rates.oficial?.venta ?? null,
-        mepLibre: rates.bolsa?.venta ?? null,
-        cclLibre: rates.contadoconliqui?.venta ?? null,
-        mayorista: rates.mayorista?.venta ?? null,
-        cripto: rates.cripto?.venta ?? null,
-        solidario: rates.tarjeta?.venta ?? null,
-      },
-      create: {
-        date: today,
-        blue: rates.blue?.venta ?? null,
-        oficial: rates.oficial?.venta ?? null,
-        mepLibre: rates.bolsa?.venta ?? null,
-        cclLibre: rates.contadoconliqui?.venta ?? null,
-        mayorista: rates.mayorista?.venta ?? null,
-        cripto: rates.cripto?.venta ?? null,
-        solidario: rates.tarjeta?.venta ?? null,
-      },
-    }).catch(err => console.error("Failed to save rates to DB:", err))
 
     return NextResponse.json({
       success: true,
@@ -155,7 +127,7 @@ export async function GET(request: NextRequest) {
     
     // Try fallback
     try {
-      const fallback = await fetch("https://api.bluelytics.com.ar/v2/latest")
+      const fallback = await fetchRegistered("https://api.bluelytics.com.ar/v2/latest")
       if (fallback.ok) {
         const data = await fallback.json()
         return NextResponse.json({
