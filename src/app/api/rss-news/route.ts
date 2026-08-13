@@ -136,8 +136,42 @@ const RELEVANT_TERMS: string[] = [
 // Compilar en Set lowercase para O(1) lookup parcial
 const RELEVANT_SET = RELEVANT_TERMS.map((t) => t.toLowerCase())
 
+// Filtro NEGATIVO: varios términos de RELEVANT_TERMS son ambiguos y se cuelan
+// en notas de deportes/espectáculos/policiales que casualmente los mencionan
+// ("mercado de pases", "presidente del club", "banco de suplentes", "título
+// mundial", "campo de juego", "línea de ataque"). Se chequea ANTES del filtro
+// positivo: si el título matchea acá, se descarta sin importar qué término
+// relevante también contenga.
+const EXCLUDE_TERMS: string[] = [
+  // ── Deportes ──
+  "mercado de pases", "pase de jugador", "fichaje", "transferencia de jugador",
+  "banco de suplentes", "línea de ataque", "linea de ataque", "campo de juego",
+  "título mundial", "titulo mundial", "título de boxeo", "titulo de boxeo",
+  "gol de", "goles de", "partido de fútbol", "partido de futbol",
+  "boca juniors", "river plate", "selección argentina", "seleccion argentina",
+  "copa libertadores", "copa américa", "copa america", "champions league",
+  "mundial de fútbol", "mundial de futbol", "liga profesional",
+  "futbolista", "jugador de fútbol", "jugador de futbol", "entrenador de",
+  "básquet", "basquet", "tenis", "fórmula 1", "formula 1", "moto gp",
+  "tarjeta roja", "tarjeta amarilla", "árbitro", "arbitro",
+  // ── Espectáculos ──
+  "famoso", "famosa", "celebridad", "novela", "actor de", "actriz de",
+  "cantante", "reality show", "gran hermano", "escándalo mediático",
+  "escandalo mediatico", "influencer",
+  // ── Policiales (no económicos) ──
+  "femicidio", "homicidio", "asesinato", "robo a mano armada",
+  "secuestro extorsivo", "violencia de género", "violencia de genero",
+]
+const EXCLUDE_SET = EXCLUDE_TERMS.map((t) => t.toLowerCase())
+
+function isExcluded(title: string): boolean {
+  const lower = title.toLowerCase()
+  return EXCLUDE_SET.some((term) => lower.includes(term))
+}
+
 function isRelevant(title: string): boolean {
   const lower = title.toLowerCase()
+  if (isExcluded(lower)) return false
   return RELEVANT_SET.some((term) => lower.includes(term))
 }
 
