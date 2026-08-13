@@ -1,4 +1,6 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 import { NextRequest, NextResponse } from "next/server"
+import { getRegisteredFeed } from "@/server/sources/rss-feeds"
 
 // Simple RSS XML parser
 function parseRSS(xml: string, source: string): Array<{
@@ -70,73 +72,31 @@ function parseRSS(xml: string, source: string): Array<{
   return items.slice(0, 20) // Limit to 20 items per feed
 }
 
-// Allowed RSS feed domains
-const ALLOWED_DOMAINS = [
-  "ambito.com",
-  "cronista.com",
-  "infobae.com",
-  "iprofesional.com",
-  "bloomberglinea.com",
-  "lanacion.com.ar",
-  "clarin.com",
-  "baenegocios.com",
-  "eleconomista.com.ar",
-  "perfil.com",
-]
+export async function GET(request: NextRequest) {
+  const feedId = request.nextUrl.searchParams.get("feedId")
+  const feed = feedId ? getRegisteredFeed(feedId) : null
+  if (!feed) {
+    return NextResponse.json(
+      { error: { code: "INVALID_INPUT", message: "Unknown feedId", retryable: false } },
+      { status: 400 },
+    )
+  }
 
-function isAllowedUrl(value: string): boolean {
-  const parsed = new URL(value)
-  return parsed.protocol === "https:" && ALLOWED_DOMAINS.some(
-    domain => parsed.hostname === domain || parsed.hostname.endsWith(`.${domain}`)
-  )
-}
-
-async function fetchAllowedFeed(initialUrl: string): Promise<Response> {
-  let currentUrl = initialUrl
-  for (let redirects = 0; redirects <= 3; redirects += 1) {
-    if (!isAllowedUrl(currentUrl)) throw new Error("Domain not allowed")
-    const response = await fetch(currentUrl, {
+  try {
+    const response = await fetchRegistered(feed.url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; PanelDeControl/1.0; +https://terminal.solulith.com)",
         Accept: "application/rss+xml, application/xml, text/xml, application/atom+xml",
       },
-      redirect: "manual",
       signal: AbortSignal.timeout(8000),
     })
-    if (response.status < 300 || response.status >= 400) return response
-    const location = response.headers.get("location")
-    if (!location) throw new Error("Redirect without location")
-    currentUrl = new URL(location, currentUrl).toString()
-  }
-  throw new Error("Too many redirects")
-}
-
-export async function GET(request: NextRequest) {
-  const url = request.nextUrl.searchParams.get("url")
-
-  if (!url) {
-    return NextResponse.json({ error: "Missing url parameter" }, { status: 400 })
-  }
-
-  // Validate domain
-  try {
-    if (!isAllowedUrl(url)) {
-      return NextResponse.json({ error: "Domain not allowed" }, { status: 403 })
-    }
-  } catch {
-    return NextResponse.json({ error: "Invalid URL" }, { status: 400 })
-  }
-
-  try {
-    const response = await fetchAllowedFeed(url)
 
     if (!response.ok) {
       return NextResponse.json({ error: `Feed returned ${response.status}` }, { status: 502 })
     }
 
     const xml = await response.text()
-    const source = new URL(url).hostname.replace("www.", "").split(".")[0]
-    const items = parseRSS(xml, source)
+    const items = parseRSS(xml, feed.source)
 
     return NextResponse.json(items, {
       headers: {

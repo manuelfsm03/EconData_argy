@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/economia — Tipos de cambio y BCRA
  *
@@ -36,7 +37,7 @@ function setCache(key: string, data: unknown, ttlSeconds: number) {
 async function getDolar() {
   const cached = getCache<unknown[]>("dolar_all")
   if (cached) return cached
-  const res = await fetch(`${DOLAR_API}/dolares`, {
+  const res = await fetchRegistered(`${DOLAR_API}/dolares`, {
     headers: { "User-Agent": "PanelDeControl/2.0" },
     next: { revalidate: 300 },
   })
@@ -60,7 +61,7 @@ async function getBcraIndicadores() {
   try {
     const ids = Object.values(BCRA_SERIES).join(",")
     const url = `${DATOS_API}?ids=${encodeURIComponent(ids)}&limit=90&sort=desc`
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { "User-Agent": "PanelDeControl/2.0" },
       next: { revalidate: 900 },
     })
@@ -82,7 +83,7 @@ async function getBcraIndicadores() {
   const token = process.env.BCRA_TOKEN
   if (token) {
     try {
-      const res = await fetch("https://api.estadisticasbcra.com/rp", {
+      const res = await fetchRegistered("https://api.estadisticasbcra.com/rp", {
         headers: {
           Authorization: `Bearer ${token}`,
           "User-Agent": "PanelDeControl/2.0",

@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/acciones/[ticker] — Histórico + detalle de una acción
  *
@@ -71,7 +72,7 @@ async function fetchYFHistory(symbol: string, range: string): Promise<OHLCEntry[
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${yfRange}&includePrePost=false`
 
   try {
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: YF_HEADERS,
       signal: AbortSignal.timeout(10000),
       next: { revalidate: 1800 },
@@ -116,7 +117,7 @@ async function fetchYFMeta(symbol: string): Promise<{
 }> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`
   try {
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: YF_HEADERS,
       signal: AbortSignal.timeout(8000),
       next: { revalidate: 300 },
@@ -149,7 +150,7 @@ async function fetchYFMeta(symbol: string): Promise<{
 async function fetchMervalCurrent(ticker: string): Promise<{ last: number | null; close: number | null; vol: number | null }> {
   try {
     const url = `${MERVAL_BASE}/v1/quotes/batch?symbols=${ticker}:24hs&depth=1`
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000), next: { revalidate: 60 } })
+    const res = await fetchRegistered(url, { signal: AbortSignal.timeout(5000), next: { revalidate: 60 } })
     if (!res.ok) return { last: null, close: null, vol: null }
     const j = await res.json()
     const q = j.quotes?.[0]

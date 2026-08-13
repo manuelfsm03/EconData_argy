@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/geopolitica — Noticias geopolíticas via RSS feeds
  *
@@ -23,11 +24,11 @@ const RSS_FEEDS: Record<string, string> = {
   iprofesional:   "https://www.iprofesional.com/rss/finanzas",
   bae_negocios:   "https://www.baenegocios.com/feed/",
   la_nacion:      "https://www.lanacion.com.ar/arc/outboundfeeds/rss/category/economia/",
-  perfil:         "http://www.perfil.com/feed/economia",
+  perfil:         "https://www.perfil.com/feed/economia",
   el_economista:  "https://www.eleconomista.com.ar/feed/",
   // Existentes
-  bbc_world:      "http://feeds.bbci.co.uk/news/world/rss.xml",
-  bbc_business:   "http://feeds.bbci.co.uk/news/business/rss.xml",
+  bbc_world:      "https://feeds.bbci.co.uk/news/world/rss.xml",
+  bbc_business:   "https://feeds.bbci.co.uk/news/business/rss.xml",
   aljazeera_en:   "https://www.aljazeera.com/xml/rss/all.xml",
   france24_es:    "https://www.france24.com/es/rss",
   bbc_mundo:      "https://feeds.bbci.co.uk/mundo/rss.xml",
@@ -198,7 +199,7 @@ async function getFeed(): Promise<{ items: NewsItem[]; count: number; categories
   await Promise.allSettled(
     Object.entries(RSS_FEEDS).map(async ([sourceName, url]) => {
       try {
-        const res = await fetch(url, {
+        const res = await fetchRegistered(url, {
           headers: { "User-Agent": "Mozilla/5.0 PanelDeControl/2.0" },
           signal: AbortSignal.timeout(5000),
           next: { revalidate: 900 },

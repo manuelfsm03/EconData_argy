@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/ia — IA Statistics & Benchmarks
  * Fuentes:
@@ -125,7 +126,7 @@ async function fetchHuggingFaceTrending(): Promise<
   if (cached) return cached
 
   try {
-    const res = await fetch(
+    const res = await fetchRegistered(
       "https://huggingface.co/api/models?search=gpt&sort=downloads&direction=-1&limit=20",
       {
         headers: { "User-Agent": "PanelDeControl/2.0" },

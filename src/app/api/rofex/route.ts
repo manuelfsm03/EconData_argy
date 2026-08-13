@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/rofex — Futuros de dólar ROFEX
  *
@@ -11,6 +12,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { parseRavaDlrFutures } from "@/server/domain/rofex-rava"
 import { prisma } from "@/server/db/prisma"
+import { requireAdminAuthorization } from "@/server/api/admin-auth"
 
 export const runtime = "nodejs"
 
@@ -36,7 +38,7 @@ interface RofexRow {
 
 async function fetchFromRava(): Promise<RofexRow[] | null> {
   try {
-    const response = await fetch(RAVA_URL, {
+    const response = await fetchRegistered(RAVA_URL, {
       signal: AbortSignal.timeout(15_000),
       headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
       next: { revalidate: 300 },
@@ -111,6 +113,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const unauthorized = requireAdminAuthorization(request)
+  if (unauthorized) return unauthorized
   try {
     const body = await request.json()
     const toMidnight = (date: string) => {

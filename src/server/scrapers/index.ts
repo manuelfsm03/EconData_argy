@@ -1,10 +1,9 @@
 import { BaseScraper } from "./base"
 import { DolarAPIScraper } from "./dolarapi"
 import { CriptoYaScraper } from "./criptoya"
-import { BCRAScraper } from "./bcra"
 import { RSSScraper } from "./rss"
 
-export type ScraperName = "dolarapi" | "criptoya" | "bcra" | "rss" | "all"
+export type ScraperName = "dolarapi" | "criptoya" | "rss" | "all"
 
 export function getScraper(name: ScraperName): BaseScraper | null {
   switch (name) {
@@ -12,8 +11,6 @@ export function getScraper(name: ScraperName): BaseScraper | null {
       return new DolarAPIScraper()
     case "criptoya":
       return new CriptoYaScraper()
-    case "bcra":
-      return new BCRAScraper()
     case "rss":
       return new RSSScraper()
     default:
@@ -22,7 +19,7 @@ export function getScraper(name: ScraperName): BaseScraper | null {
 }
 
 export async function runAllScrapers() {
-  const scraperNames: ScraperName[] = ["dolarapi", "criptoya", "bcra", "rss"]
+  const scraperNames: ScraperName[] = ["dolarapi", "criptoya", "rss"]
   const results: Record<string, unknown> = {}
 
   for (const name of scraperNames) {

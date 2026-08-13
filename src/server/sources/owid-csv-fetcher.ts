@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * OWID CSV Fetcher — Genérico para CSVs de Our World in Data
  * Parsea CSVs, filtra por países/columnas, cachea 24h
@@ -30,7 +31,7 @@ export async function fetchOWIDCSV(
   if (cached) return cached
 
   try {
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { "User-Agent": "PanelDeControl/2.0" },
       signal: AbortSignal.timeout(30000), // CSVs grandes
     })

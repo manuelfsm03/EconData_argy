@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 import { NextResponse } from "next/server"
 
 // La curva del Tesoro se publica una vez por día en días hábiles
@@ -27,7 +28,7 @@ export async function GET() {
     `?type=daily_treasury_yield_curve&field_tdr_date_value=${year}&csv=true`
 
   try {
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { Accept: "text/csv" },
       signal: AbortSignal.timeout(8000),
     })

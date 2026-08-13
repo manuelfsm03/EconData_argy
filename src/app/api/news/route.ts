@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/server/db/prisma"
+import { requireAdminAuthorization } from "@/server/api/admin-auth"
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -26,6 +27,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const unauthorized = requireAdminAuthorization(request)
+  if (unauthorized) return unauthorized
   try {
     const data = await request.json()
 

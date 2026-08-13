@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 import { NextResponse } from "next/server"
 
 // Vercel CDN cachea esta route 15 minutos — sin tokens, escala infinitamente
@@ -33,13 +34,13 @@ const RSS_FEEDS: RSSFeed[] = [
   { url: "https://www.iprofesional.com/rss/finanzas",                                          source: "iProfesional",  region: "argentina",     category: "finanzas",  lang: "es" },
   { url: "https://www.baenegocios.com/feed/",                                                  source: "BAE Negocios",  region: "argentina",     category: "economía",  lang: "es" },
   { url: "https://www.lanacion.com.ar/arc/outboundfeeds/rss/category/economia/",              source: "La Nación",     region: "argentina",     category: "economía",  lang: "es" },
-  { url: "http://www.perfil.com/feed/economia",                                                source: "Perfil",        region: "argentina",     category: "economía",  lang: "es" },
+  { url: "https://www.perfil.com/feed/economia",                                               source: "Perfil",        region: "argentina",     category: "economía",  lang: "es" },
   { url: "https://www.eleconomista.com.ar/feed/",                                              source: "El Economista", region: "argentina",     category: "economía",  lang: "es" },
   // ── Internacional — EEUU (inglés) ──
   { url: "https://rss.politico.com/politics-news.xml",              source: "Politico",       region: "internacional", category: "política",  country: "eeuu",         lang: "en" },
   { url: "https://feeds.a.dj.com/rss/RSSWorldNews.xml",            source: "WSJ",            region: "internacional", category: "economía",  country: "eeuu",         lang: "en" },
   // ── Internacional — UK (inglés) ──
-  { url: "http://feeds.bbci.co.uk/news/business/rss.xml",          source: "BBC Business",   region: "internacional", category: "economía",  country: "uk",           lang: "en" },
+  { url: "https://feeds.bbci.co.uk/news/business/rss.xml",         source: "BBC Business",   region: "internacional", category: "economía",  country: "uk",           lang: "en" },
   { url: "https://www.theguardian.com/world/rss",                   source: "The Guardian",   region: "internacional", category: "política",  country: "uk",           lang: "en" },
   { url: "https://www.ft.com/rss/home",                             source: "Financial Times",region: "internacional", category: "economía",  country: "uk",           lang: "en" },
   // ── Internacional — Francia (español) ──
@@ -220,7 +221,7 @@ export async function GET() {
   await Promise.allSettled(
     RSS_FEEDS.map(async (feed) => {
       try {
-        const res = await fetch(feed.url, {
+        const res = await fetchRegistered(feed.url, {
           signal:  AbortSignal.timeout(8000),
           headers: { "User-Agent": "PanelDeControl/1.0" },
         })

@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/macro — Macroeconomía argentina
  *
@@ -118,7 +119,7 @@ async function getMultiserie(keys: string[], limit = 36): Promise<Record<string,
   const ids = validKeys.map((k) => SERIES_IDS[k]).join(",")
   const url = `${BASE_URL}?ids=${encodeURIComponent(ids)}&limit=${limit}&sort=desc`
 
-  const res = await fetch(url, {
+  const res = await fetchRegistered(url, {
     headers: { "User-Agent": "PanelDeControl/2.0" },
     next: { revalidate: 3600 },
   })
@@ -148,7 +149,7 @@ async function fetchWorldBank(indicatorId: string, limit = 20): Promise<[string,
     const timer = setTimeout(() => controller.abort(), 7000)
 
     const url = `${WB_BASE}/${indicatorId}?format=json&per_page=${limit}&mrv=${limit}`
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
       next: { revalidate: 86400 },
       signal: controller.signal,
@@ -176,7 +177,7 @@ async function fetchCSVData(url: string, ttlSec = 3600): Promise<Record<string, 
   const cached = getCache<Record<string, string>[]>(cacheKey)
   if (cached) return cached
   try {
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { "User-Agent": "PanelDeControl/2.0", Accept: "text/csv,text/plain,*/*" },
       next: { revalidate: ttlSec },
       signal: AbortSignal.timeout(15000),
