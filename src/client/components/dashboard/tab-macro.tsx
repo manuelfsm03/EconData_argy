@@ -373,12 +373,6 @@ type UCIRow = {
   minerales: number | null
 }
 
-type SuperRow = {
-  date: string
-  corrientes_mm: number | null
-  constantes_mm: number | null
-}
-
 type ConfianzaRow = {
   date: string
   icc_nacional: number | null
@@ -392,7 +386,6 @@ type ConfianzaRow = {
 
 type ActividadData = {
   uci: UCIRow[]
-  supermercados: SuperRow[]
 }
 
 type ConfianzaData = {
@@ -1259,61 +1252,6 @@ export function EmaeView() {
               height={240}
               yAxisLabel="%"
               formatValue={(v) => v.toFixed(1) + "%"}
-              defaultRange="all"
-            />
-          </div>
-        </>
-      )}
-
-      {/* ══ VENTAS SUPERMERCADOS ══════════════════════════════════════════════ */}
-      <SectionHeader
-        title="Ventas en Supermercados"
-        source="INDEC · Miles de millones ARS · Corrientes y constantes base 2017"
-      />
-      {actividadLoading ? (
-        <div style={{ padding: 12, color: "var(--text-dim)", fontSize: 11 }}>Cargando supermercados...</div>
-      ) : !actividadData?.supermercados?.length ? (
-        <div style={{ padding: 12, color: "var(--text-dim)", fontSize: 11 }}>Sin datos de supermercados disponibles</div>
-      ) : (
-        <>
-          {(() => {
-            const sup = actividadData.supermercados
-            const ultimo = sup[sup.length - 1]
-            const anterior = sup.length >= 13 ? sup[sup.length - 13] : null
-            const varConst = ultimo?.constantes_mm && anterior?.constantes_mm
-              ? (((ultimo.constantes_mm - anterior.constantes_mm) / anterior.constantes_mm) * 100)
-              : null
-            return (
-              <div style={{ display: "flex", gap: 1, padding: 1, background: "var(--bg-elev-2)", flexWrap: "wrap" }}>
-                <KPI
-                  label="Ventas corrientes"
-                  value={ultimo?.corrientes_mm ? `$${fmtNum(ultimo.corrientes_mm, 0)}B` : null}
-                  unit={`Miles de millones ARS · ${ultimo?.date ?? ""}`}
-                  valueColor="var(--amber)"
-                />
-                <KPI
-                  label="Ventas constantes"
-                  value={ultimo?.constantes_mm ? `$${fmtNum(ultimo.constantes_mm, 0)}B` : null}
-                  unit="Miles de millones ARS · Precios 2017"
-                  valueColor="var(--sky)"
-                  var1={varConst} var1Label="i.a. real"
-                />
-              </div>
-            )
-          })()}
-
-          {/* Gráfico supermercados corrientes vs constantes — BBGLineChart */}
-          <div style={{ padding: "8px 0" }}>
-            <BBGLineChart
-              title="VENTAS SUPERMERCADOS — CORRIENTES VS CONSTANTES"
-              data={actividadData.supermercados}
-              lines={[
-                { key: "corrientes_mm", name: "Corrientes", color: "var(--amber)" },
-                { key: "constantes_mm", name: "Constantes (2017)", color: "var(--sky)" },
-              ]}
-              height={220}
-              yAxisLabel="MM ARS (miles de mill.)"
-              formatValue={(v) => `$${fmtNum(v, 0)}B`}
               defaultRange="all"
             />
           </div>
