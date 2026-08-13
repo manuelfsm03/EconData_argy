@@ -167,6 +167,33 @@ export function tir(precioDirty: number, futuros: Cashflow[], liquidacion: Date)
 }
 
 /**
+ * Precio dirty dado un TIR objetivo: la inversa de tir(). A diferencia de
+ * tir() —donde el precio es dato y la tasa la incógnita, así que hace falta
+ * bisección— acá la tasa es dato: el precio sale de sumar el valor presente
+ * de los flujos futuros directamente, sin iterar.
+ *
+ *   precio = SUM( flujo_i / (1 + tirObjetivo) ^ ((fechaPago_i - liquidacion) / 365) )
+ */
+export function precioDadoTIR(
+  tirObjetivoPorcentaje: number,
+  futuros: Cashflow[],
+  liquidacion: Date,
+): number | null {
+  if (futuros.length === 0) return null
+  const r = tirObjetivoPorcentaje / 100
+  if (r <= -1) return null
+
+  const plazos = futuros.map((cf) => ({
+    t: yearFracAct365(liquidacion, cf.fechaPago),
+    flujo: cf.cupon + cf.amortizacion,
+  }))
+  if (plazos.some((p) => p.t <= 0)) return null
+
+  const precio = plazos.reduce((suma, { t, flujo }) => suma + flujo / Math.pow(1 + r, t), 0)
+  return Number.isFinite(precio) && precio > 0 ? precio : null
+}
+
+/**
  * Duration de Macaulay: el plazo promedio de los flujos, ponderado por cuánto
  * pesa cada uno en el precio de hoy.
  *
@@ -347,4 +374,22 @@ export function calcularMetricas(
   const mercado = metricasDeMercado(precioDirty, cashflows, liquidacion)
   if (devengadas === null || mercado === null) return null
   return { ...devengadas, ...mercado }
+}
+
+/**
+ * Atajo para la calculadora interactiva: en vez de partir de un precio de
+ * mercado, parte de una TIR objetivo que tipeó el usuario. Calcula el precio
+ * implícito con precioDadoTIR() y de ahí reusa calcularMetricas() tal cual,
+ * así las dos vías (precio→TIR y TIR→precio) devuelven exactamente el mismo
+ * shape.
+ */
+export function metricasDesdeTIR(
+  tirObjetivoPorcentaje: number,
+  cashflows: Cashflow[],
+  liquidacion: Date,
+): MetricasBono | null {
+  const futuros = flujosFuturos(cashflows, liquidacion)
+  const precioDirty = precioDadoTIR(tirObjetivoPorcentaje, futuros, liquidacion)
+  if (precioDirty === null) return null
+  return calcularMetricas(precioDirty, cashflows, liquidacion)
 }
