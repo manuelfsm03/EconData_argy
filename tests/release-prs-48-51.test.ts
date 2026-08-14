@@ -72,9 +72,35 @@ test("bond calculator rejects malformed and impossible settlement dates", async 
   }
 })
 
+test("bond calculator enforces the verified bond life and first-period accrual", async () => {
+  for (const settlement of ["2019-01-01", "2030-07-09", "2031-01-01"]) {
+    const response = await calculateBond(new NextRequest(
+      `http://localhost/api/bonos/calculadora?ticker=GD30&modo=tir&valor=12.5&liquidacion=${settlement}`,
+    ))
+    assert.equal(response.status, 422)
+  }
+
+  const firstPeriod = await calculateBond(new NextRequest(
+    "http://localhost/api/bonos/calculadora?ticker=GD30&modo=tir&valor=12.5&liquidacion=2020-10-01",
+  ))
+  assert.equal(firstPeriod.status, 200)
+  const payload = await firstPeriod.json()
+  assert.ok(payload.metricas.interesesCorridos > 0)
+})
+
+test("bond calculator accepts zero and negative yields above -100 percent", async () => {
+  for (const yieldPercent of [0, -0.25]) {
+    const response = await calculateBond(new NextRequest(
+      `http://localhost/api/bonos/calculadora?ticker=GD30&modo=tir&valor=${yieldPercent}&liquidacion=2026-04-28`,
+    ))
+    assert.equal(response.status, 200)
+  }
+})
+
 test("REM monthly parser selects the latest survey, orders periods, and reads the real TOP-10 column", () => {
   const parsed = parseRemMensual(remWorkbook())
   assert.deepEqual(parsed, {
+    periodos: ["2026-08-01", "2026-09-01"],
     mediana: [1.8, 1.7],
     top10: [1.5, 1.4],
     fechaEncuesta: "2026-07-01",
@@ -90,11 +116,26 @@ test("REM monthly parser leaves missing TOP-10 evidence empty instead of synthes
   assert.deepEqual(parsed?.top10, [])
 })
 
+test("REM monthly parser fails the complete TOP-10 series closed on an interior period gap", () => {
+  const parsedWorkbook = XLSX.read(remWorkbook(), { type: "buffer", cellDates: true })
+  const sheet = parsedWorkbook.Sheets["Base Completa TOP-10"]
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1 }) as unknown[][]
+  rows.splice(2, 1)
+  parsedWorkbook.Sheets["Base Completa TOP-10"] = XLSX.utils.aoa_to_sheet(rows)
+  const withGap = XLSX.write(parsedWorkbook, { type: "buffer", bookType: "xlsx" }) as Buffer
+
+  const parsed = parseRemMensual(withGap)
+  assert.deepEqual(parsed?.periodos, ["2026-08-01", "2026-09-01"])
+  assert.deepEqual(parsed?.top10, [])
+})
+
 test("RSS negative terms override ambiguous positive matches without dropping real finance titles", () => {
   const relevantTerms = ["mercado", "bonos", "presidente", "banco", "título"]
   assert.equal(isRelevantHeadline("El mercado de bonos subió tras la decisión del BCRA", relevantTerms), true)
   assert.equal(isRelevantHeadline("Mercado de pases: el presidente del club confirmó un fichaje", relevantTerms), false)
   assert.equal(isRelevantHeadline("El banco de suplentes fue clave para ganar el título mundial", relevantTerms), false)
+  assert.equal(isRelevantHeadline("La inflación fue el principal factor de presión sobre el mercado de bonos", relevantTerms), true)
+  assert.equal(isRelevantHeadline("El actor de la novela habló de su carrera", ["actor"]), false)
 })
 
 test("ForumHub consumes trending topics as a bounded optional enhancement", () => {

@@ -19,11 +19,16 @@ const EXCLUDE_TERMS: string[] = [
   "secuestro extorsivo", "violencia de género", "violencia de genero",
 ]
 
-const EXCLUDE_SET = EXCLUDE_TERMS.map((term) => term.toLowerCase())
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+const EXCLUDE_PATTERNS = EXCLUDE_TERMS.map((term) =>
+  new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRegExp(term)}(?=$|[^\\p{L}\\p{N}])`, "iu"),
+)
 
 export function isExcludedHeadline(title: string): boolean {
-  const lower = title.toLowerCase()
-  return EXCLUDE_SET.some((term) => lower.includes(term))
+  return EXCLUDE_PATTERNS.some((pattern) => pattern.test(title))
 }
 
 export function isRelevantHeadline(title: string, relevantTerms: readonly string[]): boolean {

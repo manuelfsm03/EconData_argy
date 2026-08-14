@@ -16,6 +16,8 @@
 import { yearFrac30360, yearFracAct365 } from "./daycount"
 
 export interface Cashflow {
+  /** Inicio del período que genera este cupón. */
+  inicioDevengamiento: Date
   /** Fecha teórica del prospecto (la que devenga). */
   fechaDevengamiento: Date
   /** Fecha efectiva de cobro, corrida al día hábil siguiente. */
@@ -120,11 +122,11 @@ export function interesesCorridos(cashflows: Cashflow[], liquidacion: Date): num
     .filter((cf) => cf.fechaDevengamiento.getTime() <= liquidacion.getTime())
     .sort((a, b) => a.fechaDevengamiento.getTime() - b.fechaDevengamiento.getTime())
 
-  // Si todavía no pagó ningún cupón, se devenga desde la emisión, que es la
-  // fecha de devengamiento del primer flujo hacia atrás medio período.
+  // Si todavía no pagó ningún cupón, se devenga desde el inicio real del
+  // primer período (la emisión), no desde la fecha futura del primer cupón.
   const ultimoPago = anteriores.length > 0
     ? anteriores[anteriores.length - 1].fechaDevengamiento
-    : proximo.fechaDevengamiento
+    : proximo.inicioDevengamiento
 
   return yearFrac30360(ultimoPago, liquidacion) * proximo.vr * proximo.tasa
 }

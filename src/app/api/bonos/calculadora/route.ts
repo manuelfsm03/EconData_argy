@@ -17,6 +17,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { ESQUEMAS, construirCashflows } from "@/lib/bond-schedule"
+import { todayInBuenosAires } from "@/lib/calendar-events"
 import {
   calcularMetricas,
   interesesCorridos as calcularInteresesCorridos,
@@ -38,8 +39,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "?modo debe ser 'precio' o 'tir'" }, { status: 400 })
   }
   const valor = valorParam !== null ? Number(valorParam) : NaN
-  if (!Number.isFinite(valor) || valor <= 0) {
-    return NextResponse.json({ error: "?valor debe ser un número positivo" }, { status: 400 })
+  if (!Number.isFinite(valor)) {
+    return NextResponse.json({ error: "?valor debe ser un número finito" }, { status: 400 })
+  }
+  if (modo === "precio" && valor <= 0) {
+    return NextResponse.json({ error: "El precio debe ser positivo" }, { status: 400 })
+  }
+  if (modo === "tir" && valor <= -100) {
+    return NextResponse.json({ error: "La TIR debe ser mayor a -100%" }, { status: 400 })
   }
 
   const esquema = ESQUEMAS.find((e) => e.ticker === ticker)
@@ -54,7 +61,7 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const liquidacionISO = liquidacionParam ?? new Date().toISOString().slice(0, 10)
+  const liquidacionISO = liquidacionParam ?? todayInBuenosAires()
   if (!/^\d{4}-\d{2}-\d{2}$/.test(liquidacionISO)) {
     return NextResponse.json({ error: "?liquidacion debe tener formato YYYY-MM-DD" }, { status: 400 })
   }
@@ -63,6 +70,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "?liquidacion no es una fecha válida" }, { status: 400 })
   }
   const liquidacion = siguienteDiaHabil(liquidacionBase)
+  const emision = fechaUTC(esquema.emision)
+  const vencimiento = fechaUTC(esquema.vencimiento)
+  if (liquidacion < emision || liquidacion >= vencimiento) {
+    return NextResponse.json(
+      { error: `?liquidacion debe estar entre ${esquema.emision} y antes de ${esquema.vencimiento}` },
+      { status: 422 },
+    )
+  }
 
   const cashflows = construirCashflows(esquema)
 

@@ -109,6 +109,7 @@ export function construirCashflows(esquema: EsquemaBono): Cashflow[] {
     const cupon = yearFrac30360(fechaAnterior, fechaDevengamiento) * fila.tasa * residual
 
     cashflows.push({
+      inicioDevengamiento: fechaAnterior,
       fechaDevengamiento,
       fechaPago: siguienteDiaHabil(fechaDevengamiento),
       tasa: fila.tasa,

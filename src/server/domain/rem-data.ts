@@ -118,6 +118,7 @@ export function parseRemExcel(buf: Buffer): { serie: RemRow[]; participantes: Re
 }
 
 export type RemMensual = {
+  periodos: string[]
   mediana: number[]
   top10: number[]
   fechaEncuesta: string
@@ -136,14 +137,19 @@ export function parseRemMensual(buf: Buffer): RemMensual | null {
   const trayectoria = (rows: RemLongRow[]) => rows
     .filter((row) => row.fechaPronostico.getTime() === ultimaFechaMs && row.mediana != null)
     .sort((left, right) => left.periodo.localeCompare(right.periodo))
-    .map((row) => row.mediana as number)
+    .map((row) => ({ periodo: row.periodo, valor: row.mediana as number }))
 
-  const mediana = trayectoria(generales)
-  if (mediana.length === 0) return null
+  const medianaObservada = trayectoria(generales)
+  if (medianaObservada.length === 0) return null
+  const top10Observado = trayectoria(top10)
+  const periodos = medianaObservada.map((row) => row.periodo)
+  const top10Alineado = top10Observado.length === periodos.length &&
+    top10Observado.every((row, index) => row.periodo === periodos[index])
 
   return {
-    mediana,
-    top10: trayectoria(top10),
+    periodos,
+    mediana: medianaObservada.map((row) => row.valor),
+    top10: top10Alineado ? top10Observado.map((row) => row.valor) : [],
     fechaEncuesta: new Date(ultimaFechaMs).toISOString().slice(0, 10),
   }
 }

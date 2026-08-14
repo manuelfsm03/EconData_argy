@@ -9,7 +9,8 @@
  * Response:
  *   {
  *     ipcHistorico: Record<"YYYY-MM", number>   // tasa mensual %
- *     remMediana: number[]                       // índice 0 = IPC feb 2025 en adelante
+ *     remPeriodos: string[]                      // período YYYY-MM-DD de cada observación
+ *     remMediana: number[]                       // alineada por índice con remPeriodos
  *     remTop10: number[]
  *     bandaInicial: { date: string; inferior: number; superior: number }
  *     fuentes: Record<string, string>
@@ -107,6 +108,7 @@ export async function GET() {
 
   const result = {
     ipcHistorico,
+    remPeriodos: remData.periodos,
     remMediana: remData.mediana,
     remTop10: remData.top10,
     remFechaEncuesta: remData.fechaEncuesta,
