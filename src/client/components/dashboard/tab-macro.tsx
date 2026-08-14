@@ -626,18 +626,6 @@ export function EmaeView() {
   const [confianzaLoading, setConfianzaLoading] = useState(true)
   const [icgData, setIcgData] = useState<IcgData | null>(null)
   const [icgLoading, setIcgLoading] = useState(true)
-  const [piramideData, setPiramideData] = useState<PiramideRow[]>([])
-  const [piramideMeta, setPiramideMeta] = useState<PiramideMeta | null>(null)
-  const [piramideLoading, setPiramideLoading] = useState(true)
-  const [piramideYear, setPiramideYear] = useState(2025)
-
-  useEffect(() => {
-    setPiramideLoading(true)
-    fetch(`/api/macro?endpoint=piramide&year=${piramideYear}&country=32`)
-      .then(r => r.json())
-      .then(j => { setPiramideData(j.data ?? []); setPiramideMeta(j); setPiramideLoading(false) })
-      .catch(() => setPiramideLoading(false))
-  }, [piramideYear])
 
   useEffect(() => {
     fetch("/api/macro?endpoint=emae")
@@ -967,58 +955,9 @@ export function EmaeView() {
             </div>
           )}
 
-          {/* Pirámide Poblacional Argentina — UN WPP con selector de año */}
-          <div className="bbg-panel" style={{ marginTop: 8 }}>
-            <div className="bbg-panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span>
-                PIRÁMIDE POBLACIONAL — ARGENTINA
-                {piramideMeta?.proyeccion && (
-                  <span style={{ fontSize: 8, fontWeight: 400, color: "var(--amber)", marginLeft: 8 }}>· PROYECCIÓN ONU</span>
-                )}
-              </span>
-              {piramideMeta && (
-                <span style={{ fontSize: 8, fontWeight: 400, color: "var(--text-dim)", textTransform: "none" }}>
-                  Total: <span style={{ color: "var(--text)" }}>{(piramideMeta.total / 1e6).toFixed(1)}M</span>
-                  &nbsp;·&nbsp;<span style={{ color: "var(--sky)" }}>V {(piramideMeta.total_m / 1e6).toFixed(1)}M</span>
-                  &nbsp;·&nbsp;<span style={{ color: "#F48FB1" }}>M {(piramideMeta.total_f / 1e6).toFixed(1)}M</span>
-                </span>
-              )}
-            </div>
-            <div style={{ padding: "8px 12px 4px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 8, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1 }}>Año</span>
-              <input
-                type="range" min={1950} max={2100} step={1} value={piramideYear}
-                onChange={e => setPiramideYear(Number(e.target.value))}
-                style={{ flex: 1, minWidth: 120, accentColor: "var(--amber)", cursor: "pointer" }}
-              />
-              <span style={{ fontSize: 12, fontWeight: 700, color: piramideYear > 2025 ? "var(--amber)" : "var(--positive)", fontFamily: "var(--font-data)", minWidth: 38 }}>
-                {piramideYear}
-              </span>
-              <div style={{ display: "flex", gap: 2 }}>
-                {[1950, 1975, 2000, 2025, 2050, 2100].map(y => (
-                  <button key={y} onClick={() => setPiramideYear(y)} style={{
-                    fontSize: 8, padding: "2px 5px", border: "none", borderRadius: 2, cursor: "pointer",
-                    background: piramideYear === y ? "var(--amber)" : "var(--border)",
-                    color: piramideYear === y ? "var(--bg)" : "var(--text-mute)",
-                  }}>{y}</button>
-                ))}
-              </div>
-            </div>
-            {piramideLoading ? (
-              <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11 }}>Cargando pirámide...</div>
-            ) : (
-              <PyramidChart data={piramideData} height={400} />
-            )}
-            <div style={{ padding: "4px 12px 6px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
-              Fuente: populationpyramid.net · UN World Population Prospects 2024 · Años &gt;2025 = proyecciones ONU
-            </div>
-          </div>
-
-          <PoblacionSerieChart country="32" selectedYear={piramideYear} />
-
           <div style={{ padding: "6px 10px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)", lineHeight: 1.6 }}>
             PBI, per cápita, población, Gini, natalidad y mortalidad: INDEC vía apis.datos.gob.ar ·
-            Esperanza de vida: World Bank (SP.DYN.LE00.IN) · Pirámide: populationpyramid.net · UN WPP 2024 · El año en cada tarjeta = último dato publicado disponible.
+            Esperanza de vida: World Bank (SP.DYN.LE00.IN) · El año en cada tarjeta = último dato publicado disponible.
           </div>
         </>
       )}
@@ -4549,10 +4488,8 @@ const MACRO_TABS = [
   { key: "desigualdad", label: "Desigualdad"      },
   { key: "piramides",   label: "Pirámides"        },
   { key: "fx",          label: "FX"               },
-  { key: "bigmac",      label: "Big Mac Index"    },
   { key: "riesgo",      label: "Riesgo País"      },
   { key: "deuda",       label: "Deuda Pública"    },
-  { key: "senoraje",   label: "Señoreaje"        },
 ]
 
 export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
@@ -4572,10 +4509,8 @@ export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
       {activeTab === "desigualdad" && <DesigualdadView />}
       {activeTab === "piramides"   && <PiramidesView />}
       {activeTab === "fx"          && <FXView />}
-      {activeTab === "bigmac"      && <BigMacView />}
       {activeTab === "riesgo"      && <RiesgoPaisView />}
       {activeTab === "deuda"       && <DeudaView />}
-      {activeTab === "senoraje"    && <SenorejaView />}
     </div>
   )
 }
