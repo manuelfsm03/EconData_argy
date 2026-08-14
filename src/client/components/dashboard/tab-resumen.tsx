@@ -3,11 +3,12 @@
 /**
  * TabResumen — Panel de control rápido
  * Muestra los KPIs más críticos de un vistazo:
- *   tipos de cambio · brecha · inflación · riesgo país · reservas · badlar · noticias
+ *   tipos de cambio · brecha · inflación · riesgo país · reservas · TAMAR · noticias
  */
 
 import { useState, useEffect } from "react"
 import { useBCRAData } from "@/client/hooks/use-bcra-data"
+import { recentObservedValues } from "@/client/lib/series-values"
 import { InfoTooltip } from "@/client/components/ui/info-tooltip"
 import { GLOSSARY } from "@/lib/glossary"
 
@@ -369,22 +370,19 @@ export function RiesgoPaisBlock({ onNavigate }: { onNavigate: NavigateFn }) {
   )
 }
 
-// ── Reservas + Badlar Block ───────────────────────────────────────────────────
+// ── Reservas + TAMAR Block ────────────────────────────────────────────────────
 
 export function ReservasBadlarBlock({ onNavigate }: { onNavigate: NavigateFn }) {
-  const { data, loading } = useBCRAData(["reservas", "badlar"], "1m")
+  const { data, loading } = useBCRAData(["reservas", "tamar", "badlar"], "1m")
 
-  const latest = data[data.length - 1]
-  const prev   = data[data.length - 2]
-
-  const reservas = latest?.reservas as number | undefined
-  const badlar   = latest?.badlar   as number | undefined
-  const resPrev  = prev?.reservas   as number | undefined
+  const [reservas, resPrev] = recentObservedValues(data, "reservas", 2)
+  const [tamar] = recentObservedValues(data, "tamar", 1)
+  const [badlar] = recentObservedValues(data, "badlar", 1)
   const resDelta = reservas != null && resPrev != null ? reservas - resPrev : null
 
   if (loading) return (
     <div style={{ flex: "1 1 0", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 16px" }}>
-      <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1 }}>RESERVAS / BADLAR</div>
+      <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1 }}>RESERVAS / TAMAR</div>
       <div style={{ color: "var(--text-mute)", fontSize: 11, marginTop: 8 }}>Cargando...</div>
     </div>
   )
@@ -412,22 +410,25 @@ export function ReservasBadlarBlock({ onNavigate }: { onNavigate: NavigateFn }) 
           </div>
         )}
       </div>
-      {/* Badlar */}
+      {/* TAMAR vigente; BADLAR queda como referencia histórica secundaria */}
       <div
-        onClick={() => onNavigate("bcra", null, "plazofijo")}
+        onClick={() => onNavigate("bcra", null, "tasas")}
         title="Ver Tasas en BCRA"
         onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--border-hi)")}
         onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
         style={{ flex: 1, background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 16px", cursor: "pointer", transition: "border-color 0.15s" }}
       >
         <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "flex", alignItems: "center", gap: 2 }}>
-          Tasa BADLAR
-          <InfoTooltip text={GLOSSARY["BADLAR"].text} source={GLOSSARY["BADLAR"].source} url={GLOSSARY["BADLAR"].url} position="bottom" />
+          Tasa TAMAR
+          <InfoTooltip text={GLOSSARY["TAMAR"].text} source={GLOSSARY["TAMAR"].source} url={GLOSSARY["TAMAR"].url} position="bottom" />
         </div>
         <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "var(--font-data)", color: "var(--amber)", lineHeight: 1 }}>
-          {badlar != null ? badlar.toFixed(1) + "%" : "—"}
+          {tamar != null ? tamar.toFixed(1) + "%" : "—"}
         </div>
-        <div style={{ fontSize: 9, color: "var(--text-dim)", marginTop: 3 }}>tasa nominal anual</div>
+        <div style={{ fontSize: 9, color: "var(--text-dim)", marginTop: 3 }}>tasa nominal anual · referencia vigente</div>
+        <div style={{ fontSize: 9, color: "var(--text-mute)", marginTop: 3 }}>
+          BADLAR histórica: {badlar != null ? `${badlar.toFixed(1)}%` : "—"}
+        </div>
       </div>
     </div>
   )

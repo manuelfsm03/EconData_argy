@@ -128,12 +128,12 @@ function SubTabs({ active, onChange }: SubTabsProps) {
 }
 
 // ── Plazo Fijo ─────────────────────────────────────────────────────────────────
-// Vars BCRA: 7=BADLAR, 8=TM20, 6=TPM, 12=Tasa depósitos 30d
+// Vars BCRA: 44=TAMAR vigente, 7=BADLAR histórica, 8=TM20, 6=TPM, 12=Tasa depósitos 30d
 
 interface BCRAVar { fecha: string; valor: number }
 
 export function PlazoFijoView() {
-  const [data, setData] = useState<{ badlar: BCRAVar[]; tm20: BCRAVar[]; tpm: BCRAVar[]; pf30: BCRAVar[] } | null>(null)
+  const [data, setData] = useState<{ tamar: BCRAVar[]; badlar: BCRAVar[]; tm20: BCRAVar[]; tpm: BCRAVar[]; pf30: BCRAVar[] } | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -145,6 +145,7 @@ export function PlazoFijoView() {
 
   if (loading) return <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>Cargando tasas...</div>
 
+  const tamarUlt  = data?.tamar?.at(-1)?.valor
   const badlarUlt = data?.badlar?.at(-1)?.valor
   const tm20Ult   = data?.tm20?.at(-1)?.valor
   const tpmUlt    = data?.tpm?.at(-1)?.valor
@@ -159,7 +160,8 @@ export function PlazoFijoView() {
         m.set(r.fecha, { ...e, [key]: r.valor })
       }
     }
-    add(data.badlar, "BADLAR")
+    add(data.tamar,  "TAMAR")
+    add(data.badlar, "BADLAR histórica")
     add(data.tpm,    "TPM")
     add(data.pf30,   "PF30")
     return Array.from(m.entries())
@@ -168,14 +170,16 @@ export function PlazoFijoView() {
       .slice(-96)
   })()
 
-  const tableSrc = data?.badlar?.slice(-12).reverse() ?? []
+  const tableSrc = data?.tamar?.slice(-12).reverse() ?? []
 
   return (
     <div>
-      <SectionMeta title="Tasas — Plazo Fijo" help="BADLAR = tasa promedio de depósitos a plazo fijo mayores a $1 millón en bancos privados. Referencia para rendimientos de inversión minorista. TM20 = tasa por depósitos mayores a $20 millones. TPM = Tasa de Política Monetaria del BCRA." source="BCRA API" />
+      <SectionMeta title="Tasas — Plazo Fijo" help="TAMAR es la referencia mayorista vigente de bancos privados. BADLAR se conserva como serie histórica secundaria. TM20 = tasa por depósitos mayores a $20 millones. TPM = Tasa de Política Monetaria del BCRA." source="BCRA API" />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
-        <KPI label="BADLAR Bancos Privados" value={badlarUlt != null ? `${fmtNum(badlarUlt, 2)}%` : null}
-          unit="TNA · Var 7 BCRA API" valueColor="var(--amber)" />
+        <KPI label="TAMAR Bancos Privados" value={tamarUlt != null ? `${fmtNum(tamarUlt, 2)}%` : null}
+          unit="Referencia vigente · TNA · Var 44" valueColor="var(--amber)" />
+        <KPI label="BADLAR histórica" value={badlarUlt != null ? `${fmtNum(badlarUlt, 2)}%` : null}
+          unit="Serie secundaria · TNA · Var 7" valueColor="var(--text-dim)" />
         <KPI label="TM20 Bancos Privados"   value={tm20Ult   != null ? `${fmtNum(tm20Ult, 2)}%` : null}
           unit="TNA · Var 8 BCRA API" valueColor="var(--positive)" />
         <KPI label="Tasa de Política Mon."  value={tpmUlt    != null ? `${fmtNum(tpmUlt, 2)}%` : null}
@@ -199,7 +203,8 @@ export function PlazoFijoView() {
             <Tooltip contentStyle={{ background: "var(--bg-elev)", border: "1px solid var(--border)", fontFamily: "var(--font-data)", fontSize: 10 }}
               formatter={(v: unknown) => [`${fmtNum(v as number, 2)}%`]} />
             <Legend wrapperStyle={{ fontSize: 9, fontFamily: "var(--font-data)" }} />
-            <Area type="monotone" dataKey="BADLAR" stroke="var(--amber)" fill="#FFA02820" strokeWidth={1.5} dot={false} />
+            <Area type="monotone" dataKey="TAMAR" stroke="var(--amber)" fill="#FFA02820" strokeWidth={1.5} dot={false} />
+            <Area type="monotone" dataKey="BADLAR histórica" stroke="var(--text-mute)" fill="#77777710" strokeWidth={1} dot={false} />
             <Area type="monotone" dataKey="TPM"    stroke="var(--sky)" fill="#4FC3F720" strokeWidth={1.5} dot={false} />
             <Area type="monotone" dataKey="PF30"   stroke="#CE93D8" fill="#CE93D820" strokeWidth={1.5} dot={false} />
           </AreaChart>
@@ -210,19 +215,21 @@ export function PlazoFijoView() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-data)", fontSize: 9 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Fecha", "BADLAR", "TPM", "Dep. 30d"].map(h => (
+                {["Fecha", "TAMAR", "BADLAR hist.", "TPM", "Dep. 30d"].map(h => (
                   <th key={h} style={{ padding: "4px 8px", color: "var(--text-dim)", textAlign: "right", fontWeight: 400 }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {tableSrc.map(r => {
+                const badlarVal = data?.badlar?.find(x => x.fecha === r.fecha)?.valor
                 const tpmVal  = data?.tpm?.find(x => x.fecha === r.fecha)?.valor
                 const pf30Val = data?.pf30?.find(x => x.fecha === r.fecha)?.valor
                 return (
                   <tr key={r.fecha} style={{ borderBottom: "1px solid var(--bg-elev-2)" }}>
                     <td style={{ padding: "3px 8px", color: "var(--text-dim)" }}>{fmtDate(r.fecha)}</td>
                     <td style={{ padding: "3px 8px", color: "var(--amber)", textAlign: "right" }}>{fmtNum(r.valor, 2)}%</td>
+                    <td style={{ padding: "3px 8px", color: "var(--text-mute)", textAlign: "right" }}>{badlarVal != null ? `${fmtNum(badlarVal, 2)}%` : "—"}</td>
                     <td style={{ padding: "3px 8px", color: "var(--sky)", textAlign: "right" }}>{tpmVal  != null ? `${fmtNum(tpmVal, 2)}%`  : "—"}</td>
                     <td style={{ padding: "3px 8px", color: "#CE93D8", textAlign: "right" }}>{pf30Val != null ? `${fmtNum(pf30Val, 2)}%` : "—"}</td>
                   </tr>
@@ -231,7 +238,7 @@ export function PlazoFijoView() {
             </tbody>
           </table>
           <div style={{ fontSize: 8, color: "var(--text-mute)", marginTop: 4 }}>
-            Fuente: BCRA API v4.0 · api.bcra.gob.ar · Variables 7 (BADLAR), 8 (TM20), 6 (TPM), 12 (Dep. 30d)
+            Fuente: BCRA API v4.0 · api.bcra.gob.ar · Variables 44 (TAMAR vigente), 7 (BADLAR histórica), 8 (TM20), 6 (TPM), 12 (Dep. 30d)
           </div>
         </div>
       )}
@@ -896,8 +903,8 @@ export function REMView() {
 // ── Tasas de Referencia ────────────────────────────────────────────────────────
 
 const TASAS_CFG = [
-  { key: "tamar",     label: "TAMAR",        sub: "Tasa mayorista bancos privados",    color: "#CE93D8" },
-  { key: "badlar",    label: "BADLAR",        sub: "Dep. >$1M, 30-35 días",            color: "var(--amber)" },
+  { key: "tamar",     label: "TAMAR",        sub: "Referencia mayorista vigente",       color: "#CE93D8" },
+  { key: "badlar",    label: "BADLAR",       sub: "Serie histórica secundaria",         color: "var(--amber)" },
   { key: "dep30",     label: "Dep. 30d",      sub: "Promedio todas las entidades",      color: "var(--sky)" },
   { key: "adelantos", label: "Adelantos CC",  sub: "Descubierto cta. cte.",             color: "var(--negative)" },
   { key: "prestamos", label: "Prést. Pers.",  sub: "Créditos al consumo",               color: "var(--positive)" },
@@ -994,7 +1001,7 @@ export function TasasView() {
     <div>
       <SectionMeta
         title="Tasas de Interés del BCRA"
-        help="TAMAR, BADLAR y tasas activas del sistema financiero. Fuente: BCRA API v4.0, variables 44, 7, 12, 13, 14."
+        help="TAMAR es la referencia vigente; BADLAR se conserva como serie histórica secundaria junto con las tasas activas del sistema financiero. Fuente: BCRA API v4.0, variables 44, 7, 12, 13, 14."
         source="BCRA API v4.0"
       />
 

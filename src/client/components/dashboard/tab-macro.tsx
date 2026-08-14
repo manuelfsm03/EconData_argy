@@ -1972,7 +1972,19 @@ function IpcHistoricaView() {
 // ── Breakeven Section ─────────────────────────────────────────────────────────
 
 interface BreakevenData {
-  tasas: { badlar_tna: number | null; badlar_tea: number | null; tpm_tna: number | null; tpm_tea: number | null; fecha: string | null }
+  tasas: {
+    reference_name: string
+    reference_tna: number | null
+    reference_tea: number | null
+    tamar_tna: number | null
+    tamar_tea: number | null
+    badlar_tna: number | null
+    badlar_tea: number | null
+    tpm_tna: number | null
+    tpm_tea: number | null
+    fecha: string | null
+    badlar_fecha: string | null
+  }
   cer:   { inflacion_anual_trailing: number | null; inflacion_mensual_trailing: number | null; fecha: string | null }
   lecaps: { ticker: string; vencimiento: string; dias_vto: number; tem: number | null; tea: number | null }[]
   rem:   { inflacion_12m: number | null; dolar_12m: number | null; tasa_12m: number | null; fecha: string | null }
@@ -2062,13 +2074,22 @@ function BreakEvenSection() {
           <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>inflación anualizada observada · BCRA</div>
         </div>
 
-        {/* BADLAR */}
+        {/* TAMAR vigente */}
         <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)" }}>
-          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>BADLAR privados</div>
+          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>TAMAR privados · vigente</div>
           <div style={{ fontSize: 20, fontWeight: 700, color: "var(--sky)", fontFamily: "var(--font-data)" }}>
+            {tasas?.tamar_tna != null ? `${tasas.tamar_tna.toFixed(1)}%` : "—"}
+          </div>
+          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>TNA · BCRA var. 44 · {tasas?.fecha ?? ""}</div>
+        </div>
+
+        {/* BADLAR histórica */}
+        <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)" }}>
+          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>BADLAR histórica</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-mute)", fontFamily: "var(--font-data)" }}>
             {tasas?.badlar_tna != null ? `${tasas.badlar_tna.toFixed(1)}%` : "—"}
           </div>
-          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>TNA · depósitos &gt;$1MM · {tasas?.fecha ?? ""}</div>
+          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>TNA · referencia secundaria · {tasas?.badlar_fecha ?? ""}</div>
         </div>
       </div>
 
