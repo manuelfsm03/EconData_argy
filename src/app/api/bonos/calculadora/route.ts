@@ -23,7 +23,7 @@ import {
   interesesCorridos as calcularInteresesCorridos,
   metricasDesdeTIR,
 } from "@/lib/bond-math"
-import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
+import { fechaUTC } from "@/lib/market-calendar"
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -38,15 +38,19 @@ export async function GET(request: NextRequest) {
   if (modo !== "precio" && modo !== "tir") {
     return NextResponse.json({ error: "?modo debe ser 'precio' o 'tir'" }, { status: 400 })
   }
-  const valor = valorParam !== null ? Number(valorParam) : NaN
+  const valorTexto = valorParam?.trim() ?? ""
+  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(valorTexto)) {
+    return NextResponse.json({ error: "?valor debe ser un número decimal" }, { status: 400 })
+  }
+  const valor = Number(valorTexto)
   if (!Number.isFinite(valor)) {
     return NextResponse.json({ error: "?valor debe ser un número finito" }, { status: 400 })
   }
   if (modo === "precio" && valor <= 0) {
     return NextResponse.json({ error: "El precio debe ser positivo" }, { status: 400 })
   }
-  if (modo === "tir" && valor <= -100) {
-    return NextResponse.json({ error: "La TIR debe ser mayor a -100%" }, { status: 400 })
+  if (modo === "tir" && (valor <= -100 || valor > 1000)) {
+    return NextResponse.json({ error: "La TIR debe ser mayor a -100% y menor o igual a 1000%" }, { status: 400 })
   }
 
   const esquema = ESQUEMAS.find((e) => e.ticker === ticker)
@@ -69,7 +73,9 @@ export async function GET(request: NextRequest) {
   if (!Number.isFinite(liquidacionBase.getTime()) || liquidacionBase.toISOString().slice(0, 10) !== liquidacionISO) {
     return NextResponse.json({ error: "?liquidacion no es una fecha válida" }, { status: 400 })
   }
-  const liquidacion = siguienteDiaHabil(liquidacionBase)
+  // La liquidación es una fecha de valuación explícita. No se corrige con el
+  // calendario de pagos, que a partir de 2026 sólo cubre fechas de cupones.
+  const liquidacion = liquidacionBase
   const emision = fechaUTC(esquema.emision)
   const vencimiento = fechaUTC(esquema.vencimiento)
   if (liquidacion < emision || liquidacion >= vencimiento) {

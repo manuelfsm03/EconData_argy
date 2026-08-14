@@ -8,7 +8,9 @@ import { GET as calculateBond } from "../src/app/api/bonos/calculadora/route"
 import { construirCashflows, GD30 } from "../src/lib/bond-schedule"
 import {
   flujosFuturos,
+  interesesCorridos,
   metricasDesdeTIR,
+  metricasDevengadas,
   precioDadoTIR,
   tir,
 } from "../src/lib/bond-math"
@@ -89,12 +91,41 @@ test("bond calculator enforces the verified bond life and first-period accrual",
 })
 
 test("bond calculator accepts zero and negative yields above -100 percent", async () => {
-  for (const yieldPercent of [0, -0.25]) {
+  for (const yieldPercent of [0, -0.25, -99.99, 1000]) {
     const response = await calculateBond(new NextRequest(
       `http://localhost/api/bonos/calculadora?ticker=GD30&modo=tir&valor=${yieldPercent}&liquidacion=2026-04-28`,
     ))
     assert.equal(response.status, 200)
   }
+
+  for (const yieldPercent of [-100, 1000.01]) {
+    const response = await calculateBond(new NextRequest(
+      `http://localhost/api/bonos/calculadora?ticker=GD30&modo=tir&valor=${yieldPercent}&liquidacion=2026-04-28`,
+    ))
+    assert.equal(response.status, 400)
+  }
+})
+
+test("bond calculator rejects empty and non-decimal values", async () => {
+  for (const value of ["", "%20", "0x10", "1e2", "NaN"]) {
+    const response = await calculateBond(new NextRequest(
+      `http://localhost/api/bonos/calculadora?ticker=GD30&modo=tir&valor=${value}&liquidacion=2026-04-28`,
+    ))
+    assert.equal(response.status, 400)
+  }
+})
+
+test("bond core fails closed before issuance and preserves explicit valuation dates", async () => {
+  const cashflows = construirCashflows(GD30)
+  const preIssuance = fechaUTC("2020-09-03")
+  assert.equal(interesesCorridos(cashflows, preIssuance), 0)
+  assert.equal(metricasDevengadas(cashflows, preIssuance), null)
+
+  const response = await calculateBond(new NextRequest(
+    "http://localhost/api/bonos/calculadora?ticker=GD30&modo=tir&valor=12.5&liquidacion=2026-05-09",
+  ))
+  assert.equal(response.status, 200)
+  assert.equal((await response.json()).liquidacion, "2026-05-09")
 })
 
 test("REM monthly parser selects the latest survey, orders periods, and reads the real TOP-10 column", () => {

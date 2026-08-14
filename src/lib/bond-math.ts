@@ -118,6 +118,7 @@ export function interesesCorridos(cashflows: Cashflow[], liquidacion: Date): num
   if (futuros.length === 0) return 0
 
   const proximo = futuros[0]
+  if (liquidacion.getTime() < proximo.inicioDevengamiento.getTime()) return 0
   const anteriores = cashflows
     .filter((cf) => cf.fechaDevengamiento.getTime() <= liquidacion.getTime())
     .sort((a, b) => a.fechaDevengamiento.getTime() - b.fechaDevengamiento.getTime())
@@ -308,6 +309,9 @@ export function metricasDevengadas(
   cashflows: Cashflow[],
   liquidacion: Date,
 ): MetricasDevengadas | null {
+  if (cashflows.length === 0 || liquidacion.getTime() < cashflows[0].inicioDevengamiento.getTime()) {
+    return null
+  }
   const futuros = flujosFuturos(cashflows, liquidacion)
   if (futuros.length === 0) return null
 
@@ -340,6 +344,9 @@ export function metricasDeMercado(
   cashflows: Cashflow[],
   liquidacion: Date,
 ): MetricasDeMercado | null {
+  if (cashflows.length === 0 || liquidacion.getTime() < cashflows[0].inicioDevengamiento.getTime()) {
+    return null
+  }
   const futuros = flujosFuturos(cashflows, liquidacion)
   if (futuros.length === 0 || precioDirty <= 0) return null
 
@@ -390,8 +397,25 @@ export function metricasDesdeTIR(
   cashflows: Cashflow[],
   liquidacion: Date,
 ): MetricasBono | null {
+  const devengadas = metricasDevengadas(cashflows, liquidacion)
+  if (devengadas === null) return null
   const futuros = flujosFuturos(cashflows, liquidacion)
   const precioDirty = precioDadoTIR(tirObjetivoPorcentaje, futuros, liquidacion)
   if (precioDirty === null) return null
-  return calcularMetricas(precioDirty, cashflows, liquidacion)
+  const precioClean = precioDirty - devengadas.interesesCorridos
+  const macaulay = duration(precioDirty, futuros, liquidacion, tirObjetivoPorcentaje)
+  const cx = convexity(precioDirty, futuros, liquidacion, tirObjetivoPorcentaje)
+  const cy = currentYield(precioClean, futuros, liquidacion)
+  if (macaulay === null || cx === null || cy === null) return null
+
+  return {
+    ...devengadas,
+    tir: tirObjetivoPorcentaje,
+    duration: macaulay,
+    durationMod: macaulay / (1 + tirObjetivoPorcentaje / 100),
+    convexity: cx,
+    paridad: devengadas.valorTecnico > 0 ? (precioDirty / devengadas.valorTecnico) * 100 : 0,
+    currentYield: cy,
+    precioClean,
+  }
 }

@@ -11,7 +11,7 @@ function setCache(k: string, d: unknown, ttl: number) { cache.set(k, { data: d, 
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 export async function GET() {
-  const cacheKey = "rem_v4"
+  const cacheKey = "rem_v5"
   const cached = getCache(cacheKey)
   if (cached) return NextResponse.json(cached)
 
