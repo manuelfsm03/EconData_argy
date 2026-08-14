@@ -957,7 +957,7 @@ export function EmaeView() {
 
           <div style={{ padding: "6px 10px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)", lineHeight: 1.6 }}>
             PBI, per cápita, población, Gini, natalidad y mortalidad: INDEC vía apis.datos.gob.ar ·
-            Esperanza de vida: World Bank (SP.DYN.LE00.IN) · Pirámide: populationpyramid.net · UN WPP 2024 · El año en cada tarjeta = último dato publicado disponible.
+            Esperanza de vida: World Bank (SP.DYN.LE00.IN) · El año en cada tarjeta = último dato publicado disponible.
           </div>
         </>
       )}

@@ -1,6 +1,9 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 import { CARD_CATEGORIES, DATA_CARD_CATALOG, searchDataCards } from "../src/lib/card-catalog"
+
+const macroUi = readFileSync("src/client/components/dashboard/tab-macro.tsx", "utf8")
 
 test("the data-card registry has unique ids and safe internal endpoints", () => {
   assert.ok(DATA_CARD_CATALOG.length >= 30)
@@ -38,4 +41,21 @@ test("expone bancos como tarjeta BCRA con rango explícito", () => {
     bancos.endpoints[0].path,
     /^\/api\/bcra-data\?endpoint=bancos&desde=\d{4}-\d{2}-\d{2}&hasta=\d{4}-\d{2}-\d{2}$/,
   )
+})
+
+test("retired macro subtabs fall back safely while workspace cards stay available", () => {
+  assert.equal(DATA_CARD_CATALOG.find((card) => card.id === "big-mac")?.subtab, null)
+  assert.equal(DATA_CARD_CATALOG.find((card) => card.id === "senoraje")?.subtab, null)
+  assert.doesNotMatch(macroUi, /\{ key: "bigmac"/)
+  assert.doesNotMatch(macroUi, /\{ key: "senoraje"/)
+})
+
+test("EMAE does not duplicate the dedicated population-pyramid view", () => {
+  const start = macroUi.indexOf("export function EmaeView")
+  const end = macroUi.indexOf("export function IpcView")
+  assert.ok(start >= 0 && end > start)
+
+  const emaeUi = macroUi.slice(start, end)
+  assert.doesNotMatch(emaeUi, /PIRÁMIDE POBLACIONAL/)
+  assert.doesNotMatch(emaeUi, /populationpyramid\.net/)
 })
