@@ -13,6 +13,7 @@ type SourceSeed = {
   credentialEnv?: string
   healthcheckPath?: string
   fallbackSourceIds?: readonly string[]
+  maxResponseBytes?: number
 }
 
 function source<Id extends string>(id: Id, seed: SourceSeed): SourceDefinition<Id> {
@@ -43,7 +44,7 @@ function source<Id extends string>(id: Id, seed: SourceSeed): SourceDefinition<I
     baseUrl: seed.baseUrl ?? `https://${seed.host}`,
     allowedHosts: seed.allowedHosts ?? [seed.host],
     timeoutMs: 10_000,
-    maxResponseBytes: seed.kind === "csv" || seed.kind === "xlsx" ? 25 * MB : 5 * MB,
+    maxResponseBytes: seed.maxResponseBytes ?? (seed.kind === "csv" || seed.kind === "xlsx" ? 25 * MB : 5 * MB),
     retry: { attempts: 1, retryOn: ["timeout", "429", "5xx"] },
     cache: cacheByClass[dataClass],
     freshness: freshnessByClass[dataClass],
@@ -72,7 +73,12 @@ export const SOURCE_REGISTRY = {
   yahoo_finance_rss: source("yahoo_finance_rss", { displayName: "Yahoo Finance RSS", publisher: "Yahoo Finance", host: "feeds.finance.yahoo.com", kind: "rss", dataClass: "news" }),
   api_merval: source("api_merval", { displayName: "API Merval", publisher: "API Merval", host: "api-merval-production.up.railway.app", dataClass: "intraday_market", healthcheckPath: "/health" }),
   rava: source("rava", { displayName: "Rava", publisher: "Rava Bursátil", host: "www.rava.com", kind: "html", dataClass: "intraday_market", healthcheckPath: "/perfil/gd30" }),
-  rava_market: source("rava_market", { displayName: "Rava Mercado", publisher: "Rava Bursátil", host: "mercado.rava.com", dataClass: "intraday_market" }),
+  // El dump completo de /api/prices/arg pesa ~8.4 MB (16k+ instrumentos, sin
+  // filtro server-side posible) -- superaba el default de 5 MB para JSON y
+  // fetchRegistered lo rechazaba con SOURCE_RESPONSE_TOO_LARGE en cada
+  // request, dejando /api/rofex sin datos en vivo (verificado en vivo
+  // 2026-08-14: Content-Length real 8830509 bytes).
+  rava_market: source("rava_market", { displayName: "Rava Mercado", publisher: "Rava Bursátil", host: "mercado.rava.com", dataClass: "intraday_market", maxResponseBytes: 15 * MB }),
   owid: source("owid", { displayName: "Our World in Data", publisher: "Our World in Data", host: "ourworldindata.org", kind: "csv", dataClass: "annual", healthcheckPath: "/grapher/soybean-production.csv" }),
   owid_github: source("owid_github", { displayName: "OWID datasets", publisher: "Our World in Data", host: "raw.githubusercontent.com", kind: "csv", dataClass: "annual" }),
   eia: source("eia", { displayName: "EIA API", publisher: "U.S. Energy Information Administration", host: "api.eia.gov", dataClass: "official_monthly", credentialEnv: "EIA_API_KEY", healthcheckPath: "/v2/" }),
