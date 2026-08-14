@@ -1,6 +1,11 @@
 import { fetchRegistered } from "@/server/http/fetch-source"
 import { NextResponse } from "next/server"
-import { isRelevantHeadline } from "@/server/domain/rss-news-policy"
+import {
+  dedupeNewsItems,
+  isFreshNewsDate,
+  isRelevantNewsItem,
+  matchesAnyWholeTerm,
+} from "@/server/domain/rss-news-policy"
 
 // Vercel CDN cachea esta route 15 minutos — sin tokens, escala infinitamente
 export const revalidate = 900
@@ -30,7 +35,8 @@ const RSS_FEEDS: RSSFeed[] = [
   // ── Argentina (español) ──
   { url: "https://www.ambito.com/rss/economia.xml",                                            source: "Ámbito",        region: "argentina",     category: "economía",  lang: "es" },
   { url: "https://www.ambito.com/rss/finanzas.xml",                                            source: "Ámbito Fin.",   region: "argentina",     category: "finanzas",  lang: "es" },
-  { url: "https://www.infobae.com/arc/outboundfeeds/rss/",                                     source: "Infobae",       region: "argentina",     category: "economía",  lang: "es" },
+  { url: "https://www.infobae.com/arc/outboundfeeds/rss/category/economia/",                  source: "Infobae Economía", region: "argentina",  category: "economía",  lang: "es" },
+  { url: "https://www.infobae.com/arc/outboundfeeds/rss/category/politica/",                  source: "Infobae Política", region: "argentina",  category: "política",  lang: "es" },
   { url: "https://www.cronista.com/files/rss/news.xml",                                        source: "El Cronista",   region: "argentina",     category: "finanzas",  lang: "es" },
   { url: "https://www.iprofesional.com/rss/finanzas",                                          source: "iProfesional",  region: "argentina",     category: "finanzas",  lang: "es" },
   { url: "https://www.baenegocios.com/feed/",                                                  source: "BAE Negocios",  region: "argentina",     category: "economía",  lang: "es" },
@@ -82,7 +88,7 @@ const RELEVANT_TERMS: string[] = [
   "mercado", "mercados", "bolsa", "bolsas", "bursátil", "bursatil",
   "acciones", "acción", "accion", "título", "titulo", "valores",
   "bonos", "bono", "deuda", "letra", "letras", "lebac", "lecap", "letes",
-  "dólar", "dolar", "blue", "ccl", "mep", "oficial", "paralelo", "divisa",
+  "dólar", "dolar", "dólares", "dolares", "blue", "ccl", "mep", "oficial", "paralelo", "divisa",
   "tipo de cambio", "brecha cambiaria", "cepo", "cepo cambiario",
   "tasa de interés", "tasa de interes", "tasa", "tasas", "rendimiento",
   "riesgo país", "riesgo pais", "spread", "embi",
@@ -103,14 +109,14 @@ const RELEVANT_TERMS: string[] = [
   "ministerio", "secretaría", "secretaria", "decreto", "resolución", "resoluciones",
   "congreso", "senado", "diputados", "legislativo", "ley ", "proyecto de ley",
   "elección", "elecciones", "votación", "votacion", "candidato", "campaña",
-  "milei", "kicillof", "massa", "macri", "kirchner",
+  "milei", "kicillof", "massa", "macri", "kirchner", "caputo",
   "oposición", "oposicion", "coalición", "bloque", "partido político",
   "reforma", "ajuste", "plan económico", "medida económica",
   // ── Geopolítica (ES + EN) ──
   "guerra", "conflicto", "invasión", "invasion", "ataque", "bombardeo",
   "ucrania", "rusia", "gaza", "israel", "irán", "iran", "china", "eeuu",
   "trump", "biden", "zelensky", "putin", "xi jinping",
-  "otan", "nato", "onu", "un ", "consejo de seguridad",
+  "otan", "nato", "onu", "united nations", "consejo de seguridad",
   "diplomacia", "tratado", "acuerdo bilateral", "alianza", "tensión geopolítica",
   "sanction", "sanctions", "embargo",
   // ── Macro / economía (EN) ──
@@ -135,12 +141,8 @@ const RELEVANT_TERMS: string[] = [
   "nato", "united nations", "security council",
 ]
 
-// Compilar en Set lowercase para O(1) lookup parcial
+// Normalizar una sola vez; el matcher exige límites de palabra completos.
 const RELEVANT_SET = RELEVANT_TERMS.map((t) => t.toLowerCase())
-
-function isRelevant(title: string): boolean {
-  return isRelevantHeadline(title, RELEVANT_SET)
-}
 
 // Detección de categoría por keywords en el título
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
@@ -156,9 +158,8 @@ function isNonLatinScript(text: string): boolean {
   return /[\u0400-\u04FF\u0600-\u06FF\u4E00-\u9FFF\u3040-\u30FF]/.test(text)
 }
 function detectCategory(title: string, base: string): string {
-  const lower = title.toLowerCase()
   for (const [cat, kws] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (kws.some((k) => lower.includes(k))) return cat
+    if (matchesAnyWholeTerm(title, kws)) return cat
   }
   return base
 }
@@ -184,8 +185,9 @@ function extractItems(xml: string, feed: RSSFeed): RSSItem[] {
     const cleanTitle = title.replace(/<[^>]*>/g, "").trim()
     const cleanLink  = link.trim()
     if (!cleanTitle || !cleanLink) continue
+    if (!isFreshNewsDate(pubDate)) continue
     if (isNonLatinScript(cleanTitle)) continue   // descarta cirílico, árabe, chino, etc.
-    if (!isRelevant(cleanTitle)) continue        // solo economía, finanzas, política, geopolítica
+    if (!isRelevantNewsItem(cleanTitle, RELEVANT_SET, cleanLink)) continue
 
     items.push({
       id:          Buffer.from(cleanLink).toString("base64").slice(0, 20),
@@ -193,7 +195,7 @@ function extractItems(xml: string, feed: RSSFeed): RSSItem[] {
       link:        cleanLink,
       description: desc ? desc.replace(/<[^>]*>/g, "").trim().slice(0, 300) : null,
       source:      feed.source,
-      pubDate:     pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
+      pubDate:     new Date(pubDate).toISOString(),
       region:      feed.region,
       category:    detectCategory(cleanTitle, feed.category),
       country:     feed.country,
@@ -206,7 +208,7 @@ function extractItems(xml: string, feed: RSSFeed): RSSItem[] {
 // Cache por instancia (secundario — el CDN de Vercel es la capa primaria)
 let _cache: { items: RSSItem[]; ts: number; v: number } | null = null
 // Versión del cache — cambiar para forzar invalidación
-const CACHE_VERSION = 5
+const CACHE_VERSION = 6
 const INSTANCE_TTL = 5 * 60 * 1000
 
 export async function GET() {
@@ -223,7 +225,7 @@ export async function GET() {
       try {
         const res = await fetchRegistered(feed.url, {
           signal:  AbortSignal.timeout(8000),
-          headers: { "User-Agent": "PanelDeControl/1.0" },
+          headers: { "User-Agent": "LaPizarra/1.0" },
         })
         if (!res.ok) return
         const xml   = await res.text()
@@ -236,9 +238,10 @@ export async function GET() {
   )
 
   allItems.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime())
-  _cache = { items: allItems, ts: Date.now(), v: CACHE_VERSION }
+  const uniqueItems = dedupeNewsItems(allItems)
+  _cache = { items: uniqueItems, ts: Date.now(), v: CACHE_VERSION }
 
-  return NextResponse.json(allItems, {
+  return NextResponse.json(uniqueItems, {
     headers: { "Cache-Control": "public, s-maxage=900, stale-while-revalidate=900" },
   })
 }
