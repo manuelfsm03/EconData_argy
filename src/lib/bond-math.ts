@@ -152,19 +152,22 @@ export function tir(precioDirty: number, futuros: Cashflow[], liquidacion: Date)
   }))
   if (plazos.some((p) => p.t <= 0)) return null
 
-  const vpn = (r: number) =>
-    plazos.reduce((suma, { t, flujo }) => suma + flujo / Math.pow(1 + r, t), 0) - precioDirty
+  // Resolver en x = log(1 + r) permite cubrir de forma estable todo el
+  // dominio r > -1, incluso TIRs entre -100% y -99% donde un bracket lineal
+  // fijo deja afuera la raíz.
+  const vpnLog = (x: number) =>
+    plazos.reduce((suma, { t, flujo }) => suma + flujo * Math.exp(-x * t), 0) - precioDirty
 
-  let bajo = -0.99
-  let alto = 10
-  if (vpn(bajo) * vpn(alto) > 0) return null
+  let bajo = Math.log(Number.EPSILON)
+  let alto = Math.log1p(10)
+  if (vpnLog(bajo) < 0 || vpnLog(alto) > 0) return null
 
   for (let i = 0; i < 200; i++) {
     const medio = (bajo + alto) / 2
-    if (vpn(medio) > 0) bajo = medio
+    if (vpnLog(medio) > 0) bajo = medio
     else alto = medio
   }
-  const r = (bajo + alto) / 2
+  const r = Math.expm1((bajo + alto) / 2)
 
   return Number.isFinite(r) ? r * 100 : null
 }

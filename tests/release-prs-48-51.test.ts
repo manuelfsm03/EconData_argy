@@ -106,6 +106,23 @@ test("bond calculator accepts zero and negative yields above -100 percent", asyn
   }
 })
 
+test("bond calculator round-trips yields near -100 percent through clean price mode", async () => {
+  for (const yieldPercent of [-99.9, -99.99]) {
+    const fromYield = await calculateBond(new NextRequest(
+      `http://localhost/api/bonos/calculadora?ticker=GD30&modo=tir&valor=${yieldPercent}&liquidacion=2026-04-28`,
+    ))
+    assert.equal(fromYield.status, 200)
+    const yieldPayload = await fromYield.json()
+
+    const fromPrice = await calculateBond(new NextRequest(
+      `http://localhost/api/bonos/calculadora?ticker=GD30&modo=precio&valor=${yieldPayload.metricas.precioClean}&liquidacion=2026-04-28`,
+    ))
+    assert.equal(fromPrice.status, 200)
+    const pricePayload = await fromPrice.json()
+    assert.ok(Math.abs(pricePayload.metricas.tir - yieldPercent) < 1e-8)
+  }
+})
+
 test("bond calculator rejects empty and non-decimal values", async () => {
   for (const value of ["", "%20", "0x10", "1e2", "NaN"]) {
     const response = await calculateBond(new NextRequest(
