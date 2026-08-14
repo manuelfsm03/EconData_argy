@@ -26,7 +26,7 @@ import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
-  const ticker = searchParams.get("ticker")?.toUpperCase() ?? ""
+  const ticker = searchParams.get("ticker")?.trim().toUpperCase() ?? ""
   const modo = searchParams.get("modo")
   const valorParam = searchParams.get("valor")
   const liquidacionParam = searchParams.get("liquidacion")
@@ -54,9 +54,15 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const liquidacion = liquidacionParam
-    ? siguienteDiaHabil(fechaUTC(liquidacionParam))
-    : siguienteDiaHabil(fechaUTC(new Date().toISOString().slice(0, 10)))
+  const liquidacionISO = liquidacionParam ?? new Date().toISOString().slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(liquidacionISO)) {
+    return NextResponse.json({ error: "?liquidacion debe tener formato YYYY-MM-DD" }, { status: 400 })
+  }
+  const liquidacionBase = fechaUTC(liquidacionISO)
+  if (!Number.isFinite(liquidacionBase.getTime()) || liquidacionBase.toISOString().slice(0, 10) !== liquidacionISO) {
+    return NextResponse.json({ error: "?liquidacion no es una fecha válida" }, { status: 400 })
+  }
+  const liquidacion = siguienteDiaHabil(liquidacionBase)
 
   const cashflows = construirCashflows(esquema)
 

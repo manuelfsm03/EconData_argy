@@ -165,12 +165,12 @@ const EXCLUDE_TERMS: string[] = [
 ]
 const EXCLUDE_SET = EXCLUDE_TERMS.map((t) => t.toLowerCase())
 
-function isExcluded(title: string): boolean {
+export function isExcluded(title: string): boolean {
   const lower = title.toLowerCase()
   return EXCLUDE_SET.some((term) => lower.includes(term))
 }
 
-function isRelevant(title: string): boolean {
+export function isRelevant(title: string): boolean {
   const lower = title.toLowerCase()
   if (isExcluded(lower)) return false
   return RELEVANT_SET.some((term) => lower.includes(term))
@@ -240,7 +240,7 @@ function extractItems(xml: string, feed: RSSFeed): RSSItem[] {
 // Cache por instancia (secundario — el CDN de Vercel es la capa primaria)
 let _cache: { items: RSSItem[]; ts: number; v: number } | null = null
 // Versión del cache — cambiar para forzar invalidación
-const CACHE_VERSION = 4
+const CACHE_VERSION = 5
 const INSTANCE_TTL = 5 * 60 * 1000
 
 export async function GET() {

@@ -26,6 +26,6 @@ test("external data fetches carry explicit bounded cache policy", () => {
 })
 
 test("large REM workbook stays outside the Next data cache", () => {
-  const source = readFileSync("src/app/api/rem/route.ts", "utf8")
+  const source = readFileSync("src/server/domain/rem-data.ts", "utf8")
   assert.match(source, /REM_XLSX_URL[\s\S]+cache: "no-store"/)
 })

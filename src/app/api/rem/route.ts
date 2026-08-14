@@ -1,26 +1,13 @@
-import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * REM — Relevamiento de Expectativas de Mercado (BCRA)
  * Excel mensual BCRA. Extrae: medianas + top-10 instituciones para inflación 12M.
  */
 import { NextResponse } from "next/server"
-import { parseRemExcel } from "@/server/domain/rem-data"
-
-const REM_XLSX_URL = "https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/informes/historico-relevamiento-expectativas-mercado.xlsx"
+import { fetchRemExcel, parseRemExcel } from "@/server/domain/rem-data"
 
 const cache = new Map<string, { data: unknown; expiry: number }>()
 function getCache(k: string) { const e = cache.get(k); return e && Date.now() < e.expiry ? e.data : null }
 function setCache(k: string, d: unknown, ttl: number) { cache.set(k, { data: d, expiry: Date.now() + ttl * 1000 }) }
-
-async function fetchRemExcel(): Promise<Buffer> {
-  const response = await fetchRegistered(REM_XLSX_URL, {
-    headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
-    signal: AbortSignal.timeout(20_000),
-    cache: "no-store",
-  })
-  if (!response.ok) throw new Error(`BCRA REM ${response.status}`)
-  return Buffer.from(await response.arrayBuffer())
-}
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 export async function GET() {
