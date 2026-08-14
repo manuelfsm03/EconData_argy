@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
-import { Hash, MessageSquareText, Search, X } from "lucide-react"
+import { Flame, Hash, MessageSquareText, Search, X } from "lucide-react"
 import { ForoActivo, type ForumAssetType } from "@/client/components/dashboard/foro-activo"
 import { Button } from "@/client/components/ui/button"
 import { Input } from "@/client/components/ui/input"
@@ -32,6 +32,12 @@ interface ThreadRef {
   tag: string
 }
 
+interface TrendingTopic {
+  assetType: ForumAssetType
+  ticker: string
+  posts: number
+}
+
 function variableTitle(tag: string) {
   return DATA_CARD_BY_ID.get(tag.toLocaleLowerCase("es"))?.title ?? tag
 }
@@ -47,6 +53,7 @@ export function ForumHub() {
   const [thread, setThread] = useState<ThreadRef | null>(null)
   const [posts, setPosts] = useState<FeedPost[]>([])
   const [conversations, setConversations] = useState<Conversation[]>([])
+  const [trending, setTrending] = useState<TrendingTopic[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
@@ -81,6 +88,17 @@ export function ForumHub() {
 
   useEffect(() => { void load() }, [load])
 
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/foro/trending?hours=24&limit=6", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!cancelled && Array.isArray(payload?.data)) setTrending(payload.data)
+      })
+      .catch(() => { /* trending es un extra, no bloquea el resto del foro */ })
+    return () => { cancelled = true }
+  }, [reloadKey])
+
   const variableResults = useMemo(() => debouncedQuery || showVariablePicker ? searchDataCards(debouncedQuery).slice(0, 8) : [], [debouncedQuery, showVariablePicker])
 
   function openThread(assetType: ForumAssetType, tag: string) {
@@ -109,6 +127,21 @@ export function ForumHub() {
               {variableResults.map((card) => (
                 <button key={card.id} onClick={() => openThread("variable", card.id.toUpperCase())} className="rounded-full border border-[var(--border)] px-2.5 py-1 text-[10px] text-[var(--text-dim)] hover:border-[var(--amber)] hover:text-[var(--amber)]">
                   {card.title}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {trending.length > 0 && (
+            <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1">
+              <span className="flex shrink-0 items-center gap-1 text-[9px] uppercase tracking-wider text-[var(--text-mute)]"><Flame size={10} className="text-[var(--amber)]" />Trending 24h</span>
+              {trending.map((topic) => (
+                <button
+                  key={`${topic.assetType}-${topic.ticker}`}
+                  onClick={() => { setActiveTag(topic.ticker); openThread(topic.assetType, topic.ticker) }}
+                  className="flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-1 text-[10px] text-[var(--text-dim)] hover:border-[var(--amber)] hover:text-[var(--amber)]"
+                >
+                  <Hash size={10} />{tagLabel(topic.assetType, topic.ticker)} <span className="text-[var(--text-mute)]">{topic.posts}</span>
                 </button>
               ))}
             </div>
