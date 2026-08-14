@@ -173,7 +173,10 @@ export async function GET() {
           badlar_tea:  badlarTEA,
           tpm_tna:     tpmActual,
           tpm_tea:     tpmTEA,
-          fecha:       tamarFecha,
+          reference_fecha: tamarFecha,
+          tamar_fecha: tamarFecha,
+          // Compatibilidad: `fecha` históricamente refiere a BADLAR.
+          fecha:       badlarFecha,
           badlar_fecha: badlarFecha,
         },
         // Inflación observada en CER (trailing, rezagada ~2 meses)

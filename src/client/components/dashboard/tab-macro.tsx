@@ -1976,8 +1976,10 @@ interface BreakevenData {
     reference_name: string
     reference_tna: number | null
     reference_tea: number | null
+    reference_fecha: string | null
     tamar_tna: number | null
     tamar_tea: number | null
+    tamar_fecha: string | null
     badlar_tna: number | null
     badlar_tea: number | null
     tpm_tna: number | null
@@ -2080,7 +2082,7 @@ function BreakEvenSection() {
           <div style={{ fontSize: 20, fontWeight: 700, color: "var(--sky)", fontFamily: "var(--font-data)" }}>
             {tasas?.tamar_tna != null ? `${tasas.tamar_tna.toFixed(1)}%` : "—"}
           </div>
-          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>TNA · BCRA var. 44 · {tasas?.fecha ?? ""}</div>
+          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>TNA · BCRA var. 44 · {tasas?.tamar_fecha ?? tasas?.reference_fecha ?? ""}</div>
         </div>
 
         {/* BADLAR histórica */}

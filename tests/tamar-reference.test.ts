@@ -28,6 +28,8 @@ test("BCRA endpoints keep BADLAR compatibility while making TAMAR primary", () =
   assert.match(breakevenRoute, /reference_name:\s*"TAMAR"/)
   assert.match(breakevenRoute, /tamar_tna:/)
   assert.match(breakevenRoute, /badlar_tna:/)
+  assert.match(breakevenRoute, /tamar_fecha:\s*tamarFecha/)
+  assert.match(breakevenRoute, /fecha:\s*badlarFecha/)
 
   assert.match(economiaRoute, /tamar:\s*\[\]/)
   assert.match(economiaRoute, /badlar:\s*\[\]/)
