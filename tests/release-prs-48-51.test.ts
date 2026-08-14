@@ -5,7 +5,6 @@ import { NextRequest } from "next/server"
 import * as XLSX from "xlsx"
 
 import { GET as calculateBond } from "../src/app/api/bonos/calculadora/route"
-import { isRelevant } from "../src/app/api/rss-news/route"
 import { construirCashflows, GD30 } from "../src/lib/bond-schedule"
 import {
   flujosFuturos,
@@ -15,6 +14,7 @@ import {
 } from "../src/lib/bond-math"
 import { fechaUTC } from "../src/lib/market-calendar"
 import { parseRemExcel, parseRemMensual } from "../src/server/domain/rem-data"
+import { isRelevantHeadline } from "../src/server/domain/rss-news-policy"
 
 function remWorkbook(includeTop10 = true): Buffer {
   const workbook = XLSX.utils.book_new()
@@ -91,9 +91,10 @@ test("REM monthly parser leaves missing TOP-10 evidence empty instead of synthes
 })
 
 test("RSS negative terms override ambiguous positive matches without dropping real finance titles", () => {
-  assert.equal(isRelevant("El mercado de bonos subió tras la decisión del BCRA"), true)
-  assert.equal(isRelevant("Mercado de pases: el presidente del club confirmó un fichaje"), false)
-  assert.equal(isRelevant("El banco de suplentes fue clave para ganar el título mundial"), false)
+  const relevantTerms = ["mercado", "bonos", "presidente", "banco", "título"]
+  assert.equal(isRelevantHeadline("El mercado de bonos subió tras la decisión del BCRA", relevantTerms), true)
+  assert.equal(isRelevantHeadline("Mercado de pases: el presidente del club confirmó un fichaje", relevantTerms), false)
+  assert.equal(isRelevantHeadline("El banco de suplentes fue clave para ganar el título mundial", relevantTerms), false)
 })
 
 test("ForumHub consumes trending topics as a bounded optional enhancement", () => {
