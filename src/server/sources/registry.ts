@@ -13,6 +13,7 @@ type SourceSeed = {
   credentialEnv?: string
   healthcheckPath?: string
   fallbackSourceIds?: readonly string[]
+  maxResponseBytes?: number
 }
 
 function source<Id extends string>(id: Id, seed: SourceSeed): SourceDefinition<Id> {
@@ -43,7 +44,7 @@ function source<Id extends string>(id: Id, seed: SourceSeed): SourceDefinition<I
     baseUrl: seed.baseUrl ?? `https://${seed.host}`,
     allowedHosts: seed.allowedHosts ?? [seed.host],
     timeoutMs: 10_000,
-    maxResponseBytes: seed.kind === "csv" || seed.kind === "xlsx" ? 25 * MB : 5 * MB,
+    maxResponseBytes: seed.maxResponseBytes ?? (seed.kind === "csv" || seed.kind === "xlsx" ? 25 * MB : 5 * MB),
     retry: { attempts: 1, retryOn: ["timeout", "429", "5xx"] },
     cache: cacheByClass[dataClass],
     freshness: freshnessByClass[dataClass],
@@ -53,13 +54,18 @@ function source<Id extends string>(id: Id, seed: SourceSeed): SourceDefinition<I
   }
 }
 
+// datos_gob_series y bcra_official: healthchecks corregidos (2026-08-14) tras
+// verificar en vivo que el path anterior devolvía error SIEMPRE, envenenando
+// /api/status aunque los datos reales anduvieran bien: la serie sin ?ids= es
+// 400 por diseño (requiere al menos un id), y la v3.0 del BCRA está dada de
+// baja (410 Gone) — el resto del código ya usa v4.0.
 export const SOURCE_REGISTRY = {
   argentina_datos: source("argentina_datos", { displayName: "ArgentinaDatos cotizaciones", publisher: "ArgentinaDatos", host: "api.argentinadatos.com", dataClass: "intraday_market", healthcheckPath: "/v1/cotizaciones/dolares" }),
-  datos_gob_series: source("datos_gob_series", { displayName: "Series de Tiempo", publisher: "datos.gob.ar", host: "apis.datos.gob.ar", healthcheckPath: "/series/api/series/" }),
+  datos_gob_series: source("datos_gob_series", { displayName: "Series de Tiempo", publisher: "datos.gob.ar", host: "apis.datos.gob.ar", healthcheckPath: "/series/api/series/?ids=143.3_NO_PR_2004_A_21&limit=1" }),
   datos_gob_files: source("datos_gob_files", { displayName: "Archivos datos.gob.ar", publisher: "datos.gob.ar", host: "infra.datos.gob.ar", kind: "csv", dataClass: "official_monthly" }),
   dolar_api: source("dolar_api", { displayName: "DolarAPI", publisher: "DolarAPI", host: "dolarapi.com", dataClass: "intraday_market", healthcheckPath: "/v1/dolares", fallbackSourceIds: ["argentina_datos"] }),
   bluelytics: source("bluelytics", { displayName: "Bluelytics", publisher: "Bluelytics", host: "api.bluelytics.com.ar", dataClass: "intraday_market", healthcheckPath: "/v2/latest" }),
-  bcra_official: source("bcra_official", { displayName: "BCRA API", publisher: "Banco Central de la República Argentina", host: "api.bcra.gob.ar", dataClass: "official_daily", healthcheckPath: "/estadisticas/v3.0/Monetarias" }),
+  bcra_official: source("bcra_official", { displayName: "BCRA API", publisher: "Banco Central de la República Argentina", host: "api.bcra.gob.ar", dataClass: "official_daily", healthcheckPath: "/estadisticas/v4.0/Monetarias" }),
   bcra_files: source("bcra_files", { displayName: "BCRA archivos", publisher: "Banco Central de la República Argentina", host: "www.bcra.gob.ar", kind: "xlsx", dataClass: "official_monthly" }),
   world_bank: source("world_bank", { displayName: "World Bank API", publisher: "World Bank", host: "api.worldbank.org", dataClass: "annual", healthcheckPath: "/v2/country/ARG/indicator/NY.GDP.MKTP.KD.ZG?format=json&per_page=1" }),
   yahoo_finance_chart: source("yahoo_finance_chart", { displayName: "Yahoo Finance Chart", publisher: "Yahoo Finance", host: "query1.finance.yahoo.com", dataClass: "intraday_market" }),
@@ -67,7 +73,12 @@ export const SOURCE_REGISTRY = {
   yahoo_finance_rss: source("yahoo_finance_rss", { displayName: "Yahoo Finance RSS", publisher: "Yahoo Finance", host: "feeds.finance.yahoo.com", kind: "rss", dataClass: "news" }),
   api_merval: source("api_merval", { displayName: "API Merval", publisher: "API Merval", host: "api-merval-production.up.railway.app", dataClass: "intraday_market", healthcheckPath: "/health" }),
   rava: source("rava", { displayName: "Rava", publisher: "Rava Bursátil", host: "www.rava.com", kind: "html", dataClass: "intraday_market", healthcheckPath: "/perfil/gd30" }),
-  rava_market: source("rava_market", { displayName: "Rava Mercado", publisher: "Rava Bursátil", host: "mercado.rava.com", dataClass: "intraday_market" }),
+  // El dump completo de /api/prices/arg pesa ~8.4 MB (16k+ instrumentos, sin
+  // filtro server-side posible) -- superaba el default de 5 MB para JSON y
+  // fetchRegistered lo rechazaba con SOURCE_RESPONSE_TOO_LARGE en cada
+  // request, dejando /api/rofex sin datos en vivo (verificado en vivo
+  // 2026-08-14: Content-Length real 8830509 bytes).
+  rava_market: source("rava_market", { displayName: "Rava Mercado", publisher: "Rava Bursátil", host: "mercado.rava.com", dataClass: "intraday_market", maxResponseBytes: 15 * MB }),
   owid: source("owid", { displayName: "Our World in Data", publisher: "Our World in Data", host: "ourworldindata.org", kind: "csv", dataClass: "annual", healthcheckPath: "/grapher/soybean-production.csv" }),
   owid_github: source("owid_github", { displayName: "OWID datasets", publisher: "Our World in Data", host: "raw.githubusercontent.com", kind: "csv", dataClass: "annual" }),
   eia: source("eia", { displayName: "EIA API", publisher: "U.S. Energy Information Administration", host: "api.eia.gov", dataClass: "official_monthly", credentialEnv: "EIA_API_KEY", healthcheckPath: "/v2/" }),

@@ -11,6 +11,7 @@ import { fetchRegistered } from "@/server/http/fetch-source"
  */
 
 import { NextRequest, NextResponse } from "next/server"
+import { bcraOfficialApi } from "@/server/sources/bcra-official-api"
 
 const DOLAR_API = "https://dolarapi.com/v1"
 const DATOS_API = "https://apis.datos.gob.ar/series/api/series/"
@@ -54,10 +55,11 @@ async function getBcraIndicadores() {
   const result: Record<string, unknown[]> = {
     reservas: [],
     riesgo_pais: [],
+    tamar: [],
     badlar: [],
   }
 
-  // 1. Reservas y BADLAR desde datos.gob.ar (sin token)
+  // 1. Reservas y BADLAR histórica desde datos.gob.ar (sin token)
   try {
     const ids = Object.values(BCRA_SERIES).join(",")
     const url = `${DATOS_API}?ids=${encodeURIComponent(ids)}&limit=90&sort=desc`
@@ -79,7 +81,25 @@ async function getBcraIndicadores() {
     // datos.gob.ar unavailable — return empty arrays
   }
 
-  // 2. Riesgo país via estadisticasbcra.com (requiere BCRA_TOKEN)
+  // 2. TAMAR vigente desde la API oficial BCRA v4.0 (variable 44)
+  try {
+    const today = new Date()
+    const from = new Date(today)
+    from.setDate(from.getDate() - 180)
+    const tamar = await bcraOfficialApi.getSeriesData(
+      44,
+      from.toISOString().slice(0, 10),
+      today.toISOString().slice(0, 10),
+      90,
+    )
+    result.tamar = tamar
+      .map((row) => [row.fecha, row.valor])
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+  } catch {
+    // BCRA API unavailable — preserve the response shape with an empty series
+  }
+
+  // 3. Riesgo país via estadisticasbcra.com (requiere BCRA_TOKEN)
   const token = process.env.BCRA_TOKEN
   if (token) {
     try {
@@ -124,7 +144,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         data,
         updated_at: new Date().toISOString(),
-        source: "datos.gob.ar + estadisticasbcra.com (opcional)",
+        source: "BCRA API v4.0 (TAMAR) + datos.gob.ar + estadisticasbcra.com (opcional)",
       })
     }
 

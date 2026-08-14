@@ -13,7 +13,7 @@ ya tenemos (funcionando):
 - ✅ brecha cambiaria (todos los pares)
 - ✅ inflación (IPC mensual, interanual, YTD, acumulado) — BCRA
 - ✅ futuros ROFEX (precio, dev implícita, TNA) + calculadora de cobertura
-- ✅ plazos fijos y tasas (badlar, TM20, depósitos 30d)
+- ✅ plazos fijos y tasas (TAMAR vigente, BADLAR histórica, TM20, depósitos 30d)
 - ✅ depósitos y circulante (base monetaria, circulación)
 - ✅ reservas internacionales
 - ✅ market data global (S&P, etc.) — Yahoo Finance
@@ -198,7 +198,7 @@ luca + pipe  → M1.6 (ONs) como stretch
 ### M6.1 — sintéticos de dólar (ROFEX)
 - [ ] tasa implícita: vendés USD spot + comprás futuro → TNA
 - [ ] tabla con todas las posiciones y su sintético
-- [ ] comparativa vs badlar, lecap, plazo fijo
+- [ ] comparativa vs TAMAR, BADLAR histórica, LECAP y plazo fijo
 
 ### M6.2 — calculadora de bonos
 - [ ] input: precio de mercado → output: TIR, duration, convexity

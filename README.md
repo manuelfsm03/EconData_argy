@@ -34,7 +34,7 @@ src/
 │   ├── api/
 │   │   ├── macro/route.ts          ← EMAE, IPC, Fiscal, EMAE sectorial, laboral, estructural
 │   │   ├── dolares/route.ts        ← Tipos de cambio (dolarapi.com)
-│   │   ├── bcra-data/route.ts      ← Reservas, BADLAR
+│   │   ├── bcra-data/route.ts      ← Reservas, TAMAR y BADLAR histórica
 │   │   ├── bonos/route.ts          ← Screener soberanos y LECAPs
 │   │   ├── deuda/route.ts          ← Deuda pública
 │   │   ├── mundo/route.ts          ← Mercados globales (Yahoo Finance)

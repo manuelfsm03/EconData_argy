@@ -127,7 +127,7 @@ export const BCRA_VARIABLE_MAPPING = {
     frequency: 'daily'
   },
   TAMAR_TNA: {
-    idVariable: 6,
+    idVariable: 44,
     descripcion: 'Tasa de interés TAMAR de bancos privados',
     frontendId: 'tamar',
     unit: 'percentage',

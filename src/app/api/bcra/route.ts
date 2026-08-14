@@ -41,14 +41,19 @@ async function getPlazoFijo() {
   if (cached) return cached
 
   const from = dateYearsAgo(2)
-  const [badlar, tm20, tpm, pf30] = await Promise.all([
-    fetchVar(7, from),   // BADLAR bancos privados (TNA)
+  const [tamar, badlar, tm20, tpm, pf30] = await Promise.all([
+    fetchVar(44, from),  // TAMAR bancos privados (TNA) — referencia vigente
+    fetchVar(7, from),   // BADLAR bancos privados (TNA) — serie histórica
     fetchVar(8, from),   // TM20 bancos privados (TNA)
     fetchVar(6, from),   // Tasa de política monetaria
     fetchVar(12, from),  // Tasa depósitos 30d sector privado
   ])
 
-  const result = { data: { badlar, tm20, tpm, pf30 }, updated_at: new Date().toISOString() }
+  const result = {
+    data: { tamar, badlar, tm20, tpm, pf30 },
+    updated_at: new Date().toISOString(),
+    source: "BCRA API v4.0 · Variables 44 (TAMAR), 7 (BADLAR histórica), 8, 6 y 12",
+  }
   setCache(cacheKey, result, 3600)
   return result
 }

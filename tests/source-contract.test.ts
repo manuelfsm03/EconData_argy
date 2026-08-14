@@ -230,11 +230,15 @@ test("registered RSS feeds are HTTPS-only and scheduled GET does not mutate", ()
   assert.doesNotMatch(source("src/app/api/cron/route.ts"), /export async function GET/)
 })
 
-test("card health uses the canonical status route instead of self-fetching application handlers", () => {
+test("card health probes only the bounded read-only endpoints declared for each card", () => {
   assert.ok(!sourceFiles.includes("src/app/api/card-health/route.ts"))
   const hook = source("src/client/hooks/use-card-health.ts")
+  const policy = source("src/client/lib/card-health.ts")
   assert.doesNotMatch(hook, /\/api\/card-health/)
-  assert.match(hook, /fetch\("\/api\/status"/)
+  assert.doesNotMatch(hook, /\/api\/status/)
+  assert.match(hook, /selectCardHealthProbes\(cardId\)/)
+  assert.match(policy, /MAX_CARD_HEALTH_PROBES = 5/)
+  assert.match(policy, /SAFE_READ_POST_PATHS/)
 })
 
 test("world macro reports multi-country partialness and timeout errors explicitly", () => {

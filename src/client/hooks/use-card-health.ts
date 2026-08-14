@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { probeCardEndpoint, selectCardHealthProbes } from "@/client/lib/card-health"
 
 export interface CardHealthState {
   state: "checking" | "healthy" | "degraded" | "unknown"
@@ -9,13 +10,7 @@ export interface CardHealthState {
   refresh: () => void
 }
 
-type SourceStatus = {
-  name?: string
-  source?: string
-  status?: "success" | "error" | "running" | "pending"
-}
-
-export function useCardHealth(_cardId: string, auto = true): CardHealthState {
+export function useCardHealth(cardId: string, auto = true): CardHealthState {
   const [enabled, setEnabled] = useState(auto)
   const [revision, setRevision] = useState(0)
   const [state, setState] = useState<CardHealthState["state"]>(auto ? "checking" : "unknown")
@@ -32,34 +27,32 @@ export function useCardHealth(_cardId: string, auto = true): CardHealthState {
       setState("unknown")
       return
     }
+
+    const probes = selectCardHealthProbes(cardId)
+    if (probes.length === 0) {
+      setEndpoints([])
+      setCheckedAt(null)
+      setState("unknown")
+      return
+    }
+
     const controller = new AbortController()
     setState("checking")
-    const startedAt = performance.now()
-    fetch("/api/status", { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("status unavailable")
-        return response.json() as Promise<SourceStatus[]>
-      })
-      .then((statuses) => {
-        const latencyMs = Math.round(performance.now() - startedAt)
-        const rows = Array.isArray(statuses) ? statuses : []
-        const observed = rows.filter((row) => row.status === "success" || row.status === "error")
-        setEndpoints(observed.map((row) => ({
-          label: row.name ?? row.source ?? "Fuente",
-          path: row.source ?? "status",
-          ok: row.status === "success",
-          status: row.status === "success" ? 200 : 502,
-          latencyMs,
-        })))
+
+    Promise.all(probes.map((probe) => probeCardEndpoint(probe, controller.signal)))
+      .then((results) => {
+        if (controller.signal.aborted) return
+        setEndpoints(results)
         setCheckedAt(new Date().toISOString())
-        setState(observed.length === 0 ? "unknown" : observed.every((row) => row.status === "success") ? "healthy" : "degraded")
+        setState(results.every((row) => row.ok) ? "healthy" : "degraded")
       })
       .catch((error) => {
         if (error instanceof DOMException && error.name === "AbortError") return
         setState("unknown")
       })
+
     return () => controller.abort()
-  }, [enabled, revision])
+  }, [cardId, enabled, revision])
 
   return { state, checkedAt, endpoints, refresh }
 }

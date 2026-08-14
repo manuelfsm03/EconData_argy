@@ -7,7 +7,8 @@ import { fetchRegistered } from "@/server/http/fetch-source"
  * Si LECAP_TEA > CER_real, el mercado "precia" esa diferencia como inflación implícita.
  *
  * Fuentes:
- *  - BCRA datos.gob.ar: BADLAR, TPM, tasas de referencia
+ *  - BCRA API v4.0: TAMAR (referencia vigente)
+ *  - BCRA datos.gob.ar: BADLAR histórica, TPM
  *  - datos.gob.ar: CER diario (coeficiente de estabilización de referencia)
  *  - /api/bonos?tipo=lecap: TEM/TIR de LECAPs/BONCAPs (desde DB local)
  *  - /api/rem: mediana REM analistas (benchmark)
@@ -15,6 +16,7 @@ import { fetchRegistered } from "@/server/http/fetch-source"
 import { NextResponse } from "next/server"
 import { parseRemExcel } from "@/server/domain/rem-data"
 import { prisma } from "@/server/db/prisma"
+import { bcraOfficialApi } from "@/server/sources/bcra-official-api"
 
 const cache = new Map<string, { data: unknown; expiry: number }>()
 function getCache(k: string) { const e = cache.get(k); return e && Date.now() < e.expiry ? e.data : null }
@@ -36,6 +38,23 @@ async function fetchSerie(id: string, limit = 60): Promise<{ fecha: string; valo
     return ((json.data ?? []) as [string, number | null][])
       .filter(r => r[1] != null)
       .map(r => ({ fecha: r[0], valor: r[1] as number }))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+  } catch { return [] }
+}
+
+async function fetchTamar(limit = 60): Promise<{ fecha: string; valor: number }[]> {
+  try {
+    const today = new Date()
+    const from = new Date(today)
+    from.setDate(from.getDate() - Math.max(limit * 2, 120))
+    const data = await bcraOfficialApi.getSeriesData(
+      44,
+      from.toISOString().slice(0, 10),
+      today.toISOString().slice(0, 10),
+      limit,
+    )
+    return data
+      .map((row) => ({ fecha: row.fecha, valor: row.valor }))
       .sort((a, b) => a.fecha.localeCompare(b.fecha))
   } catch { return [] }
 }
@@ -74,12 +93,13 @@ async function fetchRem(): Promise<{ inflacion_12m: number | null; dolar_12m: nu
 }
 
 export async function GET() {
-  const cacheKey = "breakeven_v1"
+  const cacheKey = "breakeven_v2_tamar"
   const cached = getCache(cacheKey)
   if (cached) return NextResponse.json(cached)
 
   try {
-    const [badlarSerie, tpmSerie, cerSerie, lecaps, rem] = await Promise.all([
+    const [tamarSerie, badlarSerie, tpmSerie, cerSerie, lecaps, rem] = await Promise.all([
+      fetchTamar(30),
       fetchSerie(SERIES.badlar, 30),
       fetchSerie(SERIES.tpm, 30),
       fetchSerie(SERIES.cer_diario, 30),
@@ -88,12 +108,15 @@ export async function GET() {
     ])
 
     // ── Tasas nominales de referencia ─────────────────────────────────────────
-    const badlarActual = badlarSerie.at(-1)?.valor ?? null     // TNA anual %
+    const tamarActual  = tamarSerie.at(-1)?.valor  ?? null     // TNA anual %
+    const badlarActual = badlarSerie.at(-1)?.valor ?? null     // TNA anual % histórica
     const tpmActual    = tpmSerie.at(-1)?.valor    ?? null     // TNA %
+    const tamarFecha   = tamarSerie.at(-1)?.fecha  ?? null
     const badlarFecha  = badlarSerie.at(-1)?.fecha ?? null
 
     // Convertir TNA → TEA: (1 + TNA/365)^365 - 1
     const tna2tea = (tna: number) => (Math.pow(1 + tna / 100 / 365, 365) - 1) * 100
+    const tamarTEA  = tamarActual  != null ? tna2tea(tamarActual)  : null
     const badlarTEA = badlarActual != null ? tna2tea(badlarActual) : null
     const tpmTEA    = tpmActual    != null ? tna2tea(tpmActual)    : null
 
@@ -141,11 +164,20 @@ export async function GET() {
       data: {
         // Tasas nominales de referencia
         tasas: {
+          reference_name: "TAMAR",
+          reference_tna: tamarActual,
+          reference_tea: tamarTEA,
+          tamar_tna:   tamarActual,
+          tamar_tea:   tamarTEA,
           badlar_tna:  badlarActual,
           badlar_tea:  badlarTEA,
           tpm_tna:     tpmActual,
           tpm_tea:     tpmTEA,
+          reference_fecha: tamarFecha,
+          tamar_fecha: tamarFecha,
+          // Compatibilidad: `fecha` históricamente refiere a BADLAR.
           fecha:       badlarFecha,
+          badlar_fecha: badlarFecha,
         },
         // Inflación observada en CER (trailing, rezagada ~2 meses)
         cer: {
@@ -185,7 +217,7 @@ export async function GET() {
         },
       },
       updated_at: new Date().toISOString(),
-      source: "BCRA datos.gob.ar (BADLAR, TPM, CER) · DB local (LECAP) · REM BCRA",
+      source: "BCRA API v4.0 (TAMAR var. 44) · datos.gob.ar (BADLAR histórica, TPM, CER) · DB local (LECAP) · REM BCRA",
     }
 
     setCache(cacheKey, result, 1800)  // 30 min

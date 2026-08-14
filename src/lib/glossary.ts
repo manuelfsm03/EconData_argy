@@ -238,6 +238,11 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     source: "BCRA",
     url: "https://www.bcra.gob.ar/estadisticas-indicadores/tasas-de-interes/",
   },
+  TAMAR: {
+    text: "Tasa de Interés Mayorista de Argentina. Referencia vigente para depósitos a plazo fijo mayoristas de bancos privados; reemplaza a BADLAR como referencia corriente.",
+    source: "BCRA",
+    url: "https://www.bcra.gob.ar/estadisticas-indicadores/tasas-de-interes/",
+  },
   "TASA DE POLÍTICA MONETARIA": {
     text: "Tasa de referencia que fija el BCRA para guiar el costo del dinero en la economía. Incide directamente en los rendimientos de plazos fijos y préstamos.",
     source: "BCRA",
