@@ -43,6 +43,24 @@ test("real unrelated production headlines are rejected", () => {
   }
 })
 
+test("generic geography needs an economic, political, or geopolitical co-signal", () => {
+  const chinaTerms = [...terms, "market", "government", "policy", "security", "treaty", "xi jinping"]
+  const tangentialChinaHeadlines = [
+    "China Readies for a Record Number of Humanoids",
+    "Alex Wang on What China Gets Right — and Wrong — on the Environment",
+    "Geremie Barmé on the ‘Other China’",
+  ]
+
+  for (const title of tangentialChinaHeadlines) {
+    assert.equal(isRelevantHeadline(title, chinaTerms), false, title)
+  }
+
+  assert.equal(isRelevantHeadline("China market rises as trade surplus hits a record", chinaTerms), true)
+  assert.equal(isRelevantHeadline("China's government unveils a new industrial policy", chinaTerms), true)
+  assert.equal(isRelevantHeadline("China and Russia prepare for war talks", chinaTerms), true)
+  assert.equal(isRelevantHeadline("Trump meets Xi Jinping in China", chinaTerms), true)
+})
+
 test("source paths reject unrelated verticals before keyword scoring", () => {
   assert.equal(isExcludedNewsUrl("https://www.infobae.com/mexico/deportes/nota"), true)
   assert.equal(isExcludedNewsUrl("https://example.com/sport/football/nota"), true)

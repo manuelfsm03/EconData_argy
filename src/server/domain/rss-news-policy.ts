@@ -42,6 +42,12 @@ const EXCLUDE_PATTERNS = EXCLUDE_TERMS.map((term) =>
   new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRegExp(term)}(?=$|[^\\p{L}\\p{N}])`, "iu"),
 )
 
+// A country name alone is too broad for the economics/politics feed. Keep it as
+// a discovery term, but require an explicit news-domain signal when it is the
+// only reason a headline matched. This prevents source-specific lifestyle and
+// culture stories from leaking in through a generic geography keyword.
+const GENERIC_GEOGRAPHY_TERMS = ["china"]
+
 const RELEVANT_PATTERN_CACHE = new WeakMap<object, RegExp[]>()
 
 function relevantPatterns(relevantTerms: readonly string[]): RegExp[] {
@@ -65,7 +71,14 @@ export function isExcludedHeadline(title: string): boolean {
 
 export function isRelevantHeadline(title: string, relevantTerms: readonly string[]): boolean {
   if (isExcludedHeadline(title)) return false
-  return matchesAnyWholeTerm(title, relevantTerms)
+  if (!matchesAnyWholeTerm(title, relevantTerms)) return false
+
+  if (!matchesAnyWholeTerm(title, GENERIC_GEOGRAPHY_TERMS)) return true
+
+  const nonGeographicTerms = relevantTerms.filter((term) =>
+    !GENERIC_GEOGRAPHY_TERMS.includes(term.trim().toLocaleLowerCase()),
+  )
+  return matchesAnyWholeTerm(title, nonGeographicTerms)
 }
 
 export function matchesAnyWholeTerm(text: string, terms: readonly string[]): boolean {
