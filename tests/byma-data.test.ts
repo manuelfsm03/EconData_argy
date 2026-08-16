@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
-import { buildBymaHistoryUrl, parseBymaCapInstruments, parseBymaHistory } from "../src/server/external/byma-data"
+import { buildBymaHistoryUrl, marketMetaForRows, parseBymaCapInstruments, parseBymaHistory } from "../src/server/external/byma-data"
 import { parseRavaStockQuote } from "../src/server/external/rava-stock"
 import { findSourceForUrl } from "../src/server/sources/registry"
 
@@ -88,4 +88,27 @@ test("local equity and sovereign bond routes use BYMA Data instead of API Merval
     assert.doesNotMatch(route, /api-merval-production|fetchMerval/)
   }
   assert.match(bondRoute, /currencySuffix:\s*"D"/)
+})
+
+test("bond routes derive provenance from effective quote rows", () => {
+  assert.deepEqual(marketMetaForRows([
+    { fuente: "byma_data_open", asOf: "2026-08-14T03:00:00.000Z" },
+    { fuente: "rava", asOf: "2026-08-16T12:00:00.000Z" },
+  ]), {
+    source: "byma_data_open + rava",
+    price_as_of: "2026-08-14T03:00:00.000Z",
+    source_name: "BYMA Data abierto",
+    delayed_minutes: 20,
+  })
+  assert.deepEqual(marketMetaForRows([
+    { fuente: "rava", asOf: "2026-08-16T12:00:00.000Z" },
+    { fuente: "db_local", asOf: null },
+  ]), {
+    source: "rava + db_local",
+    price_as_of: null,
+  })
+
+  const bondRoute = readFileSync("src/app/api/bonos/route.ts", "utf8")
+  assert.match(bondRoute, /\.\.\.marketMetaForRows\(screener\)/)
+  assert.match(bondRoute, /\.\.\.marketMetaForRows\(cached\)/)
 })

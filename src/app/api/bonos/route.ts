@@ -16,7 +16,7 @@ import { construirCashflows, GD30 } from "@/lib/bond-schedule"
 import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
 import { parseRavaBondPrices, type RavaBondPrice } from "@/server/external/rava-prices"
 import { PESO_BOND_TICKERS } from "@/server/domain/peso-bonds"
-import { BYMA_DATA_METADATA, fetchBymaCapInstruments, fetchBymaQuotes } from "@/server/external/byma-data"
+import { fetchBymaCapInstruments, fetchBymaQuotes, marketMetaForRows } from "@/server/external/byma-data"
 
 type Cashflow = { fechaPago: Date; cupon: number; amortizacion: number; flujoTotal: number }
 
@@ -39,22 +39,6 @@ function getCache<T>(key: string): T | null {
 }
 function setCache(key: string, data: unknown, ttlSec: number) {
   _cache[key] = { data, expiry: Date.now() + ttlSec * 1000 }
-}
-
-function cachedMarketMeta(value: unknown) {
-  const rows = (Array.isArray(value) ? value : [value]) as Array<{ fuente?: string; asOf?: string | null }>
-  const sources = [...new Set(rows.map((row) => row?.fuente).filter((source): source is string => Boolean(source)))]
-  const priceAsOf = rows
-    .map((row) => row?.asOf)
-    .filter((asOf): asOf is string => Boolean(asOf))
-    .sort()
-    .at(-1) ?? null
-  return {
-    source: sources.join(" + ") || "cache",
-    source_name: BYMA_DATA_METADATA.source,
-    delayed_minutes: BYMA_DATA_METADATA.delayedMinutes,
-    price_as_of: priceAsOf,
-  }
 }
 
 function calcularTIR(precio: number, cashflows: { fechaPago: Date; flujoTotal: number }[]): number | null {
@@ -220,7 +204,7 @@ export async function GET(request: NextRequest) {
   if (tipoParam === "pesos") {
     const cacheKey = "bonos_pesos_screener"
     const cached = getCache<unknown[]>(cacheKey)
-    if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), cached: true, ...cachedMarketMeta(cached) })
+    if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), cached: true, ...marketMetaForRows(cached) })
 
     const [ravaPrices, bymaQuotes] = await Promise.all([
       fetchRavaBondPrices(),
@@ -251,9 +235,7 @@ export async function GET(request: NextRequest) {
       data: screener,
       count: screener.length,
       updated_at: new Date().toISOString(),
-      source: bymaQuotes.size > 0 ? "byma_data_open + rava_analytics" : "rava",
-      source_name: BYMA_DATA_METADATA.source,
-      delayed_minutes: BYMA_DATA_METADATA.delayedMinutes,
+      ...marketMetaForRows(screener),
       dataQuality: "rava_passthrough_unverified",
       nota: "Precio priorizado desde BYMA Data; TIR, duration modificada y paridad se conservan tal como las publica Rava. Son bonos ajustados por CER (y CER/TAMAR en los Bono DUAL); no pasan por el motor propio de bond-math.",
     })
@@ -262,7 +244,7 @@ export async function GET(request: NextRequest) {
   if (tipoParam === "lecap") {
     const cacheKey = "lecaps_screener"
     const cached = getCache<unknown[]>(cacheKey)
-    if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), cached: true, ...cachedMarketMeta(cached) })
+    if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), cached: true, ...marketMetaForRows(cached) })
 
     let cclActual: number | null = null
     try {
@@ -327,17 +309,11 @@ export async function GET(request: NextRequest) {
           fuente: byma ? "byma_data_open" : inst ? "db_local" : "fuente no conectada",
         }
       })
-      const usesDbMetrics = instruments.some((instrument) => dbByTicker.has(instrument.ticker))
-
       setCache(cacheKey, screener, 300)
       return NextResponse.json({
         data: screener,
         updated_at: new Date().toISOString(),
-        source: [bymaQuotes.size > 0 ? "byma_data_open" : null, "catalogo_byma", usesDbMetrics ? "db_local" : null]
-          .filter(Boolean)
-          .join(" + "),
-        source_name: BYMA_DATA_METADATA.source,
-        delayed_minutes: BYMA_DATA_METADATA.delayedMinutes,
+        ...marketMetaForRows(screener),
         nota: "catálogo y precios priorizados desde BYMA Data; métricas complementarias desde DB local cuando existen",
       })
     }
@@ -376,9 +352,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       data: screener,
       updated_at: new Date().toISOString(),
-      source: bymaQuotes.size > 0 ? "byma_data_open + fallback_estatico" : "fallback_estatico",
-      source_name: BYMA_DATA_METADATA.source,
-      delayed_minutes: BYMA_DATA_METADATA.delayedMinutes,
+      ...marketMetaForRows(screener),
       nota: "precios desde BYMA Data con metadata estática cuando la DB local no está disponible",
     })
   }
@@ -389,7 +363,7 @@ export async function GET(request: NextRequest) {
     data: cached,
     updated_at: new Date().toISOString(),
     cached: true,
-    ...cachedMarketMeta(cached),
+    ...marketMetaForRows(cached),
   })
 
   try {
@@ -498,21 +472,11 @@ export async function GET(request: NextRequest) {
     const payload = tickerParam ? screener[0] : screener
     setCache(cacheKey, payload, 300)
 
-    const effectiveSources = [...new Set(screener.map((bond) => bond.fuente))]
-    const priceAsOf = screener
-      .map((bond) => bond.asOf)
-      .filter((value): value is string => value != null)
-      .sort()
-      .at(-1) ?? null
-
     return NextResponse.json({
       data: payload,
       count: screener.length,
       updated_at: new Date().toISOString(),
-      source: effectiveSources.join(" + ") || sourceMode,
-      source_name: BYMA_DATA_METADATA.source,
-      delayed_minutes: BYMA_DATA_METADATA.delayedMinutes,
-      price_as_of: priceAsOf,
+      ...marketMetaForRows(screener),
       nota: "GD30 usa el motor verificado contra la planilla; los demás bonos conservan el cálculo legado y se marcan como pendientes de validar contra fuente primaria",
     })
   } catch (error) {

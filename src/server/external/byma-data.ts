@@ -275,3 +275,27 @@ export const BYMA_DATA_METADATA = {
   delayedMinutes: DELAYED_MINUTES,
   access: "open_no_registration",
 } as const
+
+type MarketRow = { fuente?: string; asOf?: string | null }
+
+export function marketMetaForRows(value: unknown) {
+  const rows = (Array.isArray(value) ? value : [value]) as MarketRow[]
+  const sources = [...new Set(rows.map((row) => row?.fuente).filter((source): source is string => Boolean(source)))]
+  const bymaRows = rows.filter((row) => row?.fuente === BYMA_DATA_METADATA.sourceId)
+  const priceAsOf = bymaRows
+    .map((row) => row?.asOf)
+    .filter((asOf): asOf is string => Boolean(asOf))
+    .sort()
+    .at(-1) ?? null
+  const metadata = {
+    source: sources.join(" + ") || "unavailable",
+    price_as_of: priceAsOf,
+  }
+  return bymaRows.length > 0
+    ? {
+        ...metadata,
+        source_name: BYMA_DATA_METADATA.source,
+        delayed_minutes: BYMA_DATA_METADATA.delayedMinutes,
+      }
+    : metadata
+}
