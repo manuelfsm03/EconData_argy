@@ -108,7 +108,20 @@ test("bond routes derive provenance from effective quote rows", () => {
     price_as_of: null,
   })
 
+  assert.deepEqual(marketMetaForRows([
+    { fuente: "rava", asOf: "2026-08-16T12:00:00.000Z" },
+  ]), {
+    source: "rava",
+    price_as_of: null,
+  })
+  assert.deepEqual(marketMetaForRows([]), {
+    source: "unavailable",
+    price_as_of: null,
+  })
+
+  const equityRoute = readFileSync("src/app/api/acciones/route.ts", "utf8")
   const bondRoute = readFileSync("src/app/api/bonos/route.ts", "utf8")
+  assert.match(equityRoute, /marketMetaForRows\(quotes\.map/)
   assert.match(bondRoute, /\.\.\.marketMetaForRows\(screener\)/)
   assert.match(bondRoute, /\.\.\.marketMetaForRows\(cached\)/)
 })

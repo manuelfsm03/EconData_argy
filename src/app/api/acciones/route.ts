@@ -12,7 +12,7 @@ import { fetchRegistered } from "@/server/http/fetch-source"
 
 import { NextRequest, NextResponse } from "next/server"
 import { STOCK_CATEGORIES, MERVAL_TOP, type StockQuote } from "@/server/domain/stock-categories"
-import { BYMA_DATA_METADATA, fetchBymaQuotes } from "@/server/external/byma-data"
+import { fetchBymaQuotes, marketMetaForRows } from "@/server/external/byma-data"
 import { parseRavaStockQuote } from "@/server/external/rava-stock"
 
 // ── In-memory cache ────────────────────────────────────────────────────────────
@@ -94,18 +94,10 @@ async function fetchBatch(symbols: string[]): Promise<Map<string, StockQuote>> {
 }
 
 function responseMeta(quotes: StockQuote[]) {
-  const bymaAsOf = quotes
-    .filter((quote) => quote.source === "byma_data_open" && quote.asOf)
-    .map((quote) => quote.asOf!)
-    .sort()
-    .at(-1) ?? null
-  const sources = [...new Set(quotes.map((quote) => quote.source).filter(Boolean))]
-  return {
-    source: sources.length === 1 ? sources[0] : sources.join(" + ") || "unavailable",
-    source_name: BYMA_DATA_METADATA.source,
-    delayed_minutes: BYMA_DATA_METADATA.delayedMinutes,
-    price_as_of: bymaAsOf,
-  }
+  return marketMetaForRows(quotes.map((quote) => ({
+    fuente: quote.source,
+    asOf: quote.asOf,
+  })))
 }
 
 // ── GET ────────────────────────────────────────────────────────────────────────
