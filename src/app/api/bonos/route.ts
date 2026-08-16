@@ -16,6 +16,7 @@ import { construirCashflows, GD30 } from "@/lib/bond-schedule"
 import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
 import { parseRavaBondPrices, type RavaBondPrice } from "@/server/external/rava-prices"
 import { PESO_BOND_TICKERS } from "@/server/domain/peso-bonds"
+import { BYMA_DATA_METADATA, fetchBymaCapInstruments, fetchBymaQuotes } from "@/server/external/byma-data"
 
 type Cashflow = { fechaPago: Date; cupon: number; amortizacion: number; flujoTotal: number }
 
@@ -30,11 +31,6 @@ type BondLike = {
   cashflows: Cashflow[]
 }
 
-const RAVA_HEADERS = {
-  "User-Agent": "Mozilla/5.0 PanelDeControl/2.0",
-  Accept: "text/html,application/json",
-}
-
 const _cache: Record<string, { data: unknown; expiry: number }> = {}
 function getCache<T>(key: string): T | null {
   const e = _cache[key]
@@ -43,6 +39,22 @@ function getCache<T>(key: string): T | null {
 }
 function setCache(key: string, data: unknown, ttlSec: number) {
   _cache[key] = { data, expiry: Date.now() + ttlSec * 1000 }
+}
+
+function cachedMarketMeta(value: unknown) {
+  const rows = (Array.isArray(value) ? value : [value]) as Array<{ fuente?: string; asOf?: string | null }>
+  const sources = [...new Set(rows.map((row) => row?.fuente).filter((source): source is string => Boolean(source)))]
+  const priceAsOf = rows
+    .map((row) => row?.asOf)
+    .filter((asOf): asOf is string => Boolean(asOf))
+    .sort()
+    .at(-1) ?? null
+  return {
+    source: sources.join(" + ") || "cache",
+    source_name: BYMA_DATA_METADATA.source,
+    delayed_minutes: BYMA_DATA_METADATA.delayedMinutes,
+    price_as_of: priceAsOf,
+  }
 }
 
 function calcularTIR(precio: number, cashflows: { fechaPago: Date; flujoTotal: number }[]): number | null {
@@ -143,52 +155,6 @@ async function fetchCclReference(): Promise<number | null> {
   }
 }
 
-interface MervalBondQuote {
-  precio: number | null
-  change1D: number | null
-}
-
-async function fetchMervalBondQuotes(tickers: string[]): Promise<Map<string, MervalBondQuote>> {
-  const quotes = new Map<string, MervalBondQuote>()
-  if (tickers.length === 0) return quotes
-
-  try {
-    const params = new URLSearchParams({ depth: "1" })
-    for (const ticker of tickers) params.append("symbols", `${ticker}D:24hs`)
-    const response = await fetchRegistered(`https://api-merval-production.up.railway.app/v1/quotes/batch?${params}`, {
-      headers: RAVA_HEADERS,
-      signal: AbortSignal.timeout(8000),
-      next: { revalidate: 60 },
-    })
-    if (!response.ok) return quotes
-
-    const payload = await response.json() as {
-      quotes?: Array<{
-        symbol?: string
-        marketData?: { LA?: { price?: string | null }; CL?: { price?: string | null } }
-      }>
-    }
-    for (const quote of payload.quotes ?? []) {
-      const ticker = quote.symbol?.replace(/D$/, "")
-      if (!ticker) continue
-      const precio = Number(quote.marketData?.LA?.price)
-      const cierre = Number(quote.marketData?.CL?.price)
-      const precioValido = Number.isFinite(precio) && precio > 0 ? precio : null
-      const cierreValido = Number.isFinite(cierre) && cierre > 0 ? cierre : null
-      quotes.set(ticker, {
-        precio: precioValido,
-        change1D: precioValido != null && cierreValido != null
-          ? ((precioValido - cierreValido) / cierreValido) * 100
-          : null,
-      })
-    }
-  } catch {
-    // La ruta conserva Rava y metadata estática como fallbacks.
-  }
-
-  return quotes
-}
-
 function staticBondToRuntime(bond: BondDef): BondLike {
   return {
     ticker: bond.ticker,
@@ -232,7 +198,7 @@ async function loadRuntimeBonds(tickerParam: string | null): Promise<{ bonds: Bo
             flujoTotal: cf.flujoTotal,
           })),
         })),
-        sourceMode: "db_local + rava",
+        sourceMode: "db_local + byma_data",
       }
     }
   } catch {
@@ -243,7 +209,7 @@ async function loadRuntimeBonds(tickerParam: string | null): Promise<{ bonds: Bo
     .filter((bond) => !tickerParam || bond.ticker === tickerParam.toUpperCase())
     .map(staticBondToRuntime)
 
-  return { bonds: staticBonds, sourceMode: "fallback_estatico + rava" }
+  return { bonds: staticBonds, sourceMode: "fallback_estatico + byma_data" }
 }
 
 export async function GET(request: NextRequest) {
@@ -254,15 +220,19 @@ export async function GET(request: NextRequest) {
   if (tipoParam === "pesos") {
     const cacheKey = "bonos_pesos_screener"
     const cached = getCache<unknown[]>(cacheKey)
-    if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), cached: true })
+    if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), cached: true, ...cachedMarketMeta(cached) })
 
-    const ravaPrices = await fetchRavaBondPrices()
+    const [ravaPrices, bymaQuotes] = await Promise.all([
+      fetchRavaBondPrices(),
+      fetchBymaQuotes([...PESO_BOND_TICKERS]),
+    ])
     const screener = PESO_BOND_TICKERS.map((ticker) => {
       const q = ravaPrices.get(ticker)
+      const byma = bymaQuotes.get(ticker)
       return {
         ticker,
         nombre: q?.nombre ?? ticker,
-        precio: q?.precio ?? null,
+        precio: byma?.lastPrice ?? q?.precio ?? null,
         tir: q?.tir ?? null,
         dm: q?.dm ?? null,
         paridad: q?.paridad ?? null,
@@ -270,7 +240,9 @@ export async function GET(request: NextRequest) {
         currentYield: q?.currentYield ?? null,
         vencimiento: q?.vencimiento ? q.vencimiento.slice(0, 10) : null,
         fechaCotizacion: q?.fecha ? q.fecha.slice(0, 10) : null,
-        fuente: q ? "rava" : "fuente no conectada",
+        change1D: byma?.change1D ?? null,
+        asOf: byma?.asOf ?? q?.fecha ?? null,
+        fuente: byma ? "byma_data_open" : q ? "rava" : "fuente no conectada",
       }
     })
 
@@ -279,16 +251,18 @@ export async function GET(request: NextRequest) {
       data: screener,
       count: screener.length,
       updated_at: new Date().toISOString(),
-      source: "rava",
+      source: bymaQuotes.size > 0 ? "byma_data_open + rava_analytics" : "rava",
+      source_name: BYMA_DATA_METADATA.source,
+      delayed_minutes: BYMA_DATA_METADATA.delayedMinutes,
       dataQuality: "rava_passthrough_unverified",
-      nota: "Precio, TIR, duration modificada y paridad tal como los publica Rava. Son bonos ajustados por CER (y CER/TAMAR en los Bono DUAL); no pasan por el motor propio de bond-math (a diferencia de GD30), que hoy sólo soporta cronogramas fijos en dólares.",
+      nota: "Precio priorizado desde BYMA Data; TIR, duration modificada y paridad se conservan tal como las publica Rava. Son bonos ajustados por CER (y CER/TAMAR en los Bono DUAL); no pasan por el motor propio de bond-math.",
     })
   }
 
   if (tipoParam === "lecap") {
     const cacheKey = "lecaps_screener"
     const cached = getCache<unknown[]>(cacheKey)
-    if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), cached: true })
+    if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), cached: true, ...cachedMarketMeta(cached) })
 
     let cclActual: number | null = null
     try {
@@ -306,51 +280,77 @@ export async function GET(request: NextRequest) {
       // noop
     }
 
+    const bymaCatalog = await fetchBymaCapInstruments()
+    let dbInstruments: Awaited<ReturnType<typeof prisma.capInstrument.findMany>> = []
     try {
-      const instrumentos = await prisma.capInstrument.findMany({
+      dbInstruments = await prisma.capInstrument.findMany({
         where: { vencimiento: { gt: new Date() } },
         orderBy: { vencimiento: "asc" },
       })
-
-      if (instrumentos.length > 0) {
-        const screener = instrumentos.map((inst: typeof instrumentos[number]) => {
-          const hoy = new Date()
-          const diasVto = Math.round((inst.vencimiento.getTime() - hoy.getTime()) / (24 * 3600 * 1000))
-          const tcImplicito =
-            cclActual != null && inst.tem != null && diasVto > 0
-              ? Number((cclActual * Math.pow(1 + inst.tem / 100, diasVto / 30)).toFixed(2))
-              : null
-
-          return {
-            ticker: inst.ticker,
-            tipo: inst.tipo,
-            vencimiento: inst.vencimiento.toISOString().split("T")[0],
-            diasVencimiento: diasVto,
-            precio: inst.precio,
-            tir: inst.tir,
-            tea: inst.tea,
-            tem: inst.tem,
-            tcImplicito,
-          }
-        })
-
-        setCache(cacheKey, screener, 300)
-        return NextResponse.json({
-          data: screener,
-          updated_at: new Date().toISOString(),
-          source: "db_local + byma",
-          nota: "lecaps desde DB local; si falla, cae a fallback estático",
-        })
-      }
     } catch {
-      // caer a fallback estático
+      // BYMA abierto sigue siendo suficiente para catálogo y precios.
+    }
+
+    if (dbInstruments.length > 0 || bymaCatalog.length > 0) {
+      const dbByTicker = new Map(dbInstruments.map((instrumento) => [instrumento.ticker, instrumento]))
+      const instruments = bymaCatalog.length > 0
+        ? bymaCatalog
+        : dbInstruments.map((instrumento) => ({
+            ticker: instrumento.ticker,
+            tipo: instrumento.tipo as "LECAP" | "BONCAP",
+            vencimiento: instrumento.vencimiento.toISOString().slice(0, 10),
+          }))
+      const bymaQuotes = await fetchBymaQuotes(instruments.map((instrumento) => instrumento.ticker))
+      const screener = instruments.map((instrument) => {
+        const inst = dbByTicker.get(instrument.ticker)
+        const maturity = new Date(instrument.vencimiento)
+        const hoy = new Date()
+        const diasVto = Math.round((maturity.getTime() - hoy.getTime()) / (24 * 3600 * 1000))
+        const byma = bymaQuotes.get(instrument.ticker)
+        const tcImplicito =
+          cclActual != null && inst?.tem != null && diasVto > 0
+            ? Number((cclActual * Math.pow(1 + inst.tem / 100, diasVto / 30)).toFixed(2))
+            : null
+
+        return {
+          ticker: instrument.ticker,
+          tipo: instrument.tipo,
+          vencimiento: instrument.vencimiento,
+          diasVencimiento: diasVto,
+          precio: byma?.lastPrice ?? inst?.precio ?? null,
+          tir: inst?.tir ?? null,
+          tea: inst?.tea ?? null,
+          tem: inst?.tem ?? null,
+          tcImplicito,
+          change1D: byma?.change1D ?? null,
+          asOf: byma?.asOf ?? null,
+          fuente: byma ? "byma_data_open" : inst ? "db_local" : "fuente no conectada",
+        }
+      })
+      const usesDbMetrics = instruments.some((instrument) => dbByTicker.has(instrument.ticker))
+
+      setCache(cacheKey, screener, 300)
+      return NextResponse.json({
+        data: screener,
+        updated_at: new Date().toISOString(),
+        source: [bymaQuotes.size > 0 ? "byma_data_open" : null, "catalogo_byma", usesDbMetrics ? "db_local" : null]
+          .filter(Boolean)
+          .join(" + "),
+        source_name: BYMA_DATA_METADATA.source,
+        delayed_minutes: BYMA_DATA_METADATA.delayedMinutes,
+        nota: "catálogo y precios priorizados desde BYMA Data; métricas complementarias desde DB local cuando existen",
+      })
     }
 
     const hoy = new Date()
-    const screener = CAP_INSTRUMENT_DEFS
+    const activeDefinitions = CAP_INSTRUMENT_DEFS
+      .filter((inst) => new Date(inst.vencimiento).getTime() >= hoy.getTime())
+    const bymaQuotes = await fetchBymaQuotes(activeDefinitions.map((instrumento) => instrumento.ticker))
+    const screener = activeDefinitions
       .map((inst) => {
         const vencimiento = new Date(inst.vencimiento)
         const diasVto = Math.round((vencimiento.getTime() - hoy.getTime()) / (24 * 3600 * 1000))
+        const byma = bymaQuotes.get(inst.ticker)
         const tcImplicito =
           cclActual != null && inst.tem != null && diasVto > 0
             ? Number((cclActual * Math.pow(1 + inst.tem / 100, diasVto / 30)).toFixed(2))
@@ -361,33 +361,42 @@ export async function GET(request: NextRequest) {
           tipo: inst.tipo,
           vencimiento: inst.vencimiento,
           diasVencimiento: diasVto,
-          precio: null,
+          precio: byma?.lastPrice ?? null,
           tir: null,
           tea: null,
           tem: inst.tem ?? null,
           tcImplicito,
+          change1D: byma?.change1D ?? null,
+          asOf: byma?.asOf ?? null,
+          fuente: byma ? "byma_data_open" : "fuente no conectada",
         }
       })
-      .filter((inst) => inst.diasVencimiento >= 0)
 
     setCache(cacheKey, screener, 300)
     return NextResponse.json({
       data: screener,
       updated_at: new Date().toISOString(),
-      source: "fallback_estatico",
-      nota: "las lecaps caen a fallback estático si la DB local no está disponible",
+      source: bymaQuotes.size > 0 ? "byma_data_open + fallback_estatico" : "fallback_estatico",
+      source_name: BYMA_DATA_METADATA.source,
+      delayed_minutes: BYMA_DATA_METADATA.delayedMinutes,
+      nota: "precios desde BYMA Data con metadata estática cuando la DB local no está disponible",
     })
   }
 
   const cacheKey = tickerParam ? `bono_${tickerParam}` : "bonos_screener"
   const cached = getCache<unknown>(cacheKey)
-  if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), cached: true })
+  if (cached) return NextResponse.json({
+    data: cached,
+    updated_at: new Date().toISOString(),
+    cached: true,
+    ...cachedMarketMeta(cached),
+  })
 
   try {
     const { bonds, sourceMode } = await loadRuntimeBonds(tickerParam)
-    const [cclReference, mervalQuotes] = await Promise.all([
+    const [cclReference, bymaQuotes] = await Promise.all([
       fetchCclReference(),
-      fetchMervalBondQuotes(bonds.map((bond: BondLike) => bond.ticker)),
+      fetchBymaQuotes(bonds.map((bond: BondLike) => bond.ticker), { currencySuffix: "D" }),
     ])
 
     if (bonds.length === 0) {
@@ -417,17 +426,15 @@ export async function GET(request: NextRequest) {
               }))
           : bond.cashflows.filter((cf) => cf.fechaPago > hoy)
 
-        let precio = bond.precio
-        let fuente = precio ? "db" : "api_merval"
+        const byma = bymaQuotes.get(bond.ticker)
+        let precio = byma?.lastPrice ?? bond.precio
+        let fuente = byma ? "byma_data_open" : precio ? "db" : "byma_data_open"
         if (!precio) {
-          precio = mervalQuotes.get(bond.ticker)?.precio ?? null
-          if (!precio) {
-            const scraped = await scrapePrecioRava(bond.ticker)
-            const precioNominal = scraped.precio
-            const precioDolarizado = scraped.precioCci ?? (precioNominal && cclReference ? precioNominal / cclReference : precioNominal)
-            precio = precioDolarizado && precioDolarizado > 1000 && cclReference ? precioDolarizado / cclReference : precioDolarizado
-            fuente = precio ? "rava" : sourceMode.includes("fallback") ? "fallback_sin_precio" : "db_sin_precio"
-          }
+          const scraped = await scrapePrecioRava(bond.ticker)
+          const precioNominal = scraped.precio
+          const precioDolarizado = scraped.precioCci ?? (precioNominal && cclReference ? precioNominal / cclReference : precioNominal)
+          precio = precioDolarizado && precioDolarizado > 1000 && cclReference ? precioDolarizado / cclReference : precioDolarizado
+          fuente = precio ? "rava" : sourceMode.includes("fallback") ? "fallback_sin_precio" : "db_sin_precio"
         }
 
         const vnResidual = devengadas?.valorResidual ?? flujosFF.reduce((sum, cf) => sum + cf.amortizacion, 0)
@@ -473,7 +480,8 @@ export async function GET(request: NextRequest) {
           dataQuality: esquemaVerificado
             ? "prospectus_schedule_verified"
             : "legacy_schedule_pending_source_verification",
-          change1D: mervalQuotes.get(bond.ticker)?.change1D ?? null,
+          change1D: byma?.change1D ?? null,
+          asOf: byma?.asOf ?? null,
           flujosFF: tickerParam
             ? flujosFF.map((cf) => ({
                 fecha: cf.fechaPago.toISOString().split("T")[0],
@@ -490,11 +498,21 @@ export async function GET(request: NextRequest) {
     const payload = tickerParam ? screener[0] : screener
     setCache(cacheKey, payload, 300)
 
+    const effectiveSources = [...new Set(screener.map((bond) => bond.fuente))]
+    const priceAsOf = screener
+      .map((bond) => bond.asOf)
+      .filter((value): value is string => value != null)
+      .sort()
+      .at(-1) ?? null
+
     return NextResponse.json({
       data: payload,
       count: screener.length,
       updated_at: new Date().toISOString(),
-      source: sourceMode,
+      source: effectiveSources.join(" + ") || sourceMode,
+      source_name: BYMA_DATA_METADATA.source,
+      delayed_minutes: BYMA_DATA_METADATA.delayedMinutes,
+      price_as_of: priceAsOf,
       nota: "GD30 usa el motor verificado contra la planilla; los demás bonos conservan el cálculo legado y se marcan como pendientes de validar contra fuente primaria",
     })
   } catch (error) {

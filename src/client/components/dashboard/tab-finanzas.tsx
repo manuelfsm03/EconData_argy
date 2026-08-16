@@ -236,7 +236,7 @@ export function AccionesView() {
       {selectedTicker && <AccionDetailPanel ticker={selectedTicker} onClose={() => setSelectedTicker(null)} />}
 
       <div style={{ padding: "6px 14px", fontSize: 8, color: "var(--text-dim)", borderTop: "1px solid var(--bg-elev-2)", fontFamily: "var(--font-data)" }}>
-        Fuente: api-merval (Railway) · Precios en tiempo real BYMA 24hs
+        Fuente: BYMA Data abierto · Precios con 20 minutos de demora · Especies 24hs
       </div>
     </div>
   )

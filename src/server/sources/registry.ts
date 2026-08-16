@@ -72,6 +72,13 @@ export const SOURCE_REGISTRY = {
   yahoo_finance: source("yahoo_finance", { displayName: "Yahoo Finance", publisher: "Yahoo Finance", host: "finance.yahoo.com", dataClass: "intraday_market" }),
   yahoo_finance_rss: source("yahoo_finance_rss", { displayName: "Yahoo Finance RSS", publisher: "Yahoo Finance", host: "feeds.finance.yahoo.com", kind: "rss", dataClass: "news" }),
   api_merval: source("api_merval", { displayName: "API Merval", publisher: "API Merval", host: "api-merval-production.up.railway.app", dataClass: "intraday_market", healthcheckPath: "/health" }),
+  byma_data_open: source("byma_data_open", {
+    displayName: "BYMA Data abierto",
+    publisher: "Bolsas y Mercados Argentinos",
+    host: "open.bymadata.com.ar",
+    dataClass: "intraday_market",
+    healthcheckPath: "/vanoms-be-core/rest/api/bymadata/free/server-time",
+  }),
   rava: source("rava", { displayName: "Rava", publisher: "Rava Bursátil", host: "www.rava.com", kind: "html", dataClass: "intraday_market", healthcheckPath: "/perfil/gd30" }),
   // El dump completo de /api/prices/arg pesa ~8.4 MB (16k+ instrumentos, sin
   // filtro server-side posible) -- superaba el default de 5 MB para JSON y
