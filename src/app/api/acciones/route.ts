@@ -2,7 +2,7 @@ import { fetchRegistered } from "@/server/http/fetch-source"
 /**
  * /api/acciones — Screener de acciones argentinas (Merval)
  *
- * Fuente: api-merval (Railway)
+ * Fuente primaria: BYMA Data abierto (20 minutos de demora)
  * Tickers: STOCK_CATEGORIES from panel-data
  *
  * Query params:
@@ -12,8 +12,9 @@ import { fetchRegistered } from "@/server/http/fetch-source"
 
 import { NextRequest, NextResponse } from "next/server"
 import { STOCK_CATEGORIES, MERVAL_TOP, type StockQuote } from "@/server/domain/stock-categories"
+import { fetchBymaQuotes, marketMetaForRows } from "@/server/external/byma-data"
+import { parseRavaStockQuote } from "@/server/external/rava-stock"
 
-// api-merval/byma deshabilitado por criterio legal; acciones usa fuentes públicas permitidas
 // ── In-memory cache ────────────────────────────────────────────────────────────
 const _cache: Record<string, { data: unknown; expiry: number }> = {}
 function getCached<T>(k: string): T | null {
@@ -22,30 +23,6 @@ function getCached<T>(k: string): T | null {
 }
 function setCached(k: string, d: unknown, ttlSec: number) {
   _cache[k] = { data: d, expiry: Date.now() + ttlSec * 1000 }
-}
-
-function parseLocaleNumber(raw: string | null | undefined): number | null {
-  if (!raw) return null
-  const match = raw.trim().match(/-?[\d.]+(?:,\d+)?/)
-  if (!match) return null
-  const value = Number(match[0].replace(/\./g, "").replace(",", "."))
-  return Number.isFinite(value) ? value : null
-}
-
-function extractRavaMetric(html: string, label: string): number | null {
-  const safeLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  const patterns = [
-    new RegExp(`<span>\\s*${safeLabel}:?\\s*<\\/span>\\s*<span class="bolder">([^<]+)`, "i"),
-    new RegExp(`${safeLabel}:<\\/span>\\s*<span class="bolder">([^<]+)`, "i"),
-    new RegExp(`>${safeLabel}<\\/span>\\s*<span class="bolder">([^<]+)`, "i"),
-  ]
-
-  for (const pattern of patterns) {
-    const value = parseLocaleNumber(html.match(pattern)?.[1])
-    if (value != null) return value
-  }
-
-  return null
 }
 
 async function scrapeRavaQuote(symbol: string): Promise<StockQuote | null> {
@@ -57,10 +34,9 @@ async function scrapeRavaQuote(symbol: string): Promise<StockQuote | null> {
     })
     if (!res.ok) return null
     const html = await res.text()
-    const lastPrice = extractRavaMetric(html, "Precio")
-    if (lastPrice == null) return null
-
-    const closePrice = extractRavaMetric(html, "Anterior")
+    const parsed = parseRavaStockQuote(html)
+    if (!parsed) return null
+    const { lastPrice, previousClose: closePrice } = parsed
     const change1D = closePrice != null && closePrice > 0
       ? ((lastPrice - closePrice) / closePrice) * 100
       : null
@@ -75,6 +51,7 @@ async function scrapeRavaQuote(symbol: string): Promise<StockQuote | null> {
       volume: null,
       bid: null,
       ask: null,
+      source: "rava",
     }
   } catch {
     return null
@@ -85,16 +62,42 @@ async function enrichWithRavaFallback(symbols: string[], base: Map<string, Stock
   const missing = symbols.filter((symbol) => (base.get(symbol)?.lastPrice ?? null) == null)
   if (missing.length === 0) return base
 
-  const fallbackQuotes = await Promise.all(missing.map(scrapeRavaQuote))
-  fallbackQuotes.forEach((quote) => {
-    if (quote?.ticker) base.set(quote.ticker, quote)
-  })
+  for (let index = 0; index < missing.length; index += 6) {
+    const fallbackQuotes = await Promise.all(missing.slice(index, index + 6).map(scrapeRavaQuote))
+    fallbackQuotes.forEach((quote) => {
+      if (quote?.ticker) base.set(quote.ticker, quote)
+    })
+  }
   return base
 }
 
-// ── Fuentes públicas permitidas (sin api-merval/byma) ─────────────────────────
-async function fetchBatch(_: string[]): Promise<Map<string, StockQuote>> {
-  return new Map<string, StockQuote>()
+async function fetchBatch(symbols: string[]): Promise<Map<string, StockQuote>> {
+  const bymaQuotes = await fetchBymaQuotes(symbols)
+  const quotes = new Map<string, StockQuote>()
+  for (const [ticker, quote] of bymaQuotes) {
+    quotes.set(ticker, {
+      ticker,
+      category: "",
+      lastPrice: quote.lastPrice,
+      closePrice: quote.previousClose,
+      openPrice: quote.openPrice,
+      change1D: quote.change1D,
+      volume: quote.volume,
+      bid: null,
+      ask: null,
+      asOf: quote.asOf,
+      source: quote.source,
+      delayedMinutes: quote.delayedMinutes,
+    })
+  }
+  return quotes
+}
+
+function responseMeta(quotes: StockQuote[]) {
+  return marketMetaForRows(quotes.map((quote) => ({
+    fuente: quote.source,
+    asOf: quote.asOf,
+  })))
 }
 
 // ── GET ────────────────────────────────────────────────────────────────────────
@@ -108,7 +111,7 @@ export async function GET(request: NextRequest) {
   if (tapeMode) {
     const cacheKey = "acciones_tape"
     const cached = getCached<StockQuote[]>(cacheKey)
-    if (cached) return NextResponse.json({ data: cached, cached: true })
+    if (cached) return NextResponse.json({ data: cached, cached: true, ...responseMeta(cached) })
 
     let qmap = await fetchBatch(MERVAL_TOP)
     qmap = await enrichWithRavaFallback(MERVAL_TOP, qmap)
@@ -118,8 +121,8 @@ export async function GET(request: NextRequest) {
       return q
     }).filter((q) => q.lastPrice != null)
 
-    setCached(cacheKey, data, 60)
-    return NextResponse.json({ data, updated_at: new Date().toISOString() })
+    setCached(cacheKey, data, 300)
+    return NextResponse.json({ data, updated_at: new Date().toISOString(), ...responseMeta(data) })
   }
 
   // Override tickers
@@ -132,13 +135,16 @@ export async function GET(request: NextRequest) {
       q.category = findCategory(t)
       return q
     })
-    return NextResponse.json({ data, updated_at: new Date().toISOString() })
+    return NextResponse.json({ data, updated_at: new Date().toISOString(), ...responseMeta(data) })
   }
 
   // Full screener (all or filtered by category)
   const cacheKey = `acciones_${categoryParam}`
   const cached = getCached<{ byCategory: Record<string, StockQuote[]> }>(cacheKey)
-  if (cached) return NextResponse.json({ data: cached, cached: true, updated_at: new Date().toISOString() })
+  if (cached) {
+    const quotes = Object.values(cached.byCategory).flat()
+    return NextResponse.json({ data: cached, cached: true, updated_at: new Date().toISOString(), ...responseMeta(quotes) })
+  }
 
   // Collect tickers
   let targetCategories = Object.entries(STOCK_CATEGORIES)
@@ -148,19 +154,8 @@ export async function GET(request: NextRequest) {
 
   const allTickers = [...new Set(targetCategories.flatMap(([, t]) => t))]
 
-  // Fetch in batches of 20 (API limit)
-  const batchSize = 20
-  const batches: string[][] = []
-  for (let i = 0; i < allTickers.length; i += batchSize) {
-    batches.push(allTickers.slice(i, i + batchSize))
-  }
-
-  let qmaps = await Promise.all(batches.map(fetchBatch))
-  qmaps = await Promise.all(qmaps.map((qm, idx) => enrichWithRavaFallback(batches[idx], qm)))
-  const merged = new Map<string, StockQuote>()
-  for (const qm of qmaps) {
-    for (const [k, v] of qm) merged.set(k, v)
-  }
+  let merged = await fetchBatch(allTickers)
+  merged = await enrichWithRavaFallback(allTickers, merged)
 
   // Build by-category response
   const byCategory: Record<string, StockQuote[]> = {}
@@ -176,8 +171,12 @@ export async function GET(request: NextRequest) {
   }
 
   const result = { byCategory, categories: Object.keys(byCategory) }
-  setCached(cacheKey, result, 90) // 90 segundos
-  return NextResponse.json({ data: result, updated_at: new Date().toISOString(), source: "api-merval" })
+  setCached(cacheKey, result, 300)
+  return NextResponse.json({
+    data: result,
+    updated_at: new Date().toISOString(),
+    ...responseMeta(Object.values(byCategory).flat()),
+  })
 }
 
 function findCategory(ticker: string): string {

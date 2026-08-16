@@ -23,4 +23,7 @@ export interface StockQuote {
   volume: number | null
   bid: number | null
   ask: number | null
+  asOf?: string
+  source?: "byma_data_open" | "rava"
+  delayedMinutes?: number
 }

@@ -4,7 +4,7 @@ import { fetchRegistered } from "@/server/http/fetch-source"
  *
  * Fuentes:
  *   - Yahoo Finance (tickers AR con sufijo .BA, ej: GGAL.BA)
- *   - api-merval para precio actual
+ *   - BYMA Data abierto para precio local demorado
  *
  * Query params:
  *   ?range=1m|3m|6m|1y|max  (default: 3m)
@@ -12,6 +12,7 @@ import { fetchRegistered } from "@/server/http/fetch-source"
  */
 
 import { NextRequest, NextResponse } from "next/server"
+import { BYMA_DATA_METADATA, fetchBymaQuotes } from "@/server/external/byma-data"
 
 const YF_HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -19,8 +20,6 @@ const YF_HEADERS = {
   Origin: "https://finance.yahoo.com",
   Referer: "https://finance.yahoo.com/",
 }
-
-const MERVAL_BASE = "https://api-merval-production.up.railway.app"
 
 interface OHLCEntry {
   date: string
@@ -44,6 +43,9 @@ interface StockDetail {
   avgVolume: number | null
   currency: string
   history: OHLCEntry[]
+  asOf: string | null
+  source: "byma_data_open" | "yahoo_finance"
+  delayedMinutes: number | null
 }
 
 // ── In-memory cache ────────────────────────────────────────────────────────────
@@ -147,25 +149,6 @@ async function fetchYFMeta(symbol: string): Promise<{
   }
 }
 
-async function fetchMervalCurrent(ticker: string): Promise<{ last: number | null; close: number | null; vol: number | null }> {
-  try {
-    const url = `${MERVAL_BASE}/v1/quotes/batch?symbols=${ticker}:24hs&depth=1`
-    const res = await fetchRegistered(url, { signal: AbortSignal.timeout(5000), next: { revalidate: 60 } })
-    if (!res.ok) return { last: null, close: null, vol: null }
-    const j = await res.json()
-    const q = j.quotes?.[0]
-    if (!q) return { last: null, close: null, vol: null }
-    const md = q.marketData
-    return {
-      last: md?.LA?.price ? parseFloat(md.LA.price) : null,
-      close: md?.CL?.price ? parseFloat(md.CL.price) : null,
-      vol: md?.EV?.size ?? null,
-    }
-  } catch {
-    return { last: null, close: null, vol: null }
-  }
-}
-
 export async function GET(request: NextRequest, { params }: { params: Promise<{ ticker: string }> }) {
   const { ticker } = await params
   const { searchParams } = new URL(request.url)
@@ -174,23 +157,26 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const tickerUpper = ticker.toUpperCase()
   const cacheKey = `accion_${tickerUpper}_${range}`
   const cached = getCached<StockDetail>(cacheKey)
-  if (cached) return NextResponse.json({ data: cached, cached: true })
+  if (cached) return NextResponse.json({
+    data: cached,
+    cached: true,
+    source: cached.source,
+    delayed_minutes: cached.delayedMinutes,
+    price_as_of: cached.asOf,
+  })
 
-  // YF symbol: tickers argentinos van con .BA
-  // Excepciones conocidas: MELI → MELI (NASDAQ), LOMA → LOMA.BA
-  const US_TICKERS = ["MELI", "VIST", "GLOB", "BBAR", "GGAL", "TGS", "PAM", "YPF", "CEPU"]
-  const isUS = US_TICKERS.includes(tickerUpper) && !tickerUpper.endsWith("D")
-  const yfSymbol = isUS ? tickerUpper : `${tickerUpper}.BA`
+  const yfSymbol = `${tickerUpper}.BA`
 
   // Fetch in parallel
-  const [history, meta, merval] = await Promise.all([
+  const [history, meta, bymaQuotes] = await Promise.all([
     fetchYFHistory(yfSymbol, range),
     fetchYFMeta(yfSymbol),
-    fetchMervalCurrent(`${tickerUpper}D`),
+    fetchBymaQuotes([tickerUpper]),
   ])
 
-  const lastPrice = merval.last ?? meta.regularMarketPrice
-  const closePrice = merval.close ?? meta.previousClose
+  const byma = bymaQuotes.get(tickerUpper) ?? null
+  const lastPrice = byma?.lastPrice ?? meta.regularMarketPrice
+  const closePrice = byma?.previousClose ?? meta.previousClose
   const change1D = lastPrice != null && closePrice != null && closePrice > 0
     ? lastPrice - closePrice
     : null
@@ -207,12 +193,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     change1DPct,
     high52w: meta.fiftyTwoWeekHigh,
     low52w: meta.fiftyTwoWeekLow,
-    volume: merval.vol ?? meta.regularMarketVolume,
+    volume: byma?.volume ?? meta.regularMarketVolume,
     avgVolume: meta.averageVolume,
-    currency: meta.currency,
+    currency: byma ? "ARS" : meta.currency,
     history,
+    asOf: byma?.asOf ?? null,
+    source: byma ? "byma_data_open" : "yahoo_finance",
+    delayedMinutes: byma ? BYMA_DATA_METADATA.delayedMinutes : null,
   }
 
   setCached(cacheKey, detail, range === "max" ? 86400 : 1800)
-  return NextResponse.json({ data: detail, updated_at: new Date().toISOString() })
+  return NextResponse.json({
+    data: detail,
+    updated_at: new Date().toISOString(),
+    source: detail.source,
+    source_name: byma ? BYMA_DATA_METADATA.source : "Yahoo Finance",
+    delayed_minutes: detail.delayedMinutes,
+    price_as_of: detail.asOf,
+  })
 }
