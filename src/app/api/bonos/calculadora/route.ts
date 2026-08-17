@@ -10,7 +10,7 @@
  * GET /api/bonos/calculadora?ticker=GD30&modo=tir&valor=12.5&liquidacion=2026-09-01
  *
  * Solo soporta tickers con esquema de cashflows verificado contra el
- * prospecto (ver ESQUEMAS en bond-schedule.ts — hoy sólo GD30). Para el
+ * prospecto (ver ESQUEMAS en bond-schedule.ts — hoy GD30 y AL30). Para el
  * resto devuelve 404 explícito en vez de un cálculo legado sin validar,
  * mismo criterio de honestidad que ya usa /api/bonos con "dataQuality".
  */
