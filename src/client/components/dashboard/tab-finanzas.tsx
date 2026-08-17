@@ -347,6 +347,7 @@ interface BondRow {
   currentYield: number | null
   durationMod: number | null
   vnResidual: number
+  calculationModel?: "excel_parity_verified" | "legacy_unverified_schedule"
 }
 
 export function BonosView() {
@@ -426,7 +427,15 @@ export function BonosView() {
 
           {/* Tabla soberanos */}
           <div style={{ background: "var(--bg)", padding: 16 }}>
-            <SectionTitle title="Screener soberanos" />
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+              <SectionTitle title="Screener soberanos" />
+              <span style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>
+                <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "var(--positive)", marginRight: 3 }} />
+                verificado&nbsp;&nbsp;
+                <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "var(--text-mute)", marginRight: 3 }} />
+                legado
+              </span>
+            </div>
             <div style={{ overflowY: "auto", maxHeight: 260 }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-data)", fontSize: 9 }}>
                 <thead>
@@ -447,7 +456,19 @@ export function BonosView() {
                         background: selected?.type === "bono" && selected.ticker === b.ticker ? "var(--bg-elev-2)" : "transparent",
                       }}
                     >
-                      <td style={{ padding: "3px 6px", color: "var(--amber)", fontWeight: 700 }}>{b.ticker}</td>
+                      <td style={{ padding: "3px 6px", color: "var(--amber)", fontWeight: 700 }}>
+                        {b.ticker}
+                        <span
+                          title={b.calculationModel === "excel_parity_verified"
+                            ? "Verificado: cronograma de cupón/amortización contrastado contra prospecto y planilla Excel de referencia."
+                            : "Legado: cronograma sin verificar todavía contra fuente primaria — usar con margen de error."}
+                          style={{
+                            display: "inline-block", marginLeft: 5, width: 6, height: 6, borderRadius: "50%",
+                            background: b.calculationModel === "excel_parity_verified" ? "var(--positive)" : "var(--text-mute)",
+                            verticalAlign: "middle",
+                          }}
+                        />
+                      </td>
                       <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{b.ley}</td>
                       <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{b.vencimiento?.slice(0, 7)}</td>
                       <td style={{ padding: "3px 6px", color: "var(--text)", textAlign: "right" }}>{b.precio != null ? fmtNum(b.precio, 2) : "—"}</td>

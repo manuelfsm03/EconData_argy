@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/server/db/prisma"
 import { BOND_DEFS, CAP_INSTRUMENT_DEFS, type BondDef } from "@/server/domain/bonds-data"
 import { metricasDeMercado, metricasDevengadas } from "@/lib/bond-math"
-import { construirCashflows, GD30 } from "@/lib/bond-schedule"
+import { construirCashflows, ESQUEMAS } from "@/lib/bond-schedule"
 import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
 import { parseRavaBondPrices, type RavaBondPrice } from "@/server/external/rava-prices"
 import { PESO_BOND_TICKERS } from "@/server/domain/peso-bonds"
@@ -384,7 +384,7 @@ export async function GET(request: NextRequest) {
     const liquidacion = siguienteDiaHabil(fechaUTC(hoy.toISOString().slice(0, 10)))
     const screener = await Promise.all(
       bonds.map(async (bond: BondLike) => {
-        const esquemaVerificado = bond.ticker === GD30.ticker ? GD30 : null
+        const esquemaVerificado = ESQUEMAS.find((esquema) => esquema.ticker === bond.ticker) ?? null
         const cashflowsVerificados = esquemaVerificado ? construirCashflows(esquemaVerificado) : null
         const devengadas = cashflowsVerificados
           ? metricasDevengadas(cashflowsVerificados, liquidacion)
@@ -477,7 +477,7 @@ export async function GET(request: NextRequest) {
       count: screener.length,
       updated_at: new Date().toISOString(),
       ...marketMetaForRows(screener),
-      nota: "GD30 usa el motor verificado contra la planilla; los demás bonos conservan el cálculo legado y se marcan como pendientes de validar contra fuente primaria",
+      nota: "Los bonos del canje 2020 con cronograma verificado contra prospecto (ver ESQUEMAS en bond-schedule.ts) usan el motor de cashflows validado; el resto conserva el cálculo legado y se marca como pendiente de validar contra fuente primaria.",
     })
   } catch (error) {
     console.error("[/api/bonos]", error)
