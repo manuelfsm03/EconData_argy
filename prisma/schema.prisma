@@ -333,3 +333,21 @@ model ForumReaction {
   @@index([postId])
   @@map("asset_forum_reactions")
 }
+
+// ─── Usuarios ────────────────────────────────────────────────────────────
+// La autenticación (signup/login/sesiones) la maneja Supabase Auth, no esta
+// DB -- Supabase tiene su propia tabla auth.users en su propio proyecto.
+// `id` acá es el mismo UUID que Supabase le asigna al usuario (no autogenerado
+// por Prisma): la app lo crea la primera vez que ve a un usuario logueado sin
+// perfil todavía (ver server/auth/get-or-create-profile.ts). Sin FK física a
+// auth.users porque vive en otra base -- se valida en runtime, no en el schema.
+model Profile {
+  id          String   @id // uuid de Supabase auth.users.id
+  username    String   @unique
+  displayName String?  @map("display_name")
+  avatarUrl   String?  @map("avatar_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("profiles")
+}
