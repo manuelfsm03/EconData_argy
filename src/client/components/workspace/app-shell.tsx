@@ -19,6 +19,7 @@ import { CanvasWorkspace } from "./canvas-workspace"
 import { DataLibrary } from "./data-library"
 import { ForumHub } from "./forum-hub"
 import { MarketCalendar } from "./market-calendar"
+import { SiteFooter } from "./site-footer"
 import { BondsWorkspace } from "./bonds-workspace"
 import { DATA_CARD_CATALOG } from "@/lib/card-catalog"
 
@@ -89,6 +90,7 @@ export function AppShell() {
         {section === "calendar" && <MarketCalendar />}
         {section === "bonds" && <BondsWorkspace />}
         {section === "forum" && <ForumHub />}
+        <SiteFooter />
       </SidebarInset>
     </SidebarProvider>
   )
