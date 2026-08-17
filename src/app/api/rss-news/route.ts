@@ -102,7 +102,12 @@ const RELEVANT_TERMS: string[] = [
   "soja", "maíz", "maiz", "trigo", "girasol", "agro", "campo", "granos",
   "litio", "minería", "mineria", "ypf", "vaca muerta", "shale",
   "energía", "energia", "electricidad", "nafta", "combustible",
-  "fmi", "banco mundial", "bid", "caf", "g20", "g7", "ocde", "omc",
+  // El término bid (BID, Banco Interamericano de Desarrollo) queda afuera a
+  // propósito: colisiona con la palabra inglesa común bid (oferta, intento
+  // judicial, etc.) y le daba señal sustantiva falsa a notas sin relación
+  // económica, verificado en producción. Noticias reales del BID igual
+  // matchean por banco mundial, préstamo, américa latina, etc.
+  "fmi", "banco mundial", "caf", "g20", "g7", "ocde", "omc",
   "arancel", "aranceles", "comercio exterior", "aduana", "sanción", "sanciones",
   // ── Política (ES) ──
   "gobierno", "gobernador", "presidente", "presidenta", "ministro", "ministra",
@@ -112,6 +117,16 @@ const RELEVANT_TERMS: string[] = [
   "milei", "kicillof", "massa", "macri", "kirchner", "caputo",
   "oposición", "oposicion", "coalición", "bloque", "partido político",
   "reforma", "ajuste", "plan económico", "medida económica",
+  // ── Social (ES) ──
+  "huelga", "paro general", "paro docente", "protesta", "manifestación", "manifestacion",
+  "educación", "educacion", "universidad", "universidades", "docentes", "paritaria docente",
+  "salud pública", "salud publica", "sistema de salud", "hospital público", "hospital publico",
+  "obra social", "pami",
+  "vivienda", "déficit habitacional", "deficit habitacional", "alquileres", "alquiler",
+  "jubilación", "jubilacion", "jubilados", "pensión", "pension", "seguridad social",
+  "haber jubilatorio", "moratoria previsional",
+  "desigualdad", "sindicato", "sindicatos", "gremio", "gremios", "paritarias",
+  "trabajo informal", "informalidad laboral", "migrantes", "migración", "migracion",
   // ── Geopolítica (ES + EN) ──
   "guerra", "conflicto", "invasión", "invasion", "ataque", "bombardeo",
   "ucrania", "rusia", "gaza", "israel", "irán", "iran", "china", "eeuu",
@@ -147,10 +162,18 @@ const RELEVANT_SET = RELEVANT_TERMS.map((t) => t.toLowerCase())
 // Detección de categoría por keywords en el título
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   finanzas:    ["bolsa", "acciones", "bonos", "bursátil", "merval", "cedear", "dólar", "dolar", "tasas", "bcra", "rofex", "letras", "inflación", "inflacion", "tasa"],
-  comercio:    ["exportaciones", "importaciones", "balanza", "arancel", "comercio exterior", "aduana", "trump", "aranceles", "tarifa"],
+  // trump salió de acá: categorizaba como comercio cualquier nota con su
+  // nombre (guerra, defensa, judicial), no sólo las de aranceles/comercio.
+  // Esas notas ahora caen en la categoría default del feed, más precisa.
+  comercio:    ["exportaciones", "importaciones", "balanza", "arancel", "comercio exterior", "aduana", "aranceles", "tarifa"],
   energía:     ["petróleo", "petroleo", "gas", "energía", "energia", "litio", "ypf", "combustible", "nafta", "vaca muerta"],
   commodities: ["soja", "maíz", "maiz", "trigo", "girasol", "agro", "cereales", "oleaginosas", "granos", "campo"],
   política:    ["gobierno", "congreso", "senado", "milei", "decreto", "fmi", "elecciones", "legislativo", "ministerio"],
+  social:      ["huelga", "paro general", "paro docente", "protesta", "manifestación", "manifestacion",
+                "educación", "educacion", "universidad", "docentes", "salud pública", "salud publica",
+                "hospital", "vivienda", "alquileres", "alquiler", "jubilación", "jubilacion", "jubilados",
+                "pensión", "pension", "seguridad social", "desigualdad", "sindicato", "sindicatos",
+                "gremio", "gremios", "paritarias", "trabajo informal", "migrantes", "migración", "migracion"],
 }
 
 // Descarta cualquier título con caracteres cirílicos, árabes o CJK

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
@@ -9,6 +10,9 @@ import {
   isRelevantNewsItem,
   matchesAnyWholeTerm,
 } from "../src/server/domain/rss-news-policy"
+
+const rssRoute = readFileSync("src/app/api/rss-news/route.ts", "utf8")
+const newsFeed = readFileSync("src/client/components/dashboard/news-feed.tsx", "utf8")
 
 const terms = [
   "economía", "inflación", "mercado", "bonos", "dólar", "oro", "elecciones",
@@ -61,6 +65,26 @@ test("generic geography needs an economic, political, or geopolitical co-signal"
   assert.equal(isRelevantHeadline("Trump meets Xi Jinping in China", chinaTerms), true)
 })
 
+test("'trump' alone needs an economic, political, or social co-signal, unlike other head-of-state names", () => {
+  const nameTerms = [...terms, "milei", "policy", "tariff"]
+
+  // Producción real: pasaba el filtro sólo porque "trump" matcheaba, sin
+  // ningún contenido económico/político-gubernamental/social genuino.
+  assert.equal(
+    isRelevantHeadline("Trump loses second Supreme Court bid over E Jean Carroll sex abuse case", nameTerms),
+    false,
+  )
+  assert.equal(isRelevantHeadline("Trump's approval rating sinks to new low", nameTerms), false)
+
+  // Con señal sustantiva adicional, sigue pasando.
+  assert.equal(isRelevantHeadline("Trump's new tariff policy shakes markets", nameTerms), true)
+
+  // Otras figuras de gobierno no quedan sujetas a la misma restricción: no hay
+  // evidencia productiva de que necesiten el co-signal, y exigirlo tira noticias
+  // legítimas (ver el caso "Xi Jinping" del test de geografía genérica).
+  assert.equal(isRelevantHeadline("Milei fue a comer a un restaurante con amigos", nameTerms), true)
+})
+
 test("source paths reject unrelated verticals before keyword scoring", () => {
   assert.equal(isExcludedNewsUrl("https://www.infobae.com/mexico/deportes/nota"), true)
   assert.equal(isExcludedNewsUrl("https://example.com/sport/football/nota"), true)
@@ -100,6 +124,55 @@ test("duplicate stories are collapsed by normalized title or canonical link", ()
   ]
 
   assert.deepEqual(dedupeNewsItems(items), [items[0], items[3]])
+})
+
+test("the 'bid' acronym (BID, Banco Interamericano de Desarrollo) is not a relevant term", () => {
+  // Colisiona con la palabra inglesa común "bid" y le daba señal sustantiva
+  // falsa a notas sin relación económica — verificado en producción con este
+  // titular exacto, que pasaba el filtro sólo por "bid" + "trump".
+  const termsBlock = rssRoute.slice(
+    rssRoute.indexOf("const RELEVANT_TERMS"),
+    rssRoute.indexOf("const RELEVANT_SET"),
+  )
+  const quotedTerms = [...termsBlock.matchAll(/"([^"]+)"/g)].map((m) => m[1].toLowerCase())
+  assert.equal(quotedTerms.includes("bid"), false)
+
+  assert.equal(
+    isRelevantHeadline(
+      "Trump loses second Supreme Court bid over E Jean Carroll sex abuse case",
+      quotedTerms,
+    ),
+    false,
+  )
+})
+
+test("'trump' is not a category keyword for comercio (miscategorized military/legal news)", () => {
+  const categoryBlock = rssRoute.slice(
+    rssRoute.indexOf("CATEGORY_KEYWORDS"),
+    rssRoute.indexOf("isNonLatinScript"),
+  )
+  const comercioBlock = categoryBlock.slice(
+    categoryBlock.indexOf("comercio:"),
+    categoryBlock.indexOf("energía:"),
+  )
+  assert.doesNotMatch(comercioBlock, /"trump"/)
+})
+
+test("a 'social' section exists end to end: relevant terms, category bucket, and UI filter", () => {
+  const socialTerms = ["huelga", "educación", "salud pública", "vivienda", "jubilados", "sindicatos", "migrantes"]
+  for (const term of socialTerms) {
+    assert.match(rssRoute, new RegExp(`"${term}"`), `RELEVANT_TERMS should include "${term}"`)
+  }
+
+  const categoryBlock = rssRoute.slice(
+    rssRoute.indexOf("CATEGORY_KEYWORDS"),
+    rssRoute.indexOf("isNonLatinScript"),
+  )
+  assert.match(categoryBlock, /social:\s*\[/)
+  assert.match(categoryBlock, /"huelga"/)
+  assert.match(categoryBlock, /"jubilados"/)
+
+  assert.match(newsFeed, /key:\s*"social",\s*label:\s*"Social"/)
 })
 
 test("news dates must be valid, recent, and not materially in the future", () => {

@@ -48,6 +48,19 @@ const EXCLUDE_PATTERNS = EXCLUDE_TERMS.map((term) =>
 // culture stories from leaking in through a generic geography keyword.
 const GENERIC_GEOGRAPHY_TERMS = ["china"]
 
+// Same problem, different shape, but scoped to what production evidence actually
+// shows: "trump" is in RELEVANT_TERMS so real policy/government stories match,
+// but his name alone also lets through anything mentioning him — personal legal
+// cases, approval-rating trivia — with zero economic, political-governance, or
+// social substance (verified against live feed output). Other heads-of-state in
+// RELEVANT_TERMS (milei, putin, xi jinping, etc.) don't show this failure mode in
+// practice — e.g. "Trump meets Xi Jinping in China" is itself a real diplomatic
+// story — so they're deliberately left out to avoid dropping legitimate coverage
+// without evidence they need the same treatment.
+const GENERIC_NAME_TERMS = ["trump"]
+
+const GENERIC_ALONE_TERMS = [...GENERIC_GEOGRAPHY_TERMS, ...GENERIC_NAME_TERMS]
+
 const RELEVANT_PATTERN_CACHE = new WeakMap<object, RegExp[]>()
 
 function relevantPatterns(relevantTerms: readonly string[]): RegExp[] {
@@ -73,12 +86,12 @@ export function isRelevantHeadline(title: string, relevantTerms: readonly string
   if (isExcludedHeadline(title)) return false
   if (!matchesAnyWholeTerm(title, relevantTerms)) return false
 
-  if (!matchesAnyWholeTerm(title, GENERIC_GEOGRAPHY_TERMS)) return true
+  if (!matchesAnyWholeTerm(title, GENERIC_ALONE_TERMS)) return true
 
-  const nonGeographicTerms = relevantTerms.filter((term) =>
-    !GENERIC_GEOGRAPHY_TERMS.includes(term.trim().toLocaleLowerCase()),
+  const substantiveTerms = relevantTerms.filter((term) =>
+    !GENERIC_ALONE_TERMS.includes(term.trim().toLocaleLowerCase()),
   )
-  return matchesAnyWholeTerm(title, nonGeographicTerms)
+  return matchesAnyWholeTerm(title, substantiveTerms)
 }
 
 export function matchesAnyWholeTerm(text: string, terms: readonly string[]): boolean {
