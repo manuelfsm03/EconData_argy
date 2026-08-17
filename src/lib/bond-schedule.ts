@@ -163,4 +163,43 @@ export const GD30: EsquemaBono = {
   ],
 }
 
-export const ESQUEMAS: EsquemaBono[] = [GD30]
+/**
+ * AL30 — Bono Soberano USD Ley Argentina 2030, del mismo canje 2020 que GD30.
+ * Mismo cronograma de tasas y amortización que GD30 (ambos "Step Up 2030" de
+ * la misma reestructuración) — difieren en ley aplicable e ISIN, no en términos
+ * financieros. Verificado cruzando Rava, cbonds.com y MAE (ver `fuente`).
+ */
+export const AL30: EsquemaBono = {
+  ticker: "AL30",
+  nombre: "Bono Soberano USD Ley Argentina 2030",
+  isin: "ARARGE3209S6",
+  emisor: "REPUBLIC OF ARGENTINA",
+  moneda: "USD",
+  ley: "local",
+  emision: "2020-09-04",
+  vencimiento: "2030-07-09",
+  fuente: "Rava Bursátil (ficha AL30) + cbonds.com (ISIN ARARGE3209S6) + MAE — mismo cronograma que GD30 (ambos del canje 2020, difieren en ley aplicable), verificado 2026-08-16",
+  filas: [
+    { fecha: "2021-07-09", tasa: 0.00125, amortizacion: 0 },
+    { fecha: "2022-01-09", tasa: 0.005, amortizacion: 0 },
+    { fecha: "2022-07-09", tasa: 0.005, amortizacion: 0 },
+    { fecha: "2023-01-09", tasa: 0.005, amortizacion: 0 },
+    { fecha: "2023-07-09", tasa: 0.005, amortizacion: 0 },
+    { fecha: "2024-01-09", tasa: 0.0075, amortizacion: 0 },
+    { fecha: "2024-07-09", tasa: 0.0075, amortizacion: 4 },
+    { fecha: "2025-01-09", tasa: 0.0075, amortizacion: 8 },
+    { fecha: "2025-07-09", tasa: 0.0075, amortizacion: 8 },
+    { fecha: "2026-01-09", tasa: 0.0075, amortizacion: 8 },
+    { fecha: "2026-07-09", tasa: 0.0075, amortizacion: 8 },
+    { fecha: "2027-01-09", tasa: 0.0075, amortizacion: 8 },
+    { fecha: "2027-07-09", tasa: 0.0075, amortizacion: 8 },
+    { fecha: "2028-01-09", tasa: 0.0175, amortizacion: 8 },
+    { fecha: "2028-07-09", tasa: 0.0175, amortizacion: 8 },
+    { fecha: "2029-01-09", tasa: 0.0175, amortizacion: 8 },
+    { fecha: "2029-07-09", tasa: 0.0175, amortizacion: 8 },
+    { fecha: "2030-01-09", tasa: 0.0175, amortizacion: 8 },
+    { fecha: "2030-07-09", tasa: 0.0175, amortizacion: 8 },
+  ],
+}
+
+export const ESQUEMAS: EsquemaBono[] = [GD30, AL30]
