@@ -53,7 +53,16 @@ const RSS_FEEDS: RSSFeed[] = [
   // ── Internacional — Francia (español) ──
   { url: "https://www.france24.com/es/rss",                         source: "France 24",      region: "internacional", category: "política",  country: "francia",      lang: "es" },
   // ── Internacional — Alemania (español) ──
-  { url: "https://rss.dw.com/rdf/rss-es-eco",                      source: "DW Español",     region: "internacional", category: "economía",  country: "alemania",     lang: "es" },
+  // El feed viejo de DW Español quedó afuera: la URL está muerta, devuelve
+  // "Error: no feed by that name." (verificado en vivo), por eso Alemania
+  // no traía ninguna nota. Probé reemplazarla por DW Business (rss-en-bus):
+  // tiene contenido excelente pero el feed es RDF/RSS 1.0, con <item
+  // rdf:about="..."> en vez de <item> a secas — el regex de extractItems()
+  // no lo matchea (0 items, siempre). Arreglar el parser para RDF es un
+  // cambio más grande que agregar 2 fuentes, así que quedan afuera estas dos
+  // en RSS 2.0 estándar, chequeadas en vivo con <item> e <pubDate> reales.
+  { url: "https://www.spiegel.de/international/index.rss",        source: "Der Spiegel Intl.", region: "internacional", category: "política",  country: "alemania",     lang: "en" },
+  { url: "https://feeds.thelocal.com/rss/de/business",             source: "The Local DE Biz",  region: "internacional", category: "economía",  country: "alemania",     lang: "en" },
   // ── Internacional — Medio Oriente (inglés) ──
   { url: "https://www.aljazeera.com/xml/rss/all.xml",              source: "Al Jazeera",     region: "internacional", category: "conflicto", country: "medio-oriente", lang: "en" },
   { url: "https://www.al-monitor.com/rss.xml",                     source: "Al Monitor",     region: "internacional", category: "política",  country: "medio-oriente", lang: "en" },
@@ -83,6 +92,8 @@ const RELEVANT_TERMS: string[] = [
   "reservas", "reservas internacionales", "oro", "divisas",
   "producción", "industria", "industrial", "manufactura",
   "construcción", "construccion", "actividad económica",
+  "ganancia", "ganancias", "utilidad", "utilidades", "balance financiero",
+  "facturación", "facturacion", "resultados trimestrales", "despido", "despidos",
   "emae", "indec", "bcra", "anses", "afip", "arca", "tesoro", "hacienda",
   // ── Finanzas / mercados (ES) ──
   "mercado", "mercados", "bolsa", "bolsas", "bursátil", "bursatil",
@@ -139,6 +150,7 @@ const RELEVANT_TERMS: string[] = [
   "inflation", "deflation", "price", "prices", "wage", "wages",
   "employment", "unemployment", "jobless", "payroll",
   "budget", "deficit", "surplus", "debt", "spending", "revenue", "tax",
+  "profit", "profits", "earnings", "layoff", "layoffs", "job cuts",
   "trade", "tariff", "tariffs", "export", "import", "current account",
   "monetary", "fiscal", "treasury", "central bank", "interest rate",
   "federal reserve", "imf", "world bank", "ecb",
@@ -231,7 +243,7 @@ function extractItems(xml: string, feed: RSSFeed): RSSItem[] {
 // Cache por instancia (secundario — el CDN de Vercel es la capa primaria)
 let _cache: { items: RSSItem[]; ts: number; v: number } | null = null
 // Versión del cache — cambiar para forzar invalidación
-const CACHE_VERSION = 6
+const CACHE_VERSION = 8
 const INSTANCE_TTL = 5 * 60 * 1000
 
 export async function GET() {

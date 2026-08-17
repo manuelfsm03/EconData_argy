@@ -146,6 +146,41 @@ test("the 'bid' acronym (BID, Banco Interamericano de Desarrollo) is not a relev
   )
 })
 
+test("corporate profit/earnings/layoff news is relevant even without a numeric budget term", () => {
+  const termsBlock = rssRoute.slice(
+    rssRoute.indexOf("const RELEVANT_TERMS"),
+    rssRoute.indexOf("const RELEVANT_SET"),
+  )
+  const quotedTerms = [...termsBlock.matchAll(/"([^"]+)"/g)].map((m) => m[1].toLowerCase())
+
+  // Caso real de producción: sólo matcheaba "china" (geografía genérica, no
+  // alcanza sola), así que una nota claramente económica quedaba afuera.
+  assert.equal(
+    isRelevantHeadline("Volkswagen profits down as competition from China heats up", quotedTerms),
+    true,
+  )
+  assert.equal(
+    isRelevantHeadline("Germany's BioNTech announces layoffs as vaccine sales drop", quotedTerms),
+    true,
+  )
+  assert.equal(isRelevantHeadline("Local bakery wins best croissant award", quotedTerms), false)
+})
+
+test("germany's dead DW feed is replaced by two working, verified-live sources", () => {
+  // rss-es-eco devolvía "Error: no feed by that name." en vivo (verificado);
+  // por eso Alemania no traía ninguna nota. No repetir esta URL.
+  assert.doesNotMatch(rssRoute, /rss-es-eco/)
+
+  const germanyBlock = rssRoute.slice(rssRoute.indexOf('country: "alemania"') - 200, rssRoute.indexOf("Medio Oriente"))
+  const germanyFeeds = [...germanyBlock.matchAll(/url:\s*"([^"]+)"/g)].map((m) => m[1])
+  assert.equal(germanyFeeds.length, 2)
+  for (const url of germanyFeeds) {
+    // Ambas nuevas fuentes son en inglés — RELEVANT_TERMS no tiene términos en
+    // alemán, así que una fuente en "de" quedaría filtrada al 100% en silencio.
+    assert.doesNotMatch(url, /rss-es-eco/)
+  }
+})
+
 test("'trump' is not a category keyword for comercio (miscategorized military/legal news)", () => {
   const categoryBlock = rssRoute.slice(
     rssRoute.indexOf("CATEGORY_KEYWORDS"),

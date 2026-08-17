@@ -109,6 +109,7 @@ export const SOURCE_REGISTRY = {
       "rss.politico.com", "feeds.a.dj.com", "feeds.bbci.co.uk", "www.theguardian.com", "www.ft.com",
       "www.france24.com", "rss.dw.com", "www.aljazeera.com", "www.al-monitor.com", "www.themoscowtimes.com",
       "thewirechina.com", "brazilreport.com", "riotimesonline.com",
+      "www.spiegel.de", "feeds.thelocal.com",
     ],
     kind: "rss",
     dataClass: "news",
