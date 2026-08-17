@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Image from "next/image"
-import { CalendarDays, Database, LayoutDashboard, MessageSquareText } from "lucide-react"
+import { CalendarDays, Database, Landmark, LayoutDashboard, MessageSquareText } from "lucide-react"
 import { ThemeToggle } from "@/client/components/ui/theme-toggle"
 import {
   Sidebar,
@@ -20,9 +20,10 @@ import { DataLibrary } from "./data-library"
 import { ForumHub } from "./forum-hub"
 import { MarketCalendar } from "./market-calendar"
 import { SiteFooter } from "./site-footer"
+import { BondsWorkspace } from "./bonds-workspace"
 import { DATA_CARD_CATALOG } from "@/lib/card-catalog"
 
-type WorkspaceSection = "canvas" | "library" | "calendar" | "forum"
+type WorkspaceSection = "canvas" | "library" | "calendar" | "bonds" | "forum"
 
 const SECTION_KEY = "lapizarra.workspace.section.v1"
 
@@ -30,6 +31,7 @@ const SECTIONS = [
   { id: "canvas" as const, label: "Mi Pizarra", description: "Canvas personal", Icon: LayoutDashboard },
   { id: "library" as const, label: "Biblioteca de datos", description: `${DATA_CARD_CATALOG.length} tarjetas`, Icon: Database },
   { id: "calendar" as const, label: "Calendario", description: "Pagos y vencimientos", Icon: CalendarDays },
+  { id: "bonds" as const, label: "Bonos", description: "Calculadora y herramientas", Icon: Landmark },
   { id: "forum" as const, label: "Foro", description: "Conversaciones", Icon: MessageSquareText },
 ]
 
@@ -38,7 +40,7 @@ export function AppShell() {
 
   useEffect(() => {
     const stored = localStorage.getItem(SECTION_KEY)
-    if (stored === "canvas" || stored === "library" || stored === "calendar" || stored === "forum") setSection(stored)
+    if (stored === "canvas" || stored === "library" || stored === "calendar" || stored === "bonds" || stored === "forum") setSection(stored)
   }, [])
 
   useEffect(() => {
@@ -86,6 +88,7 @@ export function AppShell() {
         {section === "canvas" && <CanvasWorkspace />}
         {section === "library" && <DataLibrary />}
         {section === "calendar" && <MarketCalendar />}
+        {section === "bonds" && <BondsWorkspace />}
         {section === "forum" && <ForumHub />}
         <SiteFooter />
       </SidebarInset>

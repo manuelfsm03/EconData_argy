@@ -11,6 +11,7 @@ import { AssetScreener } from "./screener-activos"
 import { RateScreener } from "./screener-tasas"
 import { TabBonos } from "./tab-bonos"
 import { TabMundo } from "./tab-mundo"
+import { StockHeatmap } from "./stock-heatmap"
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -112,7 +113,7 @@ const tooltipStyle = {
 
 // ── ACCIONES ─────────────────────────────────────────────────────────────────
 
-interface StockQuote {
+export interface StockQuote {
   ticker: string
   category: string
   lastPrice: number | null
@@ -172,6 +173,11 @@ export function AccionesView() {
             color: cat === c ? "var(--amber)" : "#666", borderRadius: 20, cursor: "pointer",
           }}>{c === "all" ? "Todos" : c}</button>
         ))}
+      </div>
+
+      {/* Mapa de calor: Panel Líder / Panel General */}
+      <div style={{ padding: 16, background: "var(--bg)" }}>
+        <StockHeatmap stocks={withPrice} />
       </div>
 
       {/* Chart variaciones */}

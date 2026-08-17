@@ -284,6 +284,8 @@ export function BBGAreaChart({
                 strokeWidth={1.5}
                 stackId={stacked ? "1" : undefined}
                 connectNulls
+                animationDuration={400}
+                animationEasing="ease-out"
               />
             ))}
           </AreaChart>

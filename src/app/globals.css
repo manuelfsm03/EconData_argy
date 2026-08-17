@@ -145,6 +145,20 @@ td.num, th.num { text-align: right; }
 
 .recharts-tooltip-wrapper { outline: none; }
 
+/* Transicion de contenido al cambiar de tab (Radix desmonta el panel
+   inactivo, por eso es @keyframes y no transition: no hay "inactive" en el
+   DOM del que partir, solo la entrada del panel que se acaba de montar). */
+@keyframes tab-content-reveal {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+[role="tabpanel"][data-state="active"] {
+  animation: tab-content-reveal 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  [role="tabpanel"][data-state="active"] { animation: none; }
+}
+
 @keyframes pulse-slow {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.45; }
