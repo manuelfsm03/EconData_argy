@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Image from "next/image"
-import { CalendarDays, Database, LayoutDashboard, MessageSquareText } from "lucide-react"
+import { CalendarDays, Database, FileText, LayoutDashboard, MessageSquareText } from "lucide-react"
 import { ThemeToggle } from "@/client/components/ui/theme-toggle"
 import { UserMenu } from "@/client/components/auth/user-menu"
 import {
@@ -20,9 +20,10 @@ import { CanvasWorkspace } from "./canvas-workspace"
 import { DataLibrary } from "./data-library"
 import { ForumHub } from "./forum-hub"
 import { MarketCalendar } from "./market-calendar"
+import { ReportsWorkspace } from "./reports-workspace"
 import { DATA_CARD_CATALOG } from "@/lib/card-catalog"
 
-type WorkspaceSection = "canvas" | "library" | "calendar" | "forum"
+type WorkspaceSection = "canvas" | "library" | "calendar" | "reports" | "forum"
 
 const SECTION_KEY = "lapizarra.workspace.section.v1"
 
@@ -30,6 +31,7 @@ const SECTIONS = [
   { id: "canvas" as const, label: "Mi Pizarra", description: "Canvas personal", Icon: LayoutDashboard },
   { id: "library" as const, label: "Biblioteca de datos", description: `${DATA_CARD_CATALOG.length} tarjetas`, Icon: Database },
   { id: "calendar" as const, label: "Calendario", description: "Pagos y vencimientos", Icon: CalendarDays },
+  { id: "reports" as const, label: "Informes", description: "Nuestra coyuntura", Icon: FileText },
   { id: "forum" as const, label: "Foro", description: "Conversaciones", Icon: MessageSquareText },
 ]
 
@@ -38,7 +40,7 @@ export function AppShell() {
 
   useEffect(() => {
     const stored = localStorage.getItem(SECTION_KEY)
-    if (stored === "canvas" || stored === "library" || stored === "calendar" || stored === "forum") setSection(stored)
+    if (stored === "canvas" || stored === "library" || stored === "calendar" || stored === "reports" || stored === "forum") setSection(stored)
   }, [])
 
   useEffect(() => {
@@ -88,6 +90,7 @@ export function AppShell() {
         {section === "canvas" && <CanvasWorkspace />}
         {section === "library" && <DataLibrary />}
         {section === "calendar" && <MarketCalendar />}
+        {section === "reports" && <ReportsWorkspace />}
         {section === "forum" && <ForumHub />}
       </SidebarInset>
     </SidebarProvider>
