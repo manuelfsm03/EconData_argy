@@ -343,6 +343,8 @@ export function BBGLineChart({
                 strokeWidth={1.5}
                 strokeDasharray={l.dashed ? "4 2" : undefined}
                 connectNulls
+                animationDuration={400}
+                animationEasing="ease-out"
               />
             ))}
           </LineChart>
