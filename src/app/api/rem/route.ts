@@ -17,13 +17,12 @@ export async function GET() {
 
   try {
     const buf = await fetchRemExcel()
-    const { serie, participantes } = parseRemExcel(buf)
+    const { serie } = parseRemExcel(buf)
     const ultimo = serie.at(-1)
 
     const result = {
       data: {
         serie,
-        participantes,
         ultimo: ultimo ?? null,
         kpis: {
           inflacion_12m:  ultimo?.inflacion_12m  ?? null,

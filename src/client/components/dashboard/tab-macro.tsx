@@ -2066,27 +2066,16 @@ interface BreakevenData {
   breakeven: { lecap_corto_tea: number | null; real_vs_rem: number | null; inflac_vs_cer: number | null; interpretation: string | null }
 }
 
-interface RemParticipante {
-  institucion: string
-  inflacion_12m: number | null
-  dolar_12m: number | null
-  tasa_12m: number | null
-}
-
 function BreakEvenSection() {
   const [bkData, setBkData] = useState<BreakevenData | null>(null)
-  const [participantes, setParticipantes] = useState<RemParticipante[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/breakeven").then(r => r.json()).catch(() => null),
-      fetch("/api/rem").then(r => r.json()).catch(() => null),
-    ]).then(([bk, rem]) => {
-      setBkData(bk?.data ?? null)
-      setParticipantes(rem?.data?.participantes ?? [])
-      setLoading(false)
-    })
+    fetch("/api/breakeven").then(r => r.json()).catch(() => null)
+      .then((bk) => {
+        setBkData(bk?.data ?? null)
+        setLoading(false)
+      })
   }, [])
 
   if (loading) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 10, fontFamily: "var(--font-data)" }}>Cargando expectativas de mercado...</div>
@@ -2249,47 +2238,6 @@ function BreakEvenSection() {
         </div>
       )}
 
-      {/* Top-10 participantes REM */}
-      {participantes.length > 0 && (
-        <div style={{ padding: "8px 12px 12px" }}>
-          <div style={{ fontSize: 9, color: "var(--text-dim)", fontFamily: "var(--font-data)", letterSpacing: 1, marginBottom: 6 }}>
-            REM — PRONÓSTICOS INDIVIDUALES · INFLACIÓN 12M (últimos {participantes.length} participantes)
-          </div>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 9 }}>
-              <thead>
-                <tr>
-                  {["Institución", "Inflac. 12M", "USD 12M", "Tasa 12M"].map(h => (
-                    <th key={h} style={{ padding: "4px 8px", fontSize: 8, color: "var(--text-dim)", textAlign: h === "Institución" ? "left" : "right", borderBottom: "1px solid var(--border)" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {participantes.map((p, i) => (
-                  <tr key={i} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg-row-alt)" }}>
-                    <td style={{ padding: "3px 8px", color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 9, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {p.institucion}
-                    </td>
-                    <td style={{ padding: "3px 8px", textAlign: "right", fontFamily: "var(--font-data)", fontWeight: 700,
-                      color: p.inflacion_12m != null ? (p.inflacion_12m > 50 ? "var(--negative)" : p.inflacion_12m > 25 ? "var(--amber)" : "var(--positive)") : "var(--text-mute)" }}>
-                      {p.inflacion_12m != null ? `${p.inflacion_12m.toFixed(1)}%` : "—"}
-                    </td>
-                    <td style={{ padding: "3px 8px", textAlign: "right", fontFamily: "var(--font-data)", color: "var(--sky)" }}>
-                      {p.dolar_12m != null ? `$${Math.round(p.dolar_12m).toLocaleString("es-AR")}` : "—"}
-                    </td>
-                    <td style={{ padding: "3px 8px", textAlign: "right", fontFamily: "var(--font-data)", color: "#FFD700" }}>
-                      {p.tasa_12m != null ? `${p.tasa_12m.toFixed(1)}%` : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div style={{ fontSize: 8, color: "var(--text-mute)", fontFamily: "var(--font-data)", marginTop: 4 }}>
-            Fuente: BCRA · REM · Último relevamiento disponible · Ordenado por inflación esperada ascendente
-          </div>
-        </div>
-      )}
     </div>
   )
 }
