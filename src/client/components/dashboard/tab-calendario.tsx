@@ -7,16 +7,20 @@
  *   9-jul, feriado, y liquidar el día hábil siguiente).
  * ⚠️ MONTOS NO VALIDADOS: los cupón%/amort% de bonds-data.ts tienen errores conocidos (Donna) y
  *   NO se muestran como dato firme. Se validarán con el motor de bonos → futuro `bond-schedule.ts`.
+ * FOMC (Fed): conectado a /api/calendario/fomc (fechas oficiales, fijas, no requiere fetch en
+ *   vivo real -- ver src/server/domain/fomc-calendar.ts). Se fetchea una vez al montar y se
+ *   combina con los eventos derivados de bonos.
  * Fuente NO conectada (sin fechas inventadas): macro AR (INDEC IPC/EMAE, BCRA REM, BCRA IPOM),
- *   licitaciones del Tesoro, FOMC (Fed) y earnings de empresas AR — capacidad ya visible en la UI.
+ *   licitaciones del Tesoro y earnings de empresas AR — capacidad ya visible en la UI.
  * Alarmas ("avisarme N días antes"): SOLO UI de preferencias (vista previa). La entrega
  *   real (push/email) es Fase 2: requiere identidad de usuario, scheduler durable e idempotencia.
  */
 
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { BOND_DEFS, CAP_INSTRUMENT_DEFS } from "@/server/domain/bonds-data"
+import type { FomcMeeting } from "@/server/domain/fomc-calendar"
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
 type TipoEvento = "bono" | "vencimiento" | "lecap" | "licitacion" | "macro" | "internacional" | "earnings"
@@ -50,7 +54,7 @@ const TIPO_META: Record<TipoEvento, { label: string; short: string; color: strin
   lecap:         { label: "LECAP",         short: "LECAP", color: "var(--sky)",      real: true  },
   licitacion:    { label: "Licitación",    short: "LICIT", color: "var(--yellow)",   real: false },
   macro:         { label: "Macro AR",      short: "MACRO", color: "#5B9BD5",         real: false },
-  internacional: { label: "Internacional", short: "INTL",  color: "#A98EDA",         real: false },
+  internacional: { label: "Internacional", short: "INTL",  color: "#A98EDA",         real: true  },
   earnings:      { label: "Earnings",      short: "EARN",  color: "var(--positive)", real: false },
 }
 const TIPOS = Object.keys(TIPO_META) as TipoEvento[]
@@ -72,10 +76,6 @@ const PLACEHOLDERS: Placeholder[] = [
       { nombre: "BCRA · REM", que: "Relevamiento de Expectativas de Mercado (inflación, tasa, dólar)", freq: "mensual" },
       { nombre: "BCRA · IPOM", que: "Informe de Política Monetaria: diagnóstico y lineamientos del BCRA", freq: "trimestral" },
     ],
-  },
-  {
-    tipo: "internacional", pais: "US", label: "Internacional (Fed)", fuente: "Federal Reserve — FOMC schedule", estado: "fuente no conectada", impacto: "alto",
-    items: [{ nombre: "FOMC · Fed", que: "Decisión de tasa de la Reserva Federal de EE.UU.", freq: "~8 por año" }],
   },
   {
     tipo: "licitacion", pais: "AR", label: "Licitaciones del Tesoro", fuente: "Secretaría de Finanzas / Tesoro", estado: "fuente no conectada", impacto: "medio",
@@ -152,7 +152,18 @@ function derivarEventos(): CalEvent[] {
   out.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : a.activo < b.activo ? -1 : 1))
   return out
 }
-const EVENTOS = derivarEventos()
+// Base sincrónica (bonos/LECAPs, derivada de prospecto, no requiere fetch).
+// El FOMC (async, ver más abajo) se agrega recién dentro de TabCalendario().
+const EVENTOS_BASE = derivarEventos()
+
+function fomcMeetingToEvento(m: FomcMeeting, fuente: string): CalEvent {
+  return {
+    fecha: m.fecha, tipo: "internacional", pais: "US", activo: "FOMC",
+    titulo: m.descripcion,
+    detalle: m.proyecciones ? "Incluye proyecciones económicas (dot plot)" : "Sin proyecciones económicas",
+    fuente, impacto: "alto", estado: "confirmado",
+  }
+}
 
 // ── Helpers de fecha ─────────────────────────────────────────────────────────
 function parseFecha(s: string): Date { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d) }
@@ -181,7 +192,7 @@ function descEvento(ev: CalEvent): string {
 
 // mes del próximo evento real (para arrancar la vista mensual con datos)
 function mesInicial(): { y: number; m: number } {
-  const p = EVENTOS.map(e => e.fecha).filter(f => f >= HOY).sort()[0]
+  const p = EVENTOS_BASE.map(e => e.fecha).filter(f => f >= HOY).sort()[0]
   const d = p ? parseFecha(p) : parseFecha(HOY)
   return { y: d.getFullYear(), m: d.getMonth() }
 }
@@ -207,6 +218,24 @@ function Tag({ tipo }: { tipo: TipoEvento }) {
 export function TabCalendario() {
   const [vista, setVista] = useState<"mensual" | "agenda">("mensual")   // mensual = protagonista
   const [mes, setMes] = useState<{ y: number; m: number }>(MES_INICIAL)
+  const [fomcEventos, setFomcEventos] = useState<CalEvent[]>([])
+
+  useEffect(() => {
+    let cancelado = false
+    fetch("/api/calendario/fomc?futuras=1")
+      .then(r => r.json())
+      .then(j => {
+        if (cancelado || !Array.isArray(j.data)) return
+        setFomcEventos((j.data as FomcMeeting[]).map(m => fomcMeetingToEvento(m, j.source ?? "Federal Reserve")))
+      })
+      .catch(() => { /* si falla, el calendario sigue con los eventos de bonos solos */ })
+    return () => { cancelado = true }
+  }, [])
+
+  const EVENTOS = useMemo(
+    () => [...EVENTOS_BASE, ...fomcEventos].sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0)),
+    [fomcEventos],
+  )
   const [tipos, setTipos] = useState<Record<string, boolean>>(() => Object.fromEntries(TIPOS.map(k => [k, true])))
   const [paises, setPaises] = useState<Record<string, boolean>>({ AR: true, US: true, Global: true })
   const [impactos, setImpactos] = useState<Record<string, boolean>>({ alto: true, medio: true, bajo: true })
@@ -432,10 +461,10 @@ export function TabCalendario() {
   const KPIs = () => (
     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
       {[
-        { label: "Eventos programados", value: String(eventosFiltrados.length), sub: `de ${EVENTOS.length} · fechas aprox. (prospecto)`, big: true },
+        { label: "Eventos programados", value: String(eventosFiltrados.length), sub: `de ${EVENTOS.length} · bonos aprox. (prospecto) + FOMC confirmado`, big: true },
         { label: "Próximo evento", value: proximo ? `${proximo.activo} · ${fmtCorta(proximo.fecha)}` : "—", sub: proximo ? relTexto(proximo.fecha) : "sin próximos", big: false },
-        { label: "Con fecha (aprox.)", value: `${tiposConFuente} / ${TIPOS.length}`, sub: "bonos/lecaps · montos sin validar", big: true },
-        { label: "Fuentes pendientes", value: String(PLACEHOLDERS.length), sub: "macro (INDEC/BCRA) · fed · licit. · earnings", big: true },
+        { label: "Con fecha", value: `${tiposConFuente} / ${TIPOS.length}`, sub: "bonos/lecaps (aprox.) · FOMC (confirmado)", big: true },
+        { label: "Fuentes pendientes", value: String(PLACEHOLDERS.length), sub: "macro (INDEC/BCRA) · licit. · earnings", big: true },
       ].map((k, i) => (
         <div key={i} style={{ background: "var(--bg-elev)", border: "1px solid var(--border)", borderLeft: `3px solid ${kpiAccents[i]}`, borderRadius: 12, padding: "12px 16px", flex: "1 1 170px", boxShadow: "0 1px 2px rgba(0,0,0,.12)" }}>
           <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 5 }}>{k.label}</div>
@@ -492,7 +521,7 @@ export function TabCalendario() {
       {/* Nota de datos — HONESTIDAD: fechas aprox. del prospecto; montos de bono SIN validar */}
       <div style={{ background: "var(--amber-soft)", border: "1px solid var(--border-hi)", borderRadius: 10, color: "var(--text-dim)", fontSize: 11, padding: "9px 15px", marginBottom: 14, lineHeight: 1.5 }}>
         <b style={{ color: "var(--amber)" }}>Datos:</b> las FECHAS de bonos/LECAPs son <b style={{ color: "var(--amber)" }}>aproximadas</b> del prospecto (bonds-data.ts); los <b style={{ color: "var(--amber)" }}>montos de cupón/amortización están pendientes de validación</b> (motor de bonos → futuro <span style={{ fontFamily: "var(--font-data)" }}>bond-schedule.ts</span>) y no se muestran como firmes.
-        Macro (INDEC/BCRA, incl. IPOM) / licitaciones / FOMC / earnings: <b style={{ color: "var(--amber)" }}>fuente no conectada</b> (sin fechas simuladas).
+        Macro (INDEC/BCRA, incl. IPOM) / licitaciones / earnings: <b style={{ color: "var(--amber)" }}>fuente no conectada</b> (sin fechas simuladas). FOMC (Fed): conectado.
         Alarmas: <b style={{ color: "var(--amber)" }}>vista previa</b> (entrega = fase 2).
         <div style={{ marginTop: 5, fontSize: 10, color: "var(--text-mute)" }}>⚠️ Los pagos HD suelen figurar 9-jul (feriado) y liquidar el día hábil siguiente; las fechas exactas llegan al conectar el motor de bonos.</div>
       </div>
