@@ -18,6 +18,7 @@ import {
 } from "recharts"
 import { InfoTooltip } from "@/client/components/ui/info-tooltip"
 import { GLOSSARY } from "@/lib/glossary"
+import { buildSovereignCurve, type SovereignCurveInput } from "@/lib/sovereign-curve"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -284,6 +285,16 @@ function CurveTooltip({ active, payload }: any) {
       <div style={{ color: "var(--amber)", fontWeight: 700, marginBottom: 4 }}>{d.ticker}</div>
       <div style={{ color: "#ccc" }}>YTM: <span style={{ color: "var(--positive)" }}>{d.ytm?.toFixed(2)}%</span></div>
       <div style={{ color: "#ccc" }}>Duration: <span style={{ color: "var(--amber)" }}>{d.dur?.toFixed(2)} años</span></div>
+      <div style={{ color: "var(--text-dim)" }}>Ley: {d.law === "NY" ? "Nueva York" : "Local"}</div>
+      {d.fittedYtm != null && (
+        <>
+          <div style={{ color: "var(--text-dim)" }}>YTM curva: {d.fittedYtm.toFixed(2)}%</div>
+          <div style={{ color: d.residualBps! > 5 ? "var(--positive)" : d.residualBps! < -5 ? "var(--negative)" : "var(--text-dim)" }}>
+            Residual: {d.residualBps! > 0 ? "+" : ""}{d.residualBps!.toFixed(0)} bp · {d.valuation === "en_curva" ? "en curva" : d.valuation}
+          </div>
+        </>
+      )}
+      {d.fittedYtm == null && <div style={{ color: "var(--text-mute)" }}>Residual: muestra insuficiente para esta ley</div>}
       {d.precio != null && <div style={{ color: "var(--text-dim)" }}>Precio: ${d.precio?.toFixed(2)}</div>}
     </div>
   )
@@ -300,19 +311,31 @@ function CurveLabel(props: any) {
 }
 
 function SovereignCurve({ bonds }: { bonds: SovereignBond[] }) {
-  const nyData = useMemo(() =>
-    bonds.filter((b) => b.ley === "NY" && b.tir != null && b.durationMod != null)
-      .map((b) => ({ ticker: b.ticker, ytm: b.tir!, dur: b.durationMod!, precio: b.precio, label: b.ticker }))
-      .sort((a, b) => a.dur - b.dur),
-    [bonds]
-  )
+  const curveData = useMemo(() => {
+    const inputs: SovereignCurveInput[] = []
+    const prices = new Map<string, number | null>()
 
-  const arData = useMemo(() =>
-    bonds.filter((b) => b.ley === "local" && b.tir != null && b.durationMod != null)
-      .map((b) => ({ ticker: b.ticker, ytm: b.tir!, dur: b.durationMod!, precio: b.precio, label: b.ticker }))
-      .sort((a, b) => a.dur - b.dur),
-    [bonds]
-  )
+    for (const bond of bonds) {
+      if ((bond.ley !== "NY" && bond.ley !== "local") || bond.tir == null || bond.durationMod == null) continue
+      inputs.push({
+        ticker: bond.ticker,
+        law: bond.ley,
+        duration: bond.durationMod,
+        ytm: bond.tir,
+      })
+      prices.set(bond.ticker, bond.precio)
+    }
+
+    return buildSovereignCurve(inputs).map((point) => ({
+      ...point,
+      dur: point.duration,
+      precio: prices.get(point.ticker) ?? null,
+      label: point.ticker,
+    }))
+  }, [bonds])
+
+  const nyData = curveData.filter((point) => point.law === "NY")
+  const arData = curveData.filter((point) => point.law === "local")
 
   const allData = [...nyData, ...arData]
   if (allData.length === 0) {
@@ -331,7 +354,7 @@ function SovereignCurve({ bonds }: { bonds: SovereignBond[] }) {
   return (
     <div style={{ background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 4px 8px 0" }}>
       <div style={{ padding: "0 12px 8px", fontSize: 9, color: "var(--text-dim)" }}>
-        Curva soberana — YTM (%) vs Duration Modificada (años) · Puntos por encima de la curva = mayor rendimiento para igual duration
+        Curvas soberanas separadas por ley — YTM (%) vs Duration Modificada (años). La recta es el ajuste de cada ley; el residual compara sólo bonos de esa ley: YTM por encima = barato; por debajo = caro.
       </div>
       <ResponsiveContainer width="100%" height={340}>
         <ScatterChart margin={{ top: 8, right: 48, left: 0, bottom: 16 }}>
@@ -360,17 +383,54 @@ function SovereignCurve({ bonds }: { bonds: SovereignBond[] }) {
           {nyData.length > 0 && (
             <Scatter
               name="NY Law" data={nyData} fill="#4488ff"
+              line={nyData.some((point) => point.fittedYtm != null) ? { stroke: "#4488ff", strokeWidth: 1.25 } : false}
+              lineType="fitting"
               label={<CurveLabel />}
             />
           )}
           {arData.length > 0 && (
             <Scatter
               name="AR Law" data={arData} fill="var(--positive)"
+              line={arData.some((point) => point.fittedYtm != null) ? { stroke: "var(--positive)", strokeWidth: 1.25 } : false}
+              lineType="fitting"
               label={<CurveLabel />}
             />
           )}
         </ScatterChart>
       </ResponsiveContainer>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 8, padding: "8px 12px 4px" }}>
+        {(["NY", "local"] as const).map((law) => {
+          const points = curveData
+            .filter((point) => point.law === law && point.residualBps != null)
+            .sort((a, b) => Math.abs(b.residualBps ?? 0) - Math.abs(a.residualBps ?? 0))
+          const hasReference = points.length > 0
+          return (
+            <div key={law} style={{ border: "1px solid var(--border)", padding: "7px 8px" }}>
+              <div style={{ color: law === "NY" ? "#4488ff" : "var(--positive)", fontSize: 10, fontWeight: 700, marginBottom: 5 }}>
+                Ley {law === "NY" ? "Nueva York" : "Local"}
+              </div>
+              {hasReference ? points.map((point) => {
+                const residual = point.residualBps ?? 0
+                const color = residual > 5 ? "var(--positive)" : residual < -5 ? "var(--negative)" : "var(--text-dim)"
+                const label = point.valuation === "en_curva" ? "en curva" : point.valuation
+                return (
+                  <div key={point.ticker} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 10, lineHeight: "18px" }}>
+                    <span style={{ color: "var(--text)" }}>{point.ticker}</span>
+                    <span style={{ color, fontFamily: "var(--font-data)" }}>{residual > 0 ? "+" : ""}{residual.toFixed(0)} bp · {label}</span>
+                  </div>
+                )
+              }) : (
+                <div style={{ color: "var(--text-mute)", fontSize: 10 }}>
+                  Se requieren al menos tres durations distintas para estimar residual.
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+      <div style={{ padding: "4px 12px 0", color: "var(--text-mute)", fontSize: 9 }}>
+        Referencia estadística cross-sectional, no recomendación de inversión. Residual positivo = mayor YTM versus la curva de esa ley.
+      </div>
     </div>
   )
 }
