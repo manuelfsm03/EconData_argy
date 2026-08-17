@@ -13,6 +13,6 @@ export async function GET() {
 
   const profile = await getOrCreateProfile(user)
   return NextResponse.json({
-    data: { userId: user.id, email: user.email, username: profile.username, avatarUrl: profile.avatarUrl },
+    data: { userId: user.id, email: user.email, username: profile.username, avatarUrl: profile.avatarUrl, canPublish: profile.canPublish },
   })
 }

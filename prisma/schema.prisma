@@ -346,8 +346,32 @@ model Profile {
   username    String   @unique
   displayName String?  @map("display_name")
   avatarUrl   String?  @map("avatar_url")
+  // Quién puede publicar en Informes -- "de momento nosotros los dueños"
+  // (Juan, 2026-08-17): arranca en false para todos, se habilita a mano por
+  // ahora (UPDATE directo en la tabla) hasta que haga falta un sistema de
+  // roles más completo. Ver server/auth/require-publisher.ts.
+  canPublish  Boolean  @default(false) @map("can_publish")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  reports     Report[]
+
   @@map("profiles")
+}
+
+// ─── Informes de coyuntura ─────────────────────────────────────────────────
+// "Ahí escribimos cómo vemos la coyuntura" (Juan, 2026-08-17). Contenido en
+// Markdown (GFM: negrita, links, listas) -- se renderiza con react-markdown
+// en el cliente, nunca dangerouslySetInnerHTML.
+model Report {
+  id        String   @id @default(cuid())
+  title     String
+  body      String // Markdown
+  authorId  String   @map("author_id")
+  author    Profile  @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([createdAt])
+  @@map("reports")
 }

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "react-grid-layout/css/styles.css";
+@plugin "@tailwindcss/typography";
 
 :root,
 [data-theme="dark"] {
