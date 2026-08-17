@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Image from "next/image"
 import { CalendarDays, Database, LayoutDashboard, MessageSquareText } from "lucide-react"
 import { ThemeToggle } from "@/client/components/ui/theme-toggle"
+import { UserMenu } from "@/client/components/auth/user-menu"
 import {
   Sidebar,
   SidebarContent,
@@ -80,6 +81,8 @@ export function AppShell() {
           <active.Icon size={15} className="text-[var(--amber)]" />
           <span className="text-xs font-semibold text-[var(--text)]">{active.label}</span>
           <div className="flex-1" />
+          <UserMenu />
+          <div className="h-5 w-px bg-[var(--border)]" />
           <ThemeToggle />
         </header>
         {section === "canvas" && <CanvasWorkspace />}
