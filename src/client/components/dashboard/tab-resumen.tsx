@@ -515,32 +515,9 @@ export function HeadlinesBlock({ onNavigate }: { onNavigate: NavigateFn }) {
   )
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
-
-export function TabResumen({ onNavigate }: { onNavigate: NavigateFn }) {
-  return (
-    <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 12, maxWidth: 1400 }}>
-
-      {/* Fila 1: Tipos de cambio + Brecha */}
-      <section>
-        <div style={{ fontSize: 9, color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: 2, marginBottom: 6 }}>
-          Tipos de cambio
-        </div>
-        <TCStrip onNavigate={onNavigate} />
-      </section>
-
-      {/* Fila 2: IPC + Riesgo País + Reservas/Badlar */}
-      <section style={{ display: "flex", gap: 1, background: "var(--bg-elev-2)", padding: 1 }}>
-        <IPCBlock onNavigate={onNavigate} />
-        <RiesgoPaisBlock onNavigate={onNavigate} />
-        <ReservasBadlarBlock onNavigate={onNavigate} />
-      </section>
-
-      {/* Fila 3: Headlines */}
-      <section>
-        <HeadlinesBlock onNavigate={onNavigate} />
-      </section>
-
-    </div>
-  )
-}
+// La composición fija de esta pantalla (TabResumen, que ordenaba los bloques
+// de abajo en 3 filas) se sacó de la navegación principal a pedido de
+// Lorenzo: con el workspace/canvas ("mi pizarra") ya arma su propio resumen
+// arrastrando estas mismas cards, así que la versión fija quedaba redundante.
+// Los bloques individuales siguen acá y siguen exportados: data-card-
+// renderer.tsx los sigue usando para las cards "resumen-*" del canvas.

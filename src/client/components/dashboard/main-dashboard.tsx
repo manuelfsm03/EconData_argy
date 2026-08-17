@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import Image from "next/image"
 import { TabMacro } from "./tab-macro"
-import { TabResumen } from "./tab-resumen"
 import { TabFinanzas } from "./tab-finanzas"
 import { TabCalendario } from "./tab-calendario"
 import { TabForo } from "./tab-foro"
@@ -12,7 +11,7 @@ import { TickerTape } from "./ticker-tape"
 import { CommandPalette } from "./command-palette"
 import { ThemeToggle } from "@/client/components/ui/theme-toggle"
 import {
-  LayoutDashboard, TrendingUp, BarChart2, Landmark, Newspaper, Search, Calendar, MessagesSquare,
+  TrendingUp, BarChart2, Landmark, Newspaper, Search, Calendar, MessagesSquare,
 } from "lucide-react"
 
 interface NavTab {
@@ -22,7 +21,6 @@ interface NavTab {
 }
 
 const MAIN_TABS: NavTab[] = [
-  { key: "resumen",  label: "Resumen",  Icon: LayoutDashboard },
   { key: "finanzas", label: "Finanzas", Icon: TrendingUp       },
   { key: "macro",    label: "Macro",    Icon: BarChart2        },
   { key: "bcra",     label: "BCRA",     Icon: Landmark         },
@@ -195,7 +193,6 @@ export function Dashboard({ initialTab = "macro", initialSubtab = null, embedded
       </div>
 
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 8px" }}>
-        {activeTab === "resumen"   && <TabResumen onNavigate={handleNavigate} />}
         {activeTab === "finanzas"  && <TabFinanzas initialSubtab={financeSubtab} />}
         {activeTab === "macro"     && <TabMacro initialSubtab={macroSubtab} />}
         {activeTab === "bcra"      && <TabBCRALazy initialSubtab={bcraSubtab} />}
