@@ -1,9 +1,26 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { CalendarDays, ChevronLeft, ChevronRight, Grid3X3, List, Search, X } from "lucide-react"
-import { deriveBondCalendarEvents, type BondCalendarEvent, todayInBuenosAires } from "@/lib/calendar-events"
+import { CalendarDays, ChevronLeft, ChevronRight, Grid3X3, List, Landmark, Search, X } from "lucide-react"
+import { deriveMarketCalendarEvents, type MarketCalendarEvent, todayInBuenosAires } from "@/lib/calendar-events"
 import { cn } from "@/lib/utils"
+
+type EventKind = MarketCalendarEvent["kind"]
+
+const KIND_META: Record<EventKind, { label: string; short: string; colorClass: string; dotClass: string }> = {
+  bono: { label: "Pagos de bonos", short: "BONO", colorClass: "border-[var(--amber)] bg-[var(--amber-soft)] text-[var(--amber)]", dotClass: "bg-[var(--amber)]" },
+  fomc: { label: "FOMC (Fed)", short: "FOMC", colorClass: "border-[var(--sky)] bg-[var(--sky)]/10 text-[var(--sky)]", dotClass: "bg-[var(--sky)]" },
+  indec: { label: "INDEC (IPC / EMAE)", short: "INDEC", colorClass: "border-[var(--positive)] bg-[var(--positive)]/10 text-[var(--positive)]", dotClass: "bg-[var(--positive)]" },
+}
+
+/** Categorías con capacidad ya visible en la UI pero sin fuente oficial conectada todavía
+ *  (sin fechas simuladas — mismo criterio de honestidad que el resto del proyecto). */
+interface PendingSource { label: string; fuente: string; items: string[] }
+const PENDING_SOURCES: PendingSource[] = [
+  { label: "BCRA (REM / IPOM)", fuente: "BCRA — calendario de difusión oficial", items: ["BCRA · REM (relevamiento de expectativas)", "BCRA · IPOM (informe de política monetaria)"] },
+  { label: "Licitaciones del Tesoro", fuente: "Secretaría de Finanzas / Tesoro", items: ["Colocación de deuda en pesos: instrumentos, montos y tasas adjudicadas"] },
+  { label: "Earnings — empresas AR", fuente: "pendiente fuente oficial BYMA / CNV", items: ["GGAL", "YPF", "PAMP", "BMA", "LOMA", "TXAR", "CEPU"] },
+]
 
 const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
@@ -34,18 +51,20 @@ function RelativeDate({ iso, today }: { iso: string; today: string }) {
   return <span className="font-mono text-[9px] font-semibold uppercase tracking-wide text-[var(--amber)]">{label}</span>
 }
 
-function EventCard({ event, today, onSelect }: { event: BondCalendarEvent; today: string; onSelect: () => void }) {
+function EventCard({ event, today, onSelect }: { event: MarketCalendarEvent; today: string; onSelect: () => void }) {
+  const meta = KIND_META[event.kind]
   return (
     <button type="button" onClick={onSelect} className="w-full rounded-md border border-[var(--border)] bg-[var(--bg)] p-3 text-left transition hover:border-[var(--amber)]/60 hover:bg-[var(--bg-elev-2)]">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded bg-[var(--amber-soft)] px-2 py-0.5 font-mono text-[10px] font-bold text-[var(--amber)]">{event.ticker}</span>
+        <span className={cn("rounded border px-2 py-0.5 font-mono text-[10px] font-bold", meta.colorClass)}>{event.ticker}</span>
         <span className="text-xs font-semibold text-[var(--text)]">{event.title}</span>
         <span className="ml-auto"><RelativeDate iso={event.paymentDate} today={today} /></span>
       </div>
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] text-[var(--text-dim)]">
-        <span>Pago {shortDate(event.paymentDate)}</span>
-        <span>Renta {formatAmount(event.coupon)}</span>
-        {event.amortization > 0 && <span>Amort. {formatAmount(event.amortization)}</span>}
+        <span>{event.kind === "bono" ? "Pago" : "Fecha"} {shortDate(event.paymentDate)}</span>
+        {event.kind === "bono" && <span>Renta {formatAmount(event.coupon)}</span>}
+        {event.kind === "bono" && event.amortization > 0 && <span>Amort. {formatAmount(event.amortization)}</span>}
+        {event.kind !== "bono" && <span>{event.detail}</span>}
       </div>
     </button>
   )
@@ -53,21 +72,26 @@ function EventCard({ event, today, onSelect }: { event: BondCalendarEvent; today
 
 export function MarketCalendar() {
   const today = useMemo(() => todayInBuenosAires(), [])
-  const allEvents = useMemo(() => deriveBondCalendarEvents(today), [today])
+  const allEvents = useMemo(() => deriveMarketCalendarEvents(today), [today])
   const initial = allEvents[0] ? utcDate(allEvents[0].paymentDate) : utcDate(today)
   const [month, setMonth] = useState({ year: initial.getUTCFullYear(), month: initial.getUTCMonth() })
   const [view, setView] = useState<"month" | "agenda">("month")
   const [query, setQuery] = useState("")
-  const [selected, setSelected] = useState<BondCalendarEvent | null>(null)
+  const [kinds, setKinds] = useState<Record<EventKind, boolean>>({ bono: true, fomc: true, indec: true })
+  const [selected, setSelected] = useState<MarketCalendarEvent | null>(null)
 
   const events = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("es")
-    if (!normalized) return allEvents
-    return allEvents.filter((event) => `${event.ticker} ${event.title} ${event.currency} ${event.law}`.toLocaleLowerCase("es").includes(normalized))
-  }, [allEvents, query])
+    return allEvents.filter((event) => {
+      if (!kinds[event.kind]) return false
+      if (!normalized) return true
+      const haystack = event.kind === "bono" ? `${event.ticker} ${event.title} ${event.currency} ${event.law}` : `${event.ticker} ${event.title} ${event.detail}`
+      return haystack.toLocaleLowerCase("es").includes(normalized)
+    })
+  }, [allEvents, query, kinds])
 
   const eventsByDay = useMemo(() => {
-    const result = new Map<string, BondCalendarEvent[]>()
+    const result = new Map<string, MarketCalendarEvent[]>()
     for (const event of events) result.set(event.paymentDate, [...(result.get(event.paymentDate) ?? []), event])
     return result
   }, [events])
@@ -100,7 +124,7 @@ export function MarketCalendar() {
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--amber-soft)] text-[var(--amber)]"><CalendarDays size={20} /></div>
           <div>
             <h1 className="text-lg font-semibold text-[var(--text)]">Calendario de mercado</h1>
-            <p className="text-xs text-[var(--text-dim)]">Pagos efectivos derivados del motor validado de bonos.</p>
+            <p className="text-xs text-[var(--text-dim)]">Pagos de bonos (motor validado) y decisiones de tasa FOMC.</p>
           </div>
           <div className="ml-auto flex rounded-md border border-[var(--border)] bg-[var(--bg-elev)] p-1">
             <button type="button" onClick={() => setView("month")} className={cn("flex h-7 items-center gap-1.5 rounded px-2.5 text-[10px]", view === "month" ? "bg-[var(--amber-soft)] text-[var(--amber)]" : "text-[var(--text-dim)]")}><Grid3X3 size={12} />Mes</button>
@@ -114,10 +138,32 @@ export function MarketCalendar() {
               <Search size={14} className="pointer-events-none absolute left-3 top-2.5 text-[var(--text-mute)]" />
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar ticker o instrumento…" className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 text-xs text-[var(--text)] outline-none focus:border-[var(--amber)]" />
             </div>
-            <div className="font-mono text-[10px] text-[var(--text-dim)]">{events.length} pagos futuros · corte {today}</div>
+            <div className="font-mono text-[10px] text-[var(--text-dim)]">{events.length} eventos · corte {today}</div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(Object.keys(KIND_META) as EventKind[]).map((kind) => {
+              const meta = KIND_META[kind]
+              const on = kinds[kind]
+              return (
+                <button
+                  key={kind}
+                  type="button"
+                  onClick={() => setKinds((prev) => ({ ...prev, [kind]: !prev[kind] }))}
+                  className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition", on ? meta.colorClass : "border-[var(--border)] bg-[var(--bg)] text-[var(--text-mute)]")}
+                >
+                  <span className={cn("h-1.5 w-1.5 rounded-full", on ? meta.dotClass : "bg-[var(--text-mute)]")} />
+                  {meta.label}
+                </button>
+              )
+            })}
+            {PENDING_SOURCES.map((source) => (
+              <span key={source.label} title={`${source.fuente} — sin conectar`} className="flex items-center gap-1.5 rounded-full border border-dashed border-[var(--border-hi)] bg-[var(--bg)] px-2.5 py-1 text-[10px] font-medium text-[var(--text-mute)]">
+                {source.label} <span className="rounded border border-[var(--border-hi)] px-1 text-[8px]">NC</span>
+              </span>
+            ))}
           </div>
           <div className="mt-3 rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[10px] leading-4 text-[var(--text-mute)]">
-            Cobertura actual: únicamente esquemas admitidos por el motor de bonos, con amortizaciones reconciliadas al 100%. La fecha mostrada es la fecha efectiva, corrida al siguiente día hábil según el calendario cargado; no se inventan eventos macro, licitaciones ni earnings.
+            Cobertura actual: esquemas admitidos por el motor de bonos (amortizaciones reconciliadas al 100%) y calendario oficial FOMC. La fecha de bonos es la fecha efectiva, corrida al siguiente día hábil; no se inventan eventos macro, licitaciones ni earnings — ver &quot;fuentes pendientes&quot; abajo.
           </div>
         </div>
 
@@ -140,7 +186,15 @@ export function MarketCalendar() {
                       <div key={cell.iso} className={cn("min-h-28 rounded-md border p-2", cell.inMonth ? "border-[var(--border)] bg-[var(--bg)]" : "border-transparent bg-transparent opacity-40", isToday && "border-[var(--amber)] bg-[var(--amber-soft)]/30")}>
                         <div className={cn("mb-2 font-mono text-[10px]", isToday ? "font-bold text-[var(--amber)]" : "text-[var(--text-dim)]")}>{cell.day}</div>
                         <div className="space-y-1">
-                          {dayEvents.map((event) => <button key={event.id} type="button" onClick={() => setSelected(event)} className="block w-full truncate rounded border-l-2 border-[var(--amber)] bg-[var(--amber-soft)] px-1.5 py-1 text-left font-mono text-[9px] font-semibold text-[var(--text)] hover:bg-[var(--bg-elev-2)]">{event.ticker} · {event.amortization > 0 ? "R+A" : "Renta"}</button>)}
+                          {dayEvents.map((event) => {
+                            const meta = KIND_META[event.kind]
+                            const sub = event.kind === "bono" ? (event.amortization > 0 ? "R+A" : "Renta") : meta.short
+                            return (
+                              <button key={event.id} type="button" onClick={() => setSelected(event)} className={cn("block w-full truncate rounded border-l-2 px-1.5 py-1 text-left font-mono text-[9px] font-semibold text-[var(--text)] hover:bg-[var(--bg-elev-2)]", meta.colorClass)}>
+                                {event.ticker} · {sub}
+                              </button>
+                            )
+                          })}
                         </div>
                       </div>
                     )
@@ -154,6 +208,28 @@ export function MarketCalendar() {
             {events.length === 0 ? <div className="p-10 text-center text-xs text-[var(--text-dim)]">No hay eventos para esta búsqueda.</div> : events.map((event) => <EventCard key={event.id} event={event} today={today} onSelect={() => setSelected(event)} />)}
           </section>
         )}
+
+        <section className="mt-4 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-elev)]">
+          <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3">
+            <Landmark size={14} className="text-[var(--text-dim)]" />
+            <span className="text-xs font-semibold text-[var(--text)]">Próximamente — fuentes pendientes de conectar</span>
+            <span className="text-[10px] text-[var(--text-mute)]">capacidad ya visible en la UI; se activa al enchufar la fuente oficial, sin fechas simuladas</span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3">
+            {PENDING_SOURCES.map((source) => (
+              <div key={source.label} className="rounded-md border border-dashed border-[var(--border-hi)] bg-[var(--bg)] p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-[var(--text)]">{source.label}</span>
+                  <span className="rounded-full border border-[var(--border-hi)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-[var(--text-mute)]">no conectada</span>
+                </div>
+                <p className="mb-2 text-[10px] text-[var(--text-mute)]">{source.fuente}</p>
+                <div className="flex flex-wrap gap-1">
+                  {source.items.map((item) => <span key={item} className="rounded border border-[var(--border)] bg-[var(--bg-elev-2)] px-1.5 py-0.5 font-mono text-[9px] text-[var(--text-dim)]">{item}</span>)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
 
       {selected && (
@@ -161,19 +237,26 @@ export function MarketCalendar() {
           <button type="button" aria-label="Cerrar detalle" onClick={() => setSelected(null)} className="fixed inset-0 z-[90] bg-black/50" />
           <aside className="fixed inset-y-0 right-0 z-[91] w-full max-w-md overflow-y-auto border-l border-[var(--border)] bg-[var(--bg-elev)] shadow-2xl">
             <div className="flex items-start gap-3 border-b border-[var(--border)] p-5">
-              <div className="rounded bg-[var(--amber-soft)] px-2 py-1 font-mono text-sm font-bold text-[var(--amber)]">{selected.ticker}</div>
-              <div><h2 className="text-base font-semibold text-[var(--text)]">{selected.title}</h2><p className="mt-1 text-[10px] text-[var(--text-dim)]">Pago efectivo {shortDate(selected.paymentDate)}</p></div>
+              <div className={cn("rounded border px-2 py-1 font-mono text-sm font-bold", KIND_META[selected.kind].colorClass)}>{selected.ticker}</div>
+              <div><h2 className="text-base font-semibold text-[var(--text)]">{selected.title}</h2><p className="mt-1 text-[10px] text-[var(--text-dim)]">{selected.kind === "bono" ? "Pago efectivo" : "Fecha"} {shortDate(selected.paymentDate)}</p></div>
               <button type="button" onClick={() => setSelected(null)} className="ml-auto text-[var(--text-mute)] hover:text-[var(--text)]"><X size={17} /></button>
             </div>
             <div className="space-y-4 p-5 text-xs">
-              <dl className="grid grid-cols-[140px_1fr] gap-y-3">
-                <dt className="text-[var(--text-mute)]">Fecha prospecto</dt><dd className="font-mono text-[var(--text)]">{selected.accrualDate}</dd>
-                <dt className="text-[var(--text-mute)]">Fecha efectiva</dt><dd className="font-mono text-[var(--text)]">{selected.paymentDate}</dd>
-                <dt className="text-[var(--text-mute)]">Renta / VN 100</dt><dd className="font-mono text-[var(--text)]">{formatAmount(selected.coupon)} {selected.currency}</dd>
-                <dt className="text-[var(--text-mute)]">Amortización / VN 100</dt><dd className="font-mono text-[var(--text)]">{formatAmount(selected.amortization)}</dd>
-                <dt className="text-[var(--text-mute)]">Residual previo</dt><dd className="font-mono text-[var(--text)]">{formatAmount(selected.residualBeforePayment)}</dd>
-                <dt className="text-[var(--text-mute)]">Ley</dt><dd className="text-[var(--text)]">{selected.law === "NY" ? "Nueva York" : "Argentina"}</dd>
-              </dl>
+              {selected.kind === "bono" ? (
+                <dl className="grid grid-cols-[140px_1fr] gap-y-3">
+                  <dt className="text-[var(--text-mute)]">Fecha prospecto</dt><dd className="font-mono text-[var(--text)]">{selected.accrualDate}</dd>
+                  <dt className="text-[var(--text-mute)]">Fecha efectiva</dt><dd className="font-mono text-[var(--text)]">{selected.paymentDate}</dd>
+                  <dt className="text-[var(--text-mute)]">Renta / VN 100</dt><dd className="font-mono text-[var(--text)]">{formatAmount(selected.coupon)} {selected.currency}</dd>
+                  <dt className="text-[var(--text-mute)]">Amortización / VN 100</dt><dd className="font-mono text-[var(--text)]">{formatAmount(selected.amortization)}</dd>
+                  <dt className="text-[var(--text-mute)]">Residual previo</dt><dd className="font-mono text-[var(--text)]">{formatAmount(selected.residualBeforePayment)}</dd>
+                  <dt className="text-[var(--text-mute)]">Ley</dt><dd className="text-[var(--text)]">{selected.law === "NY" ? "Nueva York" : "Argentina"}</dd>
+                </dl>
+              ) : (
+                <dl className="grid grid-cols-[140px_1fr] gap-y-3">
+                  <dt className="text-[var(--text-mute)]">Fecha</dt><dd className="font-mono text-[var(--text)]">{selected.paymentDate}</dd>
+                  <dt className="text-[var(--text-mute)]">Detalle</dt><dd className="text-[var(--text)]">{selected.detail}</dd>
+                </dl>
+              )}
               <div className="rounded-md border border-[var(--border)] bg-[var(--bg)] p-3 text-[10px] leading-4 text-[var(--text-dim)]"><b className="text-[var(--text)]">Fuente:</b> {selected.source}</div>
             </div>
           </aside>
