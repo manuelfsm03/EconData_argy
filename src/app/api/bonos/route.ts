@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/server/db/prisma"
 import { BOND_DEFS, CAP_INSTRUMENT_DEFS, type BondDef } from "@/server/domain/bonds-data"
 import { metricasDeMercado, metricasDevengadas } from "@/lib/bond-math"
-import { construirCashflows, GD30 } from "@/lib/bond-schedule"
+import { construirCashflows, ESQUEMAS } from "@/lib/bond-schedule"
 import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
 import { parseRavaBondPrices, type RavaBondPrice } from "@/server/external/rava-prices"
 import { PESO_BOND_TICKERS } from "@/server/domain/peso-bonds"
@@ -384,7 +384,7 @@ export async function GET(request: NextRequest) {
     const liquidacion = siguienteDiaHabil(fechaUTC(hoy.toISOString().slice(0, 10)))
     const screener = await Promise.all(
       bonds.map(async (bond: BondLike) => {
-        const esquemaVerificado = bond.ticker === GD30.ticker ? GD30 : null
+        const esquemaVerificado = ESQUEMAS.find((e) => e.ticker === bond.ticker) ?? null
         const cashflowsVerificados = esquemaVerificado ? construirCashflows(esquemaVerificado) : null
         const devengadas = cashflowsVerificados
           ? metricasDevengadas(cashflowsVerificados, liquidacion)
@@ -477,7 +477,7 @@ export async function GET(request: NextRequest) {
       count: screener.length,
       updated_at: new Date().toISOString(),
       ...marketMetaForRows(screener),
-      nota: "GD30 usa el motor verificado contra la planilla; los demás bonos conservan el cálculo legado y se marcan como pendientes de validar contra fuente primaria",
+      nota: "GD30, AL30, GD29, AL29, GD35, AL35, GD41, AL41 y AE38 usan el motor verificado contra el decreto oficial del canje 2020; el resto conserva el cálculo legado y se marca como pendiente de validar contra fuente primaria",
     })
   } catch (error) {
     console.error("[/api/bonos]", error)
