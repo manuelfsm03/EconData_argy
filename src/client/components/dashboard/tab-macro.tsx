@@ -624,6 +624,8 @@ export function EmaeView() {
   const [actividadLoading, setActividadLoading] = useState(true)
   const [confianzaData, setConfianzaData] = useState<ConfianzaData | null>(null)
   const [confianzaLoading, setConfianzaLoading] = useState(true)
+  const [ipiData, setIpiData] = useState<MacroData | null>(null)
+  const [ipiLoading, setIpiLoading] = useState(true)
   const [icgData, setIcgData] = useState<IcgData | null>(null)
   const [icgLoading, setIcgLoading] = useState(true)
 
@@ -658,6 +660,11 @@ export function EmaeView() {
       .then(j => { setConfianzaData(j); setConfianzaLoading(false) })
       .catch(() => setConfianzaLoading(false))
 
+    fetch("/api/macro?endpoint=ipi")
+      .then(r => r.json())
+      .then(j => { setIpiData(j.data); setIpiLoading(false) })
+      .catch(() => setIpiLoading(false))
+
     fetch("/api/macro?endpoint=icg")
       .then(r => r.json())
       .then(j => { setIcgData(j); setIcgLoading(false) })
@@ -671,6 +678,16 @@ export function EmaeView() {
   const varMensual = data?.emae_var_mensual?.[0]?.[1]
   const varInteranual = data?.emae_var_interanual?.[0]?.[1]
   const recentEmae = (data?.emae ?? []).slice(0, 12).reverse()
+
+  const ultimoIpi = ipiData?.ipi?.[0]
+  const ultimoIsac = ipiData?.isac?.[0]
+  const ipiChartData = (() => {
+    type IpiRow = { date: string; ipi: number | null; isac: number | null }
+    const m = new Map<string, IpiRow>()
+    for (const [d, v] of ipiData?.ipi ?? []) m.set(d, { date: d, ipi: v, isac: m.get(d)?.isac ?? null })
+    for (const [d, v] of ipiData?.isac ?? []) m.set(d, { date: d, ipi: m.get(d)?.ipi ?? null, isac: v })
+    return Array.from(m.values()).sort((a, b) => a.date.localeCompare(b.date))
+  })()
 
   const desempleo    = laboralData?.tasa_desempleo?.[0]
   const actividad    = laboralData?.tasa_actividad?.[0]
@@ -1197,6 +1214,49 @@ export function EmaeView() {
         </>
       )}
 
+      {/* ══ IPI MANUFACTURERO E ISAC ══════════════════════════════════════════ */}
+      <SectionHeader
+        title="IPI Manufacturero e ISAC (Construcción)"
+        source="INDEC · Índice base 2004 = 100 · serie original"
+      />
+      {ipiLoading ? (
+        <div style={{ padding: 12, color: "var(--text-dim)", fontSize: 11 }}>Cargando IPI...</div>
+      ) : !ultimoIpi && !ultimoIsac ? (
+        <div style={{ padding: 12, color: "var(--text-dim)", fontSize: 11 }}>Sin datos disponibles</div>
+      ) : (
+        <>
+          <div style={{ display: "flex", gap: 1, padding: 1, background: "var(--bg-elev-2)", flexWrap: "wrap" }}>
+            <KPI
+              label="IPI Manufacturero"
+              value={ultimoIpi ? fmtNum(ultimoIpi[1], 1) : null}
+              unit={`Índice 2004=100 · ${ultimoIpi?.[0] ?? ""}`}
+              valueColor="var(--amber)"
+            />
+            <KPI
+              label="ISAC — Construcción"
+              value={ultimoIsac ? fmtNum(ultimoIsac[1], 1) : null}
+              unit={`Índice 2004=100 · ${ultimoIsac?.[0] ?? ""}`}
+              valueColor="var(--sky)"
+            />
+          </div>
+
+          <div style={{ padding: "8px 0" }}>
+            <BBGLineChart
+              title="IPI E ISAC — SERIE ORIGINAL"
+              data={ipiChartData}
+              lines={[
+                { key: "ipi",  name: "IPI Manufacturero", color: "var(--amber)" },
+                { key: "isac", name: "ISAC Construcción", color: "var(--sky)" },
+              ]}
+              height={240}
+              yAxisLabel="Índice 2004=100"
+              formatValue={(v) => fmtNum(v, 1)}
+              defaultRange="all"
+            />
+          </div>
+        </>
+      )}
+
       {/* ══ CONFIANZA DEL CONSUMIDOR ══════════════════════════════════════════ */}
       <SectionHeader
         title="Índice de Confianza del Consumidor — ICC"
@@ -1328,6 +1388,18 @@ export function EmaeView() {
               unit="Subíndice — gestión de recursos"
               valueColor="var(--yellow)"
             />
+            <KPI
+              label="Evaluación"
+              value={icgData.ultimo.evaluacion ? fmtNum(icgData.ultimo.evaluacion, 2) : null}
+              unit="Subíndice — evaluación general de gestión"
+              valueColor="var(--sky)"
+            />
+            <KPI
+              label="Interés"
+              value={icgData.ultimo.interes ? fmtNum(icgData.ultimo.interes, 2) : null}
+              unit="Subíndice — interés general en la gestión"
+              valueColor="#26C6DA"
+            />
           </div>
 
           {/* Gráfico ICG — evolución y subíndices */}
@@ -1341,6 +1413,7 @@ export function EmaeView() {
                 { key: "capacidad",   name: "Capacidad",   color: "#7C83FD" },
                 { key: "eficiencia",  name: "Eficiencia",  color: "var(--yellow)" },
                 { key: "evaluacion",  name: "Evaluación",  color: "var(--sky)" },
+                { key: "interes",     name: "Interés",     color: "#26C6DA" },
               ]}
               height={240}
               yAxisLabel="Índice (0–5)"
