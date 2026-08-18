@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { CalendarDays, ChevronLeft, ChevronRight, Globe2, Grid3X3, List, Landmark, Search, SlidersHorizontal, X } from "lucide-react"
+import { Bell, BellOff, CalendarDays, ChevronLeft, ChevronRight, Globe2, Grid3X3, List, Landmark, Search, SlidersHorizontal, X } from "lucide-react"
 import { deriveMarketCalendarEvents, type CountryCode, type MarketCalendarEvent, todayInBuenosAires } from "@/lib/calendar-events"
 import { cn } from "@/lib/utils"
 
@@ -30,6 +30,8 @@ const COUNTRY_META: Record<CountryCode, { label: string; flag: string }> = {
 }
 const ALL_COUNTRIES = Object.keys(COUNTRY_META) as CountryCode[]
 const COUNTRIES_KEY = "lapizarra.calendario.paises.v1"
+const ALARMS_KEY = "lapizarra.calendario.alarmas.v1"
+const DIAS_ALARMA = [1, 3, 7] as const
 
 /** Categorías con capacidad ya visible en la UI pero sin fuente oficial conectada todavía
  *  (sin fechas simuladas — mismo criterio de honestidad que el resto del proyecto). */
@@ -71,13 +73,15 @@ function RelativeDate({ iso, today }: { iso: string; today: string }) {
   return <span className="font-mono text-[9px] font-semibold uppercase tracking-wide text-[var(--amber)]">{label}</span>
 }
 
-function EventCard({ event, today, onSelect }: { event: MarketCalendarEvent; today: string; onSelect: () => void }) {
+function EventCard({ event, today, alarmDias, onSelect }: { event: MarketCalendarEvent; today: string; alarmDias?: number; onSelect: () => void }) {
   const meta = KIND_META[event.kind]
   return (
     <button type="button" onClick={onSelect} className="w-full rounded-md border border-[var(--border)] bg-[var(--bg)] p-3 text-left transition hover:border-[var(--amber)]/60 hover:bg-[var(--bg-elev-2)]">
       <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs leading-none">{COUNTRY_META[event.country].flag}</span>
         <span className={cn("rounded border px-2 py-0.5 font-mono text-[10px] font-bold", meta.colorClass)}>{event.ticker}</span>
         <span className="text-xs font-semibold text-[var(--text)]">{event.title}</span>
+        {alarmDias != null && <Bell size={11} className="shrink-0 text-[var(--amber)]" />}
         <span className="ml-auto"><RelativeDate iso={event.paymentDate} today={today} /></span>
       </div>
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] text-[var(--text-dim)]">
@@ -102,6 +106,9 @@ export function MarketCalendar() {
   const [impacts, setImpacts] = useState<Record<"high" | "medium", boolean>>({ high: true, medium: true })
   const [selected, setSelected] = useState<MarketCalendarEvent | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  /** id de evento -> días de anticipación. Solo preferencia local (vista previa);
+   *  la entrega real (push/email) no está implementada, ver aviso en el drawer. */
+  const [alarms, setAlarms] = useState<Record<string, number>>({})
 
   // Preferencia de países: se guarda en este dispositivo, igual que el resto del Canvas.
   useEffect(() => {
@@ -117,6 +124,28 @@ export function MarketCalendar() {
   useEffect(() => {
     localStorage.setItem(COUNTRIES_KEY, JSON.stringify(countries))
   }, [countries])
+
+  useEffect(() => {
+    const stored = localStorage.getItem(ALARMS_KEY)
+    if (!stored) return
+    try {
+      setAlarms(JSON.parse(stored) as Record<string, number>)
+    } catch {
+      // preferencia corrupta -- se ignora
+    }
+  }, [])
+  useEffect(() => {
+    localStorage.setItem(ALARMS_KEY, JSON.stringify(alarms))
+  }, [alarms])
+
+  function toggleAlarm(id: string, dias: number) {
+    setAlarms((prev) => {
+      const next = { ...prev }
+      if (next[id] === dias) delete next[id]
+      else next[id] = dias
+      return next
+    })
+  }
 
   const events = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("es")
@@ -290,7 +319,7 @@ export function MarketCalendar() {
                             const sub = event.kind === "bono" ? (event.amortization > 0 ? "R+A" : "Renta") : meta.short
                             return (
                               <button key={event.id} type="button" onClick={() => setSelected(event)} className={cn("block w-full truncate rounded border-l-2 px-1.5 py-1 text-left font-mono text-[9px] font-semibold text-[var(--text)] hover:bg-[var(--bg-elev-2)]", meta.colorClass)}>
-                                {event.ticker} · {sub}
+                                {alarms[event.id] != null && "🔔 "}{event.ticker} · {sub}
                               </button>
                             )
                           })}
@@ -304,7 +333,7 @@ export function MarketCalendar() {
           </section>
         ) : (
           <section className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elev)] p-4">
-            {events.length === 0 ? <div className="p-10 text-center text-xs text-[var(--text-dim)]">No hay eventos para esta búsqueda.</div> : events.map((event) => <EventCard key={event.id} event={event} today={today} onSelect={() => setSelected(event)} />)}
+            {events.length === 0 ? <div className="p-10 text-center text-xs text-[var(--text-dim)]">No hay eventos para esta búsqueda.</div> : events.map((event) => <EventCard key={event.id} event={event} today={today} alarmDias={alarms[event.id]} onSelect={() => setSelected(event)} />)}
           </section>
         )}
 
@@ -341,6 +370,30 @@ export function MarketCalendar() {
               <button type="button" onClick={() => setSelected(null)} className="ml-auto text-[var(--text-mute)] hover:text-[var(--text)]"><X size={17} /></button>
             </div>
             <div className="space-y-4 p-5 text-xs">
+              <div className="rounded-md border border-[var(--border)] bg-[var(--bg)] p-3">
+                <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
+                  {alarms[selected.id] != null ? <Bell size={13} className="text-[var(--amber)]" /> : <BellOff size={13} />}
+                  Avisarme antes
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {DIAS_ALARMA.map((dias) => {
+                    const on = alarms[selected.id] === dias
+                    return (
+                      <button
+                        key={dias}
+                        type="button"
+                        onClick={() => toggleAlarm(selected.id, dias)}
+                        className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold transition", on ? "border-[var(--amber)]/50 bg-[var(--amber-soft)] text-[var(--amber)]" : "border-[var(--border)] bg-[var(--bg-elev)] text-[var(--text-dim)]")}
+                      >
+                        {dias} día{dias > 1 ? "s" : ""} antes
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="mt-2 text-[9px] leading-relaxed text-[var(--text-mute)]">
+                  Vista previa: guarda tu preferencia en este dispositivo. El aviso real (push/email) todavía no está implementado.
+                </p>
+              </div>
               {selected.kind === "bono" ? (
                 <dl className="grid grid-cols-[140px_1fr] gap-y-3">
                   <dt className="text-[var(--text-mute)]">Fecha prospecto</dt><dd className="font-mono text-[var(--text)]">{selected.accrualDate}</dd>
