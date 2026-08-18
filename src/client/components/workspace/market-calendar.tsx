@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Bell, BellOff, CalendarDays, CalendarPlus, ChevronDown, ChevronLeft, ChevronRight, Download, ExternalLink, Globe2, Grid3X3, List, Landmark, Search, SlidersHorizontal, X } from "lucide-react"
 import { deriveMarketCalendarEvents, type CountryCode, type MarketCalendarEvent, todayInBuenosAires } from "@/lib/calendar-events"
 import { downloadICS, googleCalendarUrl } from "@/lib/ics-export"
+import { TickerLink } from "@/client/components/ui/ticker-link"
 import { cn } from "@/lib/utils"
 
 type EventKind = MarketCalendarEvent["kind"]
@@ -94,13 +95,17 @@ function EventCard({ event, today, alarmDias, onSelect }: { event: MarketCalenda
   )
 }
 
-export function MarketCalendar() {
+export function MarketCalendar({ initialTicker = null }: { initialTicker?: string | null } = {}) {
   const today = useMemo(() => todayInBuenosAires(), [])
   const allEvents = useMemo(() => deriveMarketCalendarEvents(today), [today])
   const initial = allEvents[0] ? utcDate(allEvents[0].paymentDate) : utcDate(today)
   const [month, setMonth] = useState({ year: initial.getUTCFullYear(), month: initial.getUTCMonth() })
-  const [view, setView] = useState<"month" | "agenda">("month")
-  const [query, setQuery] = useState("")
+  const [view, setView] = useState<"month" | "agenda">(initialTicker ? "agenda" : "month")
+  const [query, setQuery] = useState(initialTicker ?? "")
+
+  useEffect(() => {
+    if (initialTicker) { setQuery(initialTicker); setView("agenda") }
+  }, [initialTicker])
   const [kinds, setKinds] = useState<Record<EventKind, boolean>>({ bono: true, fomc: true, indec: true, bcra: true, intl_cpi: true, banco_central: true, latam_cpi: true, latam_banco_central: true, earnings: true })
   const [countries, setCountries] = useState<Record<CountryCode, boolean>>(() => Object.fromEntries(ALL_COUNTRIES.map((c) => [c, true])) as Record<CountryCode, boolean>)
   const [impacts, setImpacts] = useState<Record<"high" | "medium", boolean>>({ high: true, medium: true })
@@ -411,7 +416,13 @@ export function MarketCalendar() {
           <button type="button" aria-label="Cerrar detalle" onClick={() => setSelected(null)} className="fixed inset-0 z-[90] bg-black/50" />
           <aside className="fixed inset-y-0 right-0 z-[91] w-full max-w-md overflow-y-auto border-l border-[var(--border)] bg-[var(--bg-elev)] shadow-2xl">
             <div className="flex items-start gap-3 border-b border-[var(--border)] p-5">
-              <div className={cn("rounded border px-2 py-1 font-mono text-sm font-bold", KIND_META[selected.kind].colorClass)}>{selected.ticker}</div>
+              {selected.kind === "bono" || (selected.kind === "earnings" && selected.country === "AR") ? (
+                <TickerLink kind={selected.kind === "bono" ? "bono" : "accion"} ticker={selected.ticker} className={cn("rounded border px-2 py-1 font-mono text-sm font-bold", KIND_META[selected.kind].colorClass)}>
+                  {selected.ticker}
+                </TickerLink>
+              ) : (
+                <div className={cn("rounded border px-2 py-1 font-mono text-sm font-bold", KIND_META[selected.kind].colorClass)}>{selected.ticker}</div>
+              )}
               <div><h2 className="text-base font-semibold text-[var(--text)]">{selected.title}</h2><p className="mt-1 text-[10px] text-[var(--text-dim)]">{selected.kind === "bono" ? "Pago efectivo" : "Fecha"} {shortDate(selected.paymentDate)}</p></div>
               <button type="button" onClick={() => setSelected(null)} className="ml-auto text-[var(--text-mute)] hover:text-[var(--text)]"><X size={17} /></button>
             </div>

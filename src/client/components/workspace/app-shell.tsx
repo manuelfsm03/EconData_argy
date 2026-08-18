@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
 import { CalendarDays, Database, Landmark, LayoutDashboard, MessageSquareText } from "lucide-react"
 import { ThemeToggle } from "@/client/components/ui/theme-toggle"
@@ -21,8 +22,15 @@ import { ForumHub } from "./forum-hub"
 import { MarketCalendar } from "./market-calendar"
 import { BondsWorkspace } from "./bonds-workspace"
 import { DATA_CARD_CATALOG } from "@/lib/card-catalog"
+import { TickerNavContext, type TickerDestino, type TickerFocus, type TickerKind } from "@/lib/ticker-nav"
 
 type WorkspaceSection = "canvas" | "library" | "calendar" | "bonds" | "forum"
+
+function sectionForDestino(destino: TickerDestino): WorkspaceSection {
+  if (destino === "foro") return "forum"
+  if (destino === "calendario") return "calendar"
+  return "library"
+}
 
 const SECTION_KEY = "lapizarra.workspace.section.v1"
 
@@ -35,7 +43,11 @@ const SECTIONS = [
 ]
 
 export function AppShell() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [section, setSection] = useState<WorkspaceSection>("canvas")
+  const [focusTicker, setFocusTicker] = useState<TickerFocus | null>(null)
 
   useEffect(() => {
     const stored = localStorage.getItem(SECTION_KEY)
@@ -46,9 +58,35 @@ export function AppShell() {
     localStorage.setItem(SECTION_KEY, section)
   }, [section])
 
+  // Deep-link: ?section=X&ticker=Y&kind=Z -- pisa la sección guardada porque
+  // es una intención explícita de navegación (link compartido, cross-link).
+  useEffect(() => {
+    const sectionParam = searchParams.get("section")
+    const tickerParam = searchParams.get("ticker")
+    const kindParam = searchParams.get("kind") as TickerKind | null
+    if (sectionParam === "canvas" || sectionParam === "library" || sectionParam === "calendar" || sectionParam === "bonds" || sectionParam === "forum") {
+      setSection(sectionParam)
+    }
+    if (tickerParam && kindParam) {
+      setFocusTicker({ kind: kindParam, ticker: tickerParam })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const navigateToTicker = useCallback((kind: TickerKind, ticker: string, destino: TickerDestino) => {
+    const targetSection = sectionForDestino(destino)
+    setSection(targetSection)
+    setFocusTicker({ kind, ticker })
+    const params = new URLSearchParams({ section: targetSection, ticker, kind })
+    router.replace(`${pathname}?${params.toString()}`)
+  }, [router, pathname])
+
+  const tickerNavigator = useMemo(() => ({ navigateToTicker }), [navigateToTicker])
+
   const active = SECTIONS.find((item) => item.id === section) ?? SECTIONS[0]
 
   return (
+    <TickerNavContext.Provider value={tickerNavigator}>
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
@@ -61,7 +99,7 @@ export function AppShell() {
           <div className="mb-2 px-3 pt-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-[var(--text-mute)]">Espacio de trabajo</div>
           <SidebarMenu>
             {SECTIONS.map(({ id, label, description, Icon }) => (
-              <SidebarMenuButton key={id} closeOnMobile active={section === id} onClick={() => setSection(id)} className="h-12">
+              <SidebarMenuButton key={id} closeOnMobile active={section === id} onClick={() => { setSection(id); setFocusTicker(null) }} className="h-12">
                 <Icon size={17} strokeWidth={section === id ? 2.2 : 1.7} />
                 <span className="min-w-0"><span className="block truncate">{label}</span><span className="block truncate text-[9px] font-normal text-[var(--text-mute)]">{description}</span></span>
               </SidebarMenuButton>
@@ -85,11 +123,12 @@ export function AppShell() {
           <ThemeToggle />
         </header>
         {section === "canvas" && <CanvasWorkspace />}
-        {section === "library" && <DataLibrary />}
-        {section === "calendar" && <MarketCalendar />}
-        {section === "bonds" && <BondsWorkspace />}
-        {section === "forum" && <ForumHub />}
+        {section === "library" && <DataLibrary focusTicker={focusTicker && focusTicker.kind !== "variable" ? focusTicker : null} />}
+        {section === "calendar" && <MarketCalendar initialTicker={focusTicker?.ticker ?? null} />}
+        {section === "bonds" && <BondsWorkspace initialTicker={focusTicker?.kind === "bono" ? focusTicker.ticker : null} />}
+        {section === "forum" && <ForumHub initialFocus={focusTicker} />}
       </SidebarInset>
     </SidebarProvider>
+    </TickerNavContext.Provider>
   )
 }

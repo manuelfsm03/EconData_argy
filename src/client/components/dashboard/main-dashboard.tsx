@@ -56,7 +56,7 @@ function TabBCRALazy({ initialSubtab }: { initialSubtab?: string | null }) {
 
 function TabNoticias() { return <NewsFeed /> }
 
-export function Dashboard({ initialTab = "macro", initialSubtab = null, embedded = false }: { initialTab?: string; initialSubtab?: string | null; embedded?: boolean }) {
+export function Dashboard({ initialTab = "macro", initialSubtab = null, initialTicker = null, embedded = false }: { initialTab?: string; initialSubtab?: string | null; initialTicker?: string | null; embedded?: boolean }) {
   const [activeTab, setActiveTab] = useState(initialTab)
   const [macroSubtab, setMacroSubtab] = useState<string | null>(initialTab === "macro" ? initialSubtab : null)
   const [financeSubtab, setFinanceSubtab] = useState<string | null>(initialTab === "finanzas" ? initialSubtab : null)
@@ -194,7 +194,7 @@ export function Dashboard({ initialTab = "macro", initialSubtab = null, embedded
 
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 8px" }}>
         {activeTab === "resumen"   && <TabResumen onNavigate={handleNavigate} />}
-        {activeTab === "finanzas"  && <TabFinanzas initialSubtab={financeSubtab} />}
+        {activeTab === "finanzas"  && <TabFinanzas initialSubtab={financeSubtab} initialTicker={initialTicker} />}
         {activeTab === "macro"     && <TabMacro initialSubtab={macroSubtab} />}
         {activeTab === "bcra"      && <TabBCRALazy initialSubtab={bcraSubtab} />}
         {activeTab === "noticias"  && <TabNoticias />}

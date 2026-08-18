@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Calculator, Landmark } from "lucide-react"
+import { Calculator, Landmark, LineChart } from "lucide-react"
 import { ESQUEMAS } from "@/lib/bond-schedule"
+import { useTickerNav } from "@/lib/ticker-nav"
 import { cn } from "@/lib/utils"
 
 // ── Tipos de la respuesta de /api/bonos/calculadora (ver src/lib/bond-math.ts) ──
@@ -54,14 +55,19 @@ function Metrica({ label, value, unit }: { label: string; value: string; unit?: 
   )
 }
 
-export function BondsWorkspace() {
-  const [ticker, setTicker] = useState(ESQUEMAS[0]?.ticker ?? "")
+export function BondsWorkspace({ initialTicker = null }: { initialTicker?: string | null } = {}) {
+  const { navigateToTicker } = useTickerNav()
+  const [ticker, setTicker] = useState(initialTicker ?? ESQUEMAS[0]?.ticker ?? "")
   const [modo, setModo] = useState<"precio" | "tir">("precio")
   const [valor, setValor] = useState("")
   const [precioMercado, setPrecioMercado] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [resultado, setResultado] = useState<RespuestaCalculadora | null>(null)
+
+  useEffect(() => {
+    if (initialTicker) setTicker(initialTicker)
+  }, [initialTicker])
 
   // Precarga con el precio de mercado en vivo (BYMA Data vía /api/bonos) cada
   // vez que cambia el ticker -- el usuario puede editarlo para simular otro
@@ -143,6 +149,14 @@ export function BondsWorkspace() {
                 <button type="button" onClick={() => setModo("precio")} className={cn("h-7 flex-1 rounded text-[10px] font-medium", modo === "precio" ? "bg-[var(--amber-soft)] text-[var(--amber)]" : "text-[var(--text-dim)]")}>Tengo el precio</button>
                 <button type="button" onClick={() => setModo("tir")} className={cn("h-7 flex-1 rounded text-[10px] font-medium", modo === "tir" ? "bg-[var(--amber-soft)] text-[var(--amber)]" : "text-[var(--text-dim)]")}>Tengo la TIR</button>
               </div>
+
+              <button
+                type="button"
+                onClick={() => navigateToTicker("bono", ticker, "precio")}
+                className="flex items-center justify-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--bg)] py-1.5 text-[10px] font-medium text-[var(--text-dim)] transition hover:border-[var(--amber)]/50 hover:text-[var(--amber)]"
+              >
+                <LineChart size={12} /> Ver ficha completa de {ticker} (histórico, foro)
+              </button>
 
               <label className="flex flex-col gap-1">
                 <span className="text-[10px] uppercase tracking-wide text-[var(--text-mute)]">{modo === "precio" ? "Precio clean" : "TIR objetivo (%)"}</span>

@@ -124,11 +124,11 @@ interface StockQuote {
   ask: number | null
 }
 
-export function AccionesView() {
+export function AccionesView({ initialTicker = null }: { initialTicker?: string | null } = {}) {
   const [data, setData] = useState<{ byCategory: Record<string, StockQuote[]>; categories: string[] } | null>(null)
   const [loading, setLoading] = useState(true)
   const [cat, setCat] = useState("all")
-  const [selectedTicker, setSelectedTicker] = useState<string | null>(null)
+  const [selectedTicker, setSelectedTicker] = useState<string | null>(initialTicker)
 
   useEffect(() => {
     fetch("/api/acciones?category=all")
@@ -343,12 +343,12 @@ interface BondRow {
   vnResidual: number
 }
 
-export function BonosView() {
+export function BonosView({ initialTicker = null }: { initialTicker?: string | null } = {}) {
   const [bonos, setBonos] = useState<BondRow[]>([])
   const [lecaps, setLecaps] = useState<{ ticker: string; tipo: string; vencimiento: string; diasVencimiento: number; precio: number | null; tir: number | null; tea: number | null; tem: number | null }[]>([])
   const [tab, setTab] = useState<"soberanos" | "lecap">("soberanos")
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState<{ type: "bono" | "cap"; ticker: string } | null>(null)
+  const [selected, setSelected] = useState<{ type: "bono" | "cap"; ticker: string } | null>(initialTicker ? { type: "bono", ticker: initialTicker } : null)
 
   useEffect(() => {
     Promise.all([
@@ -1768,7 +1768,7 @@ export function CryptoView() {
 
 // ── Main export ────────────────────────────────────────────────────────────────
 
-export function TabFinanzas({ initialSubtab }: { initialSubtab?: string | null }) {
+export function TabFinanzas({ initialSubtab, initialTicker = null }: { initialSubtab?: string | null; initialTicker?: string | null }) {
   const [activeTab, setActiveTab] = useState(initialSubtab ?? "acciones")
 
   useEffect(() => {
@@ -1778,8 +1778,8 @@ export function TabFinanzas({ initialSubtab }: { initialSubtab?: string | null }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       <SubTabs active={activeTab} onChange={setActiveTab} />
-      {activeTab === "acciones"  && <AccionesView />}
-      {activeTab === "bonos"     && <BonosView />}
+      {activeTab === "acciones"  && <AccionesView key={initialTicker ?? "acciones"} initialTicker={activeTab === "acciones" ? initialTicker : null} />}
+      {activeTab === "bonos"     && <BonosView key={initialTicker ?? "bonos"} initialTicker={activeTab === "bonos" ? initialTicker : null} />}
       {activeTab === "bonos-avanzado" && <TabBonos />}
       {activeTab === "rofex"     && <RofexView />}
       {activeTab === "plazofijo" && <PlazoFijoView />}
