@@ -13,6 +13,8 @@ const KIND_META: Record<EventKind, { label: string; short: string; colorClass: s
   indec: { label: "INDEC (IPC / EMAE)", short: "INDEC", colorClass: "border-[var(--positive)] bg-[var(--positive)]/10 text-[var(--positive)]", dotClass: "bg-[var(--positive)]" },
   intl_cpi: { label: "CPI EEUU / Japón / Reino Unido", short: "CPI", colorClass: "border-[#A98EDA] bg-[#A98EDA]/10 text-[#A98EDA]", dotClass: "bg-[#A98EDA]" },
   banco_central: { label: "Bancos centrales (BCE / BOE / BOJ)", short: "BC", colorClass: "border-[var(--yellow)] bg-[var(--yellow)]/10 text-[var(--yellow)]", dotClass: "bg-[var(--yellow)]" },
+  latam_cpi: { label: "Inflación LatAm (IPCA)", short: "IPCA", colorClass: "border-[var(--negative)] bg-[var(--negative)]/10 text-[var(--negative)]", dotClass: "bg-[var(--negative)]" },
+  latam_banco_central: { label: "Bancos centrales LatAm", short: "BC-LA", colorClass: "border-[#7DD3C0] bg-[#7DD3C0]/10 text-[#7DD3C0]", dotClass: "bg-[#7DD3C0]" },
 }
 
 const COUNTRY_META: Record<CountryCode, { label: string; flag: string }> = {
@@ -21,6 +23,9 @@ const COUNTRY_META: Record<CountryCode, { label: string; flag: string }> = {
   JP: { label: "Japón", flag: "🇯🇵" },
   EU: { label: "Eurozona", flag: "🇪🇺" },
   GB: { label: "Reino Unido", flag: "🇬🇧" },
+  BR: { label: "Brasil", flag: "🇧🇷" },
+  CL: { label: "Chile", flag: "🇨🇱" },
+  MX: { label: "México", flag: "🇲🇽" },
 }
 const ALL_COUNTRIES = Object.keys(COUNTRY_META) as CountryCode[]
 const COUNTRIES_KEY = "lapizarra.calendario.paises.v1"
@@ -29,9 +34,11 @@ const COUNTRIES_KEY = "lapizarra.calendario.paises.v1"
  *  (sin fechas simuladas — mismo criterio de honestidad que el resto del proyecto). */
 interface PendingSource { label: string; fuente: string; items: string[] }
 const PENDING_SOURCES: PendingSource[] = [
-  { label: "BCRA (REM / IPOM)", fuente: "BCRA — calendario de difusión oficial", items: ["BCRA · REM (relevamiento de expectativas)", "BCRA · IPOM (informe de política monetaria)"] },
+  { label: "BCRA (REM / IPOM)", fuente: "sin calendario fijo hacia adelante — solo patrón histórico", items: ["BCRA · REM (relevamiento de expectativas)", "BCRA · IPOM (informe de política monetaria)"] },
   { label: "Licitaciones del Tesoro", fuente: "Secretaría de Finanzas / Tesoro", items: ["Colocación de deuda en pesos: instrumentos, montos y tasas adjudicadas"] },
   { label: "Earnings — empresas AR", fuente: "pendiente fuente oficial BYMA / CNV", items: ["GGAL", "YPF", "PAMP", "BMA", "LOMA", "TXAR", "CEPU"] },
+  { label: "Eurozona (CPI/HICP)", fuente: "Eurostat — calendario interactivo, no expone el año completo", items: ["HICP flash estimate", "HICP completo"] },
+  { label: "Chile (IPC) / México (INPC)", fuente: "INE Chile / INEGI México — no se logró extraer un calendario verificable", items: ["IPC Chile", "INPC México"] },
 ]
 
 const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
@@ -89,7 +96,7 @@ export function MarketCalendar() {
   const [month, setMonth] = useState({ year: initial.getUTCFullYear(), month: initial.getUTCMonth() })
   const [view, setView] = useState<"month" | "agenda">("month")
   const [query, setQuery] = useState("")
-  const [kinds, setKinds] = useState<Record<EventKind, boolean>>({ bono: true, fomc: true, indec: true, intl_cpi: true, banco_central: true })
+  const [kinds, setKinds] = useState<Record<EventKind, boolean>>({ bono: true, fomc: true, indec: true, intl_cpi: true, banco_central: true, latam_cpi: true, latam_banco_central: true })
   const [countries, setCountries] = useState<Record<CountryCode, boolean>>(() => Object.fromEntries(ALL_COUNTRIES.map((c) => [c, true])) as Record<CountryCode, boolean>)
   const [selected, setSelected] = useState<MarketCalendarEvent | null>(null)
 
@@ -153,7 +160,7 @@ export function MarketCalendar() {
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--amber-soft)] text-[var(--amber)]"><CalendarDays size={20} /></div>
           <div>
             <h1 className="text-lg font-semibold text-[var(--text)]">Calendario de mercado</h1>
-            <p className="text-xs text-[var(--text-dim)]">Bonos, bancos centrales e inflación — Argentina, EEUU, Japón, Eurozona y Reino Unido.</p>
+            <p className="text-xs text-[var(--text-dim)]">Bonos, bancos centrales e inflación — Argentina, EEUU, Japón, Eurozona, Reino Unido, Brasil, Chile y México.</p>
           </div>
           <div className="ml-auto flex rounded-md border border-[var(--border)] bg-[var(--bg-elev)] p-1">
             <button type="button" onClick={() => setView("month")} className={cn("flex h-7 items-center gap-1.5 rounded px-2.5 text-[10px]", view === "month" ? "bg-[var(--amber-soft)] text-[var(--amber)]" : "text-[var(--text-dim)]")}><Grid3X3 size={12} />Mes</button>

@@ -4,9 +4,10 @@ import { FOMC_MEETINGS_2026, FUENTE_FOMC } from "@/server/domain/fomc-calendar"
 import { INDEC_PUBLICACIONES_2026, FUENTE_INDEC } from "@/server/domain/indec-calendar"
 import { INTL_CPI_2026, fuenteDe } from "@/server/domain/intl-cpi-calendar"
 import { CENTRAL_BANK_MEETINGS_2026, fuenteBancoCentral, type CentralBankCode } from "@/server/domain/central-bank-calendar"
+import { BRAZIL_IPCA_2026, COPOM_2026, BCCH_RPM_2026, BANXICO_2026, fuenteCpiLatam, fuenteBancoLatam } from "@/server/domain/latam-calendar"
 
 /** Países que puede elegir el usuario para filtrar el calendario. */
-export type CountryCode = "AR" | "US" | "JP" | "EU" | "GB"
+export type CountryCode = "AR" | "US" | "JP" | "EU" | "GB" | "BR" | "CL" | "MX"
 
 export interface BondCalendarEvent {
   kind: "bono"
@@ -73,12 +74,38 @@ export interface CentralBankCalendarEvent {
   impact: "high"
 }
 
+export interface LatamCpiCalendarEvent {
+  kind: "latam_cpi"
+  country: "BR"
+  id: string
+  ticker: "IPCA"
+  title: string
+  paymentDate: string
+  detail: string
+  source: string
+  impact: "high"
+}
+
+export interface LatamBankCalendarEvent {
+  kind: "latam_banco_central"
+  country: "BR" | "CL" | "MX"
+  id: string
+  ticker: "COPOM" | "BCCh" | "Banxico"
+  title: string
+  paymentDate: string
+  detail: string
+  source: string
+  impact: "high"
+}
+
 export type MarketCalendarEvent =
   | BondCalendarEvent
   | FomcCalendarEvent
   | IndecCalendarEvent
   | IntlCpiCalendarEvent
   | CentralBankCalendarEvent
+  | LatamCpiCalendarEvent
+  | LatamBankCalendarEvent
 
 export function todayInBuenosAires(now: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -183,6 +210,41 @@ export function deriveCentralBankCalendarEvents(today: string = todayInBuenosAir
   }))
 }
 
+export function deriveLatamCpiCalendarEvents(today: string = todayInBuenosAires()): LatamCpiCalendarEvent[] {
+  return BRAZIL_IPCA_2026.filter((p) => p.fecha >= today).map((p) => ({
+    kind: "latam_cpi" as const,
+    country: "BR" as const,
+    id: `IPCA-${p.fecha}`,
+    ticker: "IPCA" as const,
+    title: "Publicación IPCA (inflación Brasil)",
+    paymentDate: p.fecha,
+    detail: p.descripcion,
+    source: fuenteCpiLatam(p.pais),
+    impact: "high" as const,
+  }))
+}
+
+const LATAM_BANK_TITULO: Record<"COPOM" | "BCCh" | "Banxico", string> = {
+  COPOM: "Decisión de tasa Selic (Copom)",
+  BCCh: "Decisión de tasa BCCh",
+  Banxico: "Decisión de tasa Banxico",
+}
+
+export function deriveLatamBankCalendarEvents(today: string = todayInBuenosAires()): LatamBankCalendarEvent[] {
+  const meetings = [...COPOM_2026, ...BCCH_RPM_2026, ...BANXICO_2026]
+  return meetings.filter((m) => m.fecha >= today).map((m) => ({
+    kind: "latam_banco_central" as const,
+    country: m.pais as "BR" | "CL" | "MX",
+    id: `${m.banco}-${m.fecha}`,
+    ticker: m.banco,
+    title: LATAM_BANK_TITULO[m.banco],
+    paymentDate: m.fecha,
+    detail: m.descripcion,
+    source: fuenteBancoLatam(m.banco),
+    impact: "high" as const,
+  }))
+}
+
 /** Unión de todos los eventos con fuente real conectada, ordenada por fecha. */
 export function deriveMarketCalendarEvents(today: string = todayInBuenosAires()): MarketCalendarEvent[] {
   return [
@@ -191,5 +253,7 @@ export function deriveMarketCalendarEvents(today: string = todayInBuenosAires())
     ...deriveIndecCalendarEvents(today),
     ...deriveIntlCpiCalendarEvents(today),
     ...deriveCentralBankCalendarEvents(today),
+    ...deriveLatamCpiCalendarEvents(today),
+    ...deriveLatamBankCalendarEvents(today),
   ].sort((left, right) => left.paymentDate.localeCompare(right.paymentDate) || left.ticker.localeCompare(right.ticker))
 }
