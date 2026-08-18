@@ -15,6 +15,7 @@ const KIND_META: Record<EventKind, { label: string; short: string; colorClass: s
   banco_central: { label: "Bancos centrales (BCE / BOE / BOJ)", short: "BC", colorClass: "border-[var(--yellow)] bg-[var(--yellow)]/10 text-[var(--yellow)]", dotClass: "bg-[var(--yellow)]" },
   latam_cpi: { label: "Inflación LatAm (IPCA)", short: "IPCA", colorClass: "border-[var(--negative)] bg-[var(--negative)]/10 text-[var(--negative)]", dotClass: "bg-[var(--negative)]" },
   latam_banco_central: { label: "Bancos centrales LatAm", short: "BC-LA", colorClass: "border-[#7DD3C0] bg-[#7DD3C0]/10 text-[#7DD3C0]", dotClass: "bg-[#7DD3C0]" },
+  earnings: { label: "Balances (estimado)", short: "EARN", colorClass: "border-dashed border-[var(--text-dim)] bg-[var(--bg-elev-2)] text-[var(--text-dim)]", dotClass: "bg-[var(--text-dim)]" },
 }
 
 const COUNTRY_META: Record<CountryCode, { label: string; flag: string }> = {
@@ -36,7 +37,7 @@ interface PendingSource { label: string; fuente: string; items: string[] }
 const PENDING_SOURCES: PendingSource[] = [
   { label: "BCRA (REM / IPOM)", fuente: "sin calendario fijo hacia adelante — solo patrón histórico", items: ["BCRA · REM (relevamiento de expectativas)", "BCRA · IPOM (informe de política monetaria)"] },
   { label: "Licitaciones del Tesoro", fuente: "Secretaría de Finanzas / Tesoro", items: ["Colocación de deuda en pesos: instrumentos, montos y tasas adjudicadas"] },
-  { label: "Earnings — empresas AR", fuente: "pendiente fuente oficial BYMA / CNV", items: ["GGAL", "YPF", "PAMP", "BMA", "LOMA", "TXAR", "CEPU"] },
+  { label: "Earnings — resto (BMA, LOMA, TXAR, CEPU, S&P500 completo)", fuente: "GGAL/PAMP/YPF y Magnificent 7 ya tienen fecha estimada — el resto no tiene patrón propio suficiente para estimar", items: ["BMA", "LOMA", "TXAR", "CEPU", "S&P500 (494 empresas restantes)"] },
   { label: "Eurozona (CPI/HICP)", fuente: "Eurostat — calendario interactivo, no expone el año completo", items: ["HICP flash estimate", "HICP completo"] },
   { label: "Chile (IPC) / México (INPC)", fuente: "INE Chile / INEGI México — no se logró extraer un calendario verificable", items: ["IPC Chile", "INPC México"] },
 ]
@@ -96,7 +97,7 @@ export function MarketCalendar() {
   const [month, setMonth] = useState({ year: initial.getUTCFullYear(), month: initial.getUTCMonth() })
   const [view, setView] = useState<"month" | "agenda">("month")
   const [query, setQuery] = useState("")
-  const [kinds, setKinds] = useState<Record<EventKind, boolean>>({ bono: true, fomc: true, indec: true, intl_cpi: true, banco_central: true, latam_cpi: true, latam_banco_central: true })
+  const [kinds, setKinds] = useState<Record<EventKind, boolean>>({ bono: true, fomc: true, indec: true, intl_cpi: true, banco_central: true, latam_cpi: true, latam_banco_central: true, earnings: true })
   const [countries, setCountries] = useState<Record<CountryCode, boolean>>(() => Object.fromEntries(ALL_COUNTRIES.map((c) => [c, true])) as Record<CountryCode, boolean>)
   const [selected, setSelected] = useState<MarketCalendarEvent | null>(null)
 
@@ -313,6 +314,11 @@ export function MarketCalendar() {
                   <dt className="text-[var(--text-mute)]">Fecha</dt><dd className="font-mono text-[var(--text)]">{selected.paymentDate}</dd>
                   <dt className="text-[var(--text-mute)]">Detalle</dt><dd className="text-[var(--text)]">{selected.detail}</dd>
                 </dl>
+              )}
+              {selected.kind === "earnings" && (
+                <div className="rounded-md border border-dashed border-[var(--amber)]/50 bg-[var(--amber-soft)] p-3 text-[10px] leading-4 text-[var(--text)]">
+                  ⚠️ <b>Estimado, no confirmado</b> — a diferencia del resto del calendario, esta fecha no viene de un calendario oficial publicado por la empresa. Se proyecta a partir del patrón de balances anteriores y puede moverse.
+                </div>
               )}
               <div className="rounded-md border border-[var(--border)] bg-[var(--bg)] p-3 text-[10px] leading-4 text-[var(--text-dim)]"><b className="text-[var(--text)]">Fuente:</b> {selected.source}</div>
             </div>

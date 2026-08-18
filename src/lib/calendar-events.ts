@@ -5,6 +5,7 @@ import { INDEC_PUBLICACIONES_2026, FUENTE_INDEC } from "@/server/domain/indec-ca
 import { INTL_CPI_2026, fuenteDe } from "@/server/domain/intl-cpi-calendar"
 import { CENTRAL_BANK_MEETINGS_2026, fuenteBancoCentral, type CentralBankCode } from "@/server/domain/central-bank-calendar"
 import { BRAZIL_IPCA_2026, COPOM_2026, BCCH_RPM_2026, BANXICO_2026, fuenteCpiLatam, fuenteBancoLatam } from "@/server/domain/latam-calendar"
+import { EARNINGS_2026 } from "@/server/domain/earnings-calendar"
 
 /** Países que puede elegir el usuario para filtrar el calendario. */
 export type CountryCode = "AR" | "US" | "JP" | "EU" | "GB" | "BR" | "CL" | "MX"
@@ -98,6 +99,20 @@ export interface LatamBankCalendarEvent {
   impact: "high"
 }
 
+export interface EarningsCalendarEvent {
+  kind: "earnings"
+  country: "AR" | "US"
+  id: string
+  ticker: string
+  title: string
+  paymentDate: string
+  detail: string
+  source: string
+  impact: "medium"
+  /** false siempre: estas fechas son estimadas, no publicadas por una fuente oficial única. */
+  confirmado: false
+}
+
 export type MarketCalendarEvent =
   | BondCalendarEvent
   | FomcCalendarEvent
@@ -106,6 +121,7 @@ export type MarketCalendarEvent =
   | CentralBankCalendarEvent
   | LatamCpiCalendarEvent
   | LatamBankCalendarEvent
+  | EarningsCalendarEvent
 
 export function todayInBuenosAires(now: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -245,6 +261,21 @@ export function deriveLatamBankCalendarEvents(today: string = todayInBuenosAires
   }))
 }
 
+export function deriveEarningsCalendarEvents(today: string = todayInBuenosAires()): EarningsCalendarEvent[] {
+  return EARNINGS_2026.filter((e) => e.fecha >= today).map((e) => ({
+    kind: "earnings" as const,
+    country: e.pais,
+    id: `EARN-${e.ticker}-${e.fecha}`,
+    ticker: e.ticker,
+    title: `Balance ${e.empresa} (estimado)`,
+    paymentDate: e.fecha,
+    detail: e.base,
+    source: "Estimación propia por patrón trimestral — no confirmado por la empresa, puede moverse",
+    impact: "medium" as const,
+    confirmado: false as const,
+  }))
+}
+
 /** Unión de todos los eventos con fuente real conectada, ordenada por fecha. */
 export function deriveMarketCalendarEvents(today: string = todayInBuenosAires()): MarketCalendarEvent[] {
   return [
@@ -255,5 +286,6 @@ export function deriveMarketCalendarEvents(today: string = todayInBuenosAires())
     ...deriveCentralBankCalendarEvents(today),
     ...deriveLatamCpiCalendarEvents(today),
     ...deriveLatamBankCalendarEvents(today),
+    ...deriveEarningsCalendarEvents(today),
   ].sort((left, right) => left.paymentDate.localeCompare(right.paymentDate) || left.ticker.localeCompare(right.ticker))
 }
