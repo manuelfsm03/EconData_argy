@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Bell, BellOff, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Globe2, Grid3X3, List, Landmark, Search, SlidersHorizontal, X } from "lucide-react"
+import { Bell, BellOff, CalendarDays, CalendarPlus, ChevronDown, ChevronLeft, ChevronRight, Download, ExternalLink, Globe2, Grid3X3, List, Landmark, Search, SlidersHorizontal, X } from "lucide-react"
 import { deriveMarketCalendarEvents, type CountryCode, type MarketCalendarEvent, todayInBuenosAires } from "@/lib/calendar-events"
+import { downloadICS, googleCalendarUrl } from "@/lib/ics-export"
 import { cn } from "@/lib/utils"
 
 type EventKind = MarketCalendarEvent["kind"]
@@ -222,6 +223,15 @@ export function MarketCalendar() {
               Filtros
               {inactiveFilterCount > 0 && <span className="rounded-full bg-[var(--amber)] px-1.5 py-0.5 font-mono text-[9px] text-black">{inactiveFilterCount}</span>}
             </button>
+            <button
+              type="button"
+              onClick={() => downloadICS(`lapizarra-calendario-${today}.ics`, events)}
+              title="Exporta los eventos filtrados a un archivo .ics (Apple Calendar, Outlook, o importar en Google Calendar)"
+              className="flex h-9 items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 text-[10px] font-semibold text-[var(--text-dim)] transition hover:border-[var(--amber)]/50"
+            >
+              <CalendarPlus size={13} />
+              Exportar
+            </button>
             <div className="font-mono text-[10px] text-[var(--text-dim)] whitespace-nowrap">{events.length} eventos · corte {today}</div>
           </div>
 
@@ -429,6 +439,29 @@ export function MarketCalendar() {
                 <p className="mt-2 text-[9px] leading-relaxed text-[var(--text-mute)]">
                   Vista previa: guarda tu preferencia en este dispositivo. El aviso real (push/email) todavía no está implementado.
                 </p>
+              </div>
+              <div className="rounded-md border border-[var(--border)] bg-[var(--bg)] p-3">
+                <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
+                  <CalendarPlus size={13} />
+                  Agregar a mi calendario
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => downloadICS(`${selected.ticker}-${selected.paymentDate}.ics`, [selected])}
+                    className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg-elev)] px-3 py-1 text-[10px] font-semibold text-[var(--text)] transition hover:border-[var(--amber)]/50"
+                  >
+                    <Download size={11} /> Apple / Outlook (.ics)
+                  </button>
+                  <a
+                    href={googleCalendarUrl(selected)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg-elev)] px-3 py-1 text-[10px] font-semibold text-[var(--text)] transition hover:border-[var(--amber)]/50"
+                  >
+                    <ExternalLink size={11} /> Google Calendar
+                  </a>
+                </div>
               </div>
               {selected.kind === "bono" ? (
                 <dl className="grid grid-cols-[140px_1fr] gap-y-3">
