@@ -8,22 +8,71 @@
  * GET /api/bonos/calculadora?ticker=GD30&modo=precio&valor=65.30
  * GET /api/bonos/calculadora?ticker=GD30&modo=tir&valor=12.5
  * GET /api/bonos/calculadora?ticker=GD30&modo=tir&valor=12.5&liquidacion=2026-09-01
+ * GET /api/bonos/calculadora?ticker=GD41&modo=precio&valor=64.10&shocks=-100,100
+ *
+ * Siempre devuelve además una tabla de ESCENARIOS: qué precio tendría el bono
+ * si la TIR se moviera N puntos básicos, repreciando el flujo entero con la
+ * tasa nueva. Con ?shocks= se pide una lista propia, separada por comas; sin
+ * ese parámetro se usa la escalera por defecto de bond-math.
  *
  * Solo soporta tickers con esquema de cashflows verificado contra el
- * prospecto (ver ESQUEMAS en bond-schedule.ts — hoy GD30 y AL30). Para el
- * resto devuelve 404 explícito en vez de un cálculo legado sin validar,
- * mismo criterio de honestidad que ya usa /api/bonos con "dataQuality".
+ * prospecto (ver ESQUEMAS en bond-schedule.ts). Para el resto devuelve 404
+ * explícito en vez de un cálculo legado sin validar, mismo criterio de
+ * honestidad que ya usa /api/bonos con "dataQuality".
  */
 
 import { NextRequest, NextResponse } from "next/server"
 import { ESQUEMAS, construirCashflows } from "@/lib/bond-schedule"
 import { todayInBuenosAires } from "@/lib/calendar-events"
 import {
+  SHOCKS_POR_DEFECTO,
   calcularMetricas,
+  escenariosDeTasa,
   interesesCorridos as calcularInteresesCorridos,
   metricasDesdeTIR,
 } from "@/lib/bond-math"
 import { fechaUTC } from "@/lib/market-calendar"
+
+/** Cuántos escenarios se aceptan de una: suficiente para una escalera fina,
+ *  poco como para que nadie use la ruta para hacer trabajar al server de gusto. */
+const MAX_ESCENARIOS = 24
+
+/** Tope por escenario: ±10000 bp son ±100 puntos de TIR, de sobra para
+ *  cualquier simulación honesta. */
+const MAX_SHOCK_BP = 10000
+
+/**
+ * Interpreta ?shocks=-100,50,200. Devuelve el error listo para responder si la
+ * lista no sirve, en vez de tragarse en silencio un valor mal escrito y
+ * devolver una tabla que no es la que pidieron.
+ */
+function parsearShocks(crudo: string | null): { shocks: number[] } | { error: string } {
+  if (crudo === null) return { shocks: SHOCKS_POR_DEFECTO }
+
+  const partes = crudo
+    .split(",")
+    .map((parte) => parte.trim())
+    .filter((parte) => parte.length > 0)
+
+  if (partes.length === 0) return { error: "?shocks no puede venir vacío" }
+  if (partes.length > MAX_ESCENARIOS) {
+    return { error: `?shocks admite hasta ${MAX_ESCENARIOS} escenarios` }
+  }
+
+  const shocks: number[] = []
+  for (const parte of partes) {
+    if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(parte)) {
+      return { error: `"${parte}" no es un movimiento en puntos básicos válido` }
+    }
+    const bp = Number(parte)
+    if (!Number.isFinite(bp) || Math.abs(bp) > MAX_SHOCK_BP) {
+      return { error: `Cada shock debe estar entre -${MAX_SHOCK_BP} y ${MAX_SHOCK_BP} puntos básicos` }
+    }
+    shocks.push(bp)
+  }
+
+  return { shocks }
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -31,6 +80,11 @@ export async function GET(request: NextRequest) {
   const modo = searchParams.get("modo")
   const valorParam = searchParams.get("valor")
   const liquidacionParam = searchParams.get("liquidacion")
+
+  const shocksParseados = parsearShocks(searchParams.get("shocks"))
+  if ("error" in shocksParseados) {
+    return NextResponse.json({ error: shocksParseados.error }, { status: 400 })
+  }
 
   if (!ticker) {
     return NextResponse.json({ error: "Falta ?ticker" }, { status: 400 })
@@ -102,12 +156,18 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  // Los escenarios parten SIEMPRE de la TIR resultante, venga de donde venga el
+  // dato de entrada. Así la tabla significa lo mismo en los dos modos: cuánto se
+  // mueve el precio desde el punto en el que quedó parado el usuario.
+  const escenarios = escenariosDeTasa(cashflows, liquidacion, metricas.tir, shocksParseados.shocks)
+
   return NextResponse.json({
     ticker,
     modo,
     valorIngresado: valor,
     liquidacion: liquidacion.toISOString().slice(0, 10),
     metricas,
+    escenarios: escenarios ?? [],
     flujosFuturos: cashflows
       .filter((cf) => cf.fechaDevengamiento > liquidacion)
       .map((cf) => ({
@@ -116,6 +176,7 @@ export async function GET(request: NextRequest) {
         amortizacion: cf.amortizacion,
         total: cf.cupon + cf.amortizacion,
       })),
-    nota: "Simulación: no usa precio de mercado en vivo. Solo tickers con esquema verificado (ver /api/bonos para el resto).",
+    shocksBp: shocksParseados.shocks,
+    nota: "Simulación: no usa precio de mercado en vivo. Solo tickers con esquema verificado (ver /api/bonos para el resto). Los escenarios reprecian el flujo completo con la tasa nueva; variacionAproximada es la regla de duration + convexity, que se muestra al lado para ver dónde deja de servir.",
   })
 }
