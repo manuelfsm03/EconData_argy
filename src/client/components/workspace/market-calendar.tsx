@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { CalendarDays, ChevronLeft, ChevronRight, Globe2, Grid3X3, List, Landmark, Search, X } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, Globe2, Grid3X3, List, Landmark, Search, SlidersHorizontal, X } from "lucide-react"
 import { deriveMarketCalendarEvents, type CountryCode, type MarketCalendarEvent, todayInBuenosAires } from "@/lib/calendar-events"
 import { cn } from "@/lib/utils"
 
@@ -100,6 +100,7 @@ export function MarketCalendar() {
   const [kinds, setKinds] = useState<Record<EventKind, boolean>>({ bono: true, fomc: true, indec: true, intl_cpi: true, banco_central: true, latam_cpi: true, latam_banco_central: true, earnings: true })
   const [countries, setCountries] = useState<Record<CountryCode, boolean>>(() => Object.fromEntries(ALL_COUNTRIES.map((c) => [c, true])) as Record<CountryCode, boolean>)
   const [selected, setSelected] = useState<MarketCalendarEvent | null>(null)
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   // Preferencia de países: se guarda en este dispositivo, igual que el resto del Canvas.
   useEffect(() => {
@@ -126,6 +127,9 @@ export function MarketCalendar() {
       return haystack.toLocaleLowerCase("es").includes(normalized)
     })
   }, [allEvents, query, kinds, countries])
+
+  const inactiveFilterCount =
+    Object.values(countries).filter((on) => !on).length + Object.values(kinds).filter((on) => !on).length
 
   const eventsByDay = useMemo(() => {
     const result = new Map<string, MarketCalendarEvent[]>()
@@ -175,51 +179,66 @@ export function MarketCalendar() {
               <Search size={14} className="pointer-events-none absolute left-3 top-2.5 text-[var(--text-mute)]" />
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar ticker o instrumento…" className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 text-xs text-[var(--text)] outline-none focus:border-[var(--amber)]" />
             </div>
-            <div className="font-mono text-[10px] text-[var(--text-dim)]">{events.length} eventos · corte {today}</div>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((prev) => !prev)}
+              className={cn("flex h-9 items-center gap-2 rounded-md border px-3 text-[10px] font-semibold transition", filtersOpen ? "border-[var(--amber)]/50 bg-[var(--amber-soft)] text-[var(--amber)]" : "border-[var(--border)] bg-[var(--bg)] text-[var(--text-dim)]")}
+            >
+              <SlidersHorizontal size={13} />
+              Filtros
+              {inactiveFilterCount > 0 && <span className="rounded-full bg-[var(--amber)] px-1.5 py-0.5 font-mono text-[9px] text-black">{inactiveFilterCount}</span>}
+            </button>
+            <div className="font-mono text-[10px] text-[var(--text-dim)] whitespace-nowrap">{events.length} eventos · corte {today}</div>
           </div>
-          <div className="mt-3 flex items-center gap-2">
-            <Globe2 size={12} className="shrink-0 text-[var(--text-dim)]" />
-            <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-[var(--text-dim)]">País</span>
-            <div className="flex flex-wrap gap-2">
-              {ALL_COUNTRIES.map((code) => {
-                const meta = COUNTRY_META[code]
-                const on = countries[code]
-                return (
-                  <button
-                    key={code}
-                    type="button"
-                    onClick={() => setCountries((prev) => ({ ...prev, [code]: !prev[code] }))}
-                    className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition", on ? "border-[var(--amber)]/50 bg-[var(--amber-soft)] text-[var(--text)]" : "border-[var(--border)] bg-[var(--bg)] text-[var(--text-mute)]")}
-                  >
-                    <span>{meta.flag}</span>
-                    {meta.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {(Object.keys(KIND_META) as EventKind[]).map((kind) => {
-              const meta = KIND_META[kind]
-              const on = kinds[kind]
-              return (
-                <button
-                  key={kind}
-                  type="button"
-                  onClick={() => setKinds((prev) => ({ ...prev, [kind]: !prev[kind] }))}
-                  className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition", on ? meta.colorClass : "border-[var(--border)] bg-[var(--bg)] text-[var(--text-mute)]")}
-                >
-                  <span className={cn("h-1.5 w-1.5 rounded-full", on ? meta.dotClass : "bg-[var(--text-mute)]")} />
-                  {meta.label}
-                </button>
-              )
-            })}
-            {PENDING_SOURCES.map((source) => (
-              <span key={source.label} title={`${source.fuente} — sin conectar`} className="flex items-center gap-1.5 rounded-full border border-dashed border-[var(--border-hi)] bg-[var(--bg)] px-2.5 py-1 text-[10px] font-medium text-[var(--text-mute)]">
-                {source.label} <span className="rounded border border-[var(--border-hi)] px-1 text-[8px]">NC</span>
-              </span>
-            ))}
-          </div>
+
+          {filtersOpen && (
+            <>
+              <div className="mt-3 flex items-start gap-2">
+                <Globe2 size={12} className="mt-1 shrink-0 text-[var(--text-dim)]" />
+                <span className="mt-1 shrink-0 text-[9px] font-semibold uppercase tracking-wider text-[var(--text-dim)]">País</span>
+                <div className="flex flex-wrap gap-2">
+                  {ALL_COUNTRIES.map((code) => {
+                    const meta = COUNTRY_META[code]
+                    const on = countries[code]
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => setCountries((prev) => ({ ...prev, [code]: !prev[code] }))}
+                        className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition", on ? "border-[var(--amber)]/50 bg-[var(--amber-soft)] text-[var(--text)]" : "border-[var(--border)] bg-[var(--bg)] text-[var(--text-mute)]")}
+                      >
+                        <span className="text-xs leading-none">{meta.flag}</span>
+                        {meta.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(Object.keys(KIND_META) as EventKind[]).map((kind) => {
+                  const meta = KIND_META[kind]
+                  const on = kinds[kind]
+                  return (
+                    <button
+                      key={kind}
+                      type="button"
+                      onClick={() => setKinds((prev) => ({ ...prev, [kind]: !prev[kind] }))}
+                      className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition", on ? meta.colorClass : "border-[var(--border)] bg-[var(--bg)] text-[var(--text-mute)]")}
+                    >
+                      <span className={cn("h-1.5 w-1.5 rounded-full", on ? meta.dotClass : "bg-[var(--text-mute)]")} />
+                      {meta.label}
+                    </button>
+                  )
+                })}
+                {PENDING_SOURCES.map((source) => (
+                  <span key={source.label} title={`${source.fuente} — sin conectar`} className="flex items-center gap-1.5 rounded-full border border-dashed border-[var(--border-hi)] bg-[var(--bg)] px-2.5 py-1 text-[10px] font-medium text-[var(--text-mute)]">
+                    {source.label} <span className="rounded border border-[var(--border-hi)] px-1 text-[8px]">NC</span>
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
+
           <div className="mt-3 rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[10px] leading-4 text-[var(--text-mute)]">
             Cobertura actual: bonos AR (motor verificado), FOMC, bancos centrales de la Eurozona/Reino Unido/Japón, e inflación de Argentina/EEUU/Japón. La fecha de bonos es la fecha efectiva, corrida al siguiente día hábil; no se inventan eventos macro, licitaciones ni earnings — ver &quot;fuentes pendientes&quot; abajo. La preferencia de países se guarda en este dispositivo.
           </div>
