@@ -2,6 +2,7 @@ import { aISO } from "./market-calendar"
 import { construirCashflows, ESQUEMAS } from "./bond-schedule"
 import { FOMC_MEETINGS_2026, FUENTE_FOMC } from "@/server/domain/fomc-calendar"
 import { INDEC_PUBLICACIONES_2026, FUENTE_INDEC } from "@/server/domain/indec-calendar"
+import { INTL_CPI_2026, fuenteDe } from "@/server/domain/intl-cpi-calendar"
 
 export interface BondCalendarEvent {
   kind: "bono"
@@ -41,7 +42,18 @@ export interface IndecCalendarEvent {
   impact: "high"
 }
 
-export type MarketCalendarEvent = BondCalendarEvent | FomcCalendarEvent | IndecCalendarEvent
+export interface IntlCpiCalendarEvent {
+  kind: "intl_cpi"
+  id: string
+  ticker: "CPI-US" | "CPI-JP"
+  title: string
+  paymentDate: string
+  detail: string
+  source: string
+  impact: "high"
+}
+
+export type MarketCalendarEvent = BondCalendarEvent | FomcCalendarEvent | IndecCalendarEvent | IntlCpiCalendarEvent
 
 export function todayInBuenosAires(now: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -105,9 +117,25 @@ export function deriveIndecCalendarEvents(today: string = todayInBuenosAires()):
   }))
 }
 
-/** Unión de todos los eventos con fuente real conectada (bonos + FOMC + INDEC), ordenada por fecha. */
+export function deriveIntlCpiCalendarEvents(today: string = todayInBuenosAires()): IntlCpiCalendarEvent[] {
+  return INTL_CPI_2026.filter((p) => p.fecha >= today).map((p) => ({
+    kind: "intl_cpi" as const,
+    id: `CPI-${p.pais}-${p.fecha}`,
+    ticker: (p.pais === "US" ? "CPI-US" : "CPI-JP") as "CPI-US" | "CPI-JP",
+    title: p.pais === "US" ? "Publicación CPI EEUU" : "Publicación CPI Japón",
+    paymentDate: p.fecha,
+    detail: p.descripcion,
+    source: fuenteDe(p.pais),
+    impact: "high" as const,
+  }))
+}
+
+/** Unión de todos los eventos con fuente real conectada (bonos + FOMC + INDEC + CPI internacional), ordenada por fecha. */
 export function deriveMarketCalendarEvents(today: string = todayInBuenosAires()): MarketCalendarEvent[] {
-  return [...deriveBondCalendarEvents(today), ...deriveFomcCalendarEvents(today), ...deriveIndecCalendarEvents(today)].sort(
-    (left, right) => left.paymentDate.localeCompare(right.paymentDate) || left.ticker.localeCompare(right.ticker),
-  )
+  return [
+    ...deriveBondCalendarEvents(today),
+    ...deriveFomcCalendarEvents(today),
+    ...deriveIndecCalendarEvents(today),
+    ...deriveIntlCpiCalendarEvents(today),
+  ].sort((left, right) => left.paymentDate.localeCompare(right.paymentDate) || left.ticker.localeCompare(right.ticker))
 }

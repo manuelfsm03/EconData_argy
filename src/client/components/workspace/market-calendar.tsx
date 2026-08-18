@@ -11,6 +11,7 @@ const KIND_META: Record<EventKind, { label: string; short: string; colorClass: s
   bono: { label: "Pagos de bonos", short: "BONO", colorClass: "border-[var(--amber)] bg-[var(--amber-soft)] text-[var(--amber)]", dotClass: "bg-[var(--amber)]" },
   fomc: { label: "FOMC (Fed)", short: "FOMC", colorClass: "border-[var(--sky)] bg-[var(--sky)]/10 text-[var(--sky)]", dotClass: "bg-[var(--sky)]" },
   indec: { label: "INDEC (IPC / EMAE)", short: "INDEC", colorClass: "border-[var(--positive)] bg-[var(--positive)]/10 text-[var(--positive)]", dotClass: "bg-[var(--positive)]" },
+  intl_cpi: { label: "CPI EEUU / Japón", short: "CPI", colorClass: "border-[#A98EDA] bg-[#A98EDA]/10 text-[#A98EDA]", dotClass: "bg-[#A98EDA]" },
 }
 
 /** Categorías con capacidad ya visible en la UI pero sin fuente oficial conectada todavía
@@ -77,7 +78,7 @@ export function MarketCalendar() {
   const [month, setMonth] = useState({ year: initial.getUTCFullYear(), month: initial.getUTCMonth() })
   const [view, setView] = useState<"month" | "agenda">("month")
   const [query, setQuery] = useState("")
-  const [kinds, setKinds] = useState<Record<EventKind, boolean>>({ bono: true, fomc: true, indec: true })
+  const [kinds, setKinds] = useState<Record<EventKind, boolean>>({ bono: true, fomc: true, indec: true, intl_cpi: true })
   const [selected, setSelected] = useState<MarketCalendarEvent | null>(null)
 
   const events = useMemo(() => {
