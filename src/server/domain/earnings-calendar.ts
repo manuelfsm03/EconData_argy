@@ -27,6 +27,10 @@ export const EARNINGS_AR_2026: EarningsEstimado[] = [
   { fecha: "2026-11-19", ticker: "GGAL", empresa: "Grupo Financiero Galicia", pais: "AR", base: "estimado por patrón trimestral (Q1: 13/05, Q2: 20/08)" },
   { fecha: "2026-11-03", ticker: "PAMP", empresa: "Pampa Energía", pais: "AR", base: "estimado por patrón trimestral (Q1: 06/05, Q2: 04/08)" },
   { fecha: "2026-11-03", ticker: "YPF", empresa: "YPF", pais: "AR", base: "estimado por patrón trimestral (Q1: 07/05, Q2: 04/08)" },
+  { fecha: "2026-11-08", ticker: "LOMA", empresa: "Loma Negra", pais: "AR", base: "estimado por patrón trimestral (Q1: 04/05, Q2: 06/08)" },
+  { fecha: "2026-11-03", ticker: "TXAR", empresa: "Ternium Argentina", pais: "AR", base: "estimado por patrón trimestral (Q1: 05/05, Q2: 04/08)" },
+  { fecha: "2026-11-10", ticker: "CEPU", empresa: "Central Puerto", pais: "AR", base: "estimado por patrón trimestral (Q1: 12/05, Q2: 11/08)" },
+  { fecha: "2026-11-11", ticker: "BMA", empresa: "Banco Macro", pais: "AR", base: "estimado por patrón trimestral (Q1: 27/05, Q2: 19/08)" },
 ]
 
 export const EARNINGS_US_2026: EarningsEstimado[] = [

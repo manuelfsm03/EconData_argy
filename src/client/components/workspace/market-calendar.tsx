@@ -37,7 +37,7 @@ interface PendingSource { label: string; fuente: string; items: string[] }
 const PENDING_SOURCES: PendingSource[] = [
   { label: "BCRA (REM / IPOM)", fuente: "sin calendario fijo hacia adelante — solo patrón histórico", items: ["BCRA · REM (relevamiento de expectativas)", "BCRA · IPOM (informe de política monetaria)"] },
   { label: "Licitaciones del Tesoro", fuente: "Secretaría de Finanzas / Tesoro", items: ["Colocación de deuda en pesos: instrumentos, montos y tasas adjudicadas"] },
-  { label: "Earnings — resto (BMA, LOMA, TXAR, CEPU, S&P500 completo)", fuente: "GGAL/PAMP/YPF y Magnificent 7 ya tienen fecha estimada — el resto no tiene patrón propio suficiente para estimar", items: ["BMA", "LOMA", "TXAR", "CEPU", "S&P500 (494 empresas restantes)"] },
+  { label: "Earnings — S&P500 (resto)", fuente: "las 7 empresas argentinas de BYMA y la Magnificent 7 ya tienen fecha estimada — el resto del S&P500 (493 empresas) no es viable a mano", items: ["S&P500 (493 empresas restantes)"] },
   { label: "Eurozona (CPI/HICP)", fuente: "Eurostat — calendario interactivo, no expone el año completo", items: ["HICP flash estimate", "HICP completo"] },
   { label: "Chile (IPC) / México (INPC)", fuente: "INE Chile / INEGI México — no se logró extraer un calendario verificable", items: ["IPC Chile", "INPC México"] },
 ]
