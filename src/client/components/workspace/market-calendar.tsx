@@ -99,6 +99,7 @@ export function MarketCalendar() {
   const [query, setQuery] = useState("")
   const [kinds, setKinds] = useState<Record<EventKind, boolean>>({ bono: true, fomc: true, indec: true, intl_cpi: true, banco_central: true, latam_cpi: true, latam_banco_central: true, earnings: true })
   const [countries, setCountries] = useState<Record<CountryCode, boolean>>(() => Object.fromEntries(ALL_COUNTRIES.map((c) => [c, true])) as Record<CountryCode, boolean>)
+  const [impacts, setImpacts] = useState<Record<"high" | "medium", boolean>>({ high: true, medium: true })
   const [selected, setSelected] = useState<MarketCalendarEvent | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
 
@@ -122,14 +123,15 @@ export function MarketCalendar() {
     return allEvents.filter((event) => {
       if (!kinds[event.kind]) return false
       if (!countries[event.country]) return false
+      if (!impacts[event.impact]) return false
       if (!normalized) return true
       const haystack = event.kind === "bono" ? `${event.ticker} ${event.title} ${event.currency} ${event.law}` : `${event.ticker} ${event.title} ${event.detail}`
       return haystack.toLocaleLowerCase("es").includes(normalized)
     })
-  }, [allEvents, query, kinds, countries])
+  }, [allEvents, query, kinds, countries, impacts])
 
   const inactiveFilterCount =
-    Object.values(countries).filter((on) => !on).length + Object.values(kinds).filter((on) => !on).length
+    Object.values(countries).filter((on) => !on).length + Object.values(kinds).filter((on) => !on).length + Object.values(impacts).filter((on) => !on).length
 
   const eventsByDay = useMemo(() => {
     const result = new Map<string, MarketCalendarEvent[]>()
@@ -235,6 +237,26 @@ export function MarketCalendar() {
                     {source.label} <span className="rounded border border-[var(--border-hi)] px-1 text-[8px]">NC</span>
                   </span>
                 ))}
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-[var(--text-dim)]">Impacto</span>
+                <div className="flex flex-wrap gap-2">
+                  {([["high", "Alto impacto", "var(--negative)"], ["medium", "Impacto medio", "var(--text-dim)"]] as const).map(([key, label, color]) => {
+                    const on = impacts[key]
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setImpacts((prev) => ({ ...prev, [key]: !prev[key] }))}
+                        className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition", on ? "text-[var(--text)]" : "border-[var(--border)] bg-[var(--bg)] text-[var(--text-mute)]")}
+                        style={on ? { borderColor: `${color}80`, background: `${color}1a` } : undefined}
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: on ? color : "var(--text-mute)" }} />
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </>
           )}
