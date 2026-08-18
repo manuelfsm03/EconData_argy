@@ -22,6 +22,7 @@ export interface LatamCentralBankMeeting {
 }
 
 const FUENTE_IBGE = "IBGE — Sistema Nacional de Índices de Preços ao Consumidor, calendário de divulgação do IPCA (ibge.gov.br), verificado contra o boletim oficial de julho/2026, 2026-08-17"
+const FUENTE_INEGI = "INEGI — Boletín de indicador 481/26, INPC (inegi.org.mx/contenidos/saladeprensa/boletines/2026/inpc/inpc_2q2026_08.pdf), campo \"Próxima publicación mensual\" en la portada, verificado 2026-08-17. INEGI no publica una tabla anual del INPC de un mismo indicador -- cada boletín mensual solo confirma la fecha del mes siguiente."
 const FUENTE_COPOM = "Banco Central do Brasil — Calendário de reuniões do Copom 2026 (bcb.gov.br), verificado 2026-08-17"
 const FUENTE_BCCH = "Banco Central de Chile — Calendario de Reuniones de Política Monetaria (RPM) 2026 (bcentral.cl), verificado 2026-08-17"
 const FUENTE_BANXICO = "Banco de México — Calendario 2026 para los anuncios de las decisiones de política monetaria (banxico.org.mx), PDF oficial, verificado 2026-08-17"
@@ -44,6 +45,19 @@ export const BRAZIL_IPCA_2026: LatamCpiPublicacion[] = [
   { fecha: "2026-09-11", pais: "BR", descripcion: "IPCA Brasil — agosto 2026" },
   { fecha: "2026-10-09", pais: "BR", descripcion: "IPCA Brasil — septiembre 2026" },
   { fecha: "2026-11-12", pais: "BR", descripcion: "IPCA Brasil — octubre 2026" },
+]
+
+/**
+ * INPC (México) -- a diferencia de Brasil, INEGI ya no publica quincenal
+ * (esa suposición inicial era incorrecta, corregida acá): el boletín
+ * mensual del INPC dice explícitamente "Próxima publicación mensual" con
+ * una sola fecha hacia adelante. Por eso esta lista tiene un solo dato
+ * confirmado (el próximo boletín, 481/26 del 7/8/2026) en vez de un año
+ * completo -- se puede ampliar mes a mes a medida que salgan nuevos
+ * boletines.
+ */
+export const MEXICO_INPC_2026: LatamCpiPublicacion[] = [
+  { fecha: "2026-09-09", pais: "MX", descripcion: "INPC México — agosto 2026" },
 ]
 
 export const COPOM_2026: LatamCentralBankMeeting[] = [
@@ -80,7 +94,9 @@ export const BANXICO_2026: LatamCentralBankMeeting[] = [
 ]
 
 export function fuenteCpiLatam(pais: LatamCountry): string {
-  return pais === "BR" ? FUENTE_IBGE : "" // solo Brasil tiene CPI cargado por ahora
+  if (pais === "BR") return FUENTE_IBGE
+  if (pais === "MX") return FUENTE_INEGI
+  return "" // Chile (IPC) sin fuente verificable todavía
 }
 
 export function fuenteBancoLatam(banco: "COPOM" | "BCCh" | "Banxico"): string {
@@ -95,9 +111,11 @@ export function fuenteBancoLatam(banco: "COPOM" | "BCCh" | "Banxico"): string {
  * - IPC Chile (INE): la Agenda Estadística 2026 existe pero no se logró
  *   extraer el listado de fechas tras 4 intentos (páginas 403/404, PDFs
  *   referenciados pero no accesibles).
- * - INPC México (INEGI): se confirmó la REGLA (publica el 10 y 25 de
- *   cada mes, o el día hábil anterior si cae en fin de semana) pero no
- *   una tabla oficial con cada fecha exacta de 2026 -- calcular las
- *   fechas a partir de la regla implicaría resolver ajustes de fin de
- *   semana sin una fuente que los confirme, y no se quiso arriesgar.
+ * - INPC México (INEGI): la suposición inicial (10 y 25 de cada mes,
+ *   quincenal) era incorrecta -- el boletín oficial más reciente (481/26,
+ *   7/8/2026) muestra que el INPC ya es mensual, no quincenal, y que
+ *   INEGI solo confirma la fecha del mes siguiente en cada boletín (no
+ *   publica una tabla anual de este indicador específico). Por eso
+ *   MEXICO_INPC_2026 arriba solo tiene un dato real en vez de un año
+ *   completo -- se puede ir ampliando mes a mes con cada boletín nuevo.
  */

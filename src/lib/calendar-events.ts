@@ -5,7 +5,7 @@ import { INDEC_PUBLICACIONES_2026, FUENTE_INDEC } from "@/server/domain/indec-ca
 import { BCRA_REM_IPOM_2026, FUENTE_BCRA } from "@/server/domain/bcra-calendar"
 import { INTL_CPI_2026, fuenteDe } from "@/server/domain/intl-cpi-calendar"
 import { CENTRAL_BANK_MEETINGS_2026, fuenteBancoCentral, type CentralBankCode } from "@/server/domain/central-bank-calendar"
-import { BRAZIL_IPCA_2026, COPOM_2026, BCCH_RPM_2026, BANXICO_2026, fuenteCpiLatam, fuenteBancoLatam } from "@/server/domain/latam-calendar"
+import { BRAZIL_IPCA_2026, MEXICO_INPC_2026, COPOM_2026, BCCH_RPM_2026, BANXICO_2026, fuenteCpiLatam, fuenteBancoLatam } from "@/server/domain/latam-calendar"
 import { EARNINGS_2026 } from "@/server/domain/earnings-calendar"
 
 /** Países que puede elegir el usuario para filtrar el calendario. */
@@ -90,9 +90,9 @@ export interface CentralBankCalendarEvent {
 
 export interface LatamCpiCalendarEvent {
   kind: "latam_cpi"
-  country: "BR"
+  country: "BR" | "MX"
   id: string
-  ticker: "IPCA"
+  ticker: "IPCA" | "INPC"
   title: string
   paymentDate: string
   detail: string
@@ -259,13 +259,17 @@ export function deriveCentralBankCalendarEvents(today: string = todayInBuenosAir
   }))
 }
 
+const LATAM_CPI_TICKER: Record<"BR" | "MX", "IPCA" | "INPC"> = { BR: "IPCA", MX: "INPC" }
+const LATAM_CPI_TITULO: Record<"BR" | "MX", string> = { BR: "Publicación IPCA (inflación Brasil)", MX: "Publicación INPC (inflación México)" }
+
 export function deriveLatamCpiCalendarEvents(today: string = todayInBuenosAires()): LatamCpiCalendarEvent[] {
-  return BRAZIL_IPCA_2026.filter((p) => p.fecha >= today).map((p) => ({
+  const publicaciones = [...BRAZIL_IPCA_2026, ...MEXICO_INPC_2026]
+  return publicaciones.filter((p) => p.fecha >= today).map((p) => ({
     kind: "latam_cpi" as const,
-    country: "BR" as const,
-    id: `IPCA-${p.fecha}`,
-    ticker: "IPCA" as const,
-    title: "Publicación IPCA (inflación Brasil)",
+    country: p.pais as "BR" | "MX",
+    id: `${LATAM_CPI_TICKER[p.pais as "BR" | "MX"]}-${p.fecha}`,
+    ticker: LATAM_CPI_TICKER[p.pais as "BR" | "MX"],
+    title: LATAM_CPI_TITULO[p.pais as "BR" | "MX"],
     paymentDate: p.fecha,
     detail: p.descripcion,
     source: fuenteCpiLatam(p.pais),
