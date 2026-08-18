@@ -66,9 +66,9 @@ export interface BcraCalendarEvent {
 
 export interface IntlCpiCalendarEvent {
   kind: "intl_cpi"
-  country: "US" | "JP" | "GB"
+  country: "US" | "JP" | "GB" | "EU"
   id: string
-  ticker: "CPI-US" | "CPI-JP" | "CPI-GB"
+  ticker: "CPI-US" | "CPI-JP" | "CPI-GB" | "CPI-EU"
   title: string
   paymentDate: string
   detail: string
@@ -221,8 +221,8 @@ export function deriveBcraCalendarEvents(today: string = todayInBuenosAires()): 
   }))
 }
 
-const INTL_CPI_TICKER: Record<"US" | "JP" | "GB", "CPI-US" | "CPI-JP" | "CPI-GB"> = { US: "CPI-US", JP: "CPI-JP", GB: "CPI-GB" }
-const INTL_CPI_TITULO: Record<"US" | "JP" | "GB", string> = { US: "Publicación CPI EEUU", JP: "Publicación CPI Japón", GB: "Publicación CPI Reino Unido" }
+const INTL_CPI_TICKER: Record<"US" | "JP" | "GB" | "EU", "CPI-US" | "CPI-JP" | "CPI-GB" | "CPI-EU"> = { US: "CPI-US", JP: "CPI-JP", GB: "CPI-GB", EU: "CPI-EU" }
+const INTL_CPI_TITULO: Record<"US" | "JP" | "GB" | "EU", string> = { US: "Publicación CPI EEUU", JP: "Publicación CPI Japón", GB: "Publicación CPI Reino Unido", EU: "Publicación HICP Eurozona" }
 
 export function deriveIntlCpiCalendarEvents(today: string = todayInBuenosAires()): IntlCpiCalendarEvent[] {
   return INTL_CPI_2026.filter((p) => p.fecha >= today).map((p) => ({

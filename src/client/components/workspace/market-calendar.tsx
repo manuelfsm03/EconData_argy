@@ -12,7 +12,7 @@ const KIND_META: Record<EventKind, { label: string; short: string; colorClass: s
   fomc: { label: "FOMC (Fed)", short: "FOMC", colorClass: "border-[var(--sky)] bg-[var(--sky)]/10 text-[var(--sky)]", dotClass: "bg-[var(--sky)]" },
   indec: { label: "INDEC (IPC / EMAE)", short: "INDEC", colorClass: "border-[var(--positive)] bg-[var(--positive)]/10 text-[var(--positive)]", dotClass: "bg-[var(--positive)]" },
   bcra: { label: "BCRA (REM / IPOM)", short: "BCRA", colorClass: "border-[#E8A87C] bg-[#E8A87C]/10 text-[#E8A87C]", dotClass: "bg-[#E8A87C]" },
-  intl_cpi: { label: "CPI EEUU / Japón / Reino Unido", short: "CPI", colorClass: "border-[#A98EDA] bg-[#A98EDA]/10 text-[#A98EDA]", dotClass: "bg-[#A98EDA]" },
+  intl_cpi: { label: "CPI EEUU / Japón / Reino Unido / Eurozona", short: "CPI", colorClass: "border-[#A98EDA] bg-[#A98EDA]/10 text-[#A98EDA]", dotClass: "bg-[#A98EDA]" },
   banco_central: { label: "Bancos centrales (BCE / BOE / BOJ)", short: "BC", colorClass: "border-[var(--yellow)] bg-[var(--yellow)]/10 text-[var(--yellow)]", dotClass: "bg-[var(--yellow)]" },
   latam_cpi: { label: "Inflación LatAm (IPCA / INPC)", short: "CPI-LA", colorClass: "border-[var(--negative)] bg-[var(--negative)]/10 text-[var(--negative)]", dotClass: "bg-[var(--negative)]" },
   latam_banco_central: { label: "Bancos centrales LatAm", short: "BC-LA", colorClass: "border-[#7DD3C0] bg-[#7DD3C0]/10 text-[#7DD3C0]", dotClass: "bg-[#7DD3C0]" },
@@ -40,7 +40,6 @@ interface PendingSource { label: string; fuente: string; items: string[] }
 const PENDING_SOURCES: PendingSource[] = [
   { label: "Licitaciones del Tesoro", fuente: "Secretaría de Finanzas / Tesoro", items: ["Colocación de deuda en pesos: instrumentos, montos y tasas adjudicadas"] },
   { label: "Earnings — S&P500 (resto)", fuente: "las 7 empresas argentinas de BYMA y la Magnificent 7 ya tienen fecha estimada — el resto del S&P500 (493 empresas) no es viable a mano", items: ["S&P500 (493 empresas restantes)"] },
-  { label: "Eurozona (CPI/HICP)", fuente: "Eurostat — calendario interactivo, no expone el año completo", items: ["HICP flash estimate", "HICP completo"] },
   { label: "Chile (IPC)", fuente: "INE Chile — Agenda Estadística no accesible tras 4 intentos", items: ["IPC Chile"] },
 ]
 
@@ -328,7 +327,7 @@ export function MarketCalendar() {
           )}
 
           <div className="mt-3 rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[10px] leading-4 text-[var(--text-mute)]">
-            Cobertura actual: bonos AR (motor verificado), FOMC, bancos centrales de la Eurozona/Reino Unido/Japón, e inflación de Argentina/EEUU/Japón. La fecha de bonos es la fecha efectiva, corrida al siguiente día hábil; no se inventan eventos macro, licitaciones ni earnings — ver &quot;fuentes pendientes&quot; abajo. La preferencia de países se guarda en este dispositivo.
+            Cobertura actual: bonos AR (motor verificado), FOMC, BCRA (REM/IPOM), bancos centrales de Eurozona/Reino Unido/Japón/Brasil/Chile/México, e inflación de Argentina/EEUU/Japón/Reino Unido/Eurozona/Brasil/México. La fecha de bonos es la fecha efectiva, corrida al siguiente día hábil; no se inventan eventos macro, licitaciones ni earnings — ver &quot;fuentes pendientes&quot; abajo. La preferencia de países se guarda en este dispositivo.
           </div>
         </div>
 
