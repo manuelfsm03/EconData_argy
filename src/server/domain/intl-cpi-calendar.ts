@@ -10,12 +10,13 @@
 
 export interface CpiPublicacion {
   fecha: string
-  pais: "US" | "JP"
+  pais: "US" | "JP" | "GB"
   descripcion: string
 }
 
 const FUENTE_US_CPI = "US Bureau of Labor Statistics — CPI release schedule (bls.gov/schedule/news_release/cpi.htm), verificado 2026-08-17"
 const FUENTE_JP_CPI = "Statistics Bureau of Japan — CPI Schedule of Release (stat.go.jp/english/data/cpi/1582.html), verificado 2026-08-17"
+const FUENTE_GB_CPI = "UK Office for National Statistics — Consumer price inflation release calendar (ons.gov.uk/economy/inflationandpriceindices/bulletins/consumerpriceinflation), verificado 2026-08-17"
 
 export const US_CPI_2026: CpiPublicacion[] = [
   { fecha: "2026-01-13", pais: "US", descripcion: "CPI EEUU — diciembre 2025" },
@@ -54,10 +55,28 @@ export const JAPAN_CPI_2026: CpiPublicacion[] = [
   { fecha: "2026-12-25", pais: "JP", descripcion: "CPI Japón — diciembre 2026" },
 ]
 
-export const INTL_CPI_2026: CpiPublicacion[] = [...US_CPI_2026, ...JAPAN_CPI_2026]
+/** ONS -- Consumer price inflation, UK. Publicado ~7am, cubre el mes anterior. */
+export const UK_CPI_2026: CpiPublicacion[] = [
+  { fecha: "2026-01-21", pais: "GB", descripcion: "CPI Reino Unido — diciembre 2025" },
+  { fecha: "2026-02-18", pais: "GB", descripcion: "CPI Reino Unido — enero 2026" },
+  { fecha: "2026-03-25", pais: "GB", descripcion: "CPI Reino Unido — febrero 2026" },
+  { fecha: "2026-04-22", pais: "GB", descripcion: "CPI Reino Unido — marzo 2026" },
+  { fecha: "2026-05-20", pais: "GB", descripcion: "CPI Reino Unido — abril 2026" },
+  { fecha: "2026-06-17", pais: "GB", descripcion: "CPI Reino Unido — mayo 2026" },
+  { fecha: "2026-07-22", pais: "GB", descripcion: "CPI Reino Unido — junio 2026" },
+  { fecha: "2026-08-19", pais: "GB", descripcion: "CPI Reino Unido — julio 2026" },
+  { fecha: "2026-09-16", pais: "GB", descripcion: "CPI Reino Unido — agosto 2026" },
+  { fecha: "2026-10-21", pais: "GB", descripcion: "CPI Reino Unido — septiembre 2026" },
+  { fecha: "2026-11-18", pais: "GB", descripcion: "CPI Reino Unido — octubre 2026" },
+  { fecha: "2026-12-16", pais: "GB", descripcion: "CPI Reino Unido — noviembre 2026" },
+]
 
-export function fuenteDe(pais: "US" | "JP"): string {
-  return pais === "US" ? FUENTE_US_CPI : FUENTE_JP_CPI
+export const INTL_CPI_2026: CpiPublicacion[] = [...US_CPI_2026, ...JAPAN_CPI_2026, ...UK_CPI_2026]
+
+export function fuenteDe(pais: "US" | "JP" | "GB"): string {
+  if (pais === "US") return FUENTE_US_CPI
+  if (pais === "JP") return FUENTE_JP_CPI
+  return FUENTE_GB_CPI
 }
 
 /**

@@ -51,9 +51,9 @@ export interface IndecCalendarEvent {
 
 export interface IntlCpiCalendarEvent {
   kind: "intl_cpi"
-  country: "US" | "JP"
+  country: "US" | "JP" | "GB"
   id: string
-  ticker: "CPI-US" | "CPI-JP"
+  ticker: "CPI-US" | "CPI-JP" | "CPI-GB"
   title: string
   paymentDate: string
   detail: string
@@ -145,13 +145,16 @@ export function deriveIndecCalendarEvents(today: string = todayInBuenosAires()):
   }))
 }
 
+const INTL_CPI_TICKER: Record<"US" | "JP" | "GB", "CPI-US" | "CPI-JP" | "CPI-GB"> = { US: "CPI-US", JP: "CPI-JP", GB: "CPI-GB" }
+const INTL_CPI_TITULO: Record<"US" | "JP" | "GB", string> = { US: "Publicación CPI EEUU", JP: "Publicación CPI Japón", GB: "Publicación CPI Reino Unido" }
+
 export function deriveIntlCpiCalendarEvents(today: string = todayInBuenosAires()): IntlCpiCalendarEvent[] {
   return INTL_CPI_2026.filter((p) => p.fecha >= today).map((p) => ({
     kind: "intl_cpi" as const,
     country: p.pais,
     id: `CPI-${p.pais}-${p.fecha}`,
-    ticker: (p.pais === "US" ? "CPI-US" : "CPI-JP") as "CPI-US" | "CPI-JP",
-    title: p.pais === "US" ? "Publicación CPI EEUU" : "Publicación CPI Japón",
+    ticker: INTL_CPI_TICKER[p.pais],
+    title: INTL_CPI_TITULO[p.pais],
     paymentDate: p.fecha,
     detail: p.descripcion,
     source: fuenteDe(p.pais),

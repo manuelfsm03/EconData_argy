@@ -11,7 +11,7 @@ const KIND_META: Record<EventKind, { label: string; short: string; colorClass: s
   bono: { label: "Pagos de bonos", short: "BONO", colorClass: "border-[var(--amber)] bg-[var(--amber-soft)] text-[var(--amber)]", dotClass: "bg-[var(--amber)]" },
   fomc: { label: "FOMC (Fed)", short: "FOMC", colorClass: "border-[var(--sky)] bg-[var(--sky)]/10 text-[var(--sky)]", dotClass: "bg-[var(--sky)]" },
   indec: { label: "INDEC (IPC / EMAE)", short: "INDEC", colorClass: "border-[var(--positive)] bg-[var(--positive)]/10 text-[var(--positive)]", dotClass: "bg-[var(--positive)]" },
-  intl_cpi: { label: "CPI EEUU / Japón", short: "CPI", colorClass: "border-[#A98EDA] bg-[#A98EDA]/10 text-[#A98EDA]", dotClass: "bg-[#A98EDA]" },
+  intl_cpi: { label: "CPI EEUU / Japón / Reino Unido", short: "CPI", colorClass: "border-[#A98EDA] bg-[#A98EDA]/10 text-[#A98EDA]", dotClass: "bg-[#A98EDA]" },
   banco_central: { label: "Bancos centrales (BCE / BOE / BOJ)", short: "BC", colorClass: "border-[var(--yellow)] bg-[var(--yellow)]/10 text-[var(--yellow)]", dotClass: "bg-[var(--yellow)]" },
 }
 
