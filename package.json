@@ -35,6 +35,7 @@
     "smoke:trade-data": "tsx scripts/smoke-trade-integrity.ts",
     "test:calendar": "tsx --test tests/calendar-events.test.ts",
     "test:bond-math": "tsx scripts/verify-bond-math.ts",
+    "test:escenarios": "tsx scripts/verify-escenarios.ts",
     "test:release-prs": "tsx --test tests/release-prs-48-51.test.ts",
     "test:polymarket": "tsx --test tests/polymarket-parser.test.ts",
     "test:bcra": "tsx --test tests/bcra-banking.test.ts tests/bcra-reserves.test.ts",
