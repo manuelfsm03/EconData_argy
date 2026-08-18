@@ -125,11 +125,11 @@ export interface StockQuote {
   ask: number | null
 }
 
-export function AccionesView() {
+export function AccionesView({ initialTicker = null }: { initialTicker?: string | null } = {}) {
   const [data, setData] = useState<{ byCategory: Record<string, StockQuote[]>; categories: string[] } | null>(null)
   const [loading, setLoading] = useState(true)
   const [cat, setCat] = useState("all")
-  const [selectedTicker, setSelectedTicker] = useState<string | null>(null)
+  const [selectedTicker, setSelectedTicker] = useState<string | null>(initialTicker)
 
   useEffect(() => {
     fetch("/api/acciones?category=all")
@@ -349,12 +349,12 @@ interface BondRow {
   vnResidual: number
 }
 
-export function BonosView() {
+export function BonosView({ initialTicker = null }: { initialTicker?: string | null } = {}) {
   const [bonos, setBonos] = useState<BondRow[]>([])
   const [lecaps, setLecaps] = useState<{ ticker: string; tipo: string; vencimiento: string; diasVencimiento: number; precio: number | null; tir: number | null; tea: number | null; tem: number | null }[]>([])
   const [tab, setTab] = useState<"soberanos" | "lecap">("soberanos")
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState<{ type: "bono" | "cap"; ticker: string } | null>(null)
+  const [selected, setSelected] = useState<{ type: "bono" | "cap"; ticker: string } | null>(initialTicker ? { type: "bono", ticker: initialTicker } : null)
 
   useEffect(() => {
     Promise.all([
@@ -540,10 +540,25 @@ export function BonosView() {
 
 // ── Panel de detalle de bono/LECAP (Detalle / Gráfico / Foro) ─────────────────
 
+interface BondHistoryPoint { date: string; priceUsd: number | null; priceArs: number | null }
+interface BondHistoryResponse { history: BondHistoryPoint[]; nota?: string }
+
 function BonoDetailPanel({ assetType, ticker, bono, onClose }: {
   assetType: "bono" | "cap"; ticker: string; bono: BondRow | null; onClose: () => void
 }) {
   const [detailTab, setDetailTab] = useState<"detalle" | "grafico" | "foro">("detalle")
+  const [historia, setHistoria] = useState<BondHistoryResponse | null>(null)
+  const [historiaLoading, setHistoriaLoading] = useState(false)
+
+  useEffect(() => {
+    if (assetType !== "bono" || detailTab !== "grafico") return
+    setHistoriaLoading(true)
+    fetch(`/api/bonos/${ticker}/historico`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setHistoria(j && Array.isArray(j.history) ? j : null))
+      .catch(() => setHistoria(null))
+      .finally(() => setHistoriaLoading(false))
+  }, [assetType, ticker, detailTab])
 
   const panelTabs = [
     { key: "detalle", label: "Detalle" },
@@ -589,9 +604,30 @@ function BonoDetailPanel({ assetType, ticker, bono, onClose }: {
           )
         )}
         {detailTab === "grafico" && (
-          <div style={{ padding: 20, textAlign: "center", color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 10 }}>
-            Gráfico de histórico próximamente
-          </div>
+          assetType !== "bono" ? (
+            <div style={{ padding: 20, textAlign: "center", color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 10 }}>
+              Histórico todavía no disponible para instrumentos {assetType.toUpperCase()}
+            </div>
+          ) : historiaLoading ? (
+            <Loading />
+          ) : (historia?.history?.length ?? 0) === 0 ? (
+            <div style={{ padding: 20, textAlign: "center", color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 10 }}>
+              Sin histórico todavía para {ticker} — el snapshot diario de precios recién se conectó, se va a ir completando día a día.
+            </div>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={historia!.history.map((h) => ({ date: h.date, precio: h.priceUsd }))} margin={{ top: 8, right: 20, left: 0, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
+                  <XAxis dataKey="date" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} />
+                  <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} domain={["auto", "auto"]} />
+                  <Tooltip {...tooltipStyle} />
+                  <Line type="monotone" dataKey="precio" stroke="var(--amber)" strokeWidth={2} dot={false} isAnimationActive={false} />
+                </LineChart>
+              </ResponsiveContainer>
+              {historia?.nota && <div style={{ marginTop: 4, fontSize: 9, color: "var(--text-mute)", fontFamily: "var(--font-data)" }}>{historia.nota}</div>}
+            </>
+          )
         )}
         {detailTab === "foro" && <ForoActivo assetType={assetType} ticker={ticker} />}
       </div>
@@ -1738,7 +1774,7 @@ export function CryptoView() {
 
 // ── Main export ────────────────────────────────────────────────────────────────
 
-export function TabFinanzas({ initialSubtab }: { initialSubtab?: string | null }) {
+export function TabFinanzas({ initialSubtab, initialTicker = null }: { initialSubtab?: string | null; initialTicker?: string | null }) {
   const [activeTab, setActiveTab] = useState(initialSubtab ?? "acciones")
 
   useEffect(() => {
@@ -1748,8 +1784,8 @@ export function TabFinanzas({ initialSubtab }: { initialSubtab?: string | null }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       <SubTabs active={activeTab} onChange={setActiveTab} />
-      {activeTab === "acciones"  && <AccionesView />}
-      {activeTab === "bonos"     && <BonosView />}
+      {activeTab === "acciones"  && <AccionesView key={initialTicker ?? "acciones"} initialTicker={activeTab === "acciones" ? initialTicker : null} />}
+      {activeTab === "bonos"     && <BonosView key={initialTicker ?? "bonos"} initialTicker={activeTab === "bonos" ? initialTicker : null} />}
       {activeTab === "bonos-avanzado" && <TabBonos />}
       {activeTab === "rofex"     && <RofexView />}
       {activeTab === "plazofijo" && <PlazoFijoView />}
