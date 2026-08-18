@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Calculator, Landmark } from "lucide-react"
 import { ESQUEMAS } from "@/lib/bond-schedule"
 import { cn } from "@/lib/utils"
@@ -58,9 +58,32 @@ export function BondsWorkspace() {
   const [ticker, setTicker] = useState(ESQUEMAS[0]?.ticker ?? "")
   const [modo, setModo] = useState<"precio" | "tir">("precio")
   const [valor, setValor] = useState("")
+  const [precioMercado, setPrecioMercado] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [resultado, setResultado] = useState<RespuestaCalculadora | null>(null)
+
+  // Precarga con el precio de mercado en vivo (BYMA Data vía /api/bonos) cada
+  // vez que cambia el ticker -- el usuario puede editarlo para simular otro
+  // escenario, esto solo evita arrancar de un campo vacío/hardcodeado.
+  useEffect(() => {
+    if (!ticker) return
+    let cancelado = false
+    setPrecioMercado(null)
+    fetch(`/api/bonos?ticker=${encodeURIComponent(ticker)}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (cancelado) return
+        const precio = j?.data?.precio
+        if (typeof precio === "number") {
+          setPrecioMercado(precio)
+          setModo("precio")
+          setValor(String(precio))
+        }
+      })
+      .catch(() => {})
+    return () => { cancelado = true }
+  }, [ticker])
 
   async function calcular(e: React.FormEvent) {
     e.preventDefault()
@@ -124,6 +147,11 @@ export function BondsWorkspace() {
               <label className="flex flex-col gap-1">
                 <span className="text-[10px] uppercase tracking-wide text-[var(--text-mute)]">{modo === "precio" ? "Precio clean" : "TIR objetivo (%)"}</span>
                 <input type="number" step="any" value={valor} onChange={(e) => setValor(e.target.value)} placeholder={modo === "precio" ? "ej. 65.30" : "ej. 12.5"} className="h-9 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 text-xs text-[var(--text)] outline-none focus:border-[var(--amber)]" required />
+                {modo === "precio" && precioMercado != null && (
+                  <span className="text-[9px] text-[var(--text-mute)]">
+                    Precargado con el precio de mercado de {ticker} ({fmt(precioMercado)}, BYMA Data) — editalo para simular otro escenario.
+                  </span>
+                )}
               </label>
 
               {error && <p className="text-[10px] text-[var(--negative)]">{error}</p>}
