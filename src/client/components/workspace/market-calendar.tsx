@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Bell, BellOff, CalendarDays, ChevronLeft, ChevronRight, Globe2, Grid3X3, List, Landmark, Search, SlidersHorizontal, X } from "lucide-react"
+import { Bell, BellOff, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Globe2, Grid3X3, List, Landmark, Search, SlidersHorizontal, X } from "lucide-react"
 import { deriveMarketCalendarEvents, type CountryCode, type MarketCalendarEvent, todayInBuenosAires } from "@/lib/calendar-events"
 import { cn } from "@/lib/utils"
 
@@ -106,6 +106,7 @@ export function MarketCalendar() {
   const [impacts, setImpacts] = useState<Record<"high" | "medium", boolean>>({ high: true, medium: true })
   const [selected, setSelected] = useState<MarketCalendarEvent | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [openSection, setOpenSection] = useState<"pais" | "tipo" | "impacto" | null>(null)
   /** id de evento -> días de anticipación. Solo preferencia local (vista previa);
    *  la entrega real (push/email) no está implementada, ver aviso en el drawer. */
   const [alarms, setAlarms] = useState<Record<string, number>>({})
@@ -159,6 +160,9 @@ export function MarketCalendar() {
     })
   }, [allEvents, query, kinds, countries, impacts])
 
+  const activeCountryCount = Object.values(countries).filter(Boolean).length
+  const activeKindCount = Object.values(kinds).filter(Boolean).length
+  const activeImpactCount = Object.values(impacts).filter(Boolean).length
   const inactiveFilterCount =
     Object.values(countries).filter((on) => !on).length + Object.values(kinds).filter((on) => !on).length + Object.values(impacts).filter((on) => !on).length
 
@@ -224,68 +228,101 @@ export function MarketCalendar() {
 
           {filtersOpen && (
             <>
-              <div className="mt-3 flex items-start gap-2">
-                <Globe2 size={12} className="mt-1 shrink-0 text-[var(--text-dim)]" />
-                <span className="mt-1 shrink-0 text-[9px] font-semibold uppercase tracking-wider text-[var(--text-dim)]">País</span>
-                <div className="flex flex-wrap gap-2">
-                  {ALL_COUNTRIES.map((code) => {
-                    const meta = COUNTRY_META[code]
-                    const on = countries[code]
-                    return (
-                      <button
-                        key={code}
-                        type="button"
-                        onClick={() => setCountries((prev) => ({ ...prev, [code]: !prev[code] }))}
-                        className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition", on ? "border-[var(--amber)]/50 bg-[var(--amber-soft)] text-[var(--text)]" : "border-[var(--border)] bg-[var(--bg)] text-[var(--text-mute)]")}
-                      >
-                        <span className="text-xs leading-none">{meta.flag}</span>
-                        {meta.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {(Object.keys(KIND_META) as EventKind[]).map((kind) => {
-                  const meta = KIND_META[kind]
-                  const on = kinds[kind]
-                  return (
-                    <button
-                      key={kind}
-                      type="button"
-                      onClick={() => setKinds((prev) => ({ ...prev, [kind]: !prev[kind] }))}
-                      className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition", on ? meta.colorClass : "border-[var(--border)] bg-[var(--bg)] text-[var(--text-mute)]")}
-                    >
-                      <span className={cn("h-1.5 w-1.5 rounded-full", on ? meta.dotClass : "bg-[var(--text-mute)]")} />
-                      {meta.label}
-                    </button>
-                  )
-                })}
-                {PENDING_SOURCES.map((source) => (
-                  <span key={source.label} title={`${source.fuente} — sin conectar`} className="flex items-center gap-1.5 rounded-full border border-dashed border-[var(--border-hi)] bg-[var(--bg)] px-2.5 py-1 text-[10px] font-medium text-[var(--text-mute)]">
-                    {source.label} <span className="rounded border border-[var(--border-hi)] px-1 text-[8px]">NC</span>
-                  </span>
-                ))}
-              </div>
-              <div className="mt-3 flex items-center gap-2">
-                <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-[var(--text-dim)]">Impacto</span>
-                <div className="flex flex-wrap gap-2">
-                  {([["high", "Alto impacto", "var(--negative)"], ["medium", "Impacto medio", "var(--text-dim)"]] as const).map(([key, label, color]) => {
-                    const on = impacts[key]
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setImpacts((prev) => ({ ...prev, [key]: !prev[key] }))}
-                        className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition", on ? "text-[var(--text)]" : "border-[var(--border)] bg-[var(--bg)] text-[var(--text-mute)]")}
-                        style={on ? { borderColor: `${color}80`, background: `${color}1a` } : undefined}
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: on ? color : "var(--text-mute)" }} />
-                        {label}
-                      </button>
-                    )
-                  })}
-                </div>
+              <div className="mt-3 flex flex-col divide-y divide-[var(--border)] border-t border-[var(--border)]">
+                <button
+                  type="button"
+                  onClick={() => setOpenSection((prev) => (prev === "pais" ? null : "pais"))}
+                  className="flex items-center gap-2 py-2 text-left"
+                >
+                  <Globe2 size={12} className="shrink-0 text-[var(--text-dim)]" />
+                  <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-dim)]">País</span>
+                  <span className="font-mono text-[9px] text-[var(--text-mute)]">{activeCountryCount}/{ALL_COUNTRIES.length}</span>
+                  <ChevronDown size={12} className={cn("ml-auto text-[var(--text-mute)] transition-transform", openSection === "pais" && "rotate-180")} />
+                </button>
+                {openSection === "pais" && (
+                  <div className="flex flex-wrap gap-2 pb-3 pt-1">
+                    {ALL_COUNTRIES.map((code) => {
+                      const meta = COUNTRY_META[code]
+                      const on = countries[code]
+                      return (
+                        <button
+                          key={code}
+                          type="button"
+                          onClick={() => setCountries((prev) => ({ ...prev, [code]: !prev[code] }))}
+                          className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition", on ? "border-[var(--amber)]/50 bg-[var(--amber-soft)] text-[var(--text)]" : "border-[var(--border)] bg-[var(--bg)] text-[var(--text-mute)]")}
+                        >
+                          <span className="text-xs leading-none">{meta.flag}</span>
+                          {meta.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setOpenSection((prev) => (prev === "tipo" ? null : "tipo"))}
+                  className="flex items-center gap-2 py-2 text-left"
+                >
+                  <SlidersHorizontal size={12} className="shrink-0 text-[var(--text-dim)]" />
+                  <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-dim)]">Tipo de evento</span>
+                  <span className="font-mono text-[9px] text-[var(--text-mute)]">{activeKindCount}/{Object.keys(KIND_META).length}</span>
+                  <ChevronDown size={12} className={cn("ml-auto text-[var(--text-mute)] transition-transform", openSection === "tipo" && "rotate-180")} />
+                </button>
+                {openSection === "tipo" && (
+                  <div className="flex flex-wrap gap-2 pb-3 pt-1">
+                    {(Object.keys(KIND_META) as EventKind[]).map((kind) => {
+                      const meta = KIND_META[kind]
+                      const on = kinds[kind]
+                      return (
+                        <button
+                          key={kind}
+                          type="button"
+                          onClick={() => setKinds((prev) => ({ ...prev, [kind]: !prev[kind] }))}
+                          className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition", on ? meta.colorClass : "border-[var(--border)] bg-[var(--bg)] text-[var(--text-mute)]")}
+                        >
+                          <span className={cn("h-1.5 w-1.5 rounded-full", on ? meta.dotClass : "bg-[var(--text-mute)]")} />
+                          {meta.label}
+                        </button>
+                      )
+                    })}
+                    {PENDING_SOURCES.map((source) => (
+                      <span key={source.label} title={`${source.fuente} — sin conectar`} className="flex items-center gap-1.5 rounded-full border border-dashed border-[var(--border-hi)] bg-[var(--bg)] px-2.5 py-1 text-[10px] font-medium text-[var(--text-mute)]">
+                        {source.label} <span className="rounded border border-[var(--border-hi)] px-1 text-[8px]">NC</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setOpenSection((prev) => (prev === "impacto" ? null : "impacto"))}
+                  className="flex items-center gap-2 py-2 text-left"
+                >
+                  <span className="h-3 w-3 shrink-0 rounded-full border border-[var(--text-dim)]" />
+                  <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-dim)]">Impacto</span>
+                  <span className="font-mono text-[9px] text-[var(--text-mute)]">{activeImpactCount}/2</span>
+                  <ChevronDown size={12} className={cn("ml-auto text-[var(--text-mute)] transition-transform", openSection === "impacto" && "rotate-180")} />
+                </button>
+                {openSection === "impacto" && (
+                  <div className="flex flex-wrap gap-2 pb-3 pt-1">
+                    {([["high", "Alto impacto", "var(--negative)"], ["medium", "Impacto medio", "var(--text-dim)"]] as const).map(([key, label, color]) => {
+                      const on = impacts[key]
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setImpacts((prev) => ({ ...prev, [key]: !prev[key] }))}
+                          className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition", on ? "text-[var(--text)]" : "border-[var(--border)] bg-[var(--bg)] text-[var(--text-mute)]")}
+                          style={on ? { borderColor: `${color}80`, background: `${color}1a` } : undefined}
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ background: on ? color : "var(--text-mute)" }} />
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             </>
           )}
