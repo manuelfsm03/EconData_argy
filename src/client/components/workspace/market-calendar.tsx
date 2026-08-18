@@ -11,6 +11,7 @@ const KIND_META: Record<EventKind, { label: string; short: string; colorClass: s
   bono: { label: "Pagos de bonos", short: "BONO", colorClass: "border-[var(--amber)] bg-[var(--amber-soft)] text-[var(--amber)]", dotClass: "bg-[var(--amber)]" },
   fomc: { label: "FOMC (Fed)", short: "FOMC", colorClass: "border-[var(--sky)] bg-[var(--sky)]/10 text-[var(--sky)]", dotClass: "bg-[var(--sky)]" },
   indec: { label: "INDEC (IPC / EMAE)", short: "INDEC", colorClass: "border-[var(--positive)] bg-[var(--positive)]/10 text-[var(--positive)]", dotClass: "bg-[var(--positive)]" },
+  bcra: { label: "BCRA (REM / IPOM)", short: "BCRA", colorClass: "border-[#E8A87C] bg-[#E8A87C]/10 text-[#E8A87C]", dotClass: "bg-[#E8A87C]" },
   intl_cpi: { label: "CPI EEUU / Japón / Reino Unido", short: "CPI", colorClass: "border-[#A98EDA] bg-[#A98EDA]/10 text-[#A98EDA]", dotClass: "bg-[#A98EDA]" },
   banco_central: { label: "Bancos centrales (BCE / BOE / BOJ)", short: "BC", colorClass: "border-[var(--yellow)] bg-[var(--yellow)]/10 text-[var(--yellow)]", dotClass: "bg-[var(--yellow)]" },
   latam_cpi: { label: "Inflación LatAm (IPCA)", short: "IPCA", colorClass: "border-[var(--negative)] bg-[var(--negative)]/10 text-[var(--negative)]", dotClass: "bg-[var(--negative)]" },
@@ -37,7 +38,6 @@ const DIAS_ALARMA = [1, 3, 7] as const
  *  (sin fechas simuladas — mismo criterio de honestidad que el resto del proyecto). */
 interface PendingSource { label: string; fuente: string; items: string[] }
 const PENDING_SOURCES: PendingSource[] = [
-  { label: "BCRA (REM / IPOM)", fuente: "sin calendario fijo hacia adelante — solo patrón histórico", items: ["BCRA · REM (relevamiento de expectativas)", "BCRA · IPOM (informe de política monetaria)"] },
   { label: "Licitaciones del Tesoro", fuente: "Secretaría de Finanzas / Tesoro", items: ["Colocación de deuda en pesos: instrumentos, montos y tasas adjudicadas"] },
   { label: "Earnings — S&P500 (resto)", fuente: "las 7 empresas argentinas de BYMA y la Magnificent 7 ya tienen fecha estimada — el resto del S&P500 (493 empresas) no es viable a mano", items: ["S&P500 (493 empresas restantes)"] },
   { label: "Eurozona (CPI/HICP)", fuente: "Eurostat — calendario interactivo, no expone el año completo", items: ["HICP flash estimate", "HICP completo"] },
@@ -101,7 +101,7 @@ export function MarketCalendar() {
   const [month, setMonth] = useState({ year: initial.getUTCFullYear(), month: initial.getUTCMonth() })
   const [view, setView] = useState<"month" | "agenda">("month")
   const [query, setQuery] = useState("")
-  const [kinds, setKinds] = useState<Record<EventKind, boolean>>({ bono: true, fomc: true, indec: true, intl_cpi: true, banco_central: true, latam_cpi: true, latam_banco_central: true, earnings: true })
+  const [kinds, setKinds] = useState<Record<EventKind, boolean>>({ bono: true, fomc: true, indec: true, bcra: true, intl_cpi: true, banco_central: true, latam_cpi: true, latam_banco_central: true, earnings: true })
   const [countries, setCountries] = useState<Record<CountryCode, boolean>>(() => Object.fromEntries(ALL_COUNTRIES.map((c) => [c, true])) as Record<CountryCode, boolean>)
   const [impacts, setImpacts] = useState<Record<"high" | "medium", boolean>>({ high: true, medium: true })
   const [selected, setSelected] = useState<MarketCalendarEvent | null>(null)

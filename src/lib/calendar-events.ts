@@ -2,6 +2,7 @@ import { aISO } from "./market-calendar"
 import { construirCashflows, ESQUEMAS } from "./bond-schedule"
 import { FOMC_MEETINGS_2026, FUENTE_FOMC } from "@/server/domain/fomc-calendar"
 import { INDEC_PUBLICACIONES_2026, FUENTE_INDEC } from "@/server/domain/indec-calendar"
+import { BCRA_REM_IPOM_2026, FUENTE_BCRA } from "@/server/domain/bcra-calendar"
 import { INTL_CPI_2026, fuenteDe } from "@/server/domain/intl-cpi-calendar"
 import { CENTRAL_BANK_MEETINGS_2026, fuenteBancoCentral, type CentralBankCode } from "@/server/domain/central-bank-calendar"
 import { BRAZIL_IPCA_2026, COPOM_2026, BCCH_RPM_2026, BANXICO_2026, fuenteCpiLatam, fuenteBancoLatam } from "@/server/domain/latam-calendar"
@@ -44,6 +45,18 @@ export interface IndecCalendarEvent {
   country: "AR"
   id: string
   ticker: "IPC" | "EMAE"
+  title: string
+  paymentDate: string
+  detail: string
+  source: string
+  impact: "high"
+}
+
+export interface BcraCalendarEvent {
+  kind: "bcra"
+  country: "AR"
+  id: string
+  ticker: "REM" | "IPOM"
   title: string
   paymentDate: string
   detail: string
@@ -117,6 +130,7 @@ export type MarketCalendarEvent =
   | BondCalendarEvent
   | FomcCalendarEvent
   | IndecCalendarEvent
+  | BcraCalendarEvent
   | IntlCpiCalendarEvent
   | CentralBankCalendarEvent
   | LatamCpiCalendarEvent
@@ -184,6 +198,25 @@ export function deriveIndecCalendarEvents(today: string = todayInBuenosAires()):
     paymentDate: p.fecha,
     detail: p.descripcion,
     source: FUENTE_INDEC,
+    impact: "high" as const,
+  }))
+}
+
+const BCRA_TITULO: Record<"REM" | "IPOM", string> = {
+  REM: "Relevamiento de Expectativas de Mercado (REM)",
+  IPOM: "Informe de Política Monetaria (IPOM)",
+}
+
+export function deriveBcraCalendarEvents(today: string = todayInBuenosAires()): BcraCalendarEvent[] {
+  return BCRA_REM_IPOM_2026.filter((p) => p.fecha >= today).map((p) => ({
+    kind: "bcra" as const,
+    country: "AR" as const,
+    id: `BCRA-${p.indicador}-${p.fecha}`,
+    ticker: p.indicador,
+    title: BCRA_TITULO[p.indicador],
+    paymentDate: p.fecha,
+    detail: p.descripcion,
+    source: FUENTE_BCRA,
     impact: "high" as const,
   }))
 }
@@ -282,6 +315,7 @@ export function deriveMarketCalendarEvents(today: string = todayInBuenosAires())
     ...deriveBondCalendarEvents(today),
     ...deriveFomcCalendarEvents(today),
     ...deriveIndecCalendarEvents(today),
+    ...deriveBcraCalendarEvents(today),
     ...deriveIntlCpiCalendarEvents(today),
     ...deriveCentralBankCalendarEvents(today),
     ...deriveLatamCpiCalendarEvents(today),
