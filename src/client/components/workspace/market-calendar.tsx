@@ -1,8 +1,8 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { CalendarDays, ChevronLeft, ChevronRight, Grid3X3, List, Landmark, Search, X } from "lucide-react"
-import { deriveMarketCalendarEvents, type MarketCalendarEvent, todayInBuenosAires } from "@/lib/calendar-events"
+import { useEffect, useMemo, useState } from "react"
+import { CalendarDays, ChevronLeft, ChevronRight, Globe2, Grid3X3, List, Landmark, Search, X } from "lucide-react"
+import { deriveMarketCalendarEvents, type CountryCode, type MarketCalendarEvent, todayInBuenosAires } from "@/lib/calendar-events"
 import { cn } from "@/lib/utils"
 
 type EventKind = MarketCalendarEvent["kind"]
@@ -12,7 +12,18 @@ const KIND_META: Record<EventKind, { label: string; short: string; colorClass: s
   fomc: { label: "FOMC (Fed)", short: "FOMC", colorClass: "border-[var(--sky)] bg-[var(--sky)]/10 text-[var(--sky)]", dotClass: "bg-[var(--sky)]" },
   indec: { label: "INDEC (IPC / EMAE)", short: "INDEC", colorClass: "border-[var(--positive)] bg-[var(--positive)]/10 text-[var(--positive)]", dotClass: "bg-[var(--positive)]" },
   intl_cpi: { label: "CPI EEUU / Japón", short: "CPI", colorClass: "border-[#A98EDA] bg-[#A98EDA]/10 text-[#A98EDA]", dotClass: "bg-[#A98EDA]" },
+  banco_central: { label: "Bancos centrales (BCE / BOE / BOJ)", short: "BC", colorClass: "border-[var(--yellow)] bg-[var(--yellow)]/10 text-[var(--yellow)]", dotClass: "bg-[var(--yellow)]" },
 }
+
+const COUNTRY_META: Record<CountryCode, { label: string; flag: string }> = {
+  AR: { label: "Argentina", flag: "🇦🇷" },
+  US: { label: "EEUU", flag: "🇺🇸" },
+  JP: { label: "Japón", flag: "🇯🇵" },
+  EU: { label: "Eurozona", flag: "🇪🇺" },
+  GB: { label: "Reino Unido", flag: "🇬🇧" },
+}
+const ALL_COUNTRIES = Object.keys(COUNTRY_META) as CountryCode[]
+const COUNTRIES_KEY = "lapizarra.calendario.paises.v1"
 
 /** Categorías con capacidad ya visible en la UI pero sin fuente oficial conectada todavía
  *  (sin fechas simuladas — mismo criterio de honestidad que el resto del proyecto). */
@@ -78,18 +89,35 @@ export function MarketCalendar() {
   const [month, setMonth] = useState({ year: initial.getUTCFullYear(), month: initial.getUTCMonth() })
   const [view, setView] = useState<"month" | "agenda">("month")
   const [query, setQuery] = useState("")
-  const [kinds, setKinds] = useState<Record<EventKind, boolean>>({ bono: true, fomc: true, indec: true, intl_cpi: true })
+  const [kinds, setKinds] = useState<Record<EventKind, boolean>>({ bono: true, fomc: true, indec: true, intl_cpi: true, banco_central: true })
+  const [countries, setCountries] = useState<Record<CountryCode, boolean>>(() => Object.fromEntries(ALL_COUNTRIES.map((c) => [c, true])) as Record<CountryCode, boolean>)
   const [selected, setSelected] = useState<MarketCalendarEvent | null>(null)
+
+  // Preferencia de países: se guarda en este dispositivo, igual que el resto del Canvas.
+  useEffect(() => {
+    const stored = localStorage.getItem(COUNTRIES_KEY)
+    if (!stored) return
+    try {
+      const parsed = JSON.parse(stored) as Partial<Record<CountryCode, boolean>>
+      setCountries((prev) => ({ ...prev, ...parsed }))
+    } catch {
+      // preferencia corrupta o de una version anterior -- se ignora, queda el default (todos)
+    }
+  }, [])
+  useEffect(() => {
+    localStorage.setItem(COUNTRIES_KEY, JSON.stringify(countries))
+  }, [countries])
 
   const events = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("es")
     return allEvents.filter((event) => {
       if (!kinds[event.kind]) return false
+      if (!countries[event.country]) return false
       if (!normalized) return true
       const haystack = event.kind === "bono" ? `${event.ticker} ${event.title} ${event.currency} ${event.law}` : `${event.ticker} ${event.title} ${event.detail}`
       return haystack.toLocaleLowerCase("es").includes(normalized)
     })
-  }, [allEvents, query, kinds])
+  }, [allEvents, query, kinds, countries])
 
   const eventsByDay = useMemo(() => {
     const result = new Map<string, MarketCalendarEvent[]>()
@@ -125,7 +153,7 @@ export function MarketCalendar() {
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--amber-soft)] text-[var(--amber)]"><CalendarDays size={20} /></div>
           <div>
             <h1 className="text-lg font-semibold text-[var(--text)]">Calendario de mercado</h1>
-            <p className="text-xs text-[var(--text-dim)]">Pagos de bonos (motor validado) y decisiones de tasa FOMC.</p>
+            <p className="text-xs text-[var(--text-dim)]">Bonos, bancos centrales e inflación — Argentina, EEUU, Japón, Eurozona y Reino Unido.</p>
           </div>
           <div className="ml-auto flex rounded-md border border-[var(--border)] bg-[var(--bg-elev)] p-1">
             <button type="button" onClick={() => setView("month")} className={cn("flex h-7 items-center gap-1.5 rounded px-2.5 text-[10px]", view === "month" ? "bg-[var(--amber-soft)] text-[var(--amber)]" : "text-[var(--text-dim)]")}><Grid3X3 size={12} />Mes</button>
@@ -140,6 +168,27 @@ export function MarketCalendar() {
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar ticker o instrumento…" className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 text-xs text-[var(--text)] outline-none focus:border-[var(--amber)]" />
             </div>
             <div className="font-mono text-[10px] text-[var(--text-dim)]">{events.length} eventos · corte {today}</div>
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <Globe2 size={12} className="shrink-0 text-[var(--text-dim)]" />
+            <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-[var(--text-dim)]">País</span>
+            <div className="flex flex-wrap gap-2">
+              {ALL_COUNTRIES.map((code) => {
+                const meta = COUNTRY_META[code]
+                const on = countries[code]
+                return (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => setCountries((prev) => ({ ...prev, [code]: !prev[code] }))}
+                    className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition", on ? "border-[var(--amber)]/50 bg-[var(--amber-soft)] text-[var(--text)]" : "border-[var(--border)] bg-[var(--bg)] text-[var(--text-mute)]")}
+                  >
+                    <span>{meta.flag}</span>
+                    {meta.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {(Object.keys(KIND_META) as EventKind[]).map((kind) => {
@@ -164,7 +213,7 @@ export function MarketCalendar() {
             ))}
           </div>
           <div className="mt-3 rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[10px] leading-4 text-[var(--text-mute)]">
-            Cobertura actual: esquemas admitidos por el motor de bonos (amortizaciones reconciliadas al 100%) y calendario oficial FOMC. La fecha de bonos es la fecha efectiva, corrida al siguiente día hábil; no se inventan eventos macro, licitaciones ni earnings — ver &quot;fuentes pendientes&quot; abajo.
+            Cobertura actual: bonos AR (motor verificado), FOMC, bancos centrales de la Eurozona/Reino Unido/Japón, e inflación de Argentina/EEUU/Japón. La fecha de bonos es la fecha efectiva, corrida al siguiente día hábil; no se inventan eventos macro, licitaciones ni earnings — ver &quot;fuentes pendientes&quot; abajo. La preferencia de países se guarda en este dispositivo.
           </div>
         </div>
 
