@@ -4,6 +4,7 @@ import { FOMC_MEETINGS_2026, FUENTE_FOMC } from "@/server/domain/fomc-calendar"
 import { INDEC_PUBLICACIONES_2026, FUENTE_INDEC } from "@/server/domain/indec-calendar"
 import { INTL_CPI_2026, fuenteDe } from "@/server/domain/intl-cpi-calendar"
 import { CENTRAL_BANK_MEETINGS_2026, fuenteBancoCentral, type CentralBankCode } from "@/server/domain/central-bank-calendar"
+import { REM_PUBLICACIONES_2026, FUENTE_REM } from "@/server/domain/bcra-calendar"
 
 /** Países que puede elegir el usuario para filtrar el calendario. */
 export type CountryCode = "AR" | "US" | "JP" | "EU" | "GB"
@@ -73,12 +74,25 @@ export interface CentralBankCalendarEvent {
   impact: "high"
 }
 
+export interface BcraCalendarEvent {
+  kind: "bcra"
+  country: "AR"
+  id: string
+  ticker: "REM"
+  title: string
+  paymentDate: string
+  detail: string
+  source: string
+  impact: "high"
+}
+
 export type MarketCalendarEvent =
   | BondCalendarEvent
   | FomcCalendarEvent
   | IndecCalendarEvent
   | IntlCpiCalendarEvent
   | CentralBankCalendarEvent
+  | BcraCalendarEvent
 
 export function todayInBuenosAires(now: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -180,6 +194,20 @@ export function deriveCentralBankCalendarEvents(today: string = todayInBuenosAir
   }))
 }
 
+export function deriveBcraCalendarEvents(today: string = todayInBuenosAires()): BcraCalendarEvent[] {
+  return REM_PUBLICACIONES_2026.filter((p) => p.fecha >= today).map((p) => ({
+    kind: "bcra" as const,
+    country: "AR" as const,
+    id: `BCRA-REM-${p.fecha}`,
+    ticker: "REM" as const,
+    title: "Publicación REM (expectativas de mercado)",
+    paymentDate: p.fecha,
+    detail: p.descripcion,
+    source: FUENTE_REM,
+    impact: "high" as const,
+  }))
+}
+
 /** Unión de todos los eventos con fuente real conectada, ordenada por fecha. */
 export function deriveMarketCalendarEvents(today: string = todayInBuenosAires()): MarketCalendarEvent[] {
   return [
@@ -188,5 +216,6 @@ export function deriveMarketCalendarEvents(today: string = todayInBuenosAires())
     ...deriveIndecCalendarEvents(today),
     ...deriveIntlCpiCalendarEvents(today),
     ...deriveCentralBankCalendarEvents(today),
+    ...deriveBcraCalendarEvents(today),
   ].sort((left, right) => left.paymentDate.localeCompare(right.paymentDate) || left.ticker.localeCompare(right.ticker))
 }

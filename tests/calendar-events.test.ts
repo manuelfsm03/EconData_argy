@@ -22,8 +22,10 @@ test("calendar uses only validated future cashflows and keeps them sorted", () =
 
 test("GD30 effective dates follow weekends and loaded Argentine holidays", () => {
   const events = deriveBondCalendarEvents("2026-08-10")
-  const january = events.find((event) => event.accrualDate === "2027-01-09")
-  const july = events.find((event) => event.accrualDate === "2027-07-09")
+  // Desambiguar por ticker: ESQUEMAS ya tiene 9 bonos y más de uno puede
+  // devengar el 9-jul/9-ene (feriados que corren varios soberanos HD a la vez).
+  const january = events.find((event) => event.accrualDate === "2027-01-09" && event.ticker === "GD30")
+  const july = events.find((event) => event.accrualDate === "2027-07-09" && event.ticker === "GD30")
   assert.equal(january?.paymentDate, "2027-01-11")
   assert.equal(july?.paymentDate, "2027-07-12")
   assert.equal(january?.ticker, "GD30")

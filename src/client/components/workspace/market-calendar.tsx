@@ -13,6 +13,7 @@ const KIND_META: Record<EventKind, { label: string; short: string; colorClass: s
   indec: { label: "INDEC (IPC / EMAE)", short: "INDEC", colorClass: "border-[var(--positive)] bg-[var(--positive)]/10 text-[var(--positive)]", dotClass: "bg-[var(--positive)]" },
   intl_cpi: { label: "CPI EEUU / Japón", short: "CPI", colorClass: "border-[#A98EDA] bg-[#A98EDA]/10 text-[#A98EDA]", dotClass: "bg-[#A98EDA]" },
   banco_central: { label: "Bancos centrales (BCE / BOE / BOJ)", short: "BC", colorClass: "border-[var(--yellow)] bg-[var(--yellow)]/10 text-[var(--yellow)]", dotClass: "bg-[var(--yellow)]" },
+  bcra: { label: "BCRA (REM)", short: "REM", colorClass: "border-[#5B9BD5] bg-[#5B9BD5]/10 text-[#5B9BD5]", dotClass: "bg-[#5B9BD5]" },
 }
 
 const COUNTRY_META: Record<CountryCode, { label: string; flag: string }> = {
@@ -29,7 +30,7 @@ const COUNTRIES_KEY = "lapizarra.calendario.paises.v1"
  *  (sin fechas simuladas — mismo criterio de honestidad que el resto del proyecto). */
 interface PendingSource { label: string; fuente: string; items: string[] }
 const PENDING_SOURCES: PendingSource[] = [
-  { label: "BCRA (REM / IPOM)", fuente: "BCRA — calendario de difusión oficial", items: ["BCRA · REM (relevamiento de expectativas)", "BCRA · IPOM (informe de política monetaria)"] },
+  { label: "BCRA (IPOM)", fuente: "BCRA — trimestral, sin calendario de fechas futuras pre-anunciado todavía", items: ["BCRA · IPOM (informe de política monetaria)"] },
   { label: "Licitaciones del Tesoro", fuente: "Secretaría de Finanzas / Tesoro", items: ["Colocación de deuda en pesos: instrumentos, montos y tasas adjudicadas"] },
   { label: "Earnings — empresas AR", fuente: "pendiente fuente oficial BYMA / CNV", items: ["GGAL", "YPF", "PAMP", "BMA", "LOMA", "TXAR", "CEPU"] },
 ]
@@ -89,7 +90,7 @@ export function MarketCalendar() {
   const [month, setMonth] = useState({ year: initial.getUTCFullYear(), month: initial.getUTCMonth() })
   const [view, setView] = useState<"month" | "agenda">("month")
   const [query, setQuery] = useState("")
-  const [kinds, setKinds] = useState<Record<EventKind, boolean>>({ bono: true, fomc: true, indec: true, intl_cpi: true, banco_central: true })
+  const [kinds, setKinds] = useState<Record<EventKind, boolean>>({ bono: true, fomc: true, indec: true, intl_cpi: true, banco_central: true, bcra: true })
   const [countries, setCountries] = useState<Record<CountryCode, boolean>>(() => Object.fromEntries(ALL_COUNTRIES.map((c) => [c, true])) as Record<CountryCode, boolean>)
   const [selected, setSelected] = useState<MarketCalendarEvent | null>(null)
 
