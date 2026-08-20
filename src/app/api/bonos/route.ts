@@ -15,7 +15,7 @@ import { metricasDeMercado, metricasDevengadas } from "@/lib/bond-math"
 import { construirCashflows, GD30 } from "@/lib/bond-schedule"
 import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
 import { parseRavaBondPrices, type RavaBondPrice } from "@/server/external/rava-prices"
-import { PESO_BOND_TICKERS } from "@/server/domain/peso-bonds"
+import { pesoBondsVigentes } from "@/server/domain/peso-bonds"
 import { fetchBymaCapInstruments, fetchBymaQuotes, marketMetaForRows } from "@/server/external/byma-data"
 
 type Cashflow = { fechaPago: Date; cupon: number; amortizacion: number; flujoTotal: number }
@@ -206,11 +206,16 @@ export async function GET(request: NextRequest) {
     const cached = getCache<unknown[]>(cacheKey)
     if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), cached: true, ...marketMetaForRows(cached) })
 
+    // Se resuelve acá adentro y no en un const de módulo: si el server queda
+    // levantado semanas, un instrumento que vence el martes tiene que dejar de
+    // aparecer el miércoles, no en el próximo deploy.
+    const vigentes = pesoBondsVigentes()
+
     const [ravaPrices, bymaQuotes] = await Promise.all([
       fetchRavaBondPrices(),
-      fetchBymaQuotes([...PESO_BOND_TICKERS]),
+      fetchBymaQuotes(vigentes.map((b) => b.ticker)),
     ])
-    const screener = PESO_BOND_TICKERS.map((ticker) => {
+    const screener = vigentes.map(({ ticker, vencimiento: vencimientoEmision }) => {
       const q = ravaPrices.get(ticker)
       const byma = bymaQuotes.get(ticker)
       return {
@@ -222,7 +227,10 @@ export async function GET(request: NextRequest) {
         paridad: q?.paridad ?? null,
         valorTecnico: q?.valorTecnico ?? null,
         currentYield: q?.currentYield ?? null,
-        vencimiento: q?.vencimiento ? q.vencimiento.slice(0, 10) : null,
+        // De la condición de emisión, no de la fuente: es un dato que no
+        // cambia, y la fuente deja de publicarlo cuando el papel se acerca al
+        // final (TZX26 y TZXM6 ya venían sin fecha).
+        vencimiento: vencimientoEmision,
         fechaCotizacion: q?.fecha ? q.fecha.slice(0, 10) : null,
         change1D: byma?.change1D ?? null,
         asOf: byma?.asOf ?? q?.fecha ?? null,
@@ -236,6 +244,7 @@ export async function GET(request: NextRequest) {
       count: screener.length,
       updated_at: new Date().toISOString(),
       ...marketMetaForRows(screener),
+      universo: { vigentes: vigentes.length, total: 33 },
       dataQuality: "rava_passthrough_unverified",
       nota: "Precio priorizado desde BYMA Data; TIR, duration modificada y paridad se conservan tal como las publica Rava. Son bonos ajustados por CER (y CER/TAMAR en los Bono DUAL); no pasan por el motor propio de bond-math.",
     })

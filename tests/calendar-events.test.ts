@@ -21,11 +21,17 @@ test("calendar uses only validated future cashflows and keeps them sorted", () =
 })
 
 test("GD30 effective dates follow weekends and loaded Argentine holidays", () => {
+  // Se filtra POR TICKER además de por fecha. Buscar sólo por accrualDate
+  // alcanzaba cuando GD30 era el único bono con esquema cargado, pero desde
+  // que entraron los nueve del canje hay varios que devengan el mismo día
+  // (AE38 también paga el 2027-01-09) y find() devolvía el primero de la lista,
+  // no el que el test quería mirar.
   const events = deriveBondCalendarEvents("2026-08-10")
-  const january = events.find((event) => event.accrualDate === "2027-01-09")
-  const july = events.find((event) => event.accrualDate === "2027-07-09")
-  assert.equal(january?.paymentDate, "2027-01-11")
-  assert.equal(july?.paymentDate, "2027-07-12")
+  const gd30 = events.filter((event) => event.ticker === "GD30")
+  const january = gd30.find((event) => event.accrualDate === "2027-01-09")
+  const july = gd30.find((event) => event.accrualDate === "2027-07-09")
+  assert.equal(january?.paymentDate, "2027-01-11", "09/01/2027 cae sábado: cobra el lunes")
+  assert.equal(july?.paymentDate, "2027-07-12", "09/07/2027 es feriado: cobra el lunes siguiente")
   assert.equal(january?.ticker, "GD30")
   assert.equal(july?.ticker, "GD30")
 })

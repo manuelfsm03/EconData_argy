@@ -3,25 +3,100 @@
  * CER/TAMAR) y LECER, más los Discount/Par pesos de la reestructuración
  * 2005/2010 que siguen en circulación.
  *
- * Es sólo la lista de tickers a trackear: nombre, precio, TIR, duration,
- * paridad y vencimiento se toman en vivo de Rava (ver /api/bonos?tipo=pesos),
- * no se hardcodean acá para no arrastrar datos desactualizados o mal
- * transcriptos. Excluye deuda provincial (Córdoba, Buenos Aires, Mendoza):
- * es otra categoría, igual que BOND_DEFS sólo cubre soberano nacional.
+ * Cada ticker va con su VENCIMIENTO, y es lo único que se hardcodea acá.
+ * A propósito: la fecha de vencimiento sale de la condición de emisión y no
+ * cambia nunca, a diferencia del precio, la tasa o la paridad, que se toman en
+ * vivo de la fuente justamente para no arrastrar datos viejos.
+ *
+ * Tener la fecha acá es lo que hace que un instrumento vencido se caiga SOLO
+ * del panel. Antes esto era una lista de tickers pelados que había que podar a
+ * mano, y el 20/8/2026 había cinco papeles ya vencidos —TZX26, TZXM6, X15Y6,
+ * X29Y6 y X31L6— todavía entrando al screener con duration 0 y rendimientos
+ * anualizados de 30% y pico que no significaban nada, además de deformar la
+ * curva CER. Nadie los había sacado porque nada obligaba a acordarse.
+ *
+ * Excluye deuda provincial (Córdoba, Buenos Aires, Mendoza): es otra
+ * categoría, igual que BOND_DEFS sólo cubre soberano nacional.
  */
 
-export const PESO_BOND_TICKERS = [
-  // BONCER Ley Argentina (canje 2020)
-  "TX26", "TX28", "TX31",
-  // Bono DUAL, CER/TAMAR + margen
-  "TXMD8", "TXMD9", "TXMJ0", "TXMJ8", "TXMJ9",
-  // BONCER / Bono del Tesoro Nacional ajustado por CER
-  "TZX26", "TZX27", "TZX28", "TZXA7", "TZXD6", "TZXD7", "TZXD8",
-  "TZXM6", "TZXM7", "TZXM8", "TZXM9", "TZXO6", "TZXO7", "TZXS7", "TZXS8", "TZXY7",
-  // LECER, letras cero cupón ajustadas por CER
-  "X15Y6", "X29Y6", "X30N6", "X30S6", "X31L6",
-  // Discount/Par pesos CER, reestructuración 2005/2010
-  "DICP", "DIP0", "PAP0", "PARP",
-] as const
+export interface PesoBond {
+  ticker: string
+  /** Vencimiento en ISO, de la condición de emisión. */
+  vencimiento: string
+}
 
-export type PesoBondTicker = (typeof PESO_BOND_TICKERS)[number]
+const UNIVERSO = [
+  // BONCER Ley Argentina (canje 2020)
+  { ticker: "TX26", vencimiento: "2026-11-09" },
+  { ticker: "TX28", vencimiento: "2028-11-09" },
+  { ticker: "TX31", vencimiento: "2031-11-30" },
+  // Bono DUAL, CER/TAMAR + margen
+  { ticker: "TXMD8", vencimiento: "2028-12-15" },
+  { ticker: "TXMD9", vencimiento: "2029-12-14" },
+  { ticker: "TXMJ0", vencimiento: "2030-06-28" },
+  { ticker: "TXMJ8", vencimiento: "2028-06-30" },
+  { ticker: "TXMJ9", vencimiento: "2029-06-29" },
+  // BONCER cero cupón (Bono del Tesoro Nacional ajustado por CER)
+  { ticker: "TZX26", vencimiento: "2026-06-30" },
+  { ticker: "TZX27", vencimiento: "2027-06-30" },
+  { ticker: "TZX28", vencimiento: "2028-06-30" },
+  { ticker: "TZXA7", vencimiento: "2027-04-30" },
+  { ticker: "TZXD6", vencimiento: "2026-12-15" },
+  { ticker: "TZXD7", vencimiento: "2027-12-15" },
+  { ticker: "TZXD8", vencimiento: "2028-12-15" },
+  { ticker: "TZXM6", vencimiento: "2026-03-31" },
+  { ticker: "TZXM7", vencimiento: "2027-03-31" },
+  { ticker: "TZXM8", vencimiento: "2028-03-31" },
+  { ticker: "TZXM9", vencimiento: "2029-03-28" },
+  { ticker: "TZXO6", vencimiento: "2026-10-30" },
+  { ticker: "TZXO7", vencimiento: "2027-10-29" },
+  { ticker: "TZXS7", vencimiento: "2027-09-30" },
+  { ticker: "TZXS8", vencimiento: "2028-09-29" },
+  { ticker: "TZXY7", vencimiento: "2027-05-31" },
+  // LECER, letras cero cupón ajustadas por CER
+  { ticker: "X15Y6", vencimiento: "2026-05-15" },
+  { ticker: "X29Y6", vencimiento: "2026-05-29" },
+  { ticker: "X30N6", vencimiento: "2026-11-30" },
+  { ticker: "X30S6", vencimiento: "2026-09-30" },
+  { ticker: "X31L6", vencimiento: "2026-07-31" },
+  // Discount/Par pesos CER, reestructuración 2005/2010
+  { ticker: "DICP", vencimiento: "2033-12-31" },
+  { ticker: "DIP0", vencimiento: "2033-12-31" },
+  { ticker: "PAP0", vencimiento: "2038-12-31" },
+  { ticker: "PARP", vencimiento: "2038-12-31" },
+] as const satisfies readonly PesoBond[]
+
+/**
+ * TODOS los tickers del universo, vencidos incluidos.
+ *
+ * Contesta "¿este ticker es un bono en pesos?", que es una pregunta sobre
+ * identidad y no sobre vigencia: a un papel vencido hay que poder decirle
+ * "venció el tal día", no "no existe".
+ */
+export const PESO_BOND_TICKERS = UNIVERSO.map((b) => b.ticker)
+
+export type PesoBondTicker = (typeof UNIVERSO)[number]["ticker"]
+
+/**
+ * Los que siguen vivos a una fecha. Es lo que tiene que consumir el panel.
+ *
+ * Se evalúa en cada llamada y no se congela en una constante de módulo: el
+ * server vive semanas, y una lista calculada al importar seguiría mostrando un
+ * bono vencido hasta el próximo deploy, que es exactamente el problema que
+ * esto viene a resolver.
+ */
+export function pesoBondsVigentes(hoy: Date = new Date()): readonly PesoBond[] {
+  const corte = hoy.toISOString().slice(0, 10)
+  return UNIVERSO.filter((b) => b.vencimiento > corte)
+}
+
+/** Los ya vencidos a una fecha. Sirve para explicar por qué no están. */
+export function pesoBondsVencidos(hoy: Date = new Date()): readonly PesoBond[] {
+  const corte = hoy.toISOString().slice(0, 10)
+  return UNIVERSO.filter((b) => b.vencimiento <= corte)
+}
+
+/** El vencimiento de un ticker, o null si no pertenece al universo. */
+export function vencimientoDe(ticker: string): string | null {
+  return UNIVERSO.find((b) => b.ticker === ticker.toUpperCase())?.vencimiento ?? null
+}
