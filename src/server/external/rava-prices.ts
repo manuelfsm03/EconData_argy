@@ -1,3 +1,5 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
+
 export type RavaBondPrice = {
   precio: number
   tir: number | null
@@ -90,4 +92,45 @@ export function parseRavaBondPrices(payload: unknown): Map<string, RavaBondPrice
     })
   }
   return prices
+}
+
+// ── Traer los precios ────────────────────────────────────────────────────────
+
+/**
+ * Caché en memoria de los precios de bonos de Rava.
+ *
+ * Vivía adentro del handler de /api/bonos, pero la calculadora también los
+ * necesita: un instrumento CER cero cupón se valúa contra su valor técnico, y
+ * el valor técnico sale de acá. Duplicar el fetch habría duplicado también el
+ * caché, y con eso las dos rutas podrían llegar a mostrar precios de momentos
+ * distintos para el mismo papel.
+ */
+let cache: { data: Map<string, RavaBondPrice>; expiry: number } | null = null
+
+const TTL_MS = 300_000
+
+export async function fetchRavaBondPrices(): Promise<Map<string, RavaBondPrice>> {
+  if (cache && cache.expiry > Date.now()) return cache.data
+
+  try {
+    // fetchRegistered y no fetch pelado: es lo que da de alta la fuente en el
+    // registro que alimenta el health por tarjeta. Con fetch común, Rava
+    // desaparecería del panel de estado sin que nadie se entere.
+    const response = await fetchRegistered("https://mercado.rava.com/api/prices/bonos", {
+      headers: {
+        "User-Agent": "Mozilla/5.0 PanelDeControl/2.0",
+        Accept: "application/json",
+      },
+      signal: AbortSignal.timeout(10000),
+      next: { revalidate: 300 },
+    })
+    if (!response.ok) return new Map()
+
+    const prices = parseRavaBondPrices(await response.json())
+    if (prices.size > 0) cache = { data: prices, expiry: Date.now() + TTL_MS }
+    return prices
+  } catch (error) {
+    console.warn("[rava] fetch mercado.rava.com falló:", error)
+    return new Map()
+  }
 }

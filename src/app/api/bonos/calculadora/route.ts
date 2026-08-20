@@ -32,6 +32,9 @@ import {
   metricasDesdeTIR,
 } from "@/lib/bond-math"
 import { fechaUTC } from "@/lib/market-calendar"
+import { diasEntre, esCeroCupon, precioDadaTasaReal, tasaRealCeroCupon } from "@/lib/cer-math"
+import { fetchRavaBondPrices } from "@/server/external/rava-prices"
+import { PESO_BOND_TICKERS } from "@/server/domain/peso-bonds"
 
 /** Cuántos escenarios se aceptan de una: suficiente para una escalera fina,
  *  poco como para que nadie use la ruta para hacer trabajar al server de gusto. */
@@ -107,6 +110,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "La TIR debe ser mayor a -100% y menor o igual a 1000%" }, { status: 400 })
   }
 
+  // ── Instrumentos en pesos ajustados por CER ───────────────────────────────
+  // Van por otro camino a propósito: a un bono CER no se le puede calcular una
+  // TIR nominal, así que devolver el mismo shape que un global sería mentir con
+  // el nombre de un campo. Ver src/lib/cer-math.ts.
+  if ((PESO_BOND_TICKERS as readonly string[]).includes(ticker)) {
+    return responderCER(ticker, valor, modo, searchParams)
+  }
+
   const esquema = ESQUEMAS.find((e) => e.ticker === ticker)
   if (!esquema) {
     return NextResponse.json(
@@ -178,5 +189,139 @@ export async function GET(request: NextRequest) {
       })),
     shocksBp: shocksParseados.shocks,
     nota: "Simulación: no usa precio de mercado en vivo. Solo tickers con esquema verificado (ver /api/bonos para el resto). Los escenarios reprecian el flujo completo con la tasa nueva; variacionAproximada es la regla de duration + convexity, que se muestra al lado para ver dónde deja de servir.",
+  })
+}
+
+/** Escalera de movimientos de tasa real que se simula por defecto, en bp. */
+const SHOCKS_CER = [-300, -200, -100, -50, 50, 100, 200, 300]
+
+/**
+ * Calculadora de los instrumentos ajustados por CER.
+ *
+ * Contesta la pregunta que corresponde a este papel —"a qué tasa REAL lo estoy
+ * comprando", o sea CER + cuánto— en vez de una TIR nominal, que para un bono
+ * CER no existe sin proyectar inflación.
+ *
+ * El valor técnico es el capital ya ajustado por CER. Sale de la fuente de
+ * precios, pero se puede pisar con ?valorTecnico= para calcular contra el
+ * número que el usuario tenga en pantalla, sin depender de que la fuente esté
+ * al día. Es el mismo criterio del M6.3 del ROADMAP.
+ */
+async function responderCER(
+  ticker: string,
+  valor: number,
+  modo: "precio" | "tir",
+  searchParams: URLSearchParams,
+) {
+  const precios = await fetchRavaBondPrices()
+  const fila = precios.get(ticker)
+
+  if (!esCeroCupon(ticker, fila?.nombre ?? null)) {
+    // Los duales son un caso aparte y peor: además de tener cupones, pagan el
+    // MÁXIMO entre CER y TAMAR. Eso es una opcionalidad, y ninguna tasa única
+    // —ni real ni nominal— describe bien lo que se está comprando.
+    const esDual = /dual/i.test(fila?.nombre ?? "") || ticker.toUpperCase().startsWith("TXM")
+    return NextResponse.json(
+      {
+        error: esDual
+          ? "Los duales CER/TAMAR no se valúan con una sola tasa: pagan el máximo entre dos, y eso es una opción."
+          : "Este instrumento CER paga cupones, y para eso hace falta el cronograma verificado contra el prospecto. Todavía no está cargado.",
+        ticker,
+        nombre: fila?.nombre ?? null,
+        porQue: esDual
+          ? "Valuarlo como si fuera CER puro ignora la pata TAMAR, y como si fuera tasa fija ignora el ajuste. Cualquiera de los dos números daría de menos."
+          : "La fórmula de cero cupón ignoraría los cupones intermedios y devolvería un rendimiento más bajo que el real. Preferimos no contestar antes que contestar de menos.",
+      },
+      { status: 501 },
+    )
+  }
+
+  // Valor técnico: el del mercado, o el que pase el usuario.
+  const vtParam = searchParams.get("valorTecnico")?.trim()
+  let valorTecnico: number | null = fila?.valorTecnico ?? null
+  let fuenteVT = "Rava (valor técnico publicado)"
+  if (vtParam) {
+    if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(vtParam) || Number(vtParam) <= 0) {
+      return NextResponse.json({ error: "?valorTecnico debe ser un número positivo" }, { status: 400 })
+    }
+    valorTecnico = Number(vtParam)
+    fuenteVT = "ingresado a mano"
+  }
+  if (!valorTecnico) {
+    return NextResponse.json(
+      {
+        error: "No tengo el valor técnico de este instrumento y sin eso no hay tasa real.",
+        ticker,
+        comoResolverlo: "Pasalo con ?valorTecnico=<número>, que es el capital ajustado por CER.",
+      },
+      { status: 422 },
+    )
+  }
+
+  const vencimientoISO = searchParams.get("vencimiento")?.trim() || fila?.vencimiento?.slice(0, 10)
+  if (!vencimientoISO || !/^\d{4}-\d{2}-\d{2}$/.test(vencimientoISO)) {
+    return NextResponse.json(
+      { error: "No tengo la fecha de vencimiento. Pasala con ?vencimiento=YYYY-MM-DD." },
+      { status: 422 },
+    )
+  }
+
+  const liquidacionISO = searchParams.get("liquidacion") ?? todayInBuenosAires()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(liquidacionISO)) {
+    return NextResponse.json({ error: "?liquidacion debe tener formato YYYY-MM-DD" }, { status: 400 })
+  }
+
+  const dias = diasEntre(fechaUTC(liquidacionISO), fechaUTC(vencimientoISO))
+  if (dias <= 0) {
+    return NextResponse.json(
+      { error: `${ticker} vence el ${vencimientoISO}: a esa liquidación ya no tiene rendimiento, tiene un cobro.` },
+      { status: 422 },
+    )
+  }
+
+  // En modo "tir" el número que entra es la tasa REAL objetivo, no una TIR.
+  const precio = modo === "precio" ? valor : precioDadaTasaReal(valor, valorTecnico, dias)
+  if (precio === null) {
+    return NextResponse.json({ error: "No se pudo calcular un precio con esa tasa real" }, { status: 422 })
+  }
+
+  const metricas = tasaRealCeroCupon(precio, valorTecnico, dias)
+  if (metricas === null) {
+    return NextResponse.json({ error: "No se pudo calcular con esos parámetros" }, { status: 422 })
+  }
+
+  const escenarios = SHOCKS_CER.flatMap((shockBp) => {
+    const tasaNueva = metricas.tasaReal + shockBp / 100
+    const precioNuevo = precioDadaTasaReal(tasaNueva, valorTecnico, dias)
+    if (precioNuevo === null) return []
+    return [{
+      shockBp,
+      tasaReal: tasaNueva,
+      precio: precioNuevo,
+      variacion: (precioNuevo / precio - 1) * 100,
+    }]
+  })
+
+  return NextResponse.json({
+    ticker,
+    nombre: fila?.nombre ?? null,
+    tipo: "cer_cero_cupon",
+    modo,
+    valorIngresado: valor,
+    liquidacion: liquidacionISO,
+    vencimiento: vencimientoISO,
+    dias,
+    valorTecnico,
+    fuenteValorTecnico: fuenteVT,
+    metricas: {
+      tasaReal: metricas.tasaReal,
+      paridad: metricas.paridad,
+      precio,
+    },
+    escenarios,
+    nota:
+      "Rendimiento REAL, sobre CER: se lee como \"CER + X%\". Un bono ajustado por CER no tiene TIR nominal, " +
+      "porque el flujo futuro depende de la inflación. La cuenta no necesita el CER base: se cancela entre el " +
+      "precio y el valor técnico, que están los dos ajustados al mismo día.",
   })
 }

@@ -14,7 +14,7 @@ import { BOND_DEFS, CAP_INSTRUMENT_DEFS, type BondDef } from "@/server/domain/bo
 import { metricasDeMercado, metricasDevengadas } from "@/lib/bond-math"
 import { construirCashflows, ESQUEMAS } from "@/lib/bond-schedule"
 import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
-import { parseRavaBondPrices, type RavaBondPrice } from "@/server/external/rava-prices"
+import { fetchRavaBondPrices, type RavaBondPrice } from "@/server/external/rava-prices"
 import { PESO_BOND_TICKERS } from "@/server/domain/peso-bonds"
 import { fetchBymaCapInstruments, fetchBymaQuotes, marketMetaForRows } from "@/server/external/byma-data"
 
@@ -85,35 +85,6 @@ function calcularDuration(precio: number, cashflows: { fechaPago: Date; flujoTot
   }, 0)
 
   return Number((macaulay / (1 + r)).toFixed(4))
-}
-
-let ravaBondCache: { data: Map<string, RavaBondPrice>; expiry: number } | null = null
-
-async function fetchRavaBondPrices(): Promise<Map<string, RavaBondPrice>> {
-  if (ravaBondCache && ravaBondCache.expiry > Date.now()) {
-    return ravaBondCache.data
-  }
-
-  try {
-    const response = await fetchRegistered("https://mercado.rava.com/api/prices/bonos", {
-      headers: {
-        "User-Agent": "Mozilla/5.0 PanelDeControl/2.0",
-        Accept: "application/json",
-      },
-      signal: AbortSignal.timeout(10000),
-      next: { revalidate: 300 },
-    })
-    if (!response.ok) return new Map()
-
-    const prices = parseRavaBondPrices(await response.json())
-    if (prices.size > 0) {
-      ravaBondCache = { data: prices, expiry: Date.now() + 300_000 }
-    }
-    return prices
-  } catch (error) {
-    console.warn("[bonos] fetch mercado.rava.com falló:", error)
-    return new Map()
-  }
 }
 
 async function scrapePrecioRava(ticker: string): Promise<{ precio: number | null; precioCci: number | null }> {
