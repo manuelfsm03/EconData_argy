@@ -8,7 +8,9 @@ import {
 } from "../src/server/external/rava-prices"
 
 const agroRoute = readFileSync("src/app/api/agro-local/route.ts", "utf8")
-const bondRoute = readFileSync("src/app/api/bonos/route.ts", "utf8")
+// El fetch de precios de bonos vive en rava-prices.ts desde que se sacó del
+// handler de /api/bonos (dos rutas lo necesitan y no tenía sentido duplicarlo).
+const bondRoute = readFileSync("src/server/external/rava-prices.ts", "utf8")
 
 test("parses only exact Rosario grain rows and keeps unavailable sunflower null", () => {
   const parsed = parseRavaRosarioPrices({
