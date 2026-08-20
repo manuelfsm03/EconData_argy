@@ -26,6 +26,7 @@ const FUENTE_INEGI = "INEGI — Boletín de indicador 481/26, INPC (inegi.org.mx
 const FUENTE_COPOM = "Banco Central do Brasil — Calendário de reuniões do Copom 2026 (bcb.gov.br), verificado 2026-08-17"
 const FUENTE_BCCH = "Banco Central de Chile — Calendario de Reuniones de Política Monetaria (RPM) 2026 (bcentral.cl), verificado 2026-08-17"
 const FUENTE_BANXICO = "Banco de México — Calendario 2026 para los anuncios de las decisiones de política monetaria (banxico.org.mx), PDF oficial, verificado 2026-08-17"
+const FUENTE_INE_CHILE = "INE Chile — Calendario 2026 Indicadores de Coyuntura (ine.gob.cl/inicio/agendaestadistica), PDF oficial, actualización de calendario fecha 10 de abril 2026, verificado 2026-08-20"
 
 /**
  * IPCA (Brasil) -- publicado ~10-12 días después de fin de mes. Fechas
@@ -58,6 +59,28 @@ export const BRAZIL_IPCA_2026: LatamCpiPublicacion[] = [
  */
 export const MEXICO_INPC_2026: LatamCpiPublicacion[] = [
   { fecha: "2026-09-09", pais: "MX", descripcion: "INPC México — agosto 2026" },
+]
+
+/**
+ * IPC (Chile) -- publicado el mismo día del mes, con corrimiento cuando cae
+ * fin de semana/feriado. Fuente: calendario anual del INE (mismo documento
+ * que agrupa todos sus indicadores de coyuntura, no uno específico del
+ * IPC) -- a diferencia de los intentos previos, el PDF sí es accesible
+ * fetcheándolo directo en vez de por la página HTML de la agenda.
+ */
+export const CHILE_IPC_2026: LatamCpiPublicacion[] = [
+  { fecha: "2026-01-08", pais: "CL", descripcion: "IPC Chile — diciembre 2025" },
+  { fecha: "2026-02-06", pais: "CL", descripcion: "IPC Chile — enero 2026" },
+  { fecha: "2026-03-06", pais: "CL", descripcion: "IPC Chile — febrero 2026" },
+  { fecha: "2026-04-08", pais: "CL", descripcion: "IPC Chile — marzo 2026" },
+  { fecha: "2026-05-08", pais: "CL", descripcion: "IPC Chile — abril 2026" },
+  { fecha: "2026-06-08", pais: "CL", descripcion: "IPC Chile — mayo 2026" },
+  { fecha: "2026-07-08", pais: "CL", descripcion: "IPC Chile — junio 2026" },
+  { fecha: "2026-08-07", pais: "CL", descripcion: "IPC Chile — julio 2026" },
+  { fecha: "2026-09-08", pais: "CL", descripcion: "IPC Chile — agosto 2026" },
+  { fecha: "2026-10-08", pais: "CL", descripcion: "IPC Chile — septiembre 2026" },
+  { fecha: "2026-11-06", pais: "CL", descripcion: "IPC Chile — octubre 2026" },
+  { fecha: "2026-12-07", pais: "CL", descripcion: "IPC Chile — noviembre 2026" },
 ]
 
 export const COPOM_2026: LatamCentralBankMeeting[] = [
@@ -96,7 +119,7 @@ export const BANXICO_2026: LatamCentralBankMeeting[] = [
 export function fuenteCpiLatam(pais: LatamCountry): string {
   if (pais === "BR") return FUENTE_IBGE
   if (pais === "MX") return FUENTE_INEGI
-  return "" // Chile (IPC) sin fuente verificable todavía
+  return FUENTE_INE_CHILE
 }
 
 export function fuenteBancoLatam(banco: "COPOM" | "BCCh" | "Banxico"): string {
@@ -108,9 +131,6 @@ export function fuenteBancoLatam(banco: "COPOM" | "BCCh" | "Banxico"): string {
 /**
  * Pendientes, investigados pero no cargados en esta pasada (no se
  * encontró una fuente con el mismo nivel de certeza que el resto):
- * - IPC Chile (INE): la Agenda Estadística 2026 existe pero no se logró
- *   extraer el listado de fechas tras 4 intentos (páginas 403/404, PDFs
- *   referenciados pero no accesibles).
  * - INPC México (INEGI): la suposición inicial (10 y 25 de cada mes,
  *   quincenal) era incorrecta -- el boletín oficial más reciente (481/26,
  *   7/8/2026) muestra que el INPC ya es mensual, no quincenal, y que

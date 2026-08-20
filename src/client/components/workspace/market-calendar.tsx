@@ -16,7 +16,7 @@ const KIND_META: Record<EventKind, { label: string; short: string; colorClass: s
   bcra: { label: "BCRA (REM / IPOM)", short: "BCRA", colorClass: "border-[#E8A87C] bg-[#E8A87C]/10 text-[#E8A87C]", dotClass: "bg-[#E8A87C]" },
   intl_cpi: { label: "CPI EEUU / Japón / Reino Unido / Eurozona", short: "CPI", colorClass: "border-[#A98EDA] bg-[#A98EDA]/10 text-[#A98EDA]", dotClass: "bg-[#A98EDA]" },
   banco_central: { label: "Bancos centrales (BCE / BOE / BOJ)", short: "BC", colorClass: "border-[var(--yellow)] bg-[var(--yellow)]/10 text-[var(--yellow)]", dotClass: "bg-[var(--yellow)]" },
-  latam_cpi: { label: "Inflación LatAm (IPCA / INPC)", short: "CPI-LA", colorClass: "border-[var(--negative)] bg-[var(--negative)]/10 text-[var(--negative)]", dotClass: "bg-[var(--negative)]" },
+  latam_cpi: { label: "Inflación LatAm (IPCA / INPC / IPC Chile)", short: "CPI-LA", colorClass: "border-[var(--negative)] bg-[var(--negative)]/10 text-[var(--negative)]", dotClass: "bg-[var(--negative)]" },
   latam_banco_central: { label: "Bancos centrales LatAm", short: "BC-LA", colorClass: "border-[#7DD3C0] bg-[#7DD3C0]/10 text-[#7DD3C0]", dotClass: "bg-[#7DD3C0]" },
   earnings: { label: "Balances (estimado)", short: "EARN", colorClass: "border-dashed border-[var(--text-dim)] bg-[var(--bg-elev-2)] text-[var(--text-dim)]", dotClass: "bg-[var(--text-dim)]" },
 }
@@ -42,7 +42,6 @@ interface PendingSource { label: string; fuente: string; items: string[] }
 const PENDING_SOURCES: PendingSource[] = [
   { label: "Licitaciones del Tesoro", fuente: "Secretaría de Finanzas / Tesoro", items: ["Colocación de deuda en pesos: instrumentos, montos y tasas adjudicadas"] },
   { label: "Earnings — S&P500 (resto)", fuente: "las 7 empresas argentinas de BYMA y la Magnificent 7 ya tienen fecha estimada — el resto del S&P500 (493 empresas) no es viable a mano", items: ["S&P500 (493 empresas restantes)"] },
-  { label: "Chile (IPC)", fuente: "INE Chile — Agenda Estadística no accesible tras 4 intentos", items: ["IPC Chile"] },
 ]
 
 const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
