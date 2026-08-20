@@ -5,12 +5,18 @@ import { fetchRegistered } from "@/server/http/fetch-source"
  * Fuentes:
  *   - argentinadatos.com /v1/finanzas/indices/riesgo-pais  (histórico oficial EMBI+)
  *   - Yahoo Finance ^TNX (US 10Y treasury yield)
- *   - TIR GD30 desde DB local (calculada por /api/bonos)
+ *   - TIR de los Globales (GD30/GD35/GD41/GD29): motor verificado de bond-schedule.ts
+ *     + precio en vivo BYMA Data -- MISMO cálculo que /api/bonos, no una consulta
+ *     aparte a la DB (esa consulta directa a Prisma quedaba en blanco si la DB
+ *     local no tenía el bono seedeado; con esto no depende de la DB en absoluto).
  *   - Comparativos regionales: estimaciones EMBI+ fijas (sin API de pago)
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/server/db/prisma"
+import { ESQUEMAS, construirCashflows } from "@/lib/bond-schedule"
+import { metricasDeMercado, metricasDevengadas } from "@/lib/bond-math"
+import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
+import { fetchBymaQuotes } from "@/server/external/byma-data"
 
 const YF_HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -27,6 +33,33 @@ async function getYFPrice(ticker: string): Promise<number | null> {
     const j = await res.json()
     return j?.chart?.result?.[0]?.meta?.regularMarketPrice ?? null
   } catch { return null }
+}
+
+interface GlobalTir { ticker: string; tir: number | null; precio: number | null; durationMod: number | null }
+
+/**
+ * TIR en vivo de los bonos Globales (Ley NY) de Argentina -- GD30, GD35,
+ * GD41, GD29 -- vía precio BYMA + motor de cashflows verificado. "Los
+ * Globales" en plural porque el riesgo país de un solo bono (GD30) es un
+ * solo punto; ver la TIR en varios plazos da una lectura más completa de
+ * qué tan cara/barata está la curva soberana en dólares.
+ */
+async function fetchGlobalesTir(): Promise<GlobalTir[]> {
+  const globales = ESQUEMAS.filter((e) => e.ley === "NY")
+  const bymaQuotes = await fetchBymaQuotes(globales.map((e) => e.ticker), { currencySuffix: "D" })
+  const hoy = new Date()
+  const liquidacion = siguienteDiaHabil(fechaUTC(hoy.toISOString().slice(0, 10)))
+
+  return globales.map((esquema) => {
+    const precio = bymaQuotes.get(esquema.ticker)?.lastPrice ?? null
+    if (precio == null) return { ticker: esquema.ticker, tir: null, precio: null, durationMod: null }
+    const cashflows = construirCashflows(esquema)
+    const devengadas = metricasDevengadas(cashflows, liquidacion)
+    if (!devengadas) return { ticker: esquema.ticker, tir: null, precio, durationMod: null }
+    const precioDirty = precio + devengadas.interesesCorridos
+    const mercado = metricasDeMercado(precioDirty, cashflows, liquidacion)
+    return { ticker: esquema.ticker, tir: mercado?.tir ?? null, precio, durationMod: mercado?.durationMod ?? null }
+  })
 }
 
 // Riesgo país desde argentinadatos.com (datos EMBI+ oficiales desde 1999)
@@ -58,11 +91,12 @@ export async function GET(_request: NextRequest) {
   if (cached) return NextResponse.json({ data: cached, cached: true, updated_at: new Date().toISOString() })
 
   // Fetch en paralelo
-  const [argDatosHist, us10y, gd30Bond] = await Promise.all([
+  const [argDatosHist, us10y, globalesTir] = await Promise.all([
     fetchArgDatosHistorico(),
     getYFPrice("^TNX"),
-    prisma.sovereignBond.findUnique({ where: { ticker: "GD30" } }).catch(() => null),
+    fetchGlobalesTir().catch(() => [] as GlobalTir[]),
   ])
+  const gd30 = globalesTir.find((g) => g.ticker === "GD30") ?? null
 
   // Valor actual = último de la serie
   const histSorted = [...argDatosHist].sort((a, b) => (a.fecha > b.fecha ? 1 : -1))
@@ -80,8 +114,8 @@ export async function GET(_request: NextRequest) {
   const var1w = riesgoPaisBps != null && last1w != null ? riesgoPaisBps - last1w : null
   const var1m = riesgoPaisBps != null && last1m != null ? riesgoPaisBps - last1m : null
 
-  // TIR GD30 desde DB
-  const arTir = gd30Bond?.tir ?? null
+  // TIR GD30 en vivo (motor verificado + precio BYMA, ver fetchGlobalesTir)
+  const arTir = gd30?.tir ?? null
   const us10yPct = us10y ?? 4.5
 
   // Spread calculado
@@ -133,10 +167,11 @@ export async function GET(_request: NextRequest) {
       spreadAr,
       us10y: us10yPct,
       arTir,
-      gd30Precio: gd30Bond?.precio ?? null,
-      metodologia: "EMBI+ oficial (argentinadatos.com) + spread GD30 vs US 10Y",
+      gd30Precio: gd30?.precio ?? null,
+      metodologia: "EMBI+ oficial (argentinadatos.com) + spread GD30 vs US 10Y (TIR en vivo, motor verificado)",
     },
     regionales,
+    globalesTir,
     historico: historico2y,
     historicoConSMA,
     ponderacionBonos,

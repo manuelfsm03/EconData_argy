@@ -1,15 +1,27 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ArrowRight, Search } from "lucide-react"
 import { Dashboard } from "@/client/components/dashboard/main-dashboard"
 import { Input } from "@/client/components/ui/input"
 import { DATA_CARD_CATALOG, searchDataCards } from "@/lib/card-catalog"
+import type { TickerFocus } from "@/lib/ticker-nav"
 
-export function DataLibrary() {
+/** kind del cross-link -> {tab, subtab} de Finanzas donde vive ese ticker. */
+const FINANZAS_SUBTAB_POR_KIND: Record<"accion" | "bono" | "cap", string> = { accion: "acciones", bono: "bonos", cap: "bonos" }
+
+export function DataLibrary({ focusTicker = null }: { focusTicker?: TickerFocus | null }) {
   const [query, setQuery] = useState("")
   const [selectedId, setSelectedId] = useState("emae")
-  const selected = DATA_CARD_CATALOG.find((item) => item.id === selectedId) ?? DATA_CARD_CATALOG[0]
+  const [override, setOverride] = useState<{ tab: string; subtab: string; ticker: string } | null>(null)
+
+  useEffect(() => {
+    if (focusTicker && focusTicker.kind !== "variable") {
+      setOverride({ tab: "finanzas", subtab: FINANZAS_SUBTAB_POR_KIND[focusTicker.kind], ticker: focusTicker.ticker })
+    }
+  }, [focusTicker])
+
+  const selected = override ?? DATA_CARD_CATALOG.find((item) => item.id === selectedId) ?? DATA_CARD_CATALOG[0]
   const results = useMemo(() => query.trim() ? searchDataCards(query).slice(0, 10) : [], [query])
 
   return (
@@ -24,7 +36,7 @@ export function DataLibrary() {
                 {results.map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => { setSelectedId(item.id); setQuery("") }}
+                    onClick={() => { setOverride(null); setSelectedId(item.id); setQuery("") }}
                     className="flex w-full items-center gap-3 border-b border-[var(--border-light)] px-3 py-2 text-left last:border-0 hover:bg-[var(--bg-elev-2)]"
                   >
                     <div className="min-w-0 flex-1">
@@ -40,7 +52,7 @@ export function DataLibrary() {
           </div>
         </div>
       </div>
-      <Dashboard key={`${selected.tab}-${selected.subtab ?? "root"}-${selected.id}`} initialTab={selected.tab} initialSubtab={selected.subtab} embedded />
+      <Dashboard key={`${selected.tab}-${selected.subtab ?? "root"}-${override?.ticker ?? (selected as { id?: string }).id}`} initialTab={selected.tab} initialSubtab={selected.subtab} initialTicker={override?.ticker ?? null} embedded />
     </div>
   )
 }

@@ -15,6 +15,7 @@ import { useState, useEffect, useCallback, useMemo } from "react"
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LineChart, Line, ReferenceLine, Legend,
+  BarChart, Bar, Cell,
 } from "recharts"
 import { InfoTooltip } from "@/client/components/ui/info-tooltip"
 import { GLOSSARY } from "@/lib/glossary"
@@ -532,6 +533,19 @@ function bpsColor(bps: number | null): string {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function RegionalTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null
+  const p = payload[0]?.payload
+  if (!p) return null
+  return (
+    <div style={{ background: "var(--bg-elev-2)", border: "1px solid var(--border-hi)", padding: "8px 12px", fontSize: 11 }}>
+      <div style={{ color: "var(--amber)", fontWeight: 700, marginBottom: 2 }}>{p.pais}</div>
+      <div style={{ fontFamily: "var(--font-data)", color: "var(--text)" }}>{p.bps.toLocaleString("es-AR")} bps · {p.moneda}</div>
+      {p.estimado && <div style={{ color: "var(--text-mute)", fontSize: 9, marginTop: 3 }}>estimación histórica, no fuente en vivo</div>}
+    </div>
+  )
+}
+
 function RpTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
@@ -575,6 +589,13 @@ function RiesgoPaisView() {
     case "max": cutoff.setFullYear(1999); break
   }
   const histFiltered = (data?.historicoConSMA ?? []).filter((e) => new Date(e.date) >= cutoff)
+
+  const regionalChartData = Object.entries(data?.regionales ?? {}).map(([pais, r]) => ({
+    pais: pais.charAt(0).toUpperCase() + pais.slice(1),
+    bps: r.bps ?? 0,
+    moneda: r.moneda,
+    estimado: !!r.nota,
+  }))
 
   return (
     <div>
@@ -692,32 +713,30 @@ function RiesgoPaisView() {
       </div>
 
       {/* Comparativo regional */}
-      <div style={{ marginTop: 1 }}>
+      <div style={{ marginTop: 1, background: "var(--bg-elev)", border: "1px solid var(--border)" }}>
         <div className="bbg-panel-header">COMPARATIVO REGIONAL (EMBI+)</div>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              {["País", "Moneda", "EMBI+ (bps)"].map((h, i) => (
-                <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "var(--text-dim)", textAlign: i > 1 ? "right" : "left", borderBottom: "1px solid var(--border)" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries(data?.regionales ?? {}).map(([pais, r], i) => (
-              <tr key={pais} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg-row-alt)" }}>
-                <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: "var(--amber)", textTransform: "capitalize" }}>{pais}</td>
-                <td style={{ padding: "5px 8px", fontSize: 10, color: "var(--text-dim)" }}>{r.moneda}</td>
-                <td style={{ padding: "5px 8px", fontSize: 14, fontFamily: "var(--font-data)", fontWeight: 700, color: bpsColor(r.bps ?? null), textAlign: "right" }}>
-                  {r.bps?.toLocaleString("es-AR") ?? "—"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div style={{ padding: "8px 4px 8px 0" }}>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={regionalChartData} margin={{ top: 8, right: 24, left: 0, bottom: 4 }}>
+              <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="pais" tick={{ fill: "var(--text-dim)", fontSize: 10, fontWeight: 600 }} axisLine={{ stroke: "var(--border-hi)" }} tickLine={false} />
+              <YAxis tick={{ fill: "var(--text-mute)", fontSize: 9 }} axisLine={{ stroke: "var(--border-hi)" }} tickLine={false} width={36} />
+              <Tooltip content={<RegionalTooltip />} cursor={{ fill: "var(--bg-elev-2)" }} />
+              <Bar dataKey="bps" radius={[3, 3, 0, 0]}>
+                {regionalChartData.map((entry) => (
+                  <Cell key={entry.pais} fill={bpsColor(entry.bps)} fillOpacity={entry.estimado ? 0.45 : 1} stroke={entry.estimado ? bpsColor(entry.bps) : "none"} strokeDasharray={entry.estimado ? "3 2" : undefined} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div style={{ padding: "0 8px 8px", fontSize: 9, color: "var(--text-mute)" }}>
+          Barras con borde punteado = estimación histórica, no fuente en vivo (ver nota abajo).
+        </div>
       </div>
 
       <div style={{ padding: "4px 8px", fontSize: 9, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
-        Fuente EMBI+: argentinadatos.com · US 10Y: Yahoo Finance · Comparativos: estimaciones históricas
+        Fuente EMBI+ Argentina: argentinadatos.com (en vivo) · US 10Y: Yahoo Finance (en vivo) · Resto de los países: estimaciones históricas, no conectadas a una fuente en vivo todavía.
       </div>
     </div>
   )
