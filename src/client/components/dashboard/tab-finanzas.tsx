@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area, ScatterChart, Scatter,
   ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -10,6 +10,7 @@ import { ForoActivo } from "./foro-activo"
 import { AssetScreener } from "./screener-activos"
 import { RateScreener } from "./screener-tasas"
 import { TabBonos } from "./tab-bonos"
+import { ajustarPolinomio, gradoSugerido, muestrearCurva, residuos } from "@/lib/curve-fit"
 import { TabMundo } from "./tab-mundo"
 import { StockHeatmap } from "./stock-heatmap"
 
@@ -41,7 +42,6 @@ function changeColor(v: number | null | undefined): string {
 const FIN_TABS = [
   { key: "acciones",   label: "Acciones",     icon: "▲" },
   { key: "bonos",      label: "Renta Fija",   icon: "§" },
-  { key: "bonos-avanzado", label: "Renta Fija +", icon: "§" },
   { key: "rofex",      label: "ROFEX",        icon: "⇄" },
   { key: "plazofijo",  label: "Plazo Fijo",   icon: "%" },
   { key: "commodities", label: "Commodities",    icon: "◈" },
@@ -56,8 +56,10 @@ function SubTabs({ active, onChange }: { active: string; onChange: (k: string) =
   return (
     <div style={{
       background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)",
-      display: "flex", alignItems: "center", padding: "10px 14px",
-      gap: 6, flexWrap: "wrap",
+      display: "flex", alignItems: "center", padding: "18px 14px 14px",
+      // rowGap más grande que columnGap: cuando la fila envuelve, los chips de
+      // abajo quedaban pegados a los de arriba y se leía como una sola masa.
+      columnGap: 8, rowGap: 10, flexWrap: "wrap",
     }}>
       {FIN_TABS.map(t => {
         const isActive = active === t.key
@@ -125,11 +127,11 @@ export interface StockQuote {
   ask: number | null
 }
 
-export function AccionesView() {
+export function AccionesView({ initialTicker = null }: { initialTicker?: string | null } = {}) {
   const [data, setData] = useState<{ byCategory: Record<string, StockQuote[]>; categories: string[] } | null>(null)
   const [loading, setLoading] = useState(true)
   const [cat, setCat] = useState("all")
-  const [selectedTicker, setSelectedTicker] = useState<string | null>(null)
+  const [selectedTicker, setSelectedTicker] = useState<string | null>(initialTicker)
 
   useEffect(() => {
     fetch("/api/acciones?category=all")
@@ -349,12 +351,234 @@ interface BondRow {
   vnResidual: number
 }
 
-export function BonosView() {
+/**
+ * Duration mínima para que un instrumento entre al ajuste de la curva.
+ * Tres meses: abajo de eso el rendimiento anualizado es puro ruido de redondeo.
+ */
+const DURATION_MINIMA_CURVA = 0.25
+
+/**
+ * Nube de bonos con la curva que mejor los describe, y cada punto pintado
+ * según de qué lado quedó.
+ *
+ * Sin la curva, el scatter dice dónde cotiza cada bono pero no si eso está
+ * bien o mal. Con la curva, un punto VERDE rinde más de lo que le tocaría por
+ * su plazo (barato) y uno ROJO rinde menos (caro). Eso es lo que se busca
+ * cuando se mira una curva de rendimientos.
+ *
+ * El eje X va como número y no como categoría. Antes iba como categoría, que
+ * es el default de Recharts, y por eso los bonos salían espaciados en el orden
+ * en que venían de la API en vez de por su duration: la "curva" no tenía forma
+ * de significar nada, y ninguna línea trazada encima habría tenido sentido.
+ */
+function CurvaAjustada({ titulo, puntos, unidadTasa, etiquetaExtra }: {
+  titulo: string
+  puntos: { ticker: string; x: number; y: number; extra?: string }[]
+  unidadTasa: string
+  etiquetaExtra?: string
+}) {
+  // Los instrumentos a punto de vencer se DIBUJAN pero no entran al ajuste.
+  // A tres semanas del vencimiento, anualizar unos pocos pesos de diferencia
+  // da tasas de 30% o 40% que no dicen nada del nivel de la curva; como además
+  // están todos amontonados en x ≈ 0, tiran del polinomio con muchísimo peso y
+  // deforman la curva entera. Es el error clásico al armar una curva de
+  // rendimientos, y se ve enseguida: la curva se dispara en el tramo corto.
+  const { paraAjustar, excluidos } = useMemo(() => {
+    const dentro = puntos.filter(p => p.x >= DURATION_MINIMA_CURVA)
+    return { paraAjustar: dentro, excluidos: puntos.length - dentro.length }
+  }, [puntos])
+
+  const ajuste = useMemo(() => {
+    const xsUnicos = new Set(paraAjustar.map(p => p.x)).size
+    return ajustarPolinomio(paraAjustar, gradoSugerido(xsUnicos))
+  }, [paraAjustar])
+
+  const conResiduo = useMemo(
+    () => (ajuste ? residuos(puntos, ajuste) : puntos.map(p => ({ ...p, residuo: 0 }))),
+    [puntos, ajuste],
+  )
+
+  const curva = useMemo(() => {
+    if (!ajuste || paraAjustar.length === 0) return []
+    // La curva se dibuja sólo donde fue ajustada: extenderla hasta los puntos
+    // excluidos sería extrapolar justo en el tramo que se decidió no modelar.
+    const xs = paraAjustar.map(p => p.x)
+    return muestrearCurva(ajuste, Math.min(...xs), Math.max(...xs)).map(p => ({ x: p.x, y: p.y }))
+  }, [ajuste, paraAjustar])
+
+  if (puntos.length === 0) {
+    return (
+      <div style={{ background: "var(--bg)", padding: 16 }}>
+        <SectionTitle title={titulo} />
+        <div style={{ fontSize: 10, color: "var(--text-mute)", padding: 24, textAlign: "center" }}>
+          Sin datos suficientes para trazar la curva.
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ background: "var(--bg)", padding: 16 }}>
+      <SectionTitle title={titulo} />
+      <ResponsiveContainer width="100%" height={260}>
+        <ScatterChart margin={{ top: 8, right: 20, left: 0, bottom: 20 }}>
+          <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
+          <XAxis
+            type="number" dataKey="x" name="Duration" domain={["dataMin", "dataMax"]}
+            stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }}
+            tickFormatter={v => fmtNum(v, 1)}
+            label={{ value: "Duration (años)", position: "insideBottom", offset: -10, fill: "#666", fontSize: 8 }}
+          />
+          <YAxis
+            type="number" dataKey="y" name={unidadTasa} domain={["auto", "auto"]}
+            stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }}
+            tickFormatter={v => `${fmtNum(v, 1)}%`}
+          />
+          <Tooltip {...tooltipStyle} cursor={{ stroke: "var(--border-hi)" }} content={({ active, payload }) => {
+            if (!active || !payload?.length) return null
+            const d = payload[0]?.payload as { ticker?: string; y: number; x: number; extra?: string; residuo?: number }
+            if (!d?.ticker) return null
+            const res = d.residuo ?? 0
+            return (
+              <div style={{ background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "6px 10px", fontSize: 9, fontFamily: "var(--font-data)", color: "var(--text)" }}>
+                <div style={{ color: "var(--amber)", fontWeight: 700 }}>{d.ticker}</div>
+                <div>{unidadTasa}: {fmtPct(d.y)}</div>
+                <div>Duration: {fmtNum(d.x, 2)} años</div>
+                {etiquetaExtra && d.extra && <div>{etiquetaExtra}: {d.extra}</div>}
+                <div style={{ marginTop: 3, color: res >= 0 ? "var(--positive)" : "var(--negative)" }}>
+                  {res >= 0 ? "▲" : "▼"} {fmtNum(Math.abs(res), 2)} pp {res >= 0 ? "sobre" : "bajo"} la curva
+                </div>
+              </div>
+            )
+          }} />
+
+          {/* La curva primero, para que los puntos queden por encima. */}
+          {curva.length > 0 && (
+            <Scatter
+              data={curva}
+              line={{ stroke: "var(--border-hi)", strokeWidth: 1.5 }}
+              lineType="joint"
+              shape={() => <g />}
+              legendType="none"
+              isAnimationActive={false}
+            />
+          )}
+
+          <Scatter
+            data={conResiduo}
+            isAnimationActive={false}
+            shape={(props: { cx?: number; cy?: number; payload?: { residuo?: number } }) => {
+              const { cx, cy, payload } = props
+              if (cx == null || cy == null) return <g />
+              const barato = (payload?.residuo ?? 0) >= 0
+              return <circle cx={cx} cy={cy} r={4.5} fill={barato ? "var(--positive)" : "var(--negative)"} />
+            }}
+          />
+        </ScatterChart>
+      </ResponsiveContainer>
+
+      <div style={{ fontSize: 8, color: "var(--text-mute)", fontFamily: "var(--font-data)", lineHeight: 1.7, marginTop: 4 }}>
+        {ajuste ? (
+          <>
+            Curva ajustada por mínimos cuadrados, grado {ajuste.grado} · R² {fmtNum(ajuste.r2, 3)} ·{" "}
+            <span style={{ color: "var(--positive)" }}>verde</span> rinde de más para su plazo (barato),{" "}
+            <span style={{ color: "var(--negative)" }}>rojo</span> rinde de menos (caro).
+            {excluidos > 0 && (
+              <> · {excluidos} {excluidos === 1 ? "instrumento queda" : "instrumentos quedan"} fuera del
+              ajuste por vencer en menos de {fmtNum(DURATION_MINIMA_CURVA * 12, 0)} meses: anualizados
+              distorsionan la curva sin aportar información de nivel.</>
+            )}
+          </>
+        ) : (
+          <>Muy pocos puntos distintos para ajustar una curva: se muestran los bonos sin referencia.</>
+        )}
+      </div>
+    </div>
+  )
+}
+
+
+// ── Renta fija: familias de instrumento ──────────────────────────────────────
+
+/**
+ * Las siete familias en que se divide la renta fija argentina. El orden es el
+ * de liquidez: se arranca por lo que más se opera.
+ *
+ * Tres todavía no tienen fuente conectada. Aparecen igual, y marcadas: que una
+ * familia falte es información — decir "esto existe y no lo tenemos" es más
+ * honesto que borrarla del menú y que parezca que el universo son cuatro.
+ */
+type FamiliaRentaFija =
+  | "soberanos" | "lecap" | "cer" | "dual" | "dollarlinked" | "ons" | "subsoberanos"
+
+const FAMILIAS: { key: FamiliaRentaFija; label: string }[] = [
+  { key: "soberanos",    label: "Soberanos Hard Dollar" },
+  { key: "lecap",        label: "LECAP / BONCAP" },
+  { key: "cer",          label: "BONCER / LECER" },
+  { key: "dual",         label: "Duales TAMAR" },
+  { key: "dollarlinked", label: "Dollar-linked" },
+  { key: "ons",          label: "ONs" },
+  { key: "subsoberanos", label: "Sub-soberanos" },
+]
+
+interface PesoRow {
+  ticker: string; nombre: string; precio: number | null; tir: number | null
+  dm: number | null; paridad: number | null; vencimiento: string | null
+}
+
+/** Los duales arrancan con TXM; el resto del universo en pesos es CER. */
+function esDual(ticker: string): boolean {
+  return ticker.toUpperCase().startsWith("TXM")
+}
+
+function cuentaPorFamilia(
+  familia: FamiliaRentaFija, bonos: BondRow[], lecaps: unknown[], pesos: PesoRow[],
+): number {
+  if (familia === "soberanos") return bonos.length
+  if (familia === "lecap") return lecaps.length
+  if (familia === "cer") return pesos.filter(p => !esDual(p.ticker)).length
+  if (familia === "dual") return pesos.filter(p => esDual(p.ticker)).length
+  return 0
+}
+
+/**
+ * Qué significa el número que publica el mercado en cada familia. No es un
+ * detalle de wording: en la misma columna, "TIR" quiere decir cosas distintas
+ * según la familia, y compararlas de un renglón al otro da cualquier cosa.
+ */
+const LEYENDA_TASA: Record<FamiliaRentaFija, string> = {
+  soberanos: "TIR en dólares (yield to maturity sobre el flujo en USD).",
+  lecap: "Tasa fija en pesos: la TEM es directamente el rendimiento mensual.",
+  cer: "TASA REAL, sobre CER. Se lee como \u201cCER + X%\u201d. Un bono ajustado por CER no tiene TIR nominal: el flujo futuro depende de la inflación, que nadie conoce.",
+  dual: "Pagan el máximo entre CER y TAMAR, así que llevan una opcionalidad adentro. La tasa que se muestra es la que publica la fuente y NO describe del todo al instrumento.",
+  dollarlinked: "", ons: "", subsoberanos: "",
+}
+
+/** Panel para las familias que existen en el mercado pero no tenemos conectadas. */
+function FamiliaSinFuente({ label, detalle }: { label: string; detalle: string }) {
+  return (
+    <div style={{ padding: 32, background: "var(--bg)", textAlign: "center" }}>
+      <div style={{ fontSize: 12, color: "var(--text-dim)", fontFamily: "var(--font-data)", marginBottom: 8 }}>
+        {label} — sin fuente conectada
+      </div>
+      <div style={{ fontSize: 10, color: "var(--text-mute)", maxWidth: 620, margin: "0 auto", lineHeight: 1.6 }}>
+        {detalle}
+      </div>
+      <div style={{ fontSize: 9, color: "#4a4a4a", marginTop: 12 }}>
+        Preferimos dejar la familia visible y vacía antes que mostrar números que no podemos respaldar.
+      </div>
+    </div>
+  )
+}
+
+export function BonosView({ initialTicker = null }: { initialTicker?: string | null } = {}) {
   const [bonos, setBonos] = useState<BondRow[]>([])
   const [lecaps, setLecaps] = useState<{ ticker: string; tipo: string; vencimiento: string; diasVencimiento: number; precio: number | null; tir: number | null; tea: number | null; tem: number | null }[]>([])
-  const [tab, setTab] = useState<"soberanos" | "lecap">("soberanos")
+  const [tab, setTab] = useState<FamiliaRentaFija>("soberanos")
+  const [pesos, setPesos] = useState<PesoRow[]>([])
+  const [pesosLoading, setPesosLoading] = useState(true)
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState<{ type: "bono" | "cap"; ticker: string } | null>(null)
+  const [selected, setSelected] = useState<{ type: "bono" | "cap"; ticker: string } | null>(initialTicker ? { type: "bono", ticker: initialTicker } : null)
 
   useEffect(() => {
     Promise.all([
@@ -364,6 +588,16 @@ export function BonosView() {
       setBonos(Array.isArray(b.data) ? b.data : [])
       setLecaps(Array.isArray(l.data) ? l.data : [])
     }).finally(() => setLoading(false))
+
+    // El universo en pesos va por separado y NO bloquea la pantalla. Sale de un
+    // scrapeo de Rava que tarda bastante más que los otros dos, y meterlo en el
+    // Promise.all de arriba hacía que toda la pestaña se quedara en "Cargando…"
+    // esperando datos que la familia por defecto ni siquiera usa.
+    fetch("/api/bonos?tipo=pesos")
+      .then(r => r.json())
+      .then(j => setPesos(Array.isArray(j.data) ? j.data : []))
+      .catch(() => setPesos([]))
+      .finally(() => setPesosLoading(false))
   }, [])
 
   if (loading) return <Loading />
@@ -382,47 +616,43 @@ export function BonosView() {
         <KPI label="LECAPs / BONCAPs" value={String(lecaps.length)} unit="instrumentos locales" />
       </div>
 
-      {/* Selector */}
-      <div style={{ padding: "8px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)", display: "flex", gap: 4 }}>
-        {(["soberanos", "lecap"] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            fontSize: 9, fontFamily: "var(--font-data)", padding: "3px 12px", borderRadius: 20, cursor: "pointer",
-            background: tab === t ? "rgba(255,160,40,0.12)" : "transparent",
-            border: tab === t ? "1px solid rgba(255,160,40,0.4)" : "1px solid var(--border)",
-            color: tab === t ? "var(--amber)" : "#666",
-          }}>{t === "soberanos" ? "Soberanos Hard Dollar" : "LECAP / BONCAP"}</button>
-        ))}
+      {/* Selector por familia de instrumento */}
+      <div style={{ padding: "12px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)", display: "flex", columnGap: 6, rowGap: 8, flexWrap: "wrap" }}>
+        {FAMILIAS.map(f => {
+          const enPesos = f.key === "cer" || f.key === "dual"
+          const cargando = enPesos && pesosLoading
+          const cuantos = cuentaPorFamilia(f.key, bonos, lecaps, pesos)
+          const vacia = !cargando && cuantos === 0
+          return (
+            <button key={f.key} onClick={() => setTab(f.key)} style={{
+              fontSize: 9, fontFamily: "var(--font-data)", padding: "4px 12px", borderRadius: 20, cursor: "pointer",
+              background: tab === f.key ? "rgba(255,160,40,0.12)" : "transparent",
+              border: tab === f.key ? "1px solid rgba(255,160,40,0.4)" : "1px solid var(--border)",
+              color: tab === f.key ? "var(--amber)" : vacia ? "#4a4a4a" : "#666",
+              display: "flex", alignItems: "center", gap: 6,
+            }}>
+              {f.label}
+              {/* El contador dice de una si la familia tiene datos o no, sin
+                  tener que entrar a la pestaña para descubrir que está vacía. */}
+              <span style={{ fontSize: 8, color: vacia ? "#4a4a4a" : "var(--text-mute)" }}>
+                {cargando ? "…" : vacia ? "sin fuente" : cuantos}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
       {tab === "soberanos" && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "var(--bg-elev-2)" }}>
-          {/* Curva de rendimientos */}
-          <div style={{ background: "var(--bg)", padding: 16 }}>
-            <SectionTitle title="Curva de rendimientos (TIR vs Duration)" />
-            <ResponsiveContainer width="100%" height={260}>
-              <ScatterChart margin={{ top: 8, right: 20, left: 0, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
-                <XAxis dataKey="dur" name="Duration" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} label={{ value: "Duration (años)", position: "insideBottom", offset: -10, fill: "#666", fontSize: 8 }} />
-                <YAxis dataKey="tir" name="TIR" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}%`} />
-                <Tooltip {...tooltipStyle} cursor={{ stroke: "var(--border-hi)" }} content={({ active, payload }) => {
-                  if (!active || !payload?.length) return null
-                  const d = payload[0]?.payload as { ticker: string; tir: number; dur: number; paridad: number }
-                  return (
-                    <div style={{ background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "6px 10px", fontSize: 9, fontFamily: "var(--font-data)", color: "var(--text)" }}>
-                      <div style={{ color: "var(--amber)", fontWeight: 700 }}>{d.ticker}</div>
-                      <div>TIR: {fmtPct(d.tir)}</div>
-                      <div>Duration: {fmtNum(d.dur, 2)} años</div>
-                      <div>Paridad: {fmtPct(d.paridad)}</div>
-                    </div>
-                  )
-                }} />
-                <Scatter
-                  data={bonos.filter(b => b.tir != null && b.durationMod != null).map(b => ({ ticker: b.ticker, tir: b.tir, dur: b.durationMod, paridad: b.paridad ?? 0 }))}
-                  fill="var(--amber)"
-                />
-              </ScatterChart>
-            </ResponsiveContainer>
-          </div>
+          {/* Curva de rendimientos con ajuste */}
+          <CurvaAjustada
+            titulo="Curva de rendimientos (TIR vs Duration)"
+            unidadTasa="TIR"
+            puntos={bonos
+              .filter(b => b.tir != null && b.durationMod != null)
+              .map(b => ({ ticker: b.ticker, y: b.tir as number, x: b.durationMod as number, extra: fmtPct(b.paridad ?? 0) }))}
+            etiquetaExtra="Paridad"
+          />
 
           {/* Tabla soberanos */}
           <div style={{ background: "var(--bg)", padding: 16 }}>
@@ -464,6 +694,15 @@ export function BonosView() {
           </div>
         </div>
       )}
+
+      {/* Lo que antes era la pestaña aparte "Renta Fija +". Ya no está duplicada
+          arriba: vive acá adentro, que es la familia a la que corresponde. */}
+      {tab === "soberanos" && (
+        <div style={{ borderTop: "1px solid var(--bg-elev-2)" }}>
+          <TabBonos />
+        </div>
+      )}
+
 
       {tab === "lecap" && (
         <div style={{ padding: 16, background: "var(--bg)" }}>
@@ -522,6 +761,79 @@ export function BonosView() {
         </div>
       )}
 
+      {(tab === "cer" || tab === "dual") && (() => {
+        const filas = pesos.filter(p => (tab === "dual" ? esDual(p.ticker) : !esDual(p.ticker)))
+        const conCurva = filas
+          .filter(f => f.tir != null && f.dm != null)
+          .map(f => ({ ticker: f.ticker, y: f.tir as number, x: f.dm as number, extra: f.vencimiento?.slice(0, 7) ?? "—" }))
+        const unidad = tab === "cer" ? "Tasa real" : "Tasa"
+        return (
+          <div>
+            <div style={{ padding: "10px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)", fontSize: 9, color: "var(--text-dim)", lineHeight: 1.7, fontFamily: "var(--font-data)" }}>
+              {LEYENDA_TASA[tab]}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "var(--bg-elev-2)" }}>
+              <CurvaAjustada
+                titulo={`Curva ${tab === "cer" ? "CER" : "dual"} (${unidad.toLowerCase()} vs duration mod.)`}
+                unidadTasa={unidad}
+                puntos={conCurva}
+                etiquetaExtra="Vto."
+              />
+              <div style={{ background: "var(--bg)", padding: 16 }}>
+                <SectionTitle title={tab === "cer" ? "Screener BONCER / LECER" : "Screener duales TAMAR"} />
+                <div style={{ overflowY: "auto", maxHeight: 260 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-data)", fontSize: 9 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                        {["Ticker", "Vto.", "Precio", unidad, "Dur. mod."].map(h => (
+                          <th key={h} style={{ padding: "4px 6px", color: "var(--text-dim)", textAlign: h === "Ticker" ? "left" : "right", fontWeight: 400 }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filas.map(f => (
+                        <tr key={f.ticker} style={{ borderBottom: "1px solid var(--bg-elev-2)" }}>
+                          <td style={{ padding: "3px 6px", color: "var(--amber)", fontWeight: 700 }}>{f.ticker}</td>
+                          <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{f.vencimiento?.slice(0, 7) ?? "—"}</td>
+                          <td style={{ padding: "3px 6px", color: "var(--text)", textAlign: "right" }}>{f.precio != null ? fmtNum(f.precio, 2) : "—"}</td>
+                          <td style={{ padding: "3px 6px", color: "var(--amber)", textAlign: "right", fontWeight: 700 }}>{f.tir != null ? fmtPct(f.tir) : "—"}</td>
+                          <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{f.dm != null ? fmtNum(f.dm, 2) : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div style={{ padding: "8px 14px", background: "var(--bg)", fontSize: 8, color: "var(--text-mute)", lineHeight: 1.7 }}>
+              Precio y tasa vienen de Rava/BYMA tal como los publican: estos instrumentos todavía no pasan por el
+              motor propio de cashflows, así que la tasa no está validada contra prospecto.
+            </div>
+          </div>
+        )
+      })()}
+
+      {tab === "dollarlinked" && (
+        <FamiliaSinFuente
+          label="Dollar-linked"
+          detalle="Bonos en pesos que siguen al dólar oficial (TV, TZV y la curva corporativa dollar-linked). El universo existe y se opera, pero todavía no hay un listado de tickers cargado ni una fuente de precios conectada para esta familia."
+        />
+      )}
+
+      {tab === "ons" && (
+        <FamiliaSinFuente
+          label="Obligaciones negociables"
+          detalle="Deuda corporativa argentina (YPF, Pampa, Telecom, Vista y demás). El mercado secundario se opera bastante por MAE, que hoy no está conectado como fuente. Sin precios confiables no se puede armar ni el screener ni la curva."
+        />
+      )}
+
+      {tab === "subsoberanos" && (
+        <FamiliaSinFuente
+          label="Sub-soberanos"
+          detalle="Deuda provincial: Córdoba, Buenos Aires, Mendoza, Santa Fe, Neuquén. Están excluidos a propósito del universo de peso-bonds.ts, que sólo cubre soberano nacional. Sumarlos es cargar los tickers y verificar que la fuente de precios los cubra."
+        />
+      )}
+
       {selected && (
         <BonoDetailPanel
           assetType={selected.type}
@@ -540,10 +852,25 @@ export function BonosView() {
 
 // ── Panel de detalle de bono/LECAP (Detalle / Gráfico / Foro) ─────────────────
 
+interface BondHistoryPoint { date: string; priceUsd: number | null; priceArs: number | null }
+interface BondHistoryResponse { history: BondHistoryPoint[]; nota?: string }
+
 function BonoDetailPanel({ assetType, ticker, bono, onClose }: {
   assetType: "bono" | "cap"; ticker: string; bono: BondRow | null; onClose: () => void
 }) {
   const [detailTab, setDetailTab] = useState<"detalle" | "grafico" | "foro">("detalle")
+  const [historia, setHistoria] = useState<BondHistoryResponse | null>(null)
+  const [historiaLoading, setHistoriaLoading] = useState(false)
+
+  useEffect(() => {
+    if (assetType !== "bono" || detailTab !== "grafico") return
+    setHistoriaLoading(true)
+    fetch(`/api/bonos/${ticker}/historico`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setHistoria(j && Array.isArray(j.history) ? j : null))
+      .catch(() => setHistoria(null))
+      .finally(() => setHistoriaLoading(false))
+  }, [assetType, ticker, detailTab])
 
   const panelTabs = [
     { key: "detalle", label: "Detalle" },
@@ -589,9 +916,30 @@ function BonoDetailPanel({ assetType, ticker, bono, onClose }: {
           )
         )}
         {detailTab === "grafico" && (
-          <div style={{ padding: 20, textAlign: "center", color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 10 }}>
-            Gráfico de histórico próximamente
-          </div>
+          assetType !== "bono" ? (
+            <div style={{ padding: 20, textAlign: "center", color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 10 }}>
+              Histórico todavía no disponible para instrumentos {assetType.toUpperCase()}
+            </div>
+          ) : historiaLoading ? (
+            <Loading />
+          ) : (historia?.history?.length ?? 0) === 0 ? (
+            <div style={{ padding: 20, textAlign: "center", color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 10 }}>
+              Sin histórico todavía para {ticker} — el snapshot diario de precios recién se conectó, se va a ir completando día a día.
+            </div>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={historia!.history.map((h) => ({ date: h.date, precio: h.priceUsd }))} margin={{ top: 8, right: 20, left: 0, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
+                  <XAxis dataKey="date" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} />
+                  <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} domain={["auto", "auto"]} />
+                  <Tooltip {...tooltipStyle} />
+                  <Line type="monotone" dataKey="precio" stroke="var(--amber)" strokeWidth={2} dot={false} isAnimationActive={false} />
+                </LineChart>
+              </ResponsiveContainer>
+              {historia?.nota && <div style={{ marginTop: 4, fontSize: 9, color: "var(--text-mute)", fontFamily: "var(--font-data)" }}>{historia.nota}</div>}
+            </>
+          )
         )}
         {detailTab === "foro" && <ForoActivo assetType={assetType} ticker={ticker} />}
       </div>
@@ -1738,7 +2086,7 @@ export function CryptoView() {
 
 // ── Main export ────────────────────────────────────────────────────────────────
 
-export function TabFinanzas({ initialSubtab }: { initialSubtab?: string | null }) {
+export function TabFinanzas({ initialSubtab, initialTicker = null }: { initialSubtab?: string | null; initialTicker?: string | null }) {
   const [activeTab, setActiveTab] = useState(initialSubtab ?? "acciones")
 
   useEffect(() => {
@@ -1748,9 +2096,8 @@ export function TabFinanzas({ initialSubtab }: { initialSubtab?: string | null }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       <SubTabs active={activeTab} onChange={setActiveTab} />
-      {activeTab === "acciones"  && <AccionesView />}
-      {activeTab === "bonos"     && <BonosView />}
-      {activeTab === "bonos-avanzado" && <TabBonos />}
+      {activeTab === "acciones"  && <AccionesView key={initialTicker ?? "acciones"} initialTicker={activeTab === "acciones" ? initialTicker : null} />}
+      {activeTab === "bonos"     && <BonosView key={initialTicker ?? "bonos"} initialTicker={activeTab === "bonos" ? initialTicker : null} />}
       {activeTab === "rofex"     && <RofexView />}
       {activeTab === "plazofijo" && <PlazoFijoView />}
       {activeTab === "commodities" && <CommoditiesView />}

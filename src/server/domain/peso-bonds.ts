@@ -100,3 +100,33 @@ export function pesoBondsVencidos(hoy: Date = new Date()): readonly PesoBond[] {
 export function vencimientoDe(ticker: string): string | null {
   return UNIVERSO.find((b) => b.ticker === ticker.toUpperCase())?.vencimiento ?? null
 }
+
+/**
+ * Las familias en que se divide la renta fija en pesos.
+ *
+ * No es una taxonomía cosmética: cada familia se lee con una tasa distinta y
+ * mezclarlas en una misma tabla hace comparar cosas que no se comparan.
+ *
+ *  - `cer`: BONCER y LECER. El flujo está en unidades CER, así que el número
+ *    que publica el mercado es la TASA REAL, cotizada como "CER + X%". Una TIR
+ *    nominal para estos bonos no existe sin proyectar inflación.
+ *  - `dual`: pagan el máximo entre CER y TAMAR, o sea que llevan una
+ *    opcionalidad adentro. Ni siquiera la tasa real los describe del todo.
+ *  - `lecap`: tasa fija en pesos, y ahí sí la TEM/TNA es directamente el
+ *    rendimiento.
+ */
+export type FamiliaPesos = "cer" | "dual" | "lecap"
+
+export function familiaDe(ticker: string): FamiliaPesos {
+  const t = ticker.toUpperCase()
+  // Los duales arrancan todos con TXM (TXMD8, TXMJ0…). Va primero porque si no
+  // el prefijo "TX" de los BONCER se los lleva puestos.
+  if (t.startsWith("TXM")) return "dual"
+  return "cer"
+}
+
+/** Los CER puros: BONCER, LECER y los Discount/Par de la reestructuración. */
+export const CER_TICKERS = PESO_BOND_TICKERS.filter((t) => familiaDe(t) === "cer")
+
+/** Los duales CER/TAMAR. */
+export const DUAL_TICKERS = PESO_BOND_TICKERS.filter((t) => familiaDe(t) === "dual")

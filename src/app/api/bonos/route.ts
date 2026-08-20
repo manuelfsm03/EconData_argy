@@ -12,9 +12,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/server/db/prisma"
 import { BOND_DEFS, CAP_INSTRUMENT_DEFS, type BondDef } from "@/server/domain/bonds-data"
 import { metricasDeMercado, metricasDevengadas } from "@/lib/bond-math"
-import { construirCashflows, GD30 } from "@/lib/bond-schedule"
+import { construirCashflows, ESQUEMAS } from "@/lib/bond-schedule"
 import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
-import { parseRavaBondPrices, type RavaBondPrice } from "@/server/external/rava-prices"
+import { fetchRavaBondPrices, type RavaBondPrice } from "@/server/external/rava-prices"
 import { pesoBondsVigentes } from "@/server/domain/peso-bonds"
 import { fetchBymaCapInstruments, fetchBymaQuotes, marketMetaForRows } from "@/server/external/byma-data"
 
@@ -85,35 +85,6 @@ function calcularDuration(precio: number, cashflows: { fechaPago: Date; flujoTot
   }, 0)
 
   return Number((macaulay / (1 + r)).toFixed(4))
-}
-
-let ravaBondCache: { data: Map<string, RavaBondPrice>; expiry: number } | null = null
-
-async function fetchRavaBondPrices(): Promise<Map<string, RavaBondPrice>> {
-  if (ravaBondCache && ravaBondCache.expiry > Date.now()) {
-    return ravaBondCache.data
-  }
-
-  try {
-    const response = await fetchRegistered("https://mercado.rava.com/api/prices/bonos", {
-      headers: {
-        "User-Agent": "Mozilla/5.0 PanelDeControl/2.0",
-        Accept: "application/json",
-      },
-      signal: AbortSignal.timeout(10000),
-      next: { revalidate: 300 },
-    })
-    if (!response.ok) return new Map()
-
-    const prices = parseRavaBondPrices(await response.json())
-    if (prices.size > 0) {
-      ravaBondCache = { data: prices, expiry: Date.now() + 300_000 }
-    }
-    return prices
-  } catch (error) {
-    console.warn("[bonos] fetch mercado.rava.com falló:", error)
-    return new Map()
-  }
 }
 
 async function scrapePrecioRava(ticker: string): Promise<{ precio: number | null; precioCci: number | null }> {
@@ -393,7 +364,7 @@ export async function GET(request: NextRequest) {
     const liquidacion = siguienteDiaHabil(fechaUTC(hoy.toISOString().slice(0, 10)))
     const screener = await Promise.all(
       bonds.map(async (bond: BondLike) => {
-        const esquemaVerificado = bond.ticker === GD30.ticker ? GD30 : null
+        const esquemaVerificado = ESQUEMAS.find((e) => e.ticker === bond.ticker) ?? null
         const cashflowsVerificados = esquemaVerificado ? construirCashflows(esquemaVerificado) : null
         const devengadas = cashflowsVerificados
           ? metricasDevengadas(cashflowsVerificados, liquidacion)
@@ -486,7 +457,7 @@ export async function GET(request: NextRequest) {
       count: screener.length,
       updated_at: new Date().toISOString(),
       ...marketMetaForRows(screener),
-      nota: "GD30 usa el motor verificado contra la planilla; los demás bonos conservan el cálculo legado y se marcan como pendientes de validar contra fuente primaria",
+      nota: "GD30, AL30, GD29, AL29, GD35, AL35, GD41, AL41 y AE38 usan el motor verificado contra el decreto oficial del canje 2020; el resto conserva el cálculo legado y se marca como pendiente de validar contra fuente primaria",
     })
   } catch (error) {
     console.error("[/api/bonos]", error)

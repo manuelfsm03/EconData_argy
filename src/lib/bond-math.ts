@@ -422,3 +422,98 @@ export function metricasDesdeTIR(
     precioClean,
   }
 }
+
+/**
+ * Un escenario de tasa: qué pasa con el precio si la TIR se mueve N puntos
+ * básicos. Es lo que en la mesa se pregunta como "si comprime 100 puntos,
+ * cuánto me llevo".
+ */
+export interface EscenarioTasa {
+  /** Movimiento aplicado a la TIR, en puntos básicos. 100 bp = 1%. */
+  shockBp: number
+  /** TIR resultante, en porcentaje. */
+  tir: number
+  /** Precio clean resultante: el que se ve en pantalla. */
+  precioClean: number
+  /** Precio dirty resultante: clean + intereses corridos. */
+  precioDirty: number
+  /** Variación del precio clean contra el escenario base, en porcentaje. */
+  variacionClean: number
+  /** Variación exacta del precio dirty contra el base, en porcentaje. */
+  variacionDirty: number
+  /** Variación que predice la aproximación duration + convexity, en porcentaje. */
+  variacionAproximada: number
+  /** Cuánto le erra la aproximación al reprecio exacto, en puntos porcentuales. */
+  errorAproximacion: number
+}
+
+/** Movimientos que se simulan cuando el pedido no trae una lista propia. */
+export const SHOCKS_POR_DEFECTO = [-300, -200, -100, -50, 50, 100, 200, 300]
+
+/**
+ * Reprecia el bono ante movimientos de la TIR y, al lado, muestra qué habría
+ * predicho la regla de bolsillo de duration + convexity.
+ *
+ * El reprecio es exacto: se vuelve a descontar todo el flujo con la tasa nueva,
+ * no se estima. La aproximación se calcula igual y se muestra al lado porque es
+ * la que se usa mentalmente en la mesa, y lo interesante es justamente ver
+ * dónde deja de servir:
+ *
+ *   ΔP/P ≈ -durationMod x Δy + ½ x convexity x Δy²        (Taylor de 2do orden)
+ *
+ * OJO con la base: duration y convexity son sensibilidades del precio DIRTY,
+ * porque salen de derivar el valor presente de los flujos, y los intereses
+ * corridos no dependen de la tasa. Por eso `errorAproximacion` se mide contra
+ * `variacionDirty` y no contra `variacionClean`: comparar contra el clean
+ * mezclaría el error del modelo con el efecto de una constante que se resta de
+ * dos precios distintos. El clean se informa igual porque es el que se opera.
+ *
+ * Devuelve null si el bono ya no tiene flujos futuros a esa liquidación.
+ */
+export function escenariosDeTasa(
+  cashflows: Cashflow[],
+  liquidacion: Date,
+  tirBasePorcentaje: number,
+  shocksBp: number[] = SHOCKS_POR_DEFECTO,
+): EscenarioTasa[] | null {
+  const futuros = flujosFuturos(cashflows, liquidacion)
+  if (futuros.length === 0) return null
+
+  const corridos = interesesCorridos(cashflows, liquidacion)
+  const dirtyBase = precioDadoTIR(tirBasePorcentaje, futuros, liquidacion)
+  if (dirtyBase === null) return null
+  const cleanBase = dirtyBase - corridos
+  if (cleanBase <= 0) return null
+
+  const macaulay = duration(dirtyBase, futuros, liquidacion, tirBasePorcentaje)
+  const cx = convexity(dirtyBase, futuros, liquidacion, tirBasePorcentaje)
+  if (macaulay === null || cx === null) return null
+  const durationMod = macaulay / (1 + tirBasePorcentaje / 100)
+
+  const escenarios: EscenarioTasa[] = []
+  for (const shockBp of shocksBp) {
+    const tirNueva = tirBasePorcentaje + shockBp / 100
+    const dirty = precioDadoTIR(tirNueva, futuros, liquidacion)
+    // Un shock puede empujar la TIR a territorio donde el precio deja de estar
+    // definido (r <= -100%). Ese escenario se saltea en vez de tumbar la tabla.
+    if (dirty === null) continue
+    const clean = dirty - corridos
+
+    const deltaY = shockBp / 10000
+    const variacionAproximada = (-durationMod * deltaY + 0.5 * cx * deltaY * deltaY) * 100
+    const variacionDirty = (dirty / dirtyBase - 1) * 100
+
+    escenarios.push({
+      shockBp,
+      tir: tirNueva,
+      precioClean: clean,
+      precioDirty: dirty,
+      variacionClean: (clean / cleanBase - 1) * 100,
+      variacionDirty,
+      variacionAproximada,
+      errorAproximacion: variacionAproximada - variacionDirty,
+    })
+  }
+
+  return escenarios
+}

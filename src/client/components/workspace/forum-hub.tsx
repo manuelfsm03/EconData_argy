@@ -8,6 +8,7 @@ import { ForoActivo, type ForumAssetType } from "@/client/components/dashboard/f
 import { Button } from "@/client/components/ui/button"
 import { Input } from "@/client/components/ui/input"
 import { DATA_CARD_BY_ID, searchDataCards } from "@/lib/card-catalog"
+import type { TickerFocus } from "@/lib/ticker-nav"
 import { cn } from "@/lib/utils"
 
 interface FeedPost {
@@ -46,7 +47,7 @@ function tagLabel(assetType: ForumAssetType, tag: string) {
   return assetType === "variable" ? variableTitle(tag) : tag
 }
 
-export function ForumHub() {
+export function ForumHub({ initialFocus = null }: { initialFocus?: TickerFocus | null } = {}) {
   const [query, setQuery] = useState("")
   const [debouncedQuery, setDebouncedQuery] = useState("")
   const [activeTag, setActiveTag] = useState<string | null>(null)
@@ -105,6 +106,14 @@ export function ForumHub() {
     setThread({ assetType, tag })
     setShowVariablePicker(false)
   }
+
+  useEffect(() => {
+    if (initialFocus) {
+      setActiveTag(initialFocus.ticker)
+      openThread(initialFocus.kind, initialFocus.ticker)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFocus?.kind, initialFocus?.ticker])
 
   return (
     <div className="min-h-[calc(100vh-49px)] bg-[var(--bg)] p-4 md:p-6">
