@@ -7,6 +7,8 @@
     "build": "prisma generate && node scripts/apply-forum-engagement-migration.mjs && next build",
     "start": "next start",
     "lint": "eslint",
+    "test:ci": "npm run test:bcra && npm run test:bcra-fx-purchases && npm run test:bond-math && npm run test:cache-policy && npm run test:calendar && npm run test:card-catalog && npm run test:debt-stock && npm run test:fomc-calendar && npm run test:forum-policy && npm run test:inequality && npm run test:ipc-divisions && npm run test:news-ui && npm run test:peso-bonds && npm run test:polymarket && npm run test:rava-sources && npm run test:release-prs && npm run test:rofex-rava && npm run test:source-contract && npm run test:sovereign-curve && npm run test:tamar && npm run test:trade-composition && npm run test:trade-data && npm run test:ust-bills",
+    "test:fuentes": "npm run test:byma-data && npm run test:card-health && npm run test:rofex-limit && npm run test:source-runtime",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx scripts/seed-from-excel.ts",
