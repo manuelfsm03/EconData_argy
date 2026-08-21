@@ -28,8 +28,9 @@ async function fetchYF(url: string): Promise<unknown> {
       })
       if (!res.ok) continue
       const j = await res.json()
-      // quoteSummary a veces devuelve 200 pero con error interno
-      const err = (j as Record<string, unknown>)?.quoteSummary?.error
+      // quoteSummary a veces devuelve 200 pero con error interno.
+      // Casteo seguro para leer .error sin romper el tipado (j es unknown).
+      const err = (j as { quoteSummary?: { error?: unknown } })?.quoteSummary?.error
       if (err) continue
       return j
     } catch {
@@ -194,6 +195,103 @@ export async function GET(
     || FALLBACK_DESC[tickerUpper]
     || null
 
+  // ── Metadatos de moneda / período / fuente (feedback del revisor) ──────────
+  // Objetivo: que CADA métrica sea interpretable y auditable → moneda + período +
+  // fuente efectiva SIEMPRE presentes. Distinguimos 3 monedas:
+  //
+  //  1) Precio/gráfico: moneda de cotización del priceSymbol. Para ".BA" es ARS.
+  //  2) Fundamentals (EBITDA, EBIT, revenue, márgenes, cashflows, deuda): moneda en
+  //     que la EMPRESA reporta sus estados = fund.currency (financialCurrency).
+  //     OJO: para varios ADRs argentinos (ej. GGAL) los estados están en ARS aunque
+  //     el ADR cotice en USD. Por eso NO asumimos "USD" a ciegas: usamos fund.currency
+  //     y sólo caemos al heurístico (adrUsed ? USD) si la fuente no informó la moneda.
+  //  3) Market cap / enterprise value: son valores de MERCADO, cotizados en la moneda
+  //     del símbolo de fundamentals (ADR → USD; .BA → ARS). Puede diferir de (2).
+  const monedaPrecio = (typeof meta.currency === "string" && meta.currency)
+    || (market === "usa" ? "USD" : "ARS")
+
+  // Moneda de cotización del fundamentalsSymbol (ADR=USD; si no hay ADR, = precio)
+  const monedaMarketCap = adrUsed ? "USD" : monedaPrecio
+
+  // Moneda REAL de los estados financieros (preferimos lo que informó la fuente)
+  const monedaFundamentals = fund.currency ?? (adrUsed ? "USD" : monedaPrecio)
+
+  // Fuente efectiva del market cap: qué se usó REALMENTE (no las posibles).
+  // Sale de fund.marketCap o, si no, del v7/quote del fundamentalsSymbol.
+  const fuenteMarketCap = fund.marketCap != null
+    ? `${fund.source}:${fundamentalsSymbol}`
+    : (quoteResult?.marketCap != null ? `yahoo:v7/quote:${fundamentalsSymbol}` : "n/d")
+
+  // ── Guardrail ARS/USD ─────────────────────────────────────────────────────
+  // EV/EBITDA y EV/Revenue combinan un numerador de MERCADO (enterprise value, en
+  // monedaMarketCap) con un denominador de ESTADOS (EBITDA/revenue, en
+  // monedaFundamentals). Si esas monedas difieren, el ratio mezcla pesos con
+  // dólares → es INVÁLIDO y NO se devuelve (queda null) + se marca el flag.
+  // Caso real: GGAL → EV en USD (ADR) y EBITDA en ARS (estados) ⇒ ratio sin sentido.
+  const ratiosMonedaMismatch = monedaMarketCap !== monedaFundamentals
+
+  // Período de los ESTADOS FINANCIEROS según lo que informó la fuente.
+  // TTM = últimos 12 meses móviles; FY = último ejercicio fiscal cerrado.
+  // Si no se puede afirmar con certeza → "TTM?" (no afirmamos de más).
+  const periodoEstados = (() => {
+    const p = fund.periodo
+    if (!p) return "TTM?"
+    if (p === "TTM") return "TTM"
+    if (p === "annual") return "FY (último ejercicio)"
+    const m = /^(\d{4})-\d{2}-\d{2}$/.exec(p)   // fecha de cierre de ejercicio
+    if (m) return `FY${m[1]}`
+    return "TTM?"
+  })()
+
+  // Fuente efectiva (símbolo REAL usado para cada pata)
+  const fuenteFundamentals = `${fund.source}:${fundamentalsSymbol}${adrUsed ? " (ADR)" : ""}`
+  const fuentePrecio = `yahoo:chart:${priceSymbol}`
+  const fuenteEfectiva = `fundamentals=${fuenteFundamentals} · precio=${fuentePrecio}`
+
+  // Fuente por métrica de valuación (fund vs fallback v7/quote), para auditar
+  const srcValuacion = (usoFund: boolean) =>
+    usoFund ? fuenteFundamentals : `yahoo:v7/quote:${fundamentalsSymbol}`
+
+  // Ajuste fino de período: en la ruta yahoo_crumb, ebit y grossProfit NO salen de
+  // financialData (TTM) sino de incomeStatementHistory (último ejercicio ANUAL).
+  // Para no afirmar "TTM" de más, los marcamos como FY cuando la fuente es YF crumb.
+  const periodoEbitGross = fund.source === "yahoo_crumb" ? "FY (último ejercicio)" : periodoEstados
+
+  // Mapa de metadatos por métrica: { moneda, periodo, fuente }.
+  //  - moneda=null → la métrica es adimensional (ratio, %, growth, beta).
+  //  - Se AGREGA a `data` sin tocar los campos existentes (no rompe el front).
+  const metricasMeta: Record<string, { moneda: string | null; periodo: string; fuente: string }> = {
+    // Valuación (valores/ratios de mercado)
+    marketCap:       { moneda: monedaMarketCap, periodo: "actual",  fuente: fuenteMarketCap },
+    enterpriseValue: { moneda: monedaMarketCap, periodo: "actual",  fuente: fuenteFundamentals },
+    peRatioTtm:      { moneda: null,            periodo: "TTM",     fuente: srcValuacion(fund.trailingPE   != null) },
+    peForward:       { moneda: null,            periodo: "forward", fuente: srcValuacion(fund.forwardPE    != null) },
+    evToEbitda:      { moneda: null,            periodo: "TTM",     fuente: fuenteFundamentals },
+    evToRevenue:     { moneda: null,            periodo: "TTM",     fuente: fuenteFundamentals },
+    priceToBook:     { moneda: null,            periodo: "actual",  fuente: srcValuacion(fund.priceToBook  != null) },
+    eps:             { moneda: monedaMarketCap, periodo: "TTM",     fuente: srcValuacion(fund.eps          != null) },
+    beta:            { moneda: null,            periodo: "mercado", fuente: srcValuacion(fund.beta         != null) },
+    dividendYield:   { moneda: null,            periodo: "TTM",     fuente: srcValuacion(fund.dividendYield != null) },
+    // Estados financieros (P&L / cashflow / balance) → moneda de los estados
+    totalRevenue:      { moneda: monedaFundamentals, periodo: periodoEstados, fuente: fuenteFundamentals },
+    grossProfit:       { moneda: monedaFundamentals, periodo: periodoEbitGross, fuente: fuenteFundamentals },
+    ebitda:            { moneda: monedaFundamentals, periodo: periodoEstados,   fuente: fuenteFundamentals },
+    ebit:              { moneda: monedaFundamentals, periodo: periodoEbitGross, fuente: fuenteFundamentals },
+    netIncome:         { moneda: monedaFundamentals, periodo: periodoEstados, fuente: fuenteFundamentals },
+    operatingCashflow: { moneda: monedaFundamentals, periodo: periodoEstados, fuente: fuenteFundamentals },
+    freeCashflow:      { moneda: monedaFundamentals, periodo: periodoEstados, fuente: fuenteFundamentals },
+    totalDebt:         { moneda: monedaFundamentals, periodo: periodoEstados, fuente: fuenteFundamentals },
+    // Márgenes y retornos (adimensionales, base TTM/estados)
+    grossMargin:     { moneda: null, periodo: periodoEstados, fuente: fuenteFundamentals },
+    ebitdaMargin:    { moneda: null, periodo: periodoEstados, fuente: fuenteFundamentals },
+    operatingMargin: { moneda: null, periodo: periodoEstados, fuente: fuenteFundamentals },
+    profitMargin:    { moneda: null, periodo: periodoEstados, fuente: fuenteFundamentals },
+    revenueGrowth:   { moneda: null, periodo: "YoY",          fuente: fuenteFundamentals },
+    earningsGrowth:  { moneda: null, periodo: "YoY",          fuente: fuenteFundamentals },
+    returnOnEquity:  { moneda: null, periodo: "TTM",          fuente: fuenteFundamentals },
+    returnOnAssets:  { moneda: null, periodo: "TTM",          fuente: fuenteFundamentals },
+  }
+
   const data = {
     ticker: tickerUpper,
     priceSymbol,
@@ -225,8 +323,10 @@ export async function GET(
     eps:             fund.eps             ?? quoteResult?.epsTrailingTwelveMonths ?? null,
     beta:            fund.beta            ?? quoteResult?.beta             ?? null,
     priceToBook:     fund.priceToBook     ?? quoteResult?.priceToBook     ?? null,
-    evToEbitda:      fund.evToEbitda,
-    evToRevenue:     fund.evToRevenue,
+    // Guardrail: si el market cap y los estados están en monedas distintas, el
+    // EV/EBITDA y EV/Revenue mezclan monedas → no comparables → no los exponemos.
+    evToEbitda:      ratiosMonedaMismatch ? null : fund.evToEbitda,
+    evToRevenue:     ratiosMonedaMismatch ? null : fund.evToRevenue,
     dividendYield:   fund.dividendYield   ?? quoteResult?.dividendYield   ?? quoteResult?.trailingAnnualDividendYield ?? null,
     // Financials (de la cascada)
     ebitda:          fund.ebitda,
@@ -251,10 +351,28 @@ export async function GET(
     // Contexto del reporte
     fundamentalsPeriodo: fund.periodo,
     fundamentalsCurrency: fund.currency,
+    // ── Metadatos de moneda / período / fuente (auditoría — feedback revisor) ──
+    monedas: {
+      precio: monedaPrecio,             // moneda del gráfico/precio (para .BA = ARS)
+      fundamentals: monedaFundamentals, // moneda de los estados financieros
+      marketCap: monedaMarketCap,       // moneda del market cap / EV (mercado)
+    },
+    metricasMeta,                       // { campo: { moneda, periodo, fuente } }
+    fuente_efectiva: fuenteEfectiva,    // qué fuente/símbolo se usó realmente
+    fecha_actualizacion: new Date().toISOString(),
+    ratios_moneda_mismatch: ratiosMonedaMismatch, // true → EV/EBITDA y EV/Rev van null
     // Historia de precios
     history,
   }
 
-  setCached(cacheKey, data, range === "max" ? 86400 : 3600)
+  // Cache del endpoint (blob precio + fundamentals).
+  // TTL: 1h en rangos normales; 6h para range=max (antes 24h). Lo bajamos para que
+  // los fundamentals embebidos no queden más viejos que ~6h (pedido del revisor).
+  // El cache profundo de fundamentals ya usa TTL corto (ver earnings-calendar.ts).
+  // TODO(invalidación por earnings): cuando exista detección de nuevos resultados
+  //   (10-K/10-Q/6-K vía feed de earnings o "recent filings" de SEC EDGAR),
+  //   invalidar esta key + la de getFundamentals en vez de esperar el TTL.
+  //   Punto de enganche: earnings-calendar.ts → enVentanaEarnings()/fundamentalsTTL().
+  setCached(cacheKey, data, range === "max" ? 6 * 3600 : 3600)
   return NextResponse.json({ data, updated_at: new Date().toISOString() })
 }

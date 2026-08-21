@@ -268,6 +268,34 @@ async function fetchFMP(ticker: string): Promise<FundamentalsData | null> {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Utilidad: tipo de cambio vía open.er-api.com (gratis, sin key)
+// Cache 24h para no sobrecargar el servicio.
+// ────────────────────────────────────────────────────────────────────────────
+
+const _fxCache: Record<string, { rate: number; expiry: number }> = {}
+
+async function getFXRate(from: string): Promise<number> {
+  const key = from.toUpperCase()
+  const cached = _fxCache[key]
+  if (cached && cached.expiry > Date.now()) return cached.rate
+
+  try {
+    const res = await fetch(
+      `https://open.er-api.com/v6/latest/${key}`,
+      { signal: AbortSignal.timeout(8000) },
+    )
+    if (!res.ok) return 1
+    const json = await res.json() as { rates?: Record<string, number> }
+    const rate = json.rates?.["USD"]
+    if (rate && rate > 0) {
+      _fxCache[key] = { rate, expiry: Date.now() + 24 * 3600 * 1000 }
+      return rate
+    }
+  } catch { /* sin conversión → devolvemos 1 */ }
+  return 1
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Fuente 2 — Alpha Vantage
 // API key: ALPHA_VANTAGE_KEY  |  Free tier: 25 req/día
 // Registro: https://www.alphavantage.co/support/#api-key
@@ -301,12 +329,22 @@ async function fetchAlphaVantage(ticker: string): Promise<FundamentalsData | nul
     const annualIncome = (income.annualReports   as Record<string, string>[])?.[0] ?? {}
     const annualCash   = (cashData.annualReports as Record<string, string>[])?.[0] ?? {}
 
-    // Parsea string numérico o devuelve null
+    // Detectar si el income statement viene en moneda local (no USD)
+    // AV devuelve reportedCurrency en annualReports[0]
+    const reportedCurrency = (annualIncome.reportedCurrency as string) ?? "USD"
+    let fxRate = 1  // multiplicador para convertir a USD (local → USD)
+
+    if (reportedCurrency !== "USD") {
+      fxRate = await getFXRate(reportedCurrency)
+    }
+
+    // Parsea string numérico, devuelve null si "None" o NaN
     const p = (k: string, src: Record<string, string>): number | null => {
       const v = parseFloat(src[k] ?? "")
-      return isNaN(v) ? null : v
+      if (isNaN(v)) return null
+      return fxRate !== 1 ? v * fxRate : v
     }
-    // Parsea campo del overview
+    // Parsea campo del overview (siempre en USD, no necesita conversión)
     const ov = (k: string): number | null => {
       const v = parseFloat((overview[k] ?? "") as string)
       return isNaN(v) ? null : v
@@ -355,7 +393,8 @@ async function fetchAlphaVantage(ticker: string): Promise<FundamentalsData | nul
       dividendYield: ov("DividendYield"),
       eps: ov("EPS"),
       periodo: typeof annualIncome.fiscalDateEnding === "string" ? annualIncome.fiscalDateEnding : null,
-      currency: typeof overview.Currency === "string" ? overview.Currency as string : "USD",
+      // Si convertimos, reportar USD; si no pudimos convertir, reportar la moneda original
+      currency: fxRate !== 1 ? "USD" : (reportedCurrency !== "USD" ? reportedCurrency : (typeof overview.Currency === "string" ? overview.Currency as string : "USD")),
     }
   } catch {
     return null

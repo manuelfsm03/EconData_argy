@@ -64,10 +64,18 @@ export function enVentanaEarnings(ticker: string, hoy = new Date()): boolean {
 }
 
 /**
- * TTL en segundos para cachear fundamentals:
- * - 7 días si el ticker está cerca de publicar earnings (ventana ±14 días)
- * - 90 días en período tranquilo
+ * TTL en segundos para cachear fundamentals.
+ *
+ * Feedback del revisor: los fundamentals no deben quedar viejos ante un nuevo
+ * filing/earnings. Sin un sistema de detección de resultados completo, acotamos
+ * la ventana de staleness a un rango razonable (antes eran 7 y 90 días):
+ *   - 6h  si el ticker está cerca de publicar earnings (ventana ±14 días)
+ *   - 12h en período tranquilo
+ *
+ * TODO(hook de invalidación): cuando se detecte un nuevo reporte (feed de earnings,
+ *   "recent filings" de SEC EDGAR, o webhook), invalidar el cache del ticker en vez
+ *   de esperar el TTL. enVentanaEarnings() es el punto natural de enganche.
  */
 export function fundamentalsTTL(ticker: string): number {
-  return enVentanaEarnings(ticker) ? 7 * 24 * 3600 : 90 * 24 * 3600
+  return enVentanaEarnings(ticker) ? 6 * 3600 : 12 * 3600
 }
