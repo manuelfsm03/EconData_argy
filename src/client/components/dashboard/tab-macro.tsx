@@ -741,7 +741,12 @@ export function EmaeView() {
           var1={varMensual} var1Label="mensual"
           var2={varInteranual} var2Label="interanual"
         />
-        <KPI label="IPI Manufacturero" value={null} unit="Ver tab IPI" />
+        <KPI
+          label="IPI Manufacturero"
+          value={ultimoIpi ? fmtNum(ultimoIpi[1], 1) : null}
+          unit={`Índice 2004=100 · ${ultimoIpi?.[0] ?? "cargando..."}`}
+          valueColor="var(--amber)"
+        />
         <KPI label="Período" value={ultimoEmae?.[0] ?? null} unit="Último dato disponible" valueColor="var(--text-dim)" />
       </div>
 
@@ -4157,29 +4162,41 @@ function VencimientosFilter({ detalle }: { detalle: VencDet[] }) {
 
 export function DeudaView() {
   const [licitaciones, setLicitaciones] = useState<{
-    fecha: string; adjudicado_bn: number | null; vencimientos_bn: number | null; rollover_pct: number | null; url: string
+    fecha: string; fechaLabel: string; moneda: "ARS" | "USD"
+    ofertado: number | null; adjudicado: number | null; unidad: string; coberturaPct: number | null
+    instrumentos: { ticker: string; tirea: number | null }[]; url: string; pdfUrl: string | null
   }[] | null>(null)
   const [stock, setStock] = useState<DeudaData | null>(null)
-  const [subTab, setSubTab] = useState<"licitaciones" | "stock">("licitaciones")
+  const [subTab, setSubTab] = useState<"licitaciones" | "stock">("stock")
   const [loadingLic, setLoadingLic] = useState(true)
   const [loadingStock, setLoadingStock] = useState(false)
+  const [errorLic, setErrorLic] = useState<string | null>(null)
+  const [errorStock, setErrorStock] = useState<string | null>(null)
 
   useEffect(() => {
     fetch("/api/deuda?n=6")
       .then(r => r.json())
-      .then(j => { setLicitaciones(j.data); setLoadingLic(false) })
-      .catch(() => setLoadingLic(false))
+      .then(j => {
+        if (j.error) setErrorLic(j.error.message ?? "Fuente no disponible")
+        else setLicitaciones(j.data)
+        setLoadingLic(false)
+      })
+      .catch(() => { setErrorLic("Fuente no disponible"); setLoadingLic(false) })
   }, [])
 
   useEffect(() => {
-    if (subTab === "stock" && !stock) {
+    if (subTab === "stock" && !stock && !errorStock) {
       setLoadingStock(true)
       fetch("/api/deuda?endpoint=stock")
         .then(r => r.json())
-        .then(j => { setStock(j); setLoadingStock(false) })
-        .catch(() => setLoadingStock(false))
+        .then(j => {
+          if (j.error) setErrorStock(j.error.message ?? "Fuente no disponible")
+          else setStock(j)
+          setLoadingStock(false)
+        })
+        .catch(() => { setErrorStock("Fuente no disponible"); setLoadingStock(false) })
     }
-  }, [subTab, stock])
+  }, [subTab, stock, errorStock])
 
   const PIE_COLORS = ["var(--amber)", "var(--positive)", "var(--sky)", "#CE93D8"]
 
@@ -4187,44 +4204,58 @@ export function DeudaView() {
     <div>
       <SectionMeta title="Deuda Pública" help="Stock y estructura de la deuda del Estado Nacional. Incluye deuda con FMI, bonistas externos, organismos multilaterales (BID, CAF, BM) y sector público. Las licitaciones muestran las colocaciones de deuda en el mercado local." source="Ministerio de Economía" />
       <SubTabs tabs={[
-        { key: "licitaciones", label: "Licitaciones" },
         { key: "stock",        label: "Stock & Composición" },
+        { key: "licitaciones", label: "Licitaciones" },
       ]} active={subTab} onChange={k => setSubTab(k as "licitaciones" | "stock")} />
 
       {subTab === "licitaciones" && (
         loadingLic
           ? <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>Cargando licitaciones...</div>
-          : (
+          : errorLic ? (
+            <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>
+              {errorLic}
+              <div style={{ marginTop: 6, fontSize: 9, color: "var(--text-mute)" }}>
+                El sitio de origen (argentina.gob.ar) cambió de estructura y los resultados de licitaciones ya no están en páginas individuales enlazadas — quedan en PDFs bajo "Colocaciones de deuda". Pendiente de reconectar con un parser de PDF.
+              </div>
+            </div>
+          ) : (
             <div style={{ padding: "8px 12px", overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-data)", fontSize: 9 }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                    {["Fecha", "Adjudicado (B$)", "Vencimientos (B$)", "Rollover %"].map(h => (
-                      <th key={h} style={{ padding: "4px 8px", color: "var(--text-dim)", textAlign: "right", fontWeight: 400, letterSpacing: 1 }}>{h}</th>
+                    {[["Fecha", "left"], ["Adjudicado", "right"], ["Ofertado", "right"], ["Demanda", "right"], ["Instrumentos (ticker · TIREA)", "left"], ["", "right"]].map(([h, al]) => (
+                      <th key={h} style={{ padding: "4px 8px", color: "var(--text-dim)", textAlign: al as "left" | "right", fontWeight: 400, letterSpacing: 1 }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {(licitaciones ?? []).map((r, i) => (
                     <tr key={i} style={{ borderBottom: "1px solid var(--bg-elev-2)" }}>
-                      <td style={{ padding: "3px 8px", color: "var(--text-dim)" }}>{r.fecha}</td>
-                      <td style={{ padding: "3px 8px", color: "var(--amber)", textAlign: "right" }}>
-                        {r.adjudicado_bn != null ? fmtNum(r.adjudicado_bn, 1) : "—"}
+                      <td style={{ padding: "3px 8px", color: "var(--text-dim)", whiteSpace: "nowrap" }}>{r.fechaLabel || r.fecha}</td>
+                      <td style={{ padding: "3px 8px", color: "var(--amber)", textAlign: "right", whiteSpace: "nowrap" }}>
+                        {r.adjudicado != null ? `${fmtNum(r.adjudicado, 2)} ${r.unidad}` : "—"}
                       </td>
-                      <td style={{ padding: "3px 8px", color: "var(--sky)", textAlign: "right" }}>
-                        {r.vencimientos_bn != null ? fmtNum(r.vencimientos_bn, 1) : "—"}
+                      <td style={{ padding: "3px 8px", color: "var(--sky)", textAlign: "right", whiteSpace: "nowrap" }}>
+                        {r.ofertado != null ? `${fmtNum(r.ofertado, 2)} ${r.unidad}` : "—"}
                       </td>
-                      <td style={{ padding: "3px 8px", textAlign: "right",
-                        color: r.rollover_pct != null ? (r.rollover_pct >= 100 ? "var(--positive)" : "var(--negative)") : "var(--text-mute)",
-                        fontWeight: 700 }}>
-                        {r.rollover_pct != null ? `${fmtNum(r.rollover_pct, 1)}%` : "—"}
+                      <td style={{ padding: "3px 8px", textAlign: "right", fontWeight: 700,
+                        color: r.coberturaPct != null ? (r.coberturaPct >= 100 ? "var(--positive)" : "var(--amber)") : "var(--text-mute)" }}>
+                        {r.coberturaPct != null ? `${r.coberturaPct}%` : "—"}
+                      </td>
+                      <td style={{ padding: "3px 8px", color: "var(--text)" }}>
+                        {r.instrumentos.length > 0
+                          ? r.instrumentos.map(x => `${x.ticker}${x.tirea != null ? ` ${fmtNum(x.tirea, 1)}%` : ""}`).join("  ·  ")
+                          : "—"}
+                      </td>
+                      <td style={{ padding: "3px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
+                        {r.pdfUrl && <a href={r.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-mute)", fontSize: 9 }}>PDF ↗</a>}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               <div style={{ fontSize: 8, color: "var(--text-mute)", marginTop: 4 }}>
-                Fuente: argentina.gob.ar/economia/licitaciones · Rollover &gt;100% = renovación con superávit de deuda
+                Fuente: argentina.gob.ar — Secretaría de Finanzas (notas de resultado) · Demanda = ofertado / adjudicado · TIREA = tasa interna de retorno efectiva anual
               </div>
             </div>
           )
@@ -4233,7 +4264,11 @@ export function DeudaView() {
       {subTab === "stock" && (
         loadingStock
           ? <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>Cargando stock de deuda...</div>
-          : stock ? (
+          : errorStock ? (
+            <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>
+              {errorStock}
+            </div>
+          ) : stock ? (
             <div>
               <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
                 <KPI label="Deuda / PIB"
