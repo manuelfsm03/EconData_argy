@@ -14,7 +14,7 @@ import { fundamentalsTTL } from "@/lib/earnings-calendar"
 // ────────────────────────────────────────────────────────────────────────────
 
 export interface FundamentalsData {
-  source: "fmp" | "alphavantage" | "yahoo_crumb" | "none"
+  source: "sec_edgar" | "fmp" | "alphavantage" | "yahoo_crumb" | "none"
   // P&L
   totalRevenue: number | null
   grossProfit: number | null
@@ -65,6 +65,113 @@ const EMPTY_FUNDAMENTALS: FundamentalsData = {
   revenueGrowth: null, earningsGrowth: null, returnOnEquity: null,
   returnOnAssets: null, dividendYield: null, eps: null,
   periodo: null, currency: null,
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Fuente 0 — SEC EDGAR (sin key, gobierno, datos anuales)
+// Docs: https://efts.sec.gov/LATEST/search-index
+// company_tickers.json → CIK; companyfacts → XBRL us-gaap
+// ────────────────────────────────────────────────────────────────────────────
+
+const SEC_UA = "La-Pizarra/1.0 contact@lapizarra.ar"
+
+// CIK map cacheado en memoria (se descarga una sola vez por proceso)
+let _cikMap: Record<string, number> | null = null
+
+async function getCIKMap(): Promise<Record<string, number>> {
+  if (_cikMap) return _cikMap
+  const res = await fetch("https://www.sec.gov/files/company_tickers.json", {
+    headers: { "User-Agent": SEC_UA },
+    signal: AbortSignal.timeout(15000),
+  })
+  if (!res.ok) throw new Error("SEC CIK map unavailable")
+  const raw = await res.json() as Record<string, { cik_str: number; ticker: string }>
+  const map: Record<string, number> = {}
+  for (const e of Object.values(raw)) map[e.ticker.toUpperCase()] = e.cik_str
+  _cikMap = map
+  return map
+}
+
+async function fetchSECEdgar(ticker: string): Promise<FundamentalsData | null> {
+  try {
+    const cikMap = await getCIKMap()
+    const cik = cikMap[ticker.toUpperCase()]
+    if (!cik) return null
+
+    const cikPadded = String(cik).padStart(10, "0")
+    const res = await fetch(
+      `https://data.sec.gov/api/xbrl/companyfacts/CIK${cikPadded}.json`,
+      { headers: { "User-Agent": SEC_UA }, signal: AbortSignal.timeout(20000) },
+    )
+    if (!res.ok) return null
+
+    type USDEntry = { end: string; val: number; form: string }
+    type Concept  = { units?: { USD?: USDEntry[] } }
+    const facts = await res.json() as { facts?: { "us-gaap"?: Record<string, Concept> } }
+    const gaap  = facts?.facts?.["us-gaap"]
+    if (!gaap) return null
+
+    // Último valor anual de un concepto (10-K o 20-F)
+    function latestAnnual(...concepts: string[]): number | null {
+      for (const concept of concepts) {
+        const data = gaap?.[concept]?.units?.USD
+        if (!data) continue
+        const annuals = data.filter(d => d.form === "10-K" || d.form === "20-F")
+        if (annuals.length === 0) continue
+        annuals.sort((a, b) => b.end.localeCompare(a.end))
+        return annuals[0].val
+      }
+      return null
+    }
+
+    const revenue = latestAnnual(
+      "Revenues",
+      "RevenueFromContractWithCustomerExcludingAssessedTax",
+      "SalesRevenueNet",
+      "RevenueFromContractWithCustomerIncludingAssessedTax",
+    )
+    const grossProfit = latestAnnual("GrossProfit")
+    const ebit        = latestAnnual("OperatingIncomeLoss")
+    const netIncome   = latestAnnual("NetIncomeLoss")
+    const da          = latestAnnual("DepreciationDepletionAndAmortization", "DepreciationAmortizationAndAccretionNet")
+    const ebitda      = ebit != null && da != null ? ebit + da : null
+    const capex       = latestAnnual("PaymentsToAcquirePropertyPlantAndEquipment")
+    const ocf         = latestAnnual("NetCashProvidedByUsedInOperatingActivities")
+    const fcf         = ocf != null && capex != null ? ocf - capex : null
+    const debt        = latestAnnual("LongTermDebt", "LongTermDebtAndCapitalLeaseObligation")
+    const opex        = latestAnnual("OperatingExpenses")
+
+    // Si no tenemos ningún dato relevante, consideramos que el ticker no tiene cobertura
+    if (revenue == null && ebit == null && netIncome == null) return null
+
+    return {
+      source: "sec_edgar",
+      totalRevenue: revenue,
+      grossProfit,
+      ebitda,
+      ebit,
+      netIncome,
+      operatingExpenses: opex,
+      operatingCashflow: ocf,
+      capitalExpenditures: capex != null ? Math.abs(capex) : null,
+      freeCashflow: fcf,
+      totalDebt: debt,
+      ebitdaMargin: revenue && ebitda ? ebitda / revenue : null,
+      grossMargin: revenue && grossProfit ? grossProfit / revenue : null,
+      operatingMargin: revenue && ebit ? ebit / revenue : null,
+      profitMargin: revenue && netIncome ? netIncome / revenue : null,
+      // Valuación: EDGAR no tiene precios de mercado — los cubre YF crumb/AV
+      marketCap: null, enterpriseValue: null, trailingPE: null, forwardPE: null,
+      priceToBook: null, beta: null, evToEbitda: null, evToRevenue: null,
+      revenueGrowth: null, earningsGrowth: null,
+      returnOnEquity: null, returnOnAssets: null,
+      dividendYield: null, eps: null,
+      periodo: "annual",
+      currency: "USD",
+    }
+  } catch {
+    return null
+  }
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -418,11 +525,12 @@ export async function getFundamentals(ticker: string): Promise<FundamentalsData>
   const cached = _fundCache[key]
   if (cached && cached.expiry > Date.now()) return cached.data
 
-  // Cascada: probamos FMP primero (más cuota), luego AV, luego YF crumb
+  // Cascada: EDGAR (gratis, anual) → YF crumb (TTM, frágil) → AV (25 req/día) → FMP (250 req/día)
   const result =
-    (await fetchFMP(key)) ??
+    (await fetchSECEdgar(key)) ??
+    (await fetchYFCrumb(key)) ??
     (await fetchAlphaVantage(key)) ??
-    (await fetchYFCrumb(key))
+    (await fetchFMP(key))
 
   const final = result ?? { ...EMPTY_FUNDAMENTALS }
 
