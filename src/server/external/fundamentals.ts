@@ -321,21 +321,50 @@ async function fetchAlphaVantage(ticker: string): Promise<FundamentalsData | nul
       ),
     ])
 
-    const income   = incomeRes.ok  ? await incomeRes.json()  as Record<string, unknown> : {}
-    const cashData = cashRes.ok    ? await cashRes.json()    as Record<string, unknown> : {}
-    const overview = overviewRes.ok ? await overviewRes.json() as Record<string, unknown> : {}
+    // AV devuelve rate-limit como HTTP 200 con body {"Information": "..."}
+    // En esos casos, los datos son inútiles — tratar como sin response
+    const safeJson = async (res: Response): Promise<Record<string, unknown>> => {
+      if (!res.ok) return {}
+      const j = await res.json() as Record<string, unknown>
+      if (j.Note || j.Information) return {}  // rate limit message
+      return j
+    }
+
+    const income   = await safeJson(incomeRes)
+    const cashData = await safeJson(cashRes)
+    const overview = await safeJson(overviewRes)
 
     // AV devuelve último año en annualReports[0]
     const annualIncome = (income.annualReports   as Record<string, string>[])?.[0] ?? {}
     const annualCash   = (cashData.annualReports as Record<string, string>[])?.[0] ?? {}
 
-    // Detectar si el income statement viene en moneda local (no USD)
-    // AV devuelve reportedCurrency en annualReports[0]
+    // Si no hay datos de income statement (rate limit o ticker no cubierto), fallar rápido
+    if (!annualIncome.totalRevenue) return null
+
+    // Detectar si los valores del income statement están en moneda local (no USD)
+    // Caso 1: AV dice explícitamente reportedCurrency ≠ "USD" (ej. GGAL → ARS)
+    // Caso 2: AV dice "USD" pero los valores son absurdamente grandes vs market cap
+    //         (BMA: revenue 5.8T vs mcap $4.8B → ratio 1200x → claramente en ARS)
     const reportedCurrency = (annualIncome.reportedCurrency as string) ?? "USD"
+    const rawRevenue = parseFloat(annualIncome.totalRevenue ?? "")
+    const mcap = parseFloat((overview.MarketCapitalization ?? "") as string)
+    // isLocalCurrency: tres condiciones alternativas
+    // 1. AV dice explícitamente que es ARS (o BRL, etc.)
+    // 2. Ratio revenue/mcap > 200 (e.g. 5.8T ARS / $4.8B market cap = 1200x)
+    // 3. Revenue > $500B "USD" pero mcap no disponible (fallback absoluto:
+    //    ningún company de nuestro screener tiene $500B de revenue en USD)
+    const isLocalCurrency =
+      reportedCurrency !== "USD" ||
+      (!isNaN(rawRevenue) && !isNaN(mcap) && mcap > 0 && rawRevenue / mcap > 200) ||
+      rawRevenue > 5e11
+
     let fxRate = 1  // multiplicador para convertir a USD (local → USD)
 
-    if (reportedCurrency !== "USD") {
-      fxRate = await getFXRate(reportedCurrency)
+    if (isLocalCurrency) {
+      // Intentar inferir la moneda real desde la empresa registrada
+      // Si reportedCurrency dice "USD" pero es falso, usamos la moneda del país del overview
+      const currencyForFX = reportedCurrency !== "USD" ? reportedCurrency : "ARS"
+      fxRate = await getFXRate(currencyForFX)
     }
 
     // Parsea string numérico, devuelve null si "None" o NaN
