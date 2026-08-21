@@ -16,139 +16,10 @@ import {
   parseDebtSheetRows,
   type QuarterlyGdpPoint,
 } from "@/server/domain/debt-stock"
+import { getUltimasLicitaciones } from "@/server/external/tesoro-licitaciones"
+import { leerFresco, guardarExito, leerUltimoBueno } from "@/server/http/stale-cache"
 
 const BASE_GOB = "https://www.argentina.gob.ar"
-
-const ARCHIVE_PATHS = [
-  "/economia/licitaciones",
-  "/economia/finanzas/licitaciones-de-letras-del-tesoro",
-]
-
-// In-memory cache
-const _cache: Record<string, { data: unknown; expiry: number }> = {}
-function getCache<T>(key: string): T | null {
-  const e = _cache[key]
-  if (e && e.expiry > Date.now()) return e.data as T
-  return null
-}
-function setCache(key: string, data: unknown, ttlSec: number) {
-  _cache[key] = { data, expiry: Date.now() + ttlSec * 1000 }
-}
-
-interface LicitacionResult {
-  fecha: string
-  adjudicado_bn: number | null
-  vencimientos_bn: number | null
-  rollover_pct: number | null
-  instrumentos: { tipo: string; tem: number }[]
-  url: string
-}
-
-async function recolectarLinks(n: number): Promise<string[]> {
-  const links: string[] = []
-  for (const path of ARCHIVE_PATHS) {
-    try {
-      const res = await fetchRegistered(BASE_GOB + path, {
-        headers: { "User-Agent": "PanelDeControl/2.0" },
-        next: { revalidate: 3600 },
-      })
-      if (!res.ok) continue
-      const html = await res.text()
-
-      // Parse href attributes manually (no cheerio in edge runtime)
-      const hrefRegex = /href="([^"]+)"/g
-      let match
-      while ((match = hrefRegex.exec(html)) !== null) {
-        const href = match[1]
-        const hrefL = href.toLowerCase()
-        if (
-          hrefL.includes("licitaci") &&
-          !hrefL.includes(".pdf") &&
-          href !== "#"
-        ) {
-          const url = href.startsWith("/") ? BASE_GOB + href : href
-          if (!links.includes(url)) links.push(url)
-        }
-        if (links.length >= n) break
-      }
-    } catch {
-      continue
-    }
-    if (links.length >= n) break
-  }
-  return links.slice(0, n)
-}
-
-function extraerMonto(texto: string, patron: RegExp): number | null {
-  const m = texto.match(patron)
-  if (!m) return null
-  const num = m[1].replace(/\./g, "").replace(",", ".")
-  const parsed = parseFloat(num)
-  return isNaN(parsed) ? null : parsed
-}
-
-async function parsearResultado(url: string): Promise<LicitacionResult | null> {
-  try {
-    const res = await fetchRegistered(url, {
-      headers: { "User-Agent": "PanelDeControl/2.0" },
-      next: { revalidate: 3600 },
-    })
-    if (!res.ok) return null
-    const html = await res.text()
-
-    // Strip HTML tags for text extraction
-    const texto = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ")
-
-    const adjudicado = extraerMonto(
-      texto,
-      /adjudic[aáoó][^$\n]{0,40}\$\s*([\d.,]+)/i,
-    )
-    const vencimientos = extraerMonto(
-      texto,
-      /venc[imiento]{0,9}[^$\n]{0,40}\$\s*([\d.,]+)/i,
-    )
-    const rollover =
-      adjudicado && vencimientos
-        ? parseFloat(((adjudicado / vencimientos) * 100).toFixed(1))
-        : null
-
-    const fechaM = texto.match(/(\d{1,2}) de (\w+) de (\d{4})/)
-    const fecha = fechaM ? fechaM[0] : ""
-
-    const instrumentos: { tipo: string; tem: number }[] = []
-    const instRe =
-      /(LECAP|BONCAP|LECER|BONCER|LELINK|LETAMAR|LETES)[^T]{0,30}TEM[^\d]{0,5}(\d+[,.]\d+)%/gi
-    let m
-    while ((m = instRe.exec(texto)) !== null) {
-      instrumentos.push({
-        tipo: m[1].toUpperCase(),
-        tem: parseFloat(m[2].replace(",", ".")),
-      })
-      if (instrumentos.length >= 6) break
-    }
-
-    return { fecha, adjudicado_bn: adjudicado, vencimientos_bn: vencimientos, rollover_pct: rollover, instrumentos, url }
-  } catch {
-    return null
-  }
-}
-
-async function getUltimasLicitaciones(n: number): Promise<LicitacionResult[]> {
-  const cached = getCache<LicitacionResult[]>(`licitaciones_${n}`)
-  if (cached) return cached
-
-  try {
-    const links = await recolectarLinks(n)
-    const results = await Promise.all(links.map((url) => parsearResultado(url)))
-    const licitaciones = results.filter((r): r is LicitacionResult => r !== null)
-
-    if (licitaciones.length === 0) throw new Error("SOURCE_UNAVAILABLE:LICITACIONES")
-    setCache(`licitaciones_${n}`, licitaciones, 3600)
-    return licitaciones
-  } catch (error) {
-    throw new Error("SOURCE_UNAVAILABLE:LICITACIONES", { cause: error })
-  }
-}
 
 // ── Stock de Deuda Pública ─────────────────────────────────────────────────────
 
@@ -164,10 +35,13 @@ async function fetchDebtWorkbookRows(): Promise<unknown[][]> {
   if (!pageResponse.ok) throw new Error(`Finanzas page ${pageResponse.status}`)
 
   const html = await pageResponse.text()
-  const workbookMatch = html.match(/href=["'](?:blank:#)?(https?:\/\/[^"']+\.xlsx)["']/i)
+  // El sitio pasó de linkear el .xlsx con URL absoluta a una ruta relativa
+  // (/sites/default/files/...) -- se acepta cualquiera de las dos formas.
+  const workbookMatch = html.match(/href=["'](?:blank:#)?((?:https?:\/\/[^"']+|\/[^"']+)\.xlsx)["']/i)
   if (!workbookMatch) throw new Error("Official debt workbook URL not found")
+  const workbookUrl = workbookMatch[1].startsWith("/") ? BASE_GOB + workbookMatch[1] : workbookMatch[1]
 
-  const workbookResponse = await fetchRegistered(workbookMatch[1], {
+  const workbookResponse = await fetchRegistered(workbookUrl, {
     headers: { "User-Agent": "PanelDeControl/2.0" },
     signal: AbortSignal.timeout(30000),
     next: { revalidate: 86_400 },
@@ -196,8 +70,10 @@ async function fetchQuarterlyGdp(): Promise<QuarterlyGdpPoint[]> {
 
 async function getStockDeuda() {
   const cacheKey = "deuda_stock_v3"
-  const cached = getCache<unknown>(cacheKey)
-  if (cached) return cached
+
+  // Nivel 1 — fresco: dentro del TTL no volver a la fuente
+  const fresco = leerFresco<object>(cacheKey)
+  if (fresco) return { ...fresco, cached: true }
 
   const [rows, gdp] = await Promise.all([fetchDebtWorkbookRows(), fetchQuarterlyGdp()])
   const parsedDebt = parseDebtSheetRows(rows)
@@ -223,7 +99,7 @@ async function getStockDeuda() {
     source: "Secretaría de Finanzas — boletín mensual de deuda · PIB USD INDEC",
   }
 
-  setCache(cacheKey, result, 86_400)
+  guardarExito(cacheKey, result, 86_400)
   return result
 }
 
@@ -237,6 +113,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(data)
     } catch (error) {
       console.error("[/api/deuda?endpoint=stock]", error)
+      // Fallback stale — datos de deuda no cambian a diario, cache indefinido
+      const stale = leerUltimoBueno<object>("deuda_stock_v3")
+      if (stale) {
+        return NextResponse.json(
+          { ...stale.data, cached: true, stale: true, stale_since: stale.staleSince },
+          { headers: { "X-Data-Source": "stale-cache" } },
+        )
+      }
       return NextResponse.json(
         { error: { code: "SOURCE_UNAVAILABLE", message: "Stock de deuda no disponible", retryable: true } },
         { status: 502 },
@@ -245,16 +129,45 @@ export async function GET(request: NextRequest) {
   }
 
   const n = Math.min(parseInt(searchParams.get("n") ?? "6"), 12)
+  const cacheKey = `licitaciones:${n}`
 
   try {
+    // Nivel 1 — fresco
+    const fresco = leerFresco<Awaited<ReturnType<typeof getUltimasLicitaciones>>>(cacheKey)
+    if (fresco) {
+      return NextResponse.json({
+        data: fresco,
+        cached: true,
+        updated_at: new Date().toISOString(),
+        source: "stale-cache (fresco)",
+      })
+    }
+
     const data = await getUltimasLicitaciones(n)
+    if (data.length === 0) throw new Error("SOURCE_UNAVAILABLE:LICITACIONES")
+    guardarExito(cacheKey, data, 21_600) // 6h; el cron de Vercel lo mantiene tibio
     return NextResponse.json({
       data,
       updated_at: new Date().toISOString(),
-      source: "argentina.gob.ar",
+      source: "argentina.gob.ar — Secretaría de Finanzas (notas de resultado de licitación)",
     })
   } catch (error) {
     console.error("[/api/deuda]", error)
+    // Fallback stale — licitaciones cambian poco
+    const stale = leerUltimoBueno<Awaited<ReturnType<typeof getUltimasLicitaciones>>>(cacheKey)
+    if (stale) {
+      return NextResponse.json(
+        {
+          data: stale.data,
+          cached: true,
+          stale: true,
+          stale_since: stale.staleSince,
+          updated_at: new Date().toISOString(),
+          source: "stale-cache",
+        },
+        { headers: { "X-Data-Source": "stale-cache" } },
+      )
+    }
     return NextResponse.json(
       { error: { code: "SOURCE_UNAVAILABLE", message: "Licitaciones no disponibles", retryable: true } },
       { status: 502 },
