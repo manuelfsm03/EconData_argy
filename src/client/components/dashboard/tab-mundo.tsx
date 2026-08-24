@@ -1175,6 +1175,342 @@ function PiramidesView() {
   )
 }
 
+// ── Señales Derivadas View ────────────────────────────────────────────────────
+
+interface TasaReal { pais: string; moneda: string; tasa_nominal: number | null; inflacion: number | null; inflacion_anio: number | null; tasa_real: number | null; esVivo: boolean }
+interface SpreadCarry { par: string; pais_a: string; tasa_a: number | null; tasa_b: number | null; spread: number | null }
+interface RatiosCommodities { gold_silver: number | null; cobre_oro: number | null; wti_brent: number | null; itbi_arg: number | null }
+interface RiskScore { score: number | null; clasificacion: string | null; componentes: { vix: number | null; sp500_cambio_pct: number | null; dxy_cambio_pct: number | null; fear_greed: number | null; scores: { vix: number | null; sp500: number | null; dxy: number | null; fear_greed: number | null } } }
+interface NtvBtc { ntv: number | null; market_cap_usd: number | null; n_tx_24h: number | null; interpretacion: string | null }
+interface DerivedData { tasas_reales: TasaReal[]; spreads_carry: SpreadCarry[]; ratios_commodities: RatiosCommodities; risk_score: RiskScore; ntv_btc: NtvBtc }
+
+function riskColor(score: number | null): string {
+  if (score == null) return "var(--text-mute)"
+  if (score <= 20) return "#F44336"
+  if (score <= 40) return "#FF7043"
+  if (score <= 60) return "var(--amber)"
+  if (score <= 80) return "#66BB6A"
+  return "#00E676"
+}
+
+function tasaRealColor(v: number | null): string {
+  if (v == null) return "var(--text-mute)"
+  return v >= 0 ? "var(--positive)" : "var(--negative)"
+}
+
+function SignalesView() {
+  const [data, setData] = useState<DerivedData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [subTab, setSubTab] = useState("risk")
+
+  useEffect(() => {
+    fetch("/api/derived")
+      .then((r) => r.json())
+      .then((j) => { setData(j.data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div style={{ padding: 24, color: "var(--text-dim)", fontSize: 11, textAlign: "center" }}>Calculando señales de mercado...</div>
+  if (!data) return <div style={{ padding: 24, color: "var(--text-dim)", fontSize: 11 }}>Sin datos disponibles.</div>
+
+  const { risk_score, tasas_reales, spreads_carry, ratios_commodities, ntv_btc } = data
+
+  return (
+    <div>
+      <SubTabs
+        tabs={[
+          { key: "risk",   label: "Riesgo Global" },
+          { key: "tasas",  label: "Tasas Reales" },
+          { key: "carry",  label: "Carry Trade" },
+          { key: "ratios", label: "Ratios" },
+          { key: "ntv",    label: "BTC On-chain" },
+        ]}
+        active={subTab}
+        onChange={setSubTab}
+      />
+
+      {/* ── Risk Score ──────────────────────────────────────────────────── */}
+      {subTab === "risk" && (
+        <div>
+          {/* Gauge principal */}
+          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)", marginBottom: 1 }}>
+            <div style={{ flex: "0 0 auto", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "20px 28px", minWidth: 200, textAlign: "center" }}>
+              <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+                ÍNDICE DE APETITO POR RIESGO
+              </div>
+              <div style={{ fontSize: 64, fontWeight: 700, fontFamily: "var(--font-data)", color: riskColor(risk_score.score), lineHeight: 1 }}>
+                {risk_score.score ?? "—"}
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: riskColor(risk_score.score), marginTop: 6 }}>
+                {risk_score.clasificacion ?? "Sin datos"}
+              </div>
+              {/* Barra de gradiente */}
+              <div style={{ marginTop: 12, height: 6, borderRadius: 3, background: "linear-gradient(to right, #F44336, #FF7043, var(--amber), #66BB6A, #00E676)", position: "relative" }}>
+                {risk_score.score != null && (
+                  <div style={{
+                    position: "absolute", top: -3, width: 12, height: 12,
+                    background: "white", borderRadius: "50%", border: "2px solid var(--bg)",
+                    left: `calc(${risk_score.score}% - 6px)`,
+                    boxShadow: `0 0 0 2px ${riskColor(risk_score.score)}`,
+                    transition: "left 0.5s ease",
+                  }} />
+                )}
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 7, color: "var(--text-dim)", marginTop: 4 }}>
+                <span>Pánico</span><span>Neutro</span><span>Euforia</span>
+              </div>
+            </div>
+
+            {/* Componentes */}
+            <div style={{ flex: 1, minWidth: 200 }}>
+              {[
+                { label: "VIX (Volatilidad S&P 500)", raw: risk_score.componentes.vix, score: risk_score.componentes.scores.vix, fmt: (v: number) => v.toFixed(1), note: "Bajo = calma → score alto" },
+                { label: "S&P 500 (var % día)", raw: risk_score.componentes.sp500_cambio_pct, score: risk_score.componentes.scores.sp500, fmt: (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`, note: "Positivo → score alto" },
+                { label: "DXY (var % día)", raw: risk_score.componentes.dxy_cambio_pct, score: risk_score.componentes.scores.dxy, fmt: (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`, note: "DXY baja → risk-on → score alto" },
+                { label: "Fear & Greed (Alternative.me)", raw: risk_score.componentes.fear_greed, score: risk_score.componentes.scores.fear_greed, fmt: (v: number) => v.toFixed(0), note: "100 = codicia extrema" },
+              ].map(({ label, raw, score, fmt, note }) => (
+                <div key={label} style={{ padding: "10px 12px", borderBottom: "1px solid var(--bg-elev-2)", background: "var(--bg-elev)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <div>
+                      <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 600 }}>{label}</div>
+                      <div style={{ fontSize: 8, color: "#555" }}>{note}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-data)", color: "var(--text)" }}>
+                        {raw != null ? fmt(raw) : "—"}
+                      </div>
+                      <div style={{ fontSize: 9, color: riskColor(score), fontWeight: 600 }}>
+                        score: {score ?? "—"}
+                      </div>
+                    </div>
+                  </div>
+                  {score != null && (
+                    <div style={{ height: 3, background: "var(--bg-elev-2)", borderRadius: 2 }}>
+                      <div style={{ height: "100%", width: `${score}%`, background: riskColor(score), borderRadius: 2, transition: "width 0.5s" }} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ padding: "4px 8px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
+            Score propio: promedio de 4 componentes normalizados 0–100 · VIX (Yahoo Finance) · S&amp;P (Yahoo Finance) · DXY (Yahoo Finance) · Fear &amp; Greed (Alternative.me)
+          </div>
+        </div>
+      )}
+
+      {/* ── Tasas Reales ────────────────────────────────────────────────── */}
+      {subTab === "tasas" && (
+        <div>
+          <div style={{ background: "var(--bg)", border: "1px solid var(--border)", margin: 1 }}>
+            <div style={{ padding: "8px", borderBottom: "1px solid var(--bg-elev-2)", fontSize: 10, color: "var(--text-dim)", fontWeight: 600 }}>
+              TASAS REALES POR BANCO CENTRAL — Tasa política − Inflación IMF · Orden: mayor → menor
+            </div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
+                <thead>
+                  <tr style={{ background: "var(--bg-elev-2)" }}>
+                    <th style={{ padding: "6px 8px", textAlign: "left", color: "var(--amber)", fontSize: 9, fontWeight: 700 }}>País</th>
+                    <th style={{ padding: "6px 8px", textAlign: "right", color: "var(--text-dim)", fontSize: 9 }}>Moneda</th>
+                    <th style={{ padding: "6px 8px", textAlign: "right", color: "var(--text-dim)", fontSize: 9 }}>Tasa nominal</th>
+                    <th style={{ padding: "6px 8px", textAlign: "right", color: "var(--text-dim)", fontSize: 9 }}>Inflación</th>
+                    <th style={{ padding: "6px 8px", textAlign: "right", color: "var(--text-dim)", fontSize: 9 }}>Tasa real</th>
+                    <th style={{ padding: "6px 8px", textAlign: "center", color: "var(--text-dim)", fontSize: 9 }}>Barra</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasas_reales.map((t, i) => (
+                    <tr key={t.pais} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg-row-alt)", borderBottom: "1px solid var(--bg-elev-2)" }}>
+                      <td style={{ padding: "6px 8px", color: "var(--amber)", fontWeight: 600 }}>
+                        {t.pais}
+                        {!t.esVivo && <span style={{ marginLeft: 4, fontSize: 7, color: "#555" }}>N/D</span>}
+                      </td>
+                      <td style={{ padding: "6px 8px", textAlign: "right", color: "var(--text-dim)", fontSize: 9 }}>{t.moneda}</td>
+                      <td style={{ padding: "6px 8px", textAlign: "right", fontFamily: "var(--font-data)", color: "var(--text)" }}>
+                        {t.tasa_nominal != null ? `${t.tasa_nominal.toFixed(2)}%` : "—"}
+                      </td>
+                      <td style={{ padding: "6px 8px", textAlign: "right", fontFamily: "var(--font-data)", color: "var(--text-dim)" }}>
+                        {t.inflacion != null ? `${t.inflacion.toFixed(1)}%` : "—"}
+                        {t.inflacion_anio && <span style={{ fontSize: 7, marginLeft: 2, color: "#555" }}>{t.inflacion_anio}</span>}
+                      </td>
+                      <td style={{ padding: "6px 8px", textAlign: "right", fontFamily: "var(--font-data)", fontWeight: 700, color: tasaRealColor(t.tasa_real) }}>
+                        {t.tasa_real != null ? `${t.tasa_real >= 0 ? "+" : ""}${t.tasa_real.toFixed(2)}%` : "—"}
+                      </td>
+                      <td style={{ padding: "6px 8px", width: 80 }}>
+                        {t.tasa_real != null && (
+                          <div style={{ height: 4, background: "var(--bg-elev-2)", borderRadius: 2, overflow: "hidden" }}>
+                            <div style={{
+                              height: "100%",
+                              width: `${Math.min(100, Math.max(0, (t.tasa_real + 20) / 40 * 100))}%`,
+                              background: tasaRealColor(t.tasa_real),
+                              borderRadius: 2,
+                            }} />
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ padding: "4px 8px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)", background: "var(--bg-elev)" }}>
+              Tasas: NY Fed EFFR · BoE IADB API · BoC Valet API · OECD MEI Financial · BCB API · ECB SDW · Inflación: IMF DataMapper PCPIPCH
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Carry Trade ─────────────────────────────────────────────────── */}
+      {subTab === "carry" && (
+        <div>
+          <div style={{ background: "var(--bg)", border: "1px solid var(--border)", margin: 1 }}>
+            <div style={{ padding: "8px", borderBottom: "1px solid var(--bg-elev-2)", fontSize: 10, color: "var(--text-dim)", fontWeight: 600 }}>
+              SPREADS DE CARRY TRADE vs FED — Diferencial de tasas de política monetaria
+            </div>
+            <div style={{ padding: "6px 8px", fontSize: 9, color: "#666", borderBottom: "1px solid var(--bg-elev-2)" }}>
+              Spread positivo = mayor rendimiento que USA → incentivo al carry trade hacia ese par. El carry trade toma prestado en USD y coloca en moneda local.
+            </div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
+                <thead>
+                  <tr style={{ background: "var(--bg-elev-2)" }}>
+                    <th style={{ padding: "6px 8px", textAlign: "left", color: "var(--amber)", fontSize: 9 }}>Par</th>
+                    <th style={{ padding: "6px 8px", textAlign: "right", color: "var(--text-dim)", fontSize: 9 }}>País</th>
+                    <th style={{ padding: "6px 8px", textAlign: "right", color: "var(--text-dim)", fontSize: 9 }}>Tasa local</th>
+                    <th style={{ padding: "6px 8px", textAlign: "right", color: "var(--text-dim)", fontSize: 9 }}>Tasa Fed</th>
+                    <th style={{ padding: "6px 8px", textAlign: "right", color: "var(--text-dim)", fontSize: 9 }}>Spread</th>
+                    <th style={{ padding: "6px 8px", width: 100, color: "var(--text-dim)", fontSize: 9 }}>Barra</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {spreads_carry.map((s, i) => (
+                    <tr key={s.par} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg-row-alt)", borderBottom: "1px solid var(--bg-elev-2)" }}>
+                      <td style={{ padding: "6px 8px", fontWeight: 700, fontFamily: "var(--font-data)", color: "var(--amber)" }}>{s.par}</td>
+                      <td style={{ padding: "6px 8px", textAlign: "right", color: "var(--text-dim)", fontSize: 9 }}>{s.pais_a}</td>
+                      <td style={{ padding: "6px 8px", textAlign: "right", fontFamily: "var(--font-data)", color: "var(--text)" }}>
+                        {s.tasa_a != null ? `${s.tasa_a.toFixed(2)}%` : "—"}
+                      </td>
+                      <td style={{ padding: "6px 8px", textAlign: "right", fontFamily: "var(--font-data)", color: "var(--text-dim)" }}>
+                        {s.tasa_b != null ? `${s.tasa_b.toFixed(2)}%` : "—"}
+                      </td>
+                      <td style={{ padding: "6px 8px", textAlign: "right", fontFamily: "var(--font-data)", fontWeight: 700, color: s.spread == null ? "var(--text-mute)" : s.spread >= 0 ? "var(--positive)" : "var(--negative)" }}>
+                        {s.spread != null ? `${s.spread >= 0 ? "+" : ""}${s.spread.toFixed(2)}%` : "—"}
+                      </td>
+                      <td style={{ padding: "6px 8px" }}>
+                        {s.spread != null && (
+                          <div style={{ height: 4, background: "var(--bg-elev-2)", borderRadius: 2, overflow: "hidden" }}>
+                            <div style={{
+                              height: "100%",
+                              width: `${Math.min(100, Math.abs(s.spread) / 15 * 100)}%`,
+                              background: s.spread >= 0 ? "var(--positive)" : "var(--negative)",
+                              borderRadius: 2,
+                            }} />
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ padding: "4px 8px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)", background: "var(--bg-elev)" }}>
+              Fuentes: tasas de política monetaria oficiales — no incluye costos de cobertura (FX forward). Spread bruto, sin ajuste de riesgo.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Ratios Commodities ───────────────────────────────────────────── */}
+      {subTab === "ratios" && (
+        <div>
+          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)", marginBottom: 1 }}>
+            {[
+              {
+                label: "Gold / Silver Ratio",
+                value: ratios_commodities.gold_silver,
+                unit: "oz Ag / oz Au",
+                desc: "Alto (&gt;80) = risk-off, recesión · Bajo (&lt;50) = risk-on, crecimiento",
+                nota: "Histórico: máx 130 (COVID) · Promedio 50y: ~60",
+                colorFn: (v: number) => v > 80 ? "var(--negative)" : v < 50 ? "var(--positive)" : "var(--amber)",
+              },
+              {
+                label: "Copper / Gold Ratio × 1000",
+                value: ratios_commodities.cobre_oro,
+                unit: "(lb/oz) × 1000",
+                desc: "Sube = expectativa de crecimiento global (cobre = industria, oro = refugio)",
+                nota: "Indicador adelantado de tasas de interés y actividad económica",
+                colorFn: (v: number) => v > 0.3 ? "var(--positive)" : "var(--negative)",
+              },
+              {
+                label: "WTI − Brent Spread",
+                value: ratios_commodities.wti_brent,
+                unit: "USD/bbl",
+                desc: "Positivo = WTI cotiza sobre Brent (inusual) · Negativo = normal",
+                nota: "Spread amplio negativo puede indicar tensión de oferta en crudo europeo",
+                colorFn: (v: number) => Math.abs(v) > 3 ? "var(--amber)" : "var(--positive)",
+              },
+              {
+                label: "ITBI ARG (proxy)",
+                value: ratios_commodities.itbi_arg,
+                unit: "USc/bu ponderado",
+                desc: "Índice de términos de intercambio — canasta export: soja 55% · maíz 25% · trigo 20%",
+                nota: "Mayor valor = mejores precios de exportación para Argentina",
+                colorFn: () => "var(--sky)",
+              },
+            ].map(({ label, value, unit, desc, nota, colorFn }) => (
+              <div key={label} style={{ flex: "1 1 220px", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "14px 16px" }}>
+                <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>{label}</div>
+                <div style={{ fontSize: 28, fontWeight: 700, fontFamily: "var(--font-data)", color: value != null ? colorFn(value) : "var(--text-mute)" }}>
+                  {value != null ? value.toLocaleString("es-AR", { maximumFractionDigits: 2 }) : "—"}
+                </div>
+                <div style={{ fontSize: 8, color: "#555", marginTop: 2 }}>{unit}</div>
+                <div style={{ fontSize: 9, color: "var(--text-dim)", marginTop: 8, lineHeight: 1.4 }} dangerouslySetInnerHTML={{ __html: desc }} />
+                <div style={{ fontSize: 8, color: "#555", marginTop: 4, borderTop: "1px solid var(--bg-elev-2)", paddingTop: 4 }}>{nota}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ padding: "4px 8px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
+            Fuente: Yahoo Finance futuros (GC=F, SI=F, HG=F, CL=F, BZ=F, ZS=F, ZC=F, ZW=F) · Cálculos propios
+          </div>
+        </div>
+      )}
+
+      {/* ── BTC On-chain / NTV ──────────────────────────────────────────── */}
+      {subTab === "ntv" && (
+        <div>
+          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)", marginBottom: 1 }}>
+            {[
+              { label: "NTV (Network Value/Transactions)", value: ntv_btc.ntv?.toLocaleString("es-AR") ?? null, unit: "USD por TX diaria", badge: ntv_btc.interpretacion, badgeColor: ntv_btc.interpretacion === "Sobrevaluado" ? "var(--negative)" : ntv_btc.interpretacion === "Subvaluado" ? "var(--positive)" : "var(--amber)" },
+              { label: "Market Cap BTC", value: ntv_btc.market_cap_usd ? `$${(ntv_btc.market_cap_usd / 1e9).toFixed(0)}B` : null, unit: "Capitalización de mercado", badge: null, badgeColor: "var(--sky)" },
+              { label: "TX diarias (24h)", value: ntv_btc.n_tx_24h?.toLocaleString("es-AR") ?? null, unit: "Transacciones en la red Bitcoin", badge: null, badgeColor: "var(--sky)" },
+            ].map(({ label, value, unit, badge, badgeColor }) => (
+              <div key={label} style={{ flex: "1 1 200px", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "14px 16px" }}>
+                <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>{label}</div>
+                <div style={{ fontSize: 26, fontWeight: 700, fontFamily: "var(--font-data)", color: badgeColor }}>{value ?? "—"}</div>
+                <div style={{ fontSize: 8, color: "#555", marginTop: 2 }}>{unit}</div>
+                {badge && <div style={{ marginTop: 8, display: "inline-block", padding: "2px 8px", background: badgeColor, color: "var(--bg)", fontSize: 9, fontWeight: 700, borderRadius: 2 }}>{badge}</div>}
+              </div>
+            ))}
+          </div>
+          <div style={{ background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 14px", margin: 1 }}>
+            <div style={{ fontSize: 9, color: "var(--amber)", fontWeight: 700, marginBottom: 6 }}>¿QUÉ ES EL NTV?</div>
+            <div style={{ fontSize: 9, color: "var(--text-dim)", lineHeight: 1.6 }}>
+              El <strong style={{ color: "var(--text)" }}>Network Value to Transactions</strong> (NTV) mide la capitalización de mercado de Bitcoin en relación al volumen de transacciones diarias en la blockchain.<br />
+              Es análogo al ratio P/E de acciones, pero para Bitcoin: compara el precio de la red con su uso real.<br /><br />
+              <span style={{ color: "var(--negative)" }}>NTV &gt; 65.000</span> — Sobrevaluado: el precio supera el uso económico de la red.<br />
+              <span style={{ color: "var(--amber)" }}>NTV 27.000–65.000</span> — Rango justo: precio acorde a la actividad on-chain.<br />
+              <span style={{ color: "var(--positive)" }}>NTV &lt; 27.000</span> — Subvaluado: la red está activa en relación a su capitalización.
+            </div>
+          </div>
+          <div style={{ padding: "4px 8px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
+            Fuente: Blockchain.com Stats API · NTV = Market Cap / TX diarias · Umbrales adaptados de Willy Woo (NTV ratio)
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Desigualdad View ───────────────────────────────────────────────────────────
 function DesigualdadView() {
   const [data, setData] = useState<DesigualdadData | null>(null)
@@ -1357,25 +1693,27 @@ export function TabMundo() {
         )}
       </div>
       <SubTabs tabs={[
-        { key: "mercados", label: "Mercados" },
-        { key: "energia", label: "Electricidad" },
-        { key: "petroleo", label: "Petróleo" },
-        { key: "soja", label: "Soja" },
-        { key: "ia", label: "IA" },
-        { key: "polymarket", label: "Predicción" },
-        { key: "macro", label: "Macro Comparada" },
-        { key: "gini", label: "Gini Mundial" },
+        { key: "mercados",  label: "Mercados" },
+        { key: "senales",   label: "⚡ Señales" },
+        { key: "energia",   label: "Electricidad" },
+        { key: "petroleo",  label: "Petróleo" },
+        { key: "soja",      label: "Soja" },
+        { key: "ia",        label: "IA" },
+        { key: "polymarket",label: "Predicción" },
+        { key: "macro",     label: "Macro Comparada" },
+        { key: "gini",      label: "Gini Mundial" },
         { key: "piramides", label: "Pirámides" },
       ]}
         active={mundoTab} onChange={setMundoTab} />
-      {mundoTab === "energia" && <ElectricidadMundialView />}
-      {mundoTab === "petroleo" && <PetroleoView />}
-      {mundoTab === "soja" && <SojaView />}
-      {mundoTab === "ia" && <IAView />}
+      {mundoTab === "senales"    && <SignalesView />}
+      {mundoTab === "energia"    && <ElectricidadMundialView />}
+      {mundoTab === "petroleo"   && <PetroleoView />}
+      {mundoTab === "soja"       && <SojaView />}
+      {mundoTab === "ia"         && <IAView />}
       {mundoTab === "polymarket" && <PolymarketView />}
-      {mundoTab === "macro" && <MacroComparadaView />}
-      {mundoTab === "gini" && <DesigualdadView />}
-      {mundoTab === "piramides" && <PiramidesView />}
+      {mundoTab === "macro"      && <MacroComparadaView />}
+      {mundoTab === "gini"       && <DesigualdadView />}
+      {mundoTab === "piramides"  && <PiramidesView />}
       {mundoTab === "mercados" && (<>
 
       {/* Groups */}
