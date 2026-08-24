@@ -5,14 +5,14 @@
  *   - BCE/ECB  : ECB Statistical Data Warehouse (CSV, data-api.ecb.europa.eu)
  *   - BCB      : API do Banco Central do Brasil (série 432 = Selic meta, api.bcb.gov.br)
  *
- * Fuentes en vivo (con API key opcional — libre con registro):
- *   - Fed (USA)   : FRED (St. Louis Fed) via FRED_API_KEY — serie DFEDTARU (target upper bound)
- *                   Registro gratuito: https://fred.stlouisfed.org/docs/api/api_key.html
- *   - Banxico     : SIE API via BMX_TOKEN — serie SR16850 (tasa objetivo)
- *                   Registro gratuito: https://www.banxico.org.mx/SieAPIRest/
+ * Fuentes en vivo sin key (pública oficial):
+ *   - Fed (USA)   : NY Fed EFFR API (markets.newyorkfed.org) — tasa efectiva diaria
+ *                   Fallback: FRED (St. Louis Fed) con FRED_API_KEY opcional
+ *   - Banxico     : OECD MEI Financial — tasa interbancaria 3m MX (proxy tasa objetivo)
+ *                   Fallback: Banxico SIE con BMX_TOKEN opcional
+ *   - BCCh (Chile): OECD MEI Financial — tasa interbancaria 3m CL (proxy TPM)
  *
- * Fuentes hardcodeadas (sin API pública libre confiable):
- *   - BCCh (Chile): sin API REST oficial libre; se actualiza manualmente
+ * Fuentes hardcodeadas (último recurso):
  *   - BCRA (ARG)  : remite a /api/bcra para dato en tiempo real
  *
  * Patrón de cache: stale-cache de dos niveles. TTL fresco = 1h.
@@ -94,7 +94,7 @@ const FALLBACK: DatosBancosCentrales = {
     tasa: 5.00,
     esVivo: false,
     refFecha: "2025-08",
-    fuente: "hardcoded — sin API REST oficial libre",
+    fuente: "hardcoded — fallback si OECD no responde",
   },
   bcra: {
     pais: "Argentina",
@@ -106,66 +106,169 @@ const FALLBACK: DatosBancosCentrales = {
   },
 }
 
-// ── Fed (USA): FRED — serie DFEDTARU (Target Rate Upper Bound) ────────────
-// Requiere FRED_API_KEY gratuita: https://fred.stlouisfed.org/docs/api/api_key.html
+// ── Fed (USA): NY Fed EFFR API — pública sin key ──────────────────────────
+// markets.newyorkfed.org/api/rates/effr/last/1.json
+// Devuelve la EFFR (tasa efectiva diaria del overnight federal funds market).
+// percentRate = EFFR; targetRateLow/High = target range del FOMC.
+// Fallback: FRED con FRED_API_KEY si está configurado.
 async function getTasaFed(): Promise<DatosBanco> {
-  const apiKey = process.env.FRED_API_KEY
-  if (!apiKey) return FALLBACK.fed
+  // Primero: NY Fed EFFR (sin key, pública oficial)
   try {
-    const url = `https://api.stlouisfed.org/fred/series/observations?series_id=DFEDTARU&api_key=${apiKey}&sort_order=desc&limit=1&file_type=json`
-    const res = await fetch(url, {
+    const res = await fetch("https://markets.newyorkfed.org/api/rates/effr/last/1.json", {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(10_000),
     })
-    if (!res.ok) return FALLBACK.fed
-    const json = await res.json() as { observations?: Array<{ date: string; value: string }> }
-    const obs = json.observations?.[0]
-    if (!obs) return FALLBACK.fed
-    const tasa = parseFloat(obs.value)
-    if (!Number.isFinite(tasa)) return FALLBACK.fed
-    return {
-      pais: "USA",
-      moneda: "USD",
-      tasa: parseFloat(tasa.toFixed(2)),
-      esVivo: true,
-      fuente: "FRED — St. Louis Fed (DFEDTARU)",
-      updated_at: obs.date,
+    if (res.ok) {
+      const json = await res.json() as {
+        refRates?: Array<{
+          effectiveDate: string
+          percentRate: string
+          targetRateLow?: number
+          targetRateHigh?: number
+        }>
+      }
+      const rate = json.refRates?.[0]
+      if (rate) {
+        // Mostrar el target upper bound del FOMC si está disponible; si no, la EFFR
+        const tasa = rate.targetRateHigh ?? parseFloat(rate.percentRate)
+        if (Number.isFinite(tasa)) {
+          return {
+            pais: "USA",
+            moneda: "USD",
+            tasa: parseFloat(tasa.toFixed(2)),
+            esVivo: true,
+            fuente: "NY Fed EFFR",
+            updated_at: rate.effectiveDate,
+          }
+        }
+      }
     }
+  } catch { /* cae al fallback */ }
+
+  // Segundo: FRED (requiere FRED_API_KEY, libre con registro)
+  const fredKey = process.env.FRED_API_KEY
+  if (fredKey) {
+    try {
+      const url = `https://api.stlouisfed.org/fred/series/observations?series_id=DFEDTARU&api_key=${fredKey}&sort_order=desc&limit=1&file_type=json`
+      const res = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(10_000) })
+      if (res.ok) {
+        const json = await res.json() as { observations?: Array<{ date: string; value: string }> }
+        const obs = json.observations?.[0]
+        const tasa = parseFloat(obs?.value ?? "")
+        if (Number.isFinite(tasa)) {
+          return {
+            pais: "USA",
+            moneda: "USD",
+            tasa: parseFloat(tasa.toFixed(2)),
+            esVivo: true,
+            fuente: "FRED — St. Louis Fed (DFEDTARU)",
+            updated_at: obs?.date,
+          }
+        }
+      }
+    } catch { /* cae al fallback */ }
+  }
+
+  return FALLBACK.fed
+}
+
+// ── OECD MEI Financial — tasas interbancarias sin key ─────────────────────
+// Endpoint SDMX: sdmx.oecd.org (acceso público, sin registro).
+// IR3TIB01 = tasa interbancaria 3 meses — proxy de la tasa de política monetaria.
+// Formato SDMX-JSON v2.
+async function fetchOecdRate(
+  countryCode: string,
+): Promise<{ tasa: number; fecha: string } | null> {
+  try {
+    const url = `https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_STES@DF_FINMARK,1.0/M.${countryCode}.IR3TIB01.ST.A?format=jsondata&lastNObservations=1`
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(12_000),
+    })
+    if (!res.ok) return null
+    const json = await res.json() as {
+      dataSets?: Array<{ observations?: Record<string, [number]> }>
+      structure?: { dimensions?: { observation?: Array<{ values?: Array<{ id: string }> }> } }
+    }
+    const obs = json.dataSets?.[0]?.observations
+    if (!obs) return null
+    const keys = Object.keys(obs)
+    if (keys.length === 0) return null
+    const lastKey = keys[keys.length - 1]
+    const tasa = obs[lastKey]?.[0]
+    if (!Number.isFinite(tasa)) return null
+    // La fecha viene codificada en la dimensión de tiempo
+    const periodoIdx = parseInt(lastKey.split(":").pop() ?? "0", 10)
+    const periodoValues = json.structure?.dimensions?.observation?.[0]?.values
+    const fecha = periodoValues?.[periodoIdx]?.id ?? new Date().toISOString().slice(0, 7)
+    return { tasa: parseFloat(tasa.toFixed(2)), fecha }
   } catch {
-    return FALLBACK.fed
+    return null
   }
 }
 
-// ── Banxico: SIE API — serie SR16850 (tasa objetivo de política monetaria) ─
-// Requiere BMX_TOKEN gratuito: https://www.banxico.org.mx/SieAPIRest/
+// ── Banxico (México): OECD IR3TIB01 → fallback SIE con BMX_TOKEN ──────────
 async function getTasaBanxico(): Promise<DatosBanco> {
-  const token = process.env.BMX_TOKEN
-  if (!token) return FALLBACK.banxico
-  try {
-    const url = "https://www.banxico.org.mx/SieAPIRest/service/v1/series/SR16850/datos/oportuno"
-    const res = await fetch(url, {
-      headers: { "Bmx-Token": token, Accept: "application/json" },
-      signal: AbortSignal.timeout(10_000),
-    })
-    if (!res.ok) return FALLBACK.banxico
-    const json = await res.json() as {
-      bmx?: { series?: Array<{ datos?: Array<{ fecha: string; dato: string }> }> }
-    }
-    const dato = json.bmx?.series?.[0]?.datos?.[0]
-    if (!dato) return FALLBACK.banxico
-    const tasa = parseFloat(dato.dato)
-    if (!Number.isFinite(tasa)) return FALLBACK.banxico
+  const oecd = await fetchOecdRate("MEX")
+  if (oecd) {
     return {
       pais: "México",
       moneda: "MXN",
-      tasa: parseFloat(tasa.toFixed(2)),
+      tasa: oecd.tasa,
       esVivo: true,
-      fuente: "Banxico SIE (SR16850)",
-      updated_at: dato.fecha,
+      fuente: "OECD MEI Financial (IR3TIB01 MX)",
+      updated_at: oecd.fecha,
+      nota: "tasa interbancaria 3m — proxy de la tasa objetivo de Banxico",
     }
-  } catch {
-    return FALLBACK.banxico
   }
+
+  // Fallback: Banxico SIE con token opcional
+  const token = process.env.BMX_TOKEN
+  if (token) {
+    try {
+      const url = "https://www.banxico.org.mx/SieAPIRest/service/v1/series/SR16850/datos/oportuno"
+      const res = await fetch(url, {
+        headers: { "Bmx-Token": token, Accept: "application/json" },
+        signal: AbortSignal.timeout(10_000),
+      })
+      if (res.ok) {
+        const json = await res.json() as {
+          bmx?: { series?: Array<{ datos?: Array<{ fecha: string; dato: string }> }> }
+        }
+        const dato = json.bmx?.series?.[0]?.datos?.[0]
+        const tasa = parseFloat(dato?.dato ?? "")
+        if (Number.isFinite(tasa)) {
+          return {
+            pais: "México",
+            moneda: "MXN",
+            tasa: parseFloat(tasa.toFixed(2)),
+            esVivo: true,
+            fuente: "Banxico SIE (SR16850)",
+            updated_at: dato?.fecha,
+          }
+        }
+      }
+    } catch { /* cae al fallback */ }
+  }
+
+  return FALLBACK.banxico
+}
+
+// ── BCCh (Chile): OECD IR3TIB01 → fallback hardcoded ─────────────────────
+async function getTasaBCCh(): Promise<DatosBanco> {
+  const oecd = await fetchOecdRate("CHL")
+  if (oecd) {
+    return {
+      pais: "Chile",
+      moneda: "CLP",
+      tasa: oecd.tasa,
+      esVivo: true,
+      fuente: "OECD MEI Financial (IR3TIB01 CL)",
+      updated_at: oecd.fecha,
+      nota: "tasa interbancaria 3m — proxy del TPM del BCCh",
+    }
+  }
+  return FALLBACK.bcentral_chile
 }
 
 // ── ECB/BCE: Statistical Data Warehouse CSV ────────────────────────────────
@@ -258,11 +361,12 @@ export async function GET() {
   }
 
   // 2) Consultar fuentes en vivo en paralelo.
-  const [fed, bce, bcb, banxico] = await Promise.all([
+  const [fed, bce, bcb, banxico, bcentral_chile] = await Promise.all([
     getTasaFed(),
     getTasaBCE(),
     getTasaBCB(),
     getTasaBanxico(),
+    getTasaBCCh(),
   ])
 
   // Armar la respuesta completa: vivos donde conseguimos datos, hardcoded el resto.
@@ -271,12 +375,12 @@ export async function GET() {
     bce,
     bcb,
     banxico,
-    bcentral_chile: FALLBACK.bcentral_chile,
+    bcentral_chile,
     bcra: FALLBACK.bcra,
   }
 
   // 3) ¿Alguna fuente en vivo funcionó? Si sí, guardar en cache "exitoso".
-  const vivosOk = [fed, bce, bcb, banxico].filter((b) => b.esVivo).length
+  const vivosOk = [fed, bce, bcb, banxico, bcentral_chile].filter((b) => b.esVivo).length
   if (vivosOk >= 1) {
     guardarExito(CACHE_KEY, data, TTL_SEG)
     return NextResponse.json({
