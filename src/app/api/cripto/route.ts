@@ -44,6 +44,27 @@ interface CriptoYaExchange {
   time: number
 }
 
+interface CoinGeckoTrending {
+  coins: Array<{
+    item: {
+      id: string
+      name: string
+      symbol: string
+      market_cap_rank: number | null
+      data?: { price_btc?: number }
+    }
+  }>
+}
+
+interface BlockchainStats {
+  market_price_usd: number
+  hash_rate: number
+  n_tx: number
+  minutes_between_blocks: number
+  n_blocks_mined: number
+  totalbc: number
+}
+
 const COIN_META: Record<string, { symbol: string; nombre: string }> = {
   bitcoin:       { symbol: "BTC", nombre: "Bitcoin" },
   ethereum:      { symbol: "ETH", nombre: "Ethereum" },
@@ -58,7 +79,7 @@ const COIN_META: Record<string, { symbol: string; nombre: string }> = {
 }
 
 export async function GET() {
-  const [geckoGlobalRes, geckoPricesRes, fearGreedRes, criptoyaRes] = await Promise.allSettled([
+  const [geckoGlobalRes, geckoPricesRes, fearGreedRes, criptoyaRes, geckoTrendingRes, blockchainRes] = await Promise.allSettled([
     fetchRegistered("https://api.coingecko.com/api/v3/global", {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(8000),
@@ -74,6 +95,14 @@ export async function GET() {
     fetchRegistered("https://criptoya.com/api/USDT/ARS/0.1", {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(6000),
+    }),
+    fetchRegistered("https://api.coingecko.com/api/v3/search/trending", {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(8000),
+    }),
+    fetch("https://api.blockchain.info/stats", {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(8000),
     }),
   ])
 
@@ -116,6 +145,33 @@ export async function GET() {
       ? await criptoyaRes.value.json()
       : null
 
+  const rawTrending: CoinGeckoTrending | null =
+    geckoTrendingRes.status === "fulfilled" && geckoTrendingRes.value.ok
+      ? await geckoTrendingRes.value.json()
+      : null
+
+  const trending = rawTrending?.coins?.slice(0, 7).map((c) => ({
+    id: c.item.id,
+    nombre: c.item.name,
+    symbol: c.item.symbol,
+    rank: c.item.market_cap_rank,
+  })) ?? null
+
+  const rawBlockchain: BlockchainStats | null =
+    blockchainRes.status === "fulfilled" && (blockchainRes.value as Response).ok
+      ? await (blockchainRes.value as Response).json()
+      : null
+
+  const btc_onchain = rawBlockchain
+    ? {
+        precio_usd:          rawBlockchain.market_price_usd,
+        hash_rate:           rawBlockchain.hash_rate,
+        tx_24h:              rawBlockchain.n_tx,
+        min_entre_bloques:   parseFloat(rawBlockchain.minutes_between_blocks.toFixed(2)),
+        bloques_minados_24h: rawBlockchain.n_blocks_mined,
+      }
+    : null
+
   return NextResponse.json(
     {
       // Market global
@@ -128,6 +184,10 @@ export async function GET() {
       fear_greed: fearGreed,
       // USDT/ARS por exchange local
       usdt_ars: usdt,
+      // Trending (CoinGecko)
+      trending,
+      // BTC on-chain (Blockchain.com)
+      btc_onchain,
     },
     { headers: { "Cache-Control": CACHE } }
   )
