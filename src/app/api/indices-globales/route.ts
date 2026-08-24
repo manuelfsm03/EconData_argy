@@ -27,6 +27,7 @@ const INDICES: Array<{ ticker: string; nombre: string; region: Region; pais: str
   { ticker: "^IXIC",     nombre: "Nasdaq Composite",  region: "usa",    pais: "Estados Unidos" },
   { ticker: "^DJI",      nombre: "Dow Jones",         region: "usa",    pais: "Estados Unidos" },
   { ticker: "^RUT",      nombre: "Russell 2000",      region: "usa",    pais: "Estados Unidos" },
+  { ticker: "^VIX",      nombre: "VIX (Volatilidad)", region: "usa",    pais: "Estados Unidos" },
   // ── Europa ───────────────────────────────────────────────────────────────
   { ticker: "^GDAXI",    nombre: "DAX",               region: "europa", pais: "Alemania" },
   { ticker: "^FTSE",     nombre: "FTSE 100",          region: "europa", pais: "Reino Unido" },
