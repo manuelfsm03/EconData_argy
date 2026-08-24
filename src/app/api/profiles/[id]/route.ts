@@ -35,7 +35,9 @@ const EDITABLE_KEYS: (keyof ProfilePatch)[] = [
 ]
 
 // ── Mock in-memory store (se resetea con cada dev-server restart) ───────────────
-// TODO (DB real): reemplazar por prisma.user.findUnique / prisma.user.update
+// TODO (DB real): reemplazar por prisma.profile.findUnique / prisma.profile.update
+// El `id` será el UUID de Supabase auth.users (no el "u1" del mock).
+// Ver: src/server/auth/get-or-create-profile.ts para la lógica de creación lazy.
 
 const store = new Map<string, UserProfile>(
   MOCK_PROFILES.map((p) => [p.id, { ...p }]),

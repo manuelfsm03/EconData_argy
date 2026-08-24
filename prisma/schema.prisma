@@ -333,3 +333,87 @@ model ForumReaction {
   @@index([postId])
   @@map("asset_forum_reactions")
 }
+
+// ─── COMUNIDAD ────────────────────────────────────────────────────────────────
+// Autenticación (signup/login/sesiones) la maneja Supabase Auth.
+// `id` acá = UUID de Supabase auth.users.id (no autogenerado por Prisma).
+// Ver server/auth/get-or-create-profile.ts para la lógica de creación lazy.
+
+model Profile {
+  id          String   @id                                  // UUID de Supabase auth.users.id
+  username    String   @unique
+  displayName String?  @map("display_name")               // nombre completo
+  avatarUrl   String?  @map("avatar_url")                 // URL foto de avatar
+  avatarBg    String   @default("#1B2A4A") @map("avatar_bg") // color fallback cuando no hay foto
+
+  // Permisos
+  canPublish  Boolean  @default(false) @map("can_publish") // habilitar manualmente para publicar informes
+
+  // Perfil de comunidad
+  bio              String   @default("")
+  linkedin         String?
+  nivel            String   @default("Novato")             // Novato | Analista | Trader | Pro | Experto | Quant
+  puntos           Int      @default(0)
+  streak           Int      @default(0)
+  posts            Int      @default(0)
+  seguidores       Int      @default(0)
+  aciertos         Int      @default(0)
+  totalPrediciones Int      @default(0) @map("total_prediciones")
+  fechaAlta        DateTime @default(now()) @map("fecha_alta")
+
+  // Intereses e inversiones declaradas
+  intereses              String[] @default([])              // lista plana (legacy display)
+  interesesRentaFija     String[] @default([]) @map("intereses_renta_fija")
+  interesesRentaVariable String[] @default([]) @map("intereses_renta_variable")
+  perfilRiesgo           String?  @map("perfil_riesgo")    // conservador | moderado | agresivo
+  topAcciones            Json     @default("[]") @map("top_acciones") // [{ticker, conviccion}]
+
+  // Relaciones
+  predictions Prediction[]
+  reports     Report[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("profiles")
+}
+
+model Prediction {
+  id              String   @id @default(cuid())
+  autorId         String   @map("autor_id")
+  autor           Profile  @relation(fields: [autorId], references: [id])
+  activo          String                              // ticker: "GD30", "AL30", "GGAL"...
+  tipoActivo      String   @map("tipo_activo")        // "bono" | "accion" | "fx" | "tasa" | "indice" | "cripto"
+  tesis           String                              // razonamiento en texto libre
+  metrica         String                              // "precio" | "tir" | "paridad" | "spread" | "variacion_pct"
+  operador        String                              // "mayor_igual" | "menor_igual" | "sube" | "baja" | "rango"
+  objetivo        Float?                              // umbral; null para operadores sube/baja
+  objetivoMax     Float?   @map("objetivo_max")       // solo para operador "rango"
+  valorEntrada    Float    @map("valor_entrada")      // foto inmutable al publicar
+  fechaEntrada    DateTime @map("fecha_entrada")      // timestamp de publicación (inmutable)
+  horizonte       String                              // label legible: "30 días", "al vencimiento"
+  fechaResolucion DateTime @map("fecha_resolucion")
+  estado          String   @default("abierta")        // "abierta" | "acertada" | "errada" | "anulada"
+  valorResolucion Float?   @map("valor_resolucion")
+  fechaResuelta   DateTime? @map("fecha_resuelta")
+  fuente          String?                             // fuente/endpoint que dio el valor de resolución
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([autorId])
+  @@index([estado, fechaResolucion])
+  @@map("predictions")
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  title     String
+  body      String                        // Markdown (GFM)
+  authorId  String   @map("author_id")
+  author    Profile  @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([createdAt])
+  @@map("reports")
+}

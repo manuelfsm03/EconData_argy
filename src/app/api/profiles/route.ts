@@ -12,8 +12,8 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { MOCK_PROFILES } from "@/client/components/profiles/mock-profiles"
-import type { UserProfile } from "@/client/components/profiles/mock-profiles"
-// TODO (DB real): importar prisma cuando el modelo User esté migrado
+import type { UserProfile, PerfilRiesgo } from "@/client/components/profiles/mock-profiles"
+// TODO (DB real): importar prisma cuando Profile esté migrado con Supabase Auth
 // import { prisma } from "@/server/db/prisma"
 
 export const dynamic = "force-dynamic"
@@ -25,30 +25,34 @@ export async function GET(req: NextRequest) {
   // ─── TODO: reemplazar bloque MOCK por DB real ─────────────────────────────
   // Cuando prisma.user exista (después de `npx prisma migrate dev`), cambiar por:
   //
-  //   const rows = await prisma.user.findMany({
+  //   const rows = await prisma.profile.findMany({
   //     include: { predictions: true },
   //     orderBy: { puntos: "desc" },
   //   })
-  //   const profiles: UserProfile[] = rows.map(u => ({
-  //     id:          u.id,
-  //     nombre:      u.name,          // DB usa "name", el tipo de cliente usa "nombre"
-  //     handle:      u.handle,
-  //     bio:         u.bio,
-  //     linkedin:    u.linkedin ?? undefined,
-  //     avatarBg:    u.avatarBg,
-  //     nivel:       u.nivel as BadgeLevel,
-  //     fechaAlta:   u.fechaAlta.toISOString(),
-  //     streak:      u.streak,
-  //     intereses:   u.intereses,
-  //     topAcciones: u.topAcciones as { ticker: string; conviccion: number }[],
+  //   const profiles: UserProfile[] = rows.map(p => ({
+  //     id:          p.id,
+  //     nombre:      p.displayName ?? p.username,
+  //     handle:      p.username,
+  //     bio:         p.bio,
+  //     linkedin:    p.linkedin ?? undefined,
+  //     foto:        p.avatarUrl ?? undefined,
+  //     avatarBg:    p.avatarBg,
+  //     nivel:       p.nivel as BadgeLevel,
+  //     fechaAlta:   p.fechaAlta.toISOString(),
+  //     streak:      p.streak,
+  //     intereses:            p.intereses,
+  //     interesesRentaFija:   p.interesesRentaFija,
+  //     interesesRentaVariable: p.interesesRentaVariable,
+  //     perfilRiesgo: (p.perfilRiesgo as PerfilRiesgo) ?? undefined,
+  //     topAcciones: p.topAcciones as { ticker: string; conviccion: number }[],
   //     stats: {
-  //       posts:            u.posts,
-  //       seguidores:       u.seguidores,
-  //       aciertos:         u.aciertos,
-  //       totalPrediciones: u.totalPrediciones,
-  //       puntos:           u.puntos,
+  //       posts:            p.posts,
+  //       seguidores:       p.seguidores,
+  //       aciertos:         p.aciertos,
+  //       totalPrediciones: p.totalPrediciones,
+  //       puntos:           p.puntos,
   //     },
-  //     isCurrentUser: u.id === currentUserId,
+  //     isCurrentUser: p.id === currentUserId,
   //   }))
   // ─────────────────────────────────────────────────────────────────────────
 
