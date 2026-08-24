@@ -47,6 +47,8 @@ interface DatosBancosCentrales {
   fed: DatosBanco
   bce: DatosBanco
   bcb: DatosBanco
+  boe: DatosBanco
+  boc: DatosBanco
   banxico: DatosBanco
   bcentral_chile: DatosBanco
   boj: DatosBanco
@@ -57,12 +59,14 @@ interface DatosBancosCentrales {
 // Fallback sin dato — se usa cuando todas las fuentes en vivo fallan.
 // tasa: null = sin dato disponible; el frontend debe mostrar "N/D".
 const FALLBACK: DatosBancosCentrales = {
-  fed:            { pais: "USA",       moneda: "USD", tasa: null, esVivo: false, fuente: "sin dato" },
-  bce:            { pais: "Eurozona",  moneda: "EUR", tasa: null, esVivo: false, fuente: "sin dato" },
-  bcb:            { pais: "Brasil",    moneda: "BRL", tasa: null, esVivo: false, fuente: "sin dato" },
-  banxico:        { pais: "México",    moneda: "MXN", tasa: null, esVivo: false, fuente: "sin dato" },
-  bcentral_chile: { pais: "Chile",     moneda: "CLP", tasa: null, esVivo: false, fuente: "sin dato" },
-  boj:            { pais: "Japón",     moneda: "JPY", tasa: null, esVivo: false, fuente: "sin dato" },
+  fed:            { pais: "USA",           moneda: "USD", tasa: null, esVivo: false, fuente: "sin dato" },
+  bce:            { pais: "Eurozona",      moneda: "EUR", tasa: null, esVivo: false, fuente: "sin dato" },
+  bcb:            { pais: "Brasil",        moneda: "BRL", tasa: null, esVivo: false, fuente: "sin dato" },
+  boe:            { pais: "Reino Unido",   moneda: "GBP", tasa: null, esVivo: false, fuente: "sin dato" },
+  boc:            { pais: "Canadá",        moneda: "CAD", tasa: null, esVivo: false, fuente: "sin dato" },
+  banxico:        { pais: "México",        moneda: "MXN", tasa: null, esVivo: false, fuente: "sin dato" },
+  bcentral_chile: { pais: "Chile",         moneda: "CLP", tasa: null, esVivo: false, fuente: "sin dato" },
+  boj:            { pais: "Japón",         moneda: "JPY", tasa: null, esVivo: false, fuente: "sin dato" },
   rba:            { pais: "Australia", moneda: "AUD", tasa: null, esVivo: false, fuente: "sin dato" },
   bcra:           { pais: "Argentina", moneda: "ARS", tasa: null, esVivo: false, fuente: "/api/bcra", nota: "ver /api/bcra para datos en tiempo real" },
 }
@@ -308,6 +312,73 @@ async function getTasaBCB(): Promise<DatosBanco> {
   }
 }
 
+// ── BoE (Reino Unido): Bank of England API pública ────────────────────────
+// bankofengland.co.uk/boeapps/iadb — serie IUMABEDR (Bank Rate oficial).
+// Devuelve CSV con DATE,VALUE; último valor = tasa vigente.
+async function getTasaBoE(): Promise<DatosBanco> {
+  try {
+    const hoy = new Date().toISOString().slice(0, 10)
+    const hace5a = new Date(Date.now() - 5 * 365 * 24 * 3600 * 1000).toISOString().slice(0, 10)
+    const [d1, m1, y1] = hace5a.split("-").map(Number)
+    const [d2, m2, y2] = hoy.split("-").map(Number)
+    const fmtDate = (d: number, m: number, y: number) => `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y}`
+    const url = `https://www.bankofengland.co.uk/boeapps/iadb/fromshowcolumns.asp?CodeVer=new&xml.x=yes&Identifier=IUMABEDR&TD=${fmtDate(d1, m1, y1)}&HD=${fmtDate(d2, m2, y2)}&SERIES_MAX=10000&CSVF=TT&HideNums=-1&UsingCodes=Y&VFD=Y`
+    const res = await fetch(url, {
+      headers: { Accept: "text/csv, */*" },
+      signal: AbortSignal.timeout(12_000),
+    })
+    if (!res.ok) return FALLBACK.boe
+    const text = await res.text()
+    const lines = text.trim().split("\n").filter((l) => l.trim() && !l.startsWith("DATE") && !l.startsWith('"DATE'))
+    if (lines.length === 0) return FALLBACK.boe
+    const last = lines[lines.length - 1].split(",")
+    const tasa = parseFloat(last[1] ?? "")
+    const fecha = last[0]?.replace(/"/g, "").trim() ?? undefined
+    if (!Number.isFinite(tasa)) return FALLBACK.boe
+    return {
+      pais: "Reino Unido",
+      moneda: "GBP",
+      tasa: parseFloat(tasa.toFixed(2)),
+      esVivo: true,
+      fuente: "Bank of England API (IUMABEDR)",
+      updated_at: fecha,
+    }
+  } catch {
+    return FALLBACK.boe
+  }
+}
+
+// ── BoC (Canadá): Bank of Canada Valet API pública ─────────────────────────
+// bankofcanada.ca/valet — serie V39079 (tasa objetivo de política monetaria).
+// Devuelve JSON con observaciones ordenadas por fecha.
+async function getTasaBoC(): Promise<DatosBanco> {
+  try {
+    const url = "https://www.bankofcanada.ca/valet/observations/V39079/json?recent=1"
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!res.ok) return FALLBACK.boc
+    const json = await res.json() as {
+      observations?: Array<{ d: string; V39079: { v: string } }>
+    }
+    const obs = json.observations?.[0]
+    if (!obs) return FALLBACK.boc
+    const tasa = parseFloat(obs.V39079?.v ?? "")
+    if (!Number.isFinite(tasa)) return FALLBACK.boc
+    return {
+      pais: "Canadá",
+      moneda: "CAD",
+      tasa: parseFloat(tasa.toFixed(2)),
+      esVivo: true,
+      fuente: "Bank of Canada Valet API (V39079)",
+      updated_at: obs.d,
+    }
+  } catch {
+    return FALLBACK.boc
+  }
+}
+
 // ── BoJ (Japón): OECD IR3TIB01 JPN ───────────────────────────────────────
 async function getTasaBoJ(): Promise<DatosBanco> {
   const oecd = await fetchOecdRate("JPN")
@@ -394,21 +465,25 @@ export async function GET() {
   }
 
   // 2) Consultar fuentes en vivo en paralelo.
-  const [fed, bce, bcb, banxico, bcentral_chile, boj, rba] = await Promise.all([
+  const [fed, bce, bcb, boe, boc, banxico, bcentral_chile, boj, rba] = await Promise.all([
     getTasaFed(),
     getTasaBCE(),
     getTasaBCB(),
+    getTasaBoE(),
+    getTasaBoC(),
     getTasaBanxico(),
     getTasaBCCh(),
     getTasaBoJ(),
     getTasaRBA(),
   ])
 
-  // Armar la respuesta completa: vivos donde conseguimos datos, hardcoded el resto.
+  // Armar la respuesta completa: vivos donde conseguimos datos, fallback null el resto.
   const data: DatosBancosCentrales = {
     fed,
     bce,
     bcb,
+    boe,
+    boc,
     banxico,
     bcentral_chile,
     boj,
@@ -417,7 +492,7 @@ export async function GET() {
   }
 
   // 3) ¿Alguna fuente en vivo funcionó? Si sí, guardar en cache "exitoso".
-  const vivosOk = [fed, bce, bcb, banxico, bcentral_chile, boj, rba].filter((b) => b.esVivo).length
+  const vivosOk = [fed, bce, bcb, boe, boc, banxico, bcentral_chile, boj, rba].filter((b) => b.esVivo).length
   if (vivosOk >= 1) {
     guardarExito(CACHE_KEY, data, TTL_SEG)
     return NextResponse.json({

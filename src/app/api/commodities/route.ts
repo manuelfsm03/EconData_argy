@@ -36,6 +36,9 @@ const COMMODITIES: Array<{ ticker: string; nombre: string; categoria: Categoria;
   { ticker: "SI=F",  nombre: "Plata",             categoria: "metales", unidad: "USD/oz" },
   { ticker: "PL=F",  nombre: "Platino",           categoria: "metales", unidad: "USD/oz" },
   { ticker: "HG=F",  nombre: "Cobre",             categoria: "metales", unidad: "USD/lb" },
+  // ── Índices de commodities ───────────────────────────────────────────────
+  { ticker: "^CRB",  nombre: "CRB Commodity Index",categoria: "energia", unidad: "puntos" },
+  { ticker: "GD=F",  nombre: "Commodity Index DJ", categoria: "energia", unidad: "puntos" },
   // ── Agro ─────────────────────────────────────────────────────────────────
   { ticker: "ZS=F",  nombre: "Soja",              categoria: "agro",    unidad: "USc/bu" },
   { ticker: "ZC=F",  nombre: "Maíz",              categoria: "agro",    unidad: "USc/bu" },
