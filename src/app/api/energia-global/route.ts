@@ -248,8 +248,47 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // Precios spot de energía via Yahoo Finance — sin EIA_API_KEY
+    if (endpoint === "precios") {
+      const tickers = ["CL=F", "BZ=F", "NG=F", "RB=F"]
+      const nombres: Record<string, string> = {
+        "CL=F": "Petróleo WTI",
+        "BZ=F": "Petróleo Brent",
+        "NG=F": "Gas natural",
+        "RB=F": "Gasolina RBOB",
+      }
+      const unidades: Record<string, string> = {
+        "CL=F": "USD/bbl",
+        "BZ=F": "USD/bbl",
+        "NG=F": "USD/MMBtu",
+        "RB=F": "USD/gal",
+      }
+      const yfHeaders = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        Accept: "application/json",
+        Origin: "https://finance.yahoo.com",
+        Referer: "https://finance.yahoo.com/commodities",
+      }
+      const yfUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${tickers.join(",")}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketTime`
+      const yfRes = await fetchRegistered(yfUrl, { headers: yfHeaders, signal: AbortSignal.timeout(12_000) })
+      if (!yfRes.ok) throw new Error(`YF HTTP ${yfRes.status}`)
+      const yfJson = await yfRes.json() as {
+        quoteResponse?: { result?: Array<{ symbol: string; regularMarketPrice?: number; regularMarketChange?: number; regularMarketChangePercent?: number; regularMarketTime?: number }> }
+      }
+      const data = (yfJson.quoteResponse?.result ?? []).map((r) => ({
+        ticker: r.symbol,
+        nombre: nombres[r.symbol] ?? r.symbol,
+        unidad: unidades[r.symbol] ?? "",
+        precio: r.regularMarketPrice ?? null,
+        cambio: r.regularMarketChange ?? null,
+        cambioPct: r.regularMarketChangePercent ?? null,
+        fechaActualizacion: r.regularMarketTime ? new Date(r.regularMarketTime * 1000).toISOString() : null,
+      }))
+      return NextResponse.json({ data, updated_at: new Date().toISOString(), source: "Yahoo Finance futures" })
+    }
+
     return NextResponse.json(
-      { error: "Usar ?endpoint=production|consumption|reserves|refining|hormuz|latam" },
+      { error: "Usar ?endpoint=production|consumption|reserves|refining|hormuz|latam|precios" },
       { status: 400 }
     )
   } catch (error) {
