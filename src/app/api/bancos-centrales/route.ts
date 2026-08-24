@@ -5,20 +5,22 @@
  *   - BCE/ECB  : ECB Statistical Data Warehouse (CSV, data-api.ecb.europa.eu)
  *   - BCB      : API do Banco Central do Brasil (série 432 = Selic meta, api.bcb.gov.br)
  *
+ * Fuentes en vivo (con API key opcional — libre con registro):
+ *   - Fed (USA)   : FRED (St. Louis Fed) via FRED_API_KEY — serie DFEDTARU (target upper bound)
+ *                   Registro gratuito: https://fred.stlouisfed.org/docs/api/api_key.html
+ *   - Banxico     : SIE API via BMX_TOKEN — serie SR16850 (tasa objetivo)
+ *                   Registro gratuito: https://www.banxico.org.mx/SieAPIRest/
+ *
  * Fuentes hardcodeadas (sin API pública libre confiable):
- *   - Fed (USA)   : tasa ~5.25% ref. 2025-08 (FRED/NASDAQ requieren key o bloquean bots)
- *   - Banxico     : tasa 10.50% ref. 2025-08
- *   - BCCh (Chile): tasa 5.00% ref. 2025-08
+ *   - BCCh (Chile): sin API REST oficial libre; se actualiza manualmente
  *   - BCRA (ARG)  : remite a /api/bcra para dato en tiempo real
  *
  * Patrón de cache: stale-cache de dos niveles. TTL fresco = 1h.
  * Si una fuente en vivo falla → fallback al valor hardcodeado + esVivo:false.
  * Si el cache fresco está vigente → se sirve sin hacer requests externos.
  *
- * Nota: los hosts de ECB y BCB no están en el SOURCE_REGISTRY (fetchRegistered
- * sólo acepta hosts registrados). Se usa fetch nativo, igual que el endpoint
- * /api/internacional hace con Frankfurter y stooq. No hay input del usuario en
- * las URLs → riesgo SSRF nulo.
+ * Nota: los hosts de ECB, BCB, FRED y Banxico no están en el SOURCE_REGISTRY.
+ * Se usa fetch nativo. No hay input del usuario en las URLs → riesgo SSRF nulo.
  */
 
 import { NextResponse } from "next/server"
@@ -51,6 +53,8 @@ interface DatosBancosCentrales {
 }
 
 // Valores de referencia hardcodeados — fallback cuando la API falla.
+// NOTA: estos valores son de referencia ago-2025 y pueden estar desactualizados.
+// Para datos en vivo configurar FRED_API_KEY (Fed) y BMX_TOKEN (Banxico).
 const FALLBACK: DatosBancosCentrales = {
   fed: {
     pais: "USA",
@@ -58,7 +62,7 @@ const FALLBACK: DatosBancosCentrales = {
     tasa: 5.25,
     esVivo: false,
     refFecha: "2025-08",
-    fuente: "hardcoded",
+    fuente: "hardcoded — setear FRED_API_KEY para dato en vivo",
   },
   bce: {
     pais: "Eurozona",
@@ -82,7 +86,7 @@ const FALLBACK: DatosBancosCentrales = {
     tasa: 10.50,
     esVivo: false,
     refFecha: "2025-08",
-    fuente: "hardcoded",
+    fuente: "hardcoded — setear BMX_TOKEN para dato en vivo",
   },
   bcentral_chile: {
     pais: "Chile",
@@ -90,7 +94,7 @@ const FALLBACK: DatosBancosCentrales = {
     tasa: 5.00,
     esVivo: false,
     refFecha: "2025-08",
-    fuente: "hardcoded",
+    fuente: "hardcoded — sin API REST oficial libre",
   },
   bcra: {
     pais: "Argentina",
@@ -100,6 +104,68 @@ const FALLBACK: DatosBancosCentrales = {
     fuente: "/api/bcra",
     nota: "ver /api/bcra para datos en tiempo real",
   },
+}
+
+// ── Fed (USA): FRED — serie DFEDTARU (Target Rate Upper Bound) ────────────
+// Requiere FRED_API_KEY gratuita: https://fred.stlouisfed.org/docs/api/api_key.html
+async function getTasaFed(): Promise<DatosBanco> {
+  const apiKey = process.env.FRED_API_KEY
+  if (!apiKey) return FALLBACK.fed
+  try {
+    const url = `https://api.stlouisfed.org/fred/series/observations?series_id=DFEDTARU&api_key=${apiKey}&sort_order=desc&limit=1&file_type=json`
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!res.ok) return FALLBACK.fed
+    const json = await res.json() as { observations?: Array<{ date: string; value: string }> }
+    const obs = json.observations?.[0]
+    if (!obs) return FALLBACK.fed
+    const tasa = parseFloat(obs.value)
+    if (!Number.isFinite(tasa)) return FALLBACK.fed
+    return {
+      pais: "USA",
+      moneda: "USD",
+      tasa: parseFloat(tasa.toFixed(2)),
+      esVivo: true,
+      fuente: "FRED — St. Louis Fed (DFEDTARU)",
+      updated_at: obs.date,
+    }
+  } catch {
+    return FALLBACK.fed
+  }
+}
+
+// ── Banxico: SIE API — serie SR16850 (tasa objetivo de política monetaria) ─
+// Requiere BMX_TOKEN gratuito: https://www.banxico.org.mx/SieAPIRest/
+async function getTasaBanxico(): Promise<DatosBanco> {
+  const token = process.env.BMX_TOKEN
+  if (!token) return FALLBACK.banxico
+  try {
+    const url = "https://www.banxico.org.mx/SieAPIRest/service/v1/series/SR16850/datos/oportuno"
+    const res = await fetch(url, {
+      headers: { "Bmx-Token": token, Accept: "application/json" },
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!res.ok) return FALLBACK.banxico
+    const json = await res.json() as {
+      bmx?: { series?: Array<{ datos?: Array<{ fecha: string; dato: string }> }> }
+    }
+    const dato = json.bmx?.series?.[0]?.datos?.[0]
+    if (!dato) return FALLBACK.banxico
+    const tasa = parseFloat(dato.dato)
+    if (!Number.isFinite(tasa)) return FALLBACK.banxico
+    return {
+      pais: "México",
+      moneda: "MXN",
+      tasa: parseFloat(tasa.toFixed(2)),
+      esVivo: true,
+      fuente: "Banxico SIE (SR16850)",
+      updated_at: dato.fecha,
+    }
+  } catch {
+    return FALLBACK.banxico
+  }
 }
 
 // ── ECB/BCE: Statistical Data Warehouse CSV ────────────────────────────────
@@ -192,20 +258,25 @@ export async function GET() {
   }
 
   // 2) Consultar fuentes en vivo en paralelo.
-  const [bce, bcb] = await Promise.all([getTasaBCE(), getTasaBCB()])
+  const [fed, bce, bcb, banxico] = await Promise.all([
+    getTasaFed(),
+    getTasaBCE(),
+    getTasaBCB(),
+    getTasaBanxico(),
+  ])
 
   // Armar la respuesta completa: vivos donde conseguimos datos, hardcoded el resto.
   const data: DatosBancosCentrales = {
-    fed: FALLBACK.fed,
+    fed,
     bce,
     bcb,
-    banxico: FALLBACK.banxico,
+    banxico,
     bcentral_chile: FALLBACK.bcentral_chile,
     bcra: FALLBACK.bcra,
   }
 
   // 3) ¿Alguna fuente en vivo funcionó? Si sí, guardar en cache "exitoso".
-  const vivosOk = [bce, bcb].filter((b) => b.esVivo).length
+  const vivosOk = [fed, bce, bcb, banxico].filter((b) => b.esVivo).length
   if (vivosOk >= 1) {
     guardarExito(CACHE_KEY, data, TTL_SEG)
     return NextResponse.json({

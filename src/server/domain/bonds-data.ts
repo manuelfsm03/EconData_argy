@@ -227,8 +227,15 @@ export const BOND_DEFS: BondDef[] = [
   },
 ]
 
+// Fallback estático de BONCAPs — solo para cuando BYMA falla.
+// Actualizar con cada licitación del Tesoro (tickers = T{dia}{mes}{año}).
+// El código de consumo filtra vencidos por fecha, así que entradas pasadas
+// no aparecen en el screener, pero se deben limpiar para no acumular deuda.
 export const CAP_INSTRUMENT_DEFS: CapInstrumentDef[] = [
-  { ticker: "T15E6", tipo: "BONCAP", vencimiento: "2026-01-15" },
-  { ticker: "T30J6", tipo: "BONCAP", vencimiento: "2026-06-30" },
+  // 2026
   { ticker: "T15D6", tipo: "BONCAP", vencimiento: "2026-12-15" },
+  // 2027 — instrumentos licitados por el Tesoro a lo largo de 2026
+  { ticker: "T15E7", tipo: "BONCAP", vencimiento: "2027-01-15" },
+  { ticker: "T30J7", tipo: "BONCAP", vencimiento: "2027-06-30" },
+  { ticker: "T15D7", tipo: "BONCAP", vencimiento: "2027-12-15" },
 ]
