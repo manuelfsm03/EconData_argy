@@ -49,6 +49,8 @@ interface DatosBancosCentrales {
   bcb: DatosBanco
   banxico: DatosBanco
   bcentral_chile: DatosBanco
+  boj: DatosBanco
+  rba: DatosBanco
   bcra: DatosBanco
 }
 
@@ -95,6 +97,22 @@ const FALLBACK: DatosBancosCentrales = {
     esVivo: false,
     refFecha: "2025-08",
     fuente: "hardcoded — fallback si OECD no responde",
+  },
+  boj: {
+    pais: "Japón",
+    moneda: "JPY",
+    tasa: 0.25,
+    esVivo: false,
+    refFecha: "2025-08",
+    fuente: "hardcoded — fallback si OECD no responde",
+  },
+  rba: {
+    pais: "Australia",
+    moneda: "AUD",
+    tasa: 4.35,
+    esVivo: false,
+    refFecha: "2025-08",
+    fuente: "hardcoded — fallback si RBA API o OECD no responden",
   },
   bcra: {
     pais: "Argentina",
@@ -347,6 +365,78 @@ async function getTasaBCB(): Promise<DatosBanco> {
   }
 }
 
+// ── BoJ (Japón): OECD IR3TIB01 JPN ───────────────────────────────────────
+async function getTasaBoJ(): Promise<DatosBanco> {
+  const oecd = await fetchOecdRate("JPN")
+  if (oecd) {
+    return {
+      pais: "Japón",
+      moneda: "JPY",
+      tasa: oecd.tasa,
+      esVivo: true,
+      fuente: "OECD MEI Financial (IR3TIB01 JP)",
+      updated_at: oecd.fecha,
+      nota: "tasa interbancaria 3m — proxy de la tasa de política del BoJ",
+    }
+  }
+  return FALLBACK.boj
+}
+
+// ── RBA (Australia): API pública del Reserve Bank of Australia ────────────
+// rba.gov.au/statistics/tables/f1/ — serie FIRMMCRT (Cash Rate Target).
+// Devuelve JSON con series históricas; tomamos el último valor disponible.
+// Fallback: OECD IR3TIB01 AUS.
+async function getTasaRBA(): Promise<DatosBanco> {
+  try {
+    const url = "https://api.rba.gov.au/statistics/tables/f1/?series_ids=FIRMMCRT"
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(12_000),
+    })
+    if (res.ok) {
+      const json = await res.json() as {
+        dataSets?: Array<{ series?: Record<string, { observations?: Record<string, [string | number]> }> }>
+      }
+      const series = json.dataSets?.[0]?.series
+      if (series) {
+        const key = Object.keys(series)[0]
+        const obs = series[key]?.observations
+        if (obs) {
+          const periods = Object.keys(obs).sort()
+          const lastPeriod = periods[periods.length - 1]
+          const rawTasa = parseFloat(String(obs[lastPeriod]?.[0] ?? ""))
+          if (Number.isFinite(rawTasa)) {
+            return {
+              pais: "Australia",
+              moneda: "AUD",
+              tasa: parseFloat(rawTasa.toFixed(2)),
+              esVivo: true,
+              fuente: "RBA Statistics (FIRMMCRT)",
+              updated_at: lastPeriod,
+            }
+          }
+        }
+      }
+    }
+  } catch { /* cae a OECD */ }
+
+  // Fallback: OECD IR3TIB01 AUS
+  const oecd = await fetchOecdRate("AUS")
+  if (oecd) {
+    return {
+      pais: "Australia",
+      moneda: "AUD",
+      tasa: oecd.tasa,
+      esVivo: true,
+      fuente: "OECD MEI Financial (IR3TIB01 AU)",
+      updated_at: oecd.fecha,
+      nota: "tasa interbancaria 3m — proxy del cash rate del RBA",
+    }
+  }
+
+  return FALLBACK.rba
+}
+
 export async function GET() {
   // 1) Cache fresco vigente → servir sin tocar fuentes externas.
   const cached = leerFresco<DatosBancosCentrales>(CACHE_KEY)
@@ -361,12 +451,14 @@ export async function GET() {
   }
 
   // 2) Consultar fuentes en vivo en paralelo.
-  const [fed, bce, bcb, banxico, bcentral_chile] = await Promise.all([
+  const [fed, bce, bcb, banxico, bcentral_chile, boj, rba] = await Promise.all([
     getTasaFed(),
     getTasaBCE(),
     getTasaBCB(),
     getTasaBanxico(),
     getTasaBCCh(),
+    getTasaBoJ(),
+    getTasaRBA(),
   ])
 
   // Armar la respuesta completa: vivos donde conseguimos datos, hardcoded el resto.
@@ -376,11 +468,13 @@ export async function GET() {
     bcb,
     banxico,
     bcentral_chile,
+    boj,
+    rba,
     bcra: FALLBACK.bcra,
   }
 
   // 3) ¿Alguna fuente en vivo funcionó? Si sí, guardar en cache "exitoso".
-  const vivosOk = [fed, bce, bcb, banxico, bcentral_chile].filter((b) => b.esVivo).length
+  const vivosOk = [fed, bce, bcb, banxico, bcentral_chile, boj, rba].filter((b) => b.esVivo).length
   if (vivosOk >= 1) {
     guardarExito(CACHE_KEY, data, TTL_SEG)
     return NextResponse.json({
