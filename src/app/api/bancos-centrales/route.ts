@@ -54,74 +54,17 @@ interface DatosBancosCentrales {
   bcra: DatosBanco
 }
 
-// Valores de referencia hardcodeados — fallback cuando la API falla.
-// NOTA: estos valores son de referencia ago-2025 y pueden estar desactualizados.
-// Para datos en vivo configurar FRED_API_KEY (Fed) y BMX_TOKEN (Banxico).
+// Fallback sin dato — se usa cuando todas las fuentes en vivo fallan.
+// tasa: null = sin dato disponible; el frontend debe mostrar "N/D".
 const FALLBACK: DatosBancosCentrales = {
-  fed: {
-    pais: "USA",
-    moneda: "USD",
-    tasa: 5.25,
-    esVivo: false,
-    refFecha: "2025-08",
-    fuente: "hardcoded — setear FRED_API_KEY para dato en vivo",
-  },
-  bce: {
-    pais: "Eurozona",
-    moneda: "EUR",
-    tasa: 3.65,
-    esVivo: false,
-    refFecha: "2025-08",
-    fuente: "hardcoded",
-  },
-  bcb: {
-    pais: "Brasil",
-    moneda: "BRL",
-    tasa: 10.50,
-    esVivo: false,
-    refFecha: "2025-08",
-    fuente: "hardcoded",
-  },
-  banxico: {
-    pais: "México",
-    moneda: "MXN",
-    tasa: 10.50,
-    esVivo: false,
-    refFecha: "2025-08",
-    fuente: "hardcoded — setear BMX_TOKEN para dato en vivo",
-  },
-  bcentral_chile: {
-    pais: "Chile",
-    moneda: "CLP",
-    tasa: 5.00,
-    esVivo: false,
-    refFecha: "2025-08",
-    fuente: "hardcoded — fallback si OECD no responde",
-  },
-  boj: {
-    pais: "Japón",
-    moneda: "JPY",
-    tasa: 0.25,
-    esVivo: false,
-    refFecha: "2025-08",
-    fuente: "hardcoded — fallback si OECD no responde",
-  },
-  rba: {
-    pais: "Australia",
-    moneda: "AUD",
-    tasa: 4.35,
-    esVivo: false,
-    refFecha: "2025-08",
-    fuente: "hardcoded — fallback si RBA API o OECD no responden",
-  },
-  bcra: {
-    pais: "Argentina",
-    moneda: "ARS",
-    tasa: null,
-    esVivo: false,
-    fuente: "/api/bcra",
-    nota: "ver /api/bcra para datos en tiempo real",
-  },
+  fed:            { pais: "USA",       moneda: "USD", tasa: null, esVivo: false, fuente: "sin dato" },
+  bce:            { pais: "Eurozona",  moneda: "EUR", tasa: null, esVivo: false, fuente: "sin dato" },
+  bcb:            { pais: "Brasil",    moneda: "BRL", tasa: null, esVivo: false, fuente: "sin dato" },
+  banxico:        { pais: "México",    moneda: "MXN", tasa: null, esVivo: false, fuente: "sin dato" },
+  bcentral_chile: { pais: "Chile",     moneda: "CLP", tasa: null, esVivo: false, fuente: "sin dato" },
+  boj:            { pais: "Japón",     moneda: "JPY", tasa: null, esVivo: false, fuente: "sin dato" },
+  rba:            { pais: "Australia", moneda: "AUD", tasa: null, esVivo: false, fuente: "sin dato" },
+  bcra:           { pais: "Argentina", moneda: "ARS", tasa: null, esVivo: false, fuente: "/api/bcra", nota: "ver /api/bcra para datos en tiempo real" },
 }
 
 // ── Fed (USA): NY Fed EFFR API — pública sin key ──────────────────────────
