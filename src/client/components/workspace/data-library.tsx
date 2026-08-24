@@ -8,7 +8,7 @@ import { DATA_CARD_CATALOG, searchDataCards } from "@/lib/card-catalog"
 import type { TickerFocus } from "@/lib/ticker-nav"
 
 /** kind del cross-link -> {tab, subtab} de Finanzas donde vive ese ticker. */
-const FINANZAS_SUBTAB_POR_KIND: Record<"accion" | "bono" | "cap", string> = { accion: "acciones", bono: "bonos", cap: "bonos" }
+const FINANZAS_SUBTAB_POR_KIND: Record<"accion" | "accion_usa" | "bono" | "cap", string> = { accion: "acciones", accion_usa: "acciones", bono: "bonos", cap: "bonos" }
 
 export function DataLibrary({ focusTicker = null }: { focusTicker?: TickerFocus | null }) {
   const [query, setQuery] = useState("")

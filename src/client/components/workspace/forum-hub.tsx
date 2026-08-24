@@ -110,7 +110,9 @@ export function ForumHub({ initialFocus = null }: { initialFocus?: TickerFocus |
   useEffect(() => {
     if (initialFocus) {
       setActiveTag(initialFocus.ticker)
-      openThread(initialFocus.kind, initialFocus.ticker)
+      // accion_usa se trata como accion en el foro
+      const forumKind: ForumAssetType = initialFocus.kind === "accion_usa" ? "accion" : initialFocus.kind as ForumAssetType
+      openThread(forumKind, initialFocus.ticker)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialFocus?.kind, initialFocus?.ticker])

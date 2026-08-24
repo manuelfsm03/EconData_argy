@@ -6,5 +6,10 @@
 
   "env": {
     "NEXT_TELEMETRY_DISABLED": "1"
-  }
+  },
+
+  "crons": [
+    { "path": "/api/deuda?n=6", "schedule": "0 20 * * *" },
+    { "path": "/api/deuda?endpoint=stock", "schedule": "30 20 * * *" }
+  ]
 }

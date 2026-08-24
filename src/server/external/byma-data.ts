@@ -253,7 +253,7 @@ async function mapWithConcurrency<T, R>(items: T[], mapper: (item: T) => Promise
 
 export async function fetchBymaQuotes(
   tickers: string[],
-  options: { currencySuffix?: "" | "D" } = {},
+  options: { currencySuffix?: "" | "D" | "C" } = {},
 ): Promise<Map<string, BymaQuote>> {
   const normalized = [...new Set(tickers.map((ticker) => ticker.trim().toUpperCase()).filter(Boolean))]
   const suffix = options.currencySuffix ?? ""

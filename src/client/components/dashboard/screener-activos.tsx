@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react"
 import { Check, Plus, Search, X } from "lucide-react"
 import { Input } from "@/client/components/ui/input"
 import { cn } from "@/lib/utils"
+import { WATCHLIST_DEFAULT, WATCHLIST_EVENT, readWatchlist, writeWatchlist } from "@/lib/watchlist"
+import { useTickerNav } from "@/lib/ticker-nav"
 
 interface AssetRow {
   id: string
@@ -44,8 +46,13 @@ interface WorldQuote {
   ticker: string
 }
 
-const STORAGE_KEY = "lapizarra.screener.activos.v1"
-const DEFAULT_SELECTION = ["accion:GGAL", "accion:YPFD", "bono:AL30", "mundo:SP500"]
+interface UsaStockQuote {
+  ticker: string
+  name: string
+  sector: string
+  lastPrice: number | null
+  change1DPct: number | null
+}
 
 function number(value: number | null, suffix = "") {
   return value == null ? "—" : `${value.toLocaleString("es-AR", { maximumFractionDigits: 2 })}${suffix}`
@@ -53,20 +60,24 @@ function number(value: number | null, suffix = "") {
 
 export function AssetScreener() {
   const [rows, setRows] = useState<AssetRow[]>([])
-  const [selected, setSelected] = useState<string[]>(DEFAULT_SELECTION)
+  const [selected, setSelected] = useState<string[]>(WATCHLIST_DEFAULT)
   const [query, setQuery] = useState("")
   const [currency, setCurrency] = useState<"ALL" | "ARS" | "USD">("ALL")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { navigateToTicker } = useTickerNav()
 
+  // Hidratar desde localStorage y sincronizar en vivo con otras vistas que
+  // toquen la watchlist (ej. el screener de bonos con "Agregar al monitor").
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null")
-      if (Array.isArray(stored) && stored.every((value) => typeof value === "string")) setSelected(stored)
-    } catch { /* conservar selección inicial */ }
+    setSelected(readWatchlist())
+    const onChange = (event: Event) => {
+      const detail = (event as CustomEvent<string[]>).detail
+      setSelected(Array.isArray(detail) ? detail : readWatchlist())
+    }
+    window.addEventListener(WATCHLIST_EVENT, onChange)
+    return () => window.removeEventListener(WATCHLIST_EVENT, onChange)
   }, [])
-
-  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(selected)) }, [selected])
 
   useEffect(() => {
     let cancelled = false
@@ -75,12 +86,13 @@ export function AssetScreener() {
       fetch("/api/bonos").then((response) => response.json()),
       fetch("/api/bonos?tipo=lecap").then((response) => response.json()),
       fetch("/api/mundo").then((response) => response.json()),
-    ]).then(([stocksResult, bondsResult, lecapsResult, worldResult]) => {
+      fetch("/api/usa-stocks").then((response) => response.json()),
+    ]).then(([stocksResult, bondsResult, lecapsResult, worldResult, usaResult]) => {
       if (cancelled) return
       const next: AssetRow[] = []
       if (stocksResult.status === "fulfilled") {
         const byCategory = stocksResult.value?.data?.byCategory as Record<string, StockQuote[]> | undefined
-        Object.values(byCategory ?? {}).flat().forEach((item) => next.push({ id: `accion:${item.ticker}`, ticker: item.ticker, name: item.category, market: "Acciones", currency: "ARS", price: item.lastPrice, change: item.change1D, yield: null }))
+        Object.values(byCategory ?? {}).flat().forEach((item) => next.push({ id: `accion:${item.ticker}`, ticker: item.ticker, name: item.category, market: "Acciones ARG", currency: "ARS", price: item.lastPrice, change: item.change1D, yield: null }))
       }
       if (bondsResult.status === "fulfilled" && Array.isArray(bondsResult.value?.data)) {
         ;(bondsResult.value.data as BondQuote[]).forEach((item) => next.push({ id: `bono:${item.ticker}`, ticker: item.ticker, name: item.nombre, market: "Bonos USD", currency: "USD", price: item.precio, change: null, yield: item.tir }))
@@ -93,6 +105,18 @@ export function AssetScreener() {
           if (!item) return
           next.push({ id: `mundo:${key.toUpperCase()}`, ticker: key.toUpperCase(), name: item.ticker, market: "Global", currency: "Índice", price: item.precio, change: item.variacion_pct, yield: null })
         })
+      }
+      if (usaResult.status === "fulfilled" && Array.isArray(usaResult.value?.data)) {
+        ;(usaResult.value.data as UsaStockQuote[]).forEach((item) => next.push({
+          id: `accion_usa:${item.ticker}`,
+          ticker: item.ticker,
+          name: item.name,
+          market: `S&P 500 · ${item.sector}`,
+          currency: "USD",
+          price: item.lastPrice,
+          change: item.change1DPct,
+          yield: null,
+        }))
       }
       setRows(Array.from(new Map(next.map((item) => [item.id, item])).values()))
       if (next.length === 0) setError("No se pudieron obtener instrumentos")
@@ -111,7 +135,11 @@ export function AssetScreener() {
   const selectedRows = selected.map((id) => rows.find((row) => row.id === id)).filter((row): row is AssetRow => Boolean(row))
 
   function toggle(id: string) {
-    setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
+    setSelected((current) => {
+      const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+      writeWatchlist(next)
+      return next
+    })
   }
 
   return (
@@ -134,8 +162,27 @@ export function AssetScreener() {
             <thead className="sticky top-0 bg-[var(--bg-elev)] text-[var(--text-mute)]"><tr>{["", "Ticker", "Mercado", "Moneda", "Último", "Var. 1D", "Tasa/TIR"].map((label) => <th key={label} className="border-b border-[var(--border)] px-2 py-2 text-right font-normal first:text-center [&:nth-child(2)]:text-left [&:nth-child(3)]:text-left">{label}</th>)}</tr></thead>
             <tbody>{matches.map((row) => {
               const active = selected.includes(row.id)
-              return <tr key={row.id} className={cn("border-b border-[var(--border)] hover:bg-[var(--bg-elev-2)]", active && "bg-[var(--amber-soft)]/40")}>
-                <td className="px-2 py-2 text-center"><button onClick={() => toggle(row.id)} title={active ? "Quitar" : "Agregar"} className={cn("inline-flex h-5 w-5 items-center justify-center rounded border", active ? "border-[var(--amber)] text-[var(--amber)]" : "border-[var(--border-hi)] text-[var(--text-mute)]")} >{active ? <Check size={11} /> : <Plus size={11} />}</button></td>
+              // id formato "accion:GGAL" | "accion_usa:AAPL" | "bono:AL30" | "lecap:S31E5" | "mundo:SP500"
+              const colonIdx = row.id.indexOf(":")
+              const rawKind   = row.id.slice(0, colonIdx)
+              const rawTicker = row.id.slice(colonIdx + 1)
+              const canOpenEmpresa = rawKind === "accion" || rawKind === "accion_usa" || rawKind === "bono"
+              return <tr
+                key={row.id}
+                className={cn(
+                  "border-b border-[var(--border)] hover:bg-[var(--bg-elev-2)]",
+                  active && "bg-[var(--amber-soft)]/40",
+                  canOpenEmpresa && "cursor-pointer",
+                )}
+                onClick={canOpenEmpresa ? () => navigateToTicker(
+                  rawKind === "bono" ? "bono" : rawKind === "accion_usa" ? "accion_usa" : "accion",
+                  rawTicker,
+                  "empresa",
+                ) : undefined}
+              >
+                <td className="px-2 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                  <button onClick={() => toggle(row.id)} title={active ? "Quitar" : "Agregar"} className={cn("inline-flex h-5 w-5 items-center justify-center rounded border", active ? "border-[var(--amber)] text-[var(--amber)]" : "border-[var(--border-hi)] text-[var(--text-mute)]")} >{active ? <Check size={11} /> : <Plus size={11} />}</button>
+                </td>
                 <td className="px-2 py-2 text-left font-bold text-[var(--amber)]"><div>{row.ticker}</div><div className="max-w-44 truncate font-sans text-[8px] font-normal text-[var(--text-mute)]">{row.name}</div></td>
                 <td className="px-2 py-2 text-left text-[var(--text-dim)]">{row.market}</td><td className="px-2 py-2 text-right text-[var(--text-dim)]">{row.currency}</td><td className="px-2 py-2 text-right">{number(row.price)}</td>
                 <td className={cn("px-2 py-2 text-right font-semibold", row.change == null ? "text-[var(--text-mute)]" : row.change >= 0 ? "text-[var(--positive)]" : "text-[var(--negative)]")}>{number(row.change, "%")}</td><td className="px-2 py-2 text-right">{number(row.yield, "%")}</td>

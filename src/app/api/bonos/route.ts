@@ -31,6 +31,26 @@ type BondLike = {
   cashflows: Cashflow[]
 }
 
+// Bonos con precio en mercado pero sin flujos verificados contra prospecto todavía.
+// Se incluyen siempre en el screener para mostrar precio y variación.
+const SUPPLEMENTAL_BONDS: Array<{
+  ticker: string
+  nombre: string
+  ley: string
+  vencimiento: string
+}> = [
+  // GD29 y AL41 tienen esquema verificado en ESQUEMAS pero no siempre están en
+  // la DB local -- se agregan acá para garantizar que el screener los muestre
+  // con métricas completas (el motor los reconoce por su ESQUEMA).
+  { ticker: "GD29", nombre: "Bono Global USD Ley NY 1% 2029", ley: "NY", vencimiento: "2029-07-09" },
+  { ticker: "GD38", nombre: "Global USD Ley NY 2038", ley: "NY", vencimiento: "2038-01-09" },
+  { ticker: "GD46", nombre: "Global USD Ley NY 2046", ley: "NY", vencimiento: "2046-07-09" },
+  { ticker: "AL41", nombre: "Bono Soberano USD Ley Argentina 2041", ley: "local", vencimiento: "2041-07-09" },
+  { ticker: "AO27", nombre: "BONTE USD 2027", ley: "local", vencimiento: "2027-07-15" },
+  { ticker: "AO28", nombre: "BONTE USD 2028", ley: "local", vencimiento: "2028-07-15" },
+  { ticker: "AO29", nombre: "BONTE USD 2029", ley: "local", vencimiento: "2029-07-15" },
+]
+
 const _cache: Record<string, { data: unknown; expiry: number }> = {}
 function getCache<T>(key: string): T | null {
   const e = _cache[key]
@@ -85,6 +105,12 @@ function calcularDuration(precio: number, cashflows: { fechaPago: Date; flujoTot
   }, 0)
 
   return Number((macaulay / (1 + r)).toFixed(4))
+}
+
+// Convierte TIR efectiva anual a TNA semestral (convención USD soberanos)
+function tirToTna(tir: number | null): number | null {
+  if (tir == null) return null
+  return Number((2 * (Math.pow(1 + tir / 100, 0.5) - 1) * 100).toFixed(4))
 }
 
 async function scrapePrecioRava(ticker: string): Promise<{ precio: number | null; precioCci: number | null }> {
@@ -348,9 +374,28 @@ export async function GET(request: NextRequest) {
 
   try {
     const { bonds, sourceMode } = await loadRuntimeBonds(tickerParam)
-    const [cclReference, bymaQuotes] = await Promise.all([
+
+    // Bonos del DB + supplementales que no estén ya en el set
+    const loadedTickers = new Set(bonds.map((b: BondLike) => b.ticker))
+    const supplementalBonds: BondLike[] = SUPPLEMENTAL_BONDS
+      .filter((s) => !loadedTickers.has(s.ticker))
+      .map((s) => ({
+        ticker: s.ticker,
+        nombre: s.nombre,
+        ley: s.ley,
+        cupon: 0,
+        vencimiento: new Date(s.vencimiento),
+        precio: null,
+        cashflows: [],
+      }))
+    const allBonds: BondLike[] = [...bonds, ...supplementalBonds]
+    const allTickers = allBonds.map((b: BondLike) => b.ticker)
+
+    const [cclReference, bymaQuotesMep, bymaQuotesCcl, bymaQuotesArs] = await Promise.all([
       fetchCclReference(),
-      fetchBymaQuotes(bonds.map((bond: BondLike) => bond.ticker), { currencySuffix: "D" }),
+      fetchBymaQuotes(allTickers, { currencySuffix: "D" }),
+      fetchBymaQuotes(allTickers, { currencySuffix: "C" }),
+      fetchBymaQuotes(allTickers, { currencySuffix: "" }),
     ])
 
     if (bonds.length === 0) {
@@ -363,7 +408,7 @@ export async function GET(request: NextRequest) {
     const hoy = new Date()
     const liquidacion = siguienteDiaHabil(fechaUTC(hoy.toISOString().slice(0, 10)))
     const screener = await Promise.all(
-      bonds.map(async (bond: BondLike) => {
+      allBonds.map(async (bond: BondLike) => {
         const esquemaVerificado = ESQUEMAS.find((e) => e.ticker === bond.ticker) ?? null
         const cashflowsVerificados = esquemaVerificado ? construirCashflows(esquemaVerificado) : null
         const devengadas = cashflowsVerificados
@@ -380,7 +425,7 @@ export async function GET(request: NextRequest) {
               }))
           : bond.cashflows.filter((cf) => cf.fechaPago > hoy)
 
-        const byma = bymaQuotes.get(bond.ticker)
+        const byma = bymaQuotesMep.get(bond.ticker)
         let precio = byma?.lastPrice ?? bond.precio
         let fuente = byma ? "byma_data_open" : precio ? "db" : "byma_data_open"
         if (!precio) {
@@ -412,6 +457,34 @@ export async function GET(request: NextRequest) {
           if (tir !== null) durationMod = calcularDuration(precio, flujosFF, tir)
         }
 
+        // TNA/TEA (convención semestral para soberanos USD)
+        const tea = tir
+        const tna = tirToTna(tir)
+
+        // Métricas en modalidad cable (CCL): mismo motor, con el precio de la
+        // especie "C". Todas las métricas de rendimiento se recalculan con este
+        // precio para poder compararlas contra las de MEP.
+        const bymaCcl = bymaQuotesCcl.get(bond.ticker)
+        const precioCleanCcl = bymaCcl?.lastPrice ?? null
+        let tirCcl: number | null = null
+        let tnaCcl: number | null = null
+        let durationModCcl: number | null = null
+        let paridadCcl: number | null = null
+        let precioDirtyCclVal: number | null = null
+        if (precioCleanCcl && cashflowsVerificados && devengadas) {
+          precioDirtyCclVal = precioCleanCcl + devengadas.interesesCorridos
+          const mercadoCcl = metricasDeMercado(precioDirtyCclVal, cashflowsVerificados, liquidacion)
+          tirCcl = mercadoCcl?.tir ?? null
+          tnaCcl = tirToTna(tirCcl)
+          durationModCcl = mercadoCcl?.durationMod ?? null
+          paridadCcl = mercadoCcl?.paridad ?? null
+        }
+
+        // Canje MEP/CCL: un solo número = precio en cable / precio en MEP.
+        const bymaArs = bymaQuotesArs.get(bond.ticker)
+        const precioArs = bymaArs?.lastPrice ?? null
+        const canje = precioCleanCcl && precio ? Number((precioCleanCcl / precio).toFixed(4)) : null
+
         return {
           ticker: bond.ticker,
           nombre: bond.nombre,
@@ -431,9 +504,7 @@ export async function GET(request: NextRequest) {
           vidaPromedio: devengadas ? Number(devengadas.vidaPromedio.toFixed(4)) : null,
           plazoResidual: devengadas ? Number(devengadas.plazoResidual.toFixed(4)) : null,
           calculationModel: esquemaVerificado ? "excel_parity_verified" : "legacy_unverified_schedule",
-          dataQuality: esquemaVerificado
-            ? "prospectus_schedule_verified"
-            : "legacy_schedule_pending_source_verification",
+          dataQuality: (esquemaVerificado ? "prospectus_schedule_verified" : bond.cashflows.length === 0 ? "no_cashflows_pending_prospecto" : "legacy_schedule_pending_source_verification"),
           change1D: byma?.change1D ?? null,
           asOf: byma?.asOf ?? null,
           flujosFF: tickerParam
@@ -445,6 +516,20 @@ export async function GET(request: NextRequest) {
               }))
             : undefined,
           fuente,
+          // Rendimientos MEP (precio de la especie "D" = px dirty mostrado)
+          teaMep: tea != null ? Number(tea.toFixed(2)) : null,
+          tnaMep: tna != null ? Number(tna.toFixed(2)) : null,
+          // Rendimientos CCL (precio de la especie "C")
+          teaCcl: tirCcl != null ? Number(tirCcl.toFixed(2)) : null,
+          tnaCcl: tnaCcl != null ? Number(tnaCcl.toFixed(2)) : null,
+          durationModCcl: durationModCcl != null ? Number(durationModCcl.toFixed(2)) : null,
+          paridadCcl: paridadCcl != null ? Number(paridadCcl.toFixed(2)) : null,
+          precioMep: precio ? Number(precio.toFixed(2)) : null,
+          precioCcl: precioCleanCcl != null ? Number(precioCleanCcl.toFixed(2)) : null,
+          precioDirtyCcl: precioDirtyCclVal != null ? Number(precioDirtyCclVal.toFixed(4)) : null,
+          precioArs: precioArs != null ? Number(precioArs.toFixed(2)) : null,
+          canje,
+          change1DCcl: bymaCcl?.change1D ?? null,
         }
       }),
     )

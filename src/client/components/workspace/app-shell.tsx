@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
-import { CalendarDays, Database, Landmark, LayoutDashboard, MessageSquareText } from "lucide-react"
+import { CalendarDays, Database, Landmark, LayoutDashboard, MessageSquareText, Users } from "lucide-react"
 import { ThemeToggle } from "@/client/components/ui/theme-toggle"
 import {
   Sidebar,
@@ -22,14 +22,20 @@ import { ForumHub } from "./forum-hub"
 import { MarketCalendar } from "./market-calendar"
 import { SiteFooter } from "./site-footer"
 import { BondsWorkspace } from "./bonds-workspace"
+import { CommunityView } from "@/client/components/profiles/community-view"
+import { CommunityComingSoon } from "@/client/components/profiles/community-coming-soon"
+import { EmpresaDrawer } from "@/client/components/empresa/empresa-drawer"
 import { DATA_CARD_CATALOG } from "@/lib/card-catalog"
 import { TickerNavContext, type TickerDestino, type TickerFocus, type TickerKind } from "@/lib/ticker-nav"
 
-type WorkspaceSection = "canvas" | "library" | "calendar" | "bonds" | "forum"
+const COMMUNITY_ENABLED = true
+
+type WorkspaceSection = "canvas" | "library" | "calendar" | "bonds" | "forum" | "community"
 
 function sectionForDestino(destino: TickerDestino): WorkspaceSection {
   if (destino === "foro") return "forum"
   if (destino === "calendario") return "calendar"
+  if (destino === "calculadora") return "bonds"
   return "library"
 }
 
@@ -41,6 +47,7 @@ const SECTIONS = [
   { id: "calendar" as const, label: "Calendario", description: "Pagos y vencimientos", Icon: CalendarDays },
   { id: "bonds" as const, label: "Bonos", description: "Calculadora y herramientas", Icon: Landmark },
   { id: "forum" as const, label: "Foro", description: "Conversaciones", Icon: MessageSquareText },
+  { id: "community" as const, label: "Comunidad", description: "Perfiles y ranking", Icon: Users },
 ]
 
 export function AppShell() {
@@ -49,10 +56,12 @@ export function AppShell() {
   const searchParams = useSearchParams()
   const [section, setSection] = useState<WorkspaceSection>("canvas")
   const [focusTicker, setFocusTicker] = useState<TickerFocus | null>(null)
+  const [empresaTicker, setEmpresaTicker] = useState<string | null>(null)
+  const [empresaKind, setEmpresaKind] = useState<TickerKind>("accion")
 
   useEffect(() => {
     const stored = localStorage.getItem(SECTION_KEY)
-    if (stored === "canvas" || stored === "library" || stored === "calendar" || stored === "bonds" || stored === "forum") setSection(stored)
+    if (stored === "canvas" || stored === "library" || stored === "calendar" || stored === "bonds" || stored === "forum" || stored === "community") setSection(stored)
   }, [])
 
   useEffect(() => {
@@ -65,7 +74,7 @@ export function AppShell() {
     const sectionParam = searchParams.get("section")
     const tickerParam = searchParams.get("ticker")
     const kindParam = searchParams.get("kind") as TickerKind | null
-    if (sectionParam === "canvas" || sectionParam === "library" || sectionParam === "calendar" || sectionParam === "bonds" || sectionParam === "forum") {
+    if (sectionParam === "canvas" || sectionParam === "library" || sectionParam === "calendar" || sectionParam === "bonds" || sectionParam === "forum" || sectionParam === "community") {
       setSection(sectionParam)
     }
     if (tickerParam && kindParam) {
@@ -75,6 +84,11 @@ export function AppShell() {
   }, [])
 
   const navigateToTicker = useCallback((kind: TickerKind, ticker: string, destino: TickerDestino) => {
+    if (destino === "empresa") {
+      setEmpresaKind(kind)
+      setEmpresaTicker(ticker)
+      return
+    }
     const targetSection = sectionForDestino(destino)
     setSection(targetSection)
     setFocusTicker({ kind, ticker })
@@ -128,8 +142,14 @@ export function AppShell() {
         {section === "calendar" && <MarketCalendar initialTicker={focusTicker?.ticker ?? null} />}
         {section === "bonds" && <BondsWorkspace initialTicker={focusTicker?.kind === "bono" ? focusTicker.ticker : null} />}
         {section === "forum" && <ForumHub initialFocus={focusTicker} />}
+        {section === "community" && (COMMUNITY_ENABLED ? <CommunityView /> : <CommunityComingSoon />)}
         <SiteFooter />
       </SidebarInset>
+      <EmpresaDrawer
+        ticker={empresaTicker}
+        kind={empresaKind}
+        onClose={() => setEmpresaTicker(null)}
+      />
     </SidebarProvider>
     </TickerNavContext.Provider>
   )

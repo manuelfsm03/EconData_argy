@@ -3,7 +3,7 @@
 import { createContext, useContext } from "react"
 
 /** Mismo vocabulario que ya usa el Foro (ForumAssetType) -- no se inventa uno nuevo. */
-export type TickerKind = "accion" | "bono" | "cap" | "variable"
+export type TickerKind = "accion" | "accion_usa" | "bono" | "cap" | "variable"
 
 export interface TickerFocus {
   kind: TickerKind
@@ -11,7 +11,7 @@ export interface TickerFocus {
 }
 
 /** A qué sección saltar cuando se elige un destino para un ticker. */
-export type TickerDestino = "precio" | "foro" | "calendario"
+export type TickerDestino = "precio" | "foro" | "calendario" | "calculadora" | "empresa"
 
 export interface TickerNavigator {
   navigateToTicker: (kind: TickerKind, ticker: string, destino: TickerDestino) => void

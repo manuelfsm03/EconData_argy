@@ -20,6 +20,11 @@ import {
 import { InfoTooltip } from "@/client/components/ui/info-tooltip"
 import { GLOSSARY } from "@/lib/glossary"
 import { buildSovereignCurve, type SovereignCurveInput } from "@/lib/sovereign-curve"
+import { useTickerNav } from "@/lib/ticker-nav"
+import { WATCHLIST_EVENT, readWatchlist, toggleWatchlistId } from "@/lib/watchlist"
+import { construirCashflows, ESQUEMAS } from "@/lib/bond-schedule"
+import { metricasDeMercado } from "@/lib/bond-math"
+import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -38,6 +43,19 @@ interface SovereignBond {
   fuente: string
   change1D?: number | null
   outstanding?: number   // en billones USD
+  precioDirty?: number | null      // px dirty MEP (especie D)
+  precioMep?: number | null        // px clean MEP
+  precioCcl?: number | null        // px clean CCL (especie C)
+  precioDirtyCcl?: number | null   // px dirty CCL
+  tnaMep?: number | null
+  teaMep?: number | null
+  tnaCcl?: number | null
+  teaCcl?: number | null
+  durationModCcl?: number | null
+  paridadCcl?: number | null
+  canje?: number | null            // px cable / px mep (único)
+  precioArs?: number | null
+  dataQuality?: string | null
 }
 
 interface CapInstrument {
@@ -71,6 +89,29 @@ interface RiesgoPaisData {
 const OUTSTANDING: Record<string, number> = {
   GD35: 14.79, GD30: 12.65, AL30: 12.15, GD41: 11.15,
   AL35: 10.27, GD46: 8.04, AL29: 7.61, AE38: 4.57, GD38: 6.0,
+  AO27: 1.5, AO28: 2.0, AO29: 2.5,
+}
+
+// Orden de display por familia
+const GLOBALES_ORDER = ["GD29", "GD30", "GD35", "GD38", "GD41", "GD46"]
+const BONARES_ORDER  = ["AO27", "AO28", "AO29", "AL29", "AL30", "AL35", "AE38", "AL41"]
+
+// Prospectos oficiales (MECON / SEC EDGAR)
+const PROSPECTO_URLS: Record<string, string> = {
+  GD29: "https://www.argentina.gob.ar/economia/finanzas/secretaria-finanzas/bonos-internacionales",
+  GD30: "https://www.argentina.gob.ar/economia/finanzas/secretaria-finanzas/bonos-internacionales",
+  GD35: "https://www.argentina.gob.ar/economia/finanzas/secretaria-finanzas/bonos-internacionales",
+  GD38: "https://www.argentina.gob.ar/economia/finanzas/secretaria-finanzas/bonos-internacionales",
+  GD41: "https://www.argentina.gob.ar/economia/finanzas/secretaria-finanzas/bonos-internacionales",
+  GD46: "https://www.argentina.gob.ar/economia/finanzas/secretaria-finanzas/bonos-internacionales",
+  AL29: "https://www.argentina.gob.ar/economia/finanzas/secretaria-finanzas/bonos",
+  AL30: "https://www.argentina.gob.ar/economia/finanzas/secretaria-finanzas/bonos",
+  AL35: "https://www.argentina.gob.ar/economia/finanzas/secretaria-finanzas/bonos",
+  AE38: "https://www.argentina.gob.ar/economia/finanzas/secretaria-finanzas/bonos",
+  AL41: "https://www.argentina.gob.ar/economia/finanzas/secretaria-finanzas/bonos",
+  AO27: "https://www.argentina.gob.ar/economia/finanzas/secretaria-finanzas/licitaciones",
+  AO28: "https://www.argentina.gob.ar/economia/finanzas/secretaria-finanzas/licitaciones",
+  AO29: "https://www.argentina.gob.ar/economia/finanzas/secretaria-finanzas/licitaciones",
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -117,159 +158,358 @@ function SubTabs({ tabs, active, onChange }: { tabs: { key: string; label: strin
   )
 }
 
-// ── Snapshot: tabla de bonos soberanos agrupada por ley ───────────────────────
+// ── Snapshot: screener de bonos soberanos hard dollar ────────────────────────
 
-function weightedAvgTIR(bonds: SovereignBond[]): number | null {
-  const valid = bonds.filter((b) => b.tir != null && b.precio != null)
+function weightedAvgTEA(bonds: SovereignBond[]): number | null {
+  const valid = bonds.filter((b) => b.teaMep != null)
   if (valid.length === 0) return null
   const totalOut = valid.reduce((s, b) => s + (OUTSTANDING[b.ticker] ?? 0), 0)
   if (totalOut === 0) return null
-  const wavg = valid.reduce((s, b) => s + (b.tir! * (OUTSTANDING[b.ticker] ?? 0)), 0) / totalOut
-  return wavg
+  return valid.reduce((s, b) => s + (b.teaMep! * (OUTSTANDING[b.ticker] ?? 0)), 0) / totalOut
 }
 
-function BondRow({ bond, onClick, selected }: { bond: SovereignBond; onClick: () => void; selected: boolean }) {
-  return (
-    <tr
-      onClick={onClick}
-      style={{
-        background: selected ? "var(--bg-elev-2)" : "transparent",
-        cursor: "pointer",
-        borderLeft: selected ? "2px solid var(--amber)" : "2px solid transparent",
-      }}
-    >
-      <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: "var(--amber)" }}>{bond.ticker}</td>
-      <td style={{ padding: "5px 8px", fontSize: 11, color: "var(--text)", textAlign: "right", fontFamily: "var(--font-data)", fontWeight: 600 }}>
-        {fmtNum(bond.precio)}
-      </td>
-      <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: tirColor(bond.tir), textAlign: "right", fontFamily: "var(--font-data)" }}>
-        {fmtPct(bond.tir)}
-      </td>
-      <td style={{ padding: "5px 8px", fontSize: 11, color: "var(--text-dim)", textAlign: "right", fontFamily: "var(--font-data)" }}>
-        {fmtNum(bond.durationMod, 1)}
-      </td>
-      <td style={{ padding: "5px 8px", fontSize: 11, color: changeColor(bond.change1D), textAlign: "right", fontFamily: "var(--font-data)" }}>
-        {fmtPctChange(bond.change1D)}
-      </td>
-      <td style={{ padding: "5px 8px", fontSize: 10, color: "var(--text-dim)", textAlign: "right" }}>
-        {bond.vencimiento.slice(0, 7)}
-      </td>
-    </tr>
-  )
+// Canje MEP/CCL = px cable / px mep. Se muestra como ratio (ej. 0.978).
+function fmtCanje(v: number | null | undefined): string {
+  if (v == null) return "—"
+  return v.toFixed(3)
 }
 
-function BondGroup({ title, bonds, color, selectedTicker, onSelect }: {
-  title: string; bonds: SovereignBond[]; color: string;
-  selectedTicker: string | null; onSelect: (t: string) => void
+// TIR efectiva anual -> TNA semestral (convención soberanos USD). Igual que el backend.
+function tnaFromTir(tir: number | null): number | null {
+  if (tir == null) return null
+  return 2 * (Math.pow(1 + tir / 100, 0.5) - 1) * 100
+}
+
+type MetricasRecalc = { tna: number | null; tea: number | null; dur: number | null; paridad: number | null }
+
+// Recalcula las métricas de un bono a un precio DIRTY dado, usando el mismo
+// motor verificado del backend pero del lado del cliente. Devuelve null si el
+// bono no tiene esquema de flujos cargado (ej. BONTE sin prospecto).
+function recomputeAtPrice(ticker: string, precioDirty: number, liquidacion: Date): MetricasRecalc | null {
+  const esquema = ESQUEMAS.find((e) => e.ticker === ticker)
+  if (!esquema) return null
+  const cashflows = construirCashflows(esquema)
+  const m = metricasDeMercado(precioDirty, cashflows, liquidacion)
+  if (!m) return null
+  return { tna: tnaFromTir(m.tir), tea: m.tir, dur: m.durationMod, paridad: m.paridad }
+}
+
+// ── Monitor Strip ─────────────────────────────────────────────────────────────
+function MonitorStrip({ tickers, bonds, onUnpin }: {
+  tickers: string[]
+  bonds: SovereignBond[]
+  onUnpin: (t: string) => void
 }) {
-  const wavgTir = weightedAvgTIR(bonds)
-  const totalOut = bonds.reduce((s, b) => s + (OUTSTANDING[b.ticker] ?? 0), 0)
-
+  if (tickers.length === 0) return null
   return (
-    <div style={{ flex: "1 1 340px", minWidth: 320 }}>
-      <div style={{ padding: "4px 8px", background: "var(--bg-elev-2)", borderBottom: `2px solid ${color}`, borderTop: "1px solid var(--border)" }}>
-        <span style={{ fontSize: 10, color, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>{title}</span>
-        {totalOut > 0 && (
-          <span style={{ fontSize: 9, color: "var(--text-dim)", marginLeft: 8 }}>
-            ${totalOut.toFixed(1)}B outstanding
-          </span>
-        )}
-      </div>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr>
-            {["Ticker", "Precio", "YTM", "Dur", "1D%", "Vto"].map((h, i) => (
-              <th key={h} style={{
-                padding: "3px 8px", fontSize: 9, color: "var(--text-dim)",
-                textAlign: i === 0 ? "left" : "right",
-                borderBottom: "1px solid var(--border)",
-              }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {bonds.map((bond) => (
-            <BondRow
-              key={bond.ticker}
-              bond={bond}
-              onClick={() => onSelect(bond.ticker)}
-              selected={selectedTicker === bond.ticker}
-            />
-          ))}
-          {/* Weighted average row */}
-          <tr style={{ background: "var(--bg-elev)", borderTop: "1px solid var(--border)" }}>
-            <td style={{ padding: "4px 8px", fontSize: 9, color: "var(--text-dim)", fontStyle: "italic" }}>W.Avg</td>
-            <td colSpan={2} style={{ padding: "4px 8px", fontSize: 11, color: color, textAlign: "right", fontFamily: "var(--font-data)", fontWeight: 700 }}>
-              {wavgTir != null ? wavgTir.toFixed(2) + "%" : "—"}
-            </td>
-            <td colSpan={3} />
-          </tr>
-        </tbody>
-      </table>
+    <div style={{
+      display: "flex", alignItems: "center", gap: 6,
+      padding: "5px 8px", background: "var(--bg-elev-2)",
+      borderBottom: "2px solid var(--amber)", overflowX: "auto",
+    }}>
+      <span style={{
+        fontSize: 9, color: "var(--amber)", textTransform: "uppercase",
+        letterSpacing: 1, marginRight: 4, whiteSpace: "nowrap",
+      }}>MONITOR</span>
+      {tickers.map((ticker) => {
+        const bond = bonds.find((b) => b.ticker === ticker)
+        if (!bond) return null
+        const px = bond.precioDirty ?? bond.precio
+        return (
+          <div key={ticker} style={{
+            display: "flex", alignItems: "center", gap: 8,
+            background: "var(--bg-elev)", border: "1px solid var(--border)",
+            padding: "3px 8px", whiteSpace: "nowrap",
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--amber)" }}>{ticker}</span>
+            <span style={{ fontSize: 11, fontFamily: "var(--font-data)", color: "var(--text)" }}>
+              {px != null ? `$${px.toFixed(2)}` : "—"}
+            </span>
+            <span style={{ fontSize: 10, color: "var(--text-dim)" }}>
+              MEP{" "}<span style={{ color: tirColor(bond.tnaMep), fontFamily: "var(--font-data)" }}>{fmtPct(bond.tnaMep)}</span>
+            </span>
+            <span style={{ fontSize: 10, color: "var(--text-dim)" }}>
+              CCL{" "}<span style={{ color: tirColor(bond.tnaCcl), fontFamily: "var(--font-data)" }}>{fmtPct(bond.tnaCcl)}</span>
+            </span>
+            <button
+              onClick={() => onUnpin(ticker)}
+              style={{ background: "none", border: "none", color: "var(--text-mute)", cursor: "pointer", fontSize: 11, padding: 0, lineHeight: 1 }}
+            >✕</button>
+          </div>
+        )
+      })}
     </div>
   )
 }
 
-// ── Detail Panel ──────────────────────────────────────────────────────────────
-function DetailPanel({ bond, onClose }: { bond: SovereignBond; onClose: () => void }) {
+// ── Bond Row (con precio dirty editable + recálculo en vivo) ──────────────────
+const CELL = { padding: "4px 8px", fontSize: 11, textAlign: "right" as const, fontFamily: "var(--font-data)" }
+
+function BondRow({ bond, liquidacion, isPinned, isMenuOpen, onToggleMenu, onTogglePin, onOpenCalculator }: {
+  bond: SovereignBond
+  liquidacion: Date
+  isPinned: boolean
+  isMenuOpen: boolean
+  onToggleMenu: (t: string | null) => void
+  onTogglePin: (t: string) => void
+  onOpenCalculator: (t: string) => void
+}) {
+  const { navigateToTicker } = useTickerNav()
+  const noCashflows = bond.dataQuality === "no_cashflows_pending_prospecto"
+  const hasSchema = useMemo(() => ESQUEMAS.some((e) => e.ticker === bond.ticker), [bond.ticker])
+  const marketDirty = bond.precioDirty ?? bond.precio ?? null
+
+  // Precio dirty editable a mano (para ejercicios teóricos). "" = precio de mercado.
+  const [raw, setRaw] = useState<string>("")
+  const parsed = raw.trim() === "" ? null : Number(raw.replace(",", "."))
+  const editedPrice = parsed != null && Number.isFinite(parsed) && parsed > 0 ? parsed : null
+  const modified = editedPrice != null && (marketDirty == null || Math.abs(editedPrice - marketDirty) > 0.005)
+
+  // Métricas MEP: recalculadas en vivo si el precio fue editado y hay esquema.
+  const mep = useMemo<MetricasRecalc>(() => {
+    if (modified && hasSchema && editedPrice != null) {
+      const r = recomputeAtPrice(bond.ticker, editedPrice, liquidacion)
+      if (r) return r
+    }
+    return { tna: bond.tnaMep ?? null, tea: bond.teaMep ?? null, dur: bond.durationMod ?? null, paridad: bond.paridad ?? null }
+  }, [modified, hasSchema, editedPrice, bond, liquidacion])
+
   return (
-    <div style={{ background: "var(--bg)", border: "1px solid var(--border)", padding: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-        <div>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--amber)" }}>{bond.ticker}</span>
-          <span style={{ fontSize: 10, color: "var(--text-dim)", marginLeft: 8 }}>{bond.nombre}</span>
-          <span style={{ fontSize: 9, color: bond.ley === "NY" ? "#4488ff" : "var(--text-dim)", marginLeft: 8,
-            background: "var(--bg-elev-2)", padding: "1px 6px", borderRadius: 2 }}>{bond.ley} LAW</span>
-        </div>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 14 }}>✕</button>
-      </div>
-      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", background: "var(--bg-elev-2)", padding: 1 }}>
-        {[
-          { label: "Precio", value: fmtNum(bond.precio), unit: "USD", color: "var(--text)" },
-          { label: "YTM", value: fmtPct(bond.tir), unit: "anual", color: tirColor(bond.tir) },
-          { label: "Paridad", value: fmtPct(bond.paridad), unit: "% VN res." },
-          { label: "Curr. Yield", value: fmtPct(bond.currentYield), unit: "anual" },
-          { label: "Dur. Mod.", value: fmtNum(bond.durationMod), unit: "años" },
-          { label: "Var. 1D", value: fmtPctChange(bond.change1D), unit: "", color: changeColor(bond.change1D) },
-          { label: "Cupón", value: fmtPct(bond.cupon), unit: "s.a." },
-          { label: "VN Residual", value: fmtPct(bond.vnResidual), unit: "% orig" },
-        ].map((kpi) => (
-          <div key={kpi.label} style={{ flex: "1 1 120px", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "8px 10px" }}>
-            <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>{kpi.label}</div>
-            <div style={{ fontSize: 18, fontFamily: "var(--font-data)", fontWeight: 700, color: kpi.color ?? "var(--amber)" }}>{kpi.value}</div>
-            {kpi.unit && <div style={{ fontSize: 9, color: "var(--text-dim)" }}>{kpi.unit}</div>}
+    <tr style={{ borderBottom: "1px solid var(--bg-elev)", background: modified ? "var(--amber-soft, rgba(255,176,32,0.06))" : "transparent" }}>
+      {/* ⋮ menu */}
+      <td style={{ padding: "4px 2px", position: "relative", width: 20 }}>
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleMenu(isMenuOpen ? null : bond.ticker) }}
+          style={{ background: "none", border: "none", color: "var(--text-mute)", cursor: "pointer", fontSize: 14, padding: "0 3px", lineHeight: 1 }}
+          title="Opciones"
+        >⋮</button>
+        {isMenuOpen && (
+          <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", top: "100%", left: 0, zIndex: 100, background: "var(--bg-elev-2)", border: "1px solid var(--border)", width: 176, boxShadow: "0 4px 12px rgba(0,0,0,0.5)" }}>
+            <button onClick={() => { onTogglePin(bond.ticker); onToggleMenu(null) }} style={{ display: "block", width: "100%", textAlign: "left", padding: "7px 12px", fontSize: 11, background: "none", border: "none", color: isPinned ? "var(--amber)" : "var(--text)", cursor: "pointer", borderBottom: "1px solid var(--border)" }}>
+              {isPinned ? "📌 Quitar del monitor" : "📌 Agregar al monitor"}
+            </button>
+            <button onClick={() => { window.open(PROSPECTO_URLS[bond.ticker] ?? "#", "_blank"); onToggleMenu(null) }} style={{ display: "block", width: "100%", textAlign: "left", padding: "7px 12px", fontSize: 11, background: "none", border: "none", color: "var(--text)", cursor: "pointer", borderBottom: "1px solid var(--border)" }}>
+              📄 Descargar prospecto
+            </button>
+            <button onClick={() => { onOpenCalculator(bond.ticker); onToggleMenu(null) }} style={{ display: "block", width: "100%", textAlign: "left", padding: "7px 12px", fontSize: 11, background: "none", border: "none", color: "var(--text)", cursor: "pointer" }}>
+              📊 Ver en calculadora
+            </button>
           </div>
-        ))}
+        )}
+      </td>
+      {/* Ticker — clickeable abre detalle de empresa/bono */}
+      <td
+        style={{ padding: "4px 8px", fontSize: 12, fontWeight: 700, color: "var(--amber)", whiteSpace: "nowrap", cursor: "pointer" }}
+        onClick={() => navigateToTicker("bono", bond.ticker, "empresa")}
+        title={`Ver detalle de ${bond.ticker}`}
+      >
+        {bond.ticker}
+        {noCashflows && (
+          <span title="Flujos pendientes de verificación contra prospecto" style={{ marginLeft: 4, fontSize: 10, cursor: "help" }}>⚠️</span>
+        )}
+      </td>
+      {/* Px Dirty (MEP) — editable */}
+      <td style={{ padding: "3px 6px", textAlign: "right", whiteSpace: "nowrap" }}>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={raw !== "" ? raw : (marketDirty != null ? marketDirty.toFixed(2) : "")}
+          onChange={(e) => setRaw(e.target.value)}
+          onFocus={(e) => e.currentTarget.select()}
+          title={modified ? "Precio editado a mano — click ↺ para volver al de mercado" : "Editable: escribí un precio para simular"}
+          style={{
+            width: 62, textAlign: "right", fontFamily: "var(--font-data)", fontSize: 11,
+            background: modified ? "var(--bg-elev-2)" : "transparent",
+            color: modified ? "var(--amber)" : "var(--text)",
+            border: `1px solid ${modified ? "var(--amber)" : "transparent"}`,
+            borderRadius: 3, padding: "2px 4px", outline: "none",
+          }}
+        />
+        {modified && (
+          <button onClick={() => setRaw("")} title="Volver al precio de mercado" style={{ background: "none", border: "none", color: "var(--text-mute)", cursor: "pointer", fontSize: 10, padding: "0 2px" }}>↺</button>
+        )}
+      </td>
+      {/* Var % */}
+      <td style={{ ...CELL, color: changeColor(bond.change1D) }}>{fmtPctChange(bond.change1D)}</td>
+      {/* TNA MEP */}
+      <td style={{ ...CELL, color: mep.tna == null ? "var(--text-mute)" : tirColor(mep.tna) }}>{fmtPct(mep.tna)}</td>
+      {/* TNA CCL */}
+      <td style={{ ...CELL, color: bond.tnaCcl == null ? "var(--text-mute)" : tirColor(bond.tnaCcl) }}>{fmtPct(bond.tnaCcl)}</td>
+      {/* TEA MEP */}
+      <td style={{ ...CELL, color: mep.tea == null ? "var(--text-mute)" : tirColor(mep.tea) }}>{fmtPct(mep.tea)}</td>
+      {/* TEA CCL */}
+      <td style={{ ...CELL, color: bond.teaCcl == null ? "var(--text-mute)" : tirColor(bond.teaCcl) }}>{fmtPct(bond.teaCcl)}</td>
+      {/* Dur. mod. (al precio MEP mostrado) */}
+      <td style={{ ...CELL, color: "var(--text-dim)" }}>{fmtNum(mep.dur, 1)}</td>
+      {/* Paridad (al precio MEP mostrado) */}
+      <td style={{ ...CELL, color: "var(--text)" }}>{fmtPct(mep.paridad)}</td>
+      {/* Canje (px cable / px mep) */}
+      <td style={{ ...CELL, fontSize: 10, color: "var(--text-dim)" }}>{fmtCanje(bond.canje)}</td>
+    </tr>
+  )
+}
+
+// ── Bond Table ────────────────────────────────────────────────────────────────
+function BondTable({ title, color, bonds, order, liquidacion, pinnedTickers, onTogglePin, onOpenCalculator }: {
+  title: string
+  color: string
+  bonds: SovereignBond[]
+  order: string[]
+  liquidacion: Date
+  pinnedTickers: string[]
+  onTogglePin: (t: string) => void
+  onOpenCalculator: (t: string) => void
+}) {
+  const [openMenu, setOpenMenu] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!openMenu) return
+    const handler = () => setOpenMenu(null)
+    document.addEventListener("click", handler)
+    return () => document.removeEventListener("click", handler)
+  }, [openMenu])
+
+  const sorted = useMemo(() => {
+    const idx = new Map(order.map((t, i) => [t, i]))
+    return [...bonds].sort((a, b) => (idx.get(a.ticker) ?? 999) - (idx.get(b.ticker) ?? 999))
+  }, [bonds, order])
+
+  const totalOut = bonds.reduce((s, b) => s + (OUTSTANDING[b.ticker] ?? 0), 0)
+  const wavgTea = weightedAvgTEA(bonds)
+
+  const COL_HEADERS = ["", "Ticker", "Px Dirty", "Var %", "TNA MEP", "TNA CCL", "TEA MEP", "TEA CCL", "Dur.", "Paridad", "Canje"]
+
+  return (
+    <div style={{ marginBottom: 1 }}>
+      <div style={{
+        display: "flex", alignItems: "baseline", gap: 10,
+        padding: "5px 8px", background: "var(--bg-elev-2)",
+        borderTop: "1px solid var(--border)", borderBottom: `2px solid ${color}`,
+      }}>
+        <span style={{ fontSize: 10, color, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>
+          {title}
+        </span>
+        {totalOut > 0 && (
+          <span style={{ fontSize: 9, color: "var(--text-dim)" }}>${totalOut.toFixed(1)}B outstanding</span>
+        )}
+      </div>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 680 }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid var(--border)" }}>
+              {COL_HEADERS.map((h, i) => (
+                <th key={i} style={{
+                  padding: i === 0 ? "3px 2px" : "3px 8px",
+                  fontSize: 9, color: "var(--text-dim)", fontWeight: 500,
+                  textAlign: i <= 1 ? "left" : "right",
+                  textTransform: "uppercase", letterSpacing: 0.5,
+                  whiteSpace: "nowrap",
+                }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((bond) => (
+              <BondRow
+                key={bond.ticker}
+                bond={bond}
+                liquidacion={liquidacion}
+                isPinned={pinnedTickers.includes(bond.ticker)}
+                isMenuOpen={openMenu === bond.ticker}
+                onToggleMenu={setOpenMenu}
+                onTogglePin={onTogglePin}
+                onOpenCalculator={onOpenCalculator}
+              />
+            ))}
+            {/* W.Avg row — ponderado por outstanding, sobre TEA MEP */}
+            <tr style={{ background: "var(--bg-elev)", borderTop: "1px solid var(--border)" }}>
+              <td />
+              <td style={{ padding: "4px 8px", fontSize: 9, color: "var(--text-dim)", fontStyle: "italic" }}>W.Avg</td>
+              <td colSpan={4} />
+              <td style={{ padding: "4px 8px", fontSize: 11, textAlign: "right", fontFamily: "var(--font-data)", color, fontWeight: 700 }}>
+                {wavgTea != null ? wavgTea.toFixed(2) + "%" : "—"}
+              </td>
+              <td colSpan={4} />
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   )
 }
 
 // ── Snapshot View ─────────────────────────────────────────────────────────────
+// Deriva los tickers de bonos que están pineados en la watchlist compartida.
+function pinnedFromWatchlist(): string[] {
+  return readWatchlist().filter((e) => e.startsWith("bono:")).map((e) => e.slice(5))
+}
+
 function SnapshotView({ bonds }: { bonds: SovereignBond[] }) {
-  const [selected, setSelected] = useState<string | null>(null)
-  const selectedBond = bonds.find((b) => b.ticker === selected) ?? null
+  const { navigateToTicker } = useTickerNav()
+  const [pinnedTickers, setPinnedTickers] = useState<string[]>([])
 
-  const nyBonds = useMemo(() => bonds.filter((b) => b.ley === "NY"), [bonds])
-  const arBonds = useMemo(() => bonds.filter((b) => b.ley === "local"), [bonds])
+  // El "monitor" del screener es la misma watchlist de activos de la app: los
+  // bonos pineados acá aparecen en el screener de activos y viceversa.
+  useEffect(() => {
+    const sync = () => setPinnedTickers(pinnedFromWatchlist())
+    sync()
+    window.addEventListener(WATCHLIST_EVENT, sync)
+    return () => window.removeEventListener(WATCHLIST_EVENT, sync)
+  }, [])
 
-  const handleSelect = (t: string) => setSelected((prev) => (prev === t ? null : t))
+  const handleTogglePin = useCallback((ticker: string) => {
+    toggleWatchlistId(`bono:${ticker}`)
+    setPinnedTickers(pinnedFromWatchlist())
+  }, [])
+
+  const handleOpenCalculator = useCallback((ticker: string) => {
+    navigateToTicker("bono", ticker, "calculadora")
+  }, [navigateToTicker])
+
+  // Fecha de liquidación (T+1 hábil) para el recálculo client-side al editar precios.
+  const liquidacion = useMemo(
+    () => siguienteDiaHabil(fechaUTC(new Date().toISOString().slice(0, 10))),
+    [],
+  )
+
+  const globalesBonds = useMemo(
+    () => bonds.filter((b) => GLOBALES_ORDER.includes(b.ticker)),
+    [bonds],
+  )
+  const bonaresBonds = useMemo(
+    () => bonds.filter((b) => BONARES_ORDER.includes(b.ticker)),
+    [bonds],
+  )
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", background: "var(--bg-elev)" }}>
-        <BondGroup title="NY Law" bonds={nyBonds} color="#4488ff" selectedTicker={selected} onSelect={handleSelect} />
-        <BondGroup title="AR Law" bonds={arBonds} color="var(--positive)" selectedTicker={selected} onSelect={handleSelect} />
-      </div>
-
-      {selectedBond && (
-        <div style={{ marginTop: 1 }}>
-          <DetailPanel bond={selectedBond} onClose={() => setSelected(null)} />
-        </div>
-      )}
-
+      <MonitorStrip
+        tickers={pinnedTickers}
+        bonds={bonds}
+        onUnpin={handleTogglePin}
+      />
+      <BondTable
+        title="USD Globales — Ley NY"
+        color="#4488ff"
+        bonds={globalesBonds}
+        order={GLOBALES_ORDER}
+        liquidacion={liquidacion}
+        pinnedTickers={pinnedTickers}
+        onTogglePin={handleTogglePin}
+        onOpenCalculator={handleOpenCalculator}
+      />
+      <BondTable
+        title="USD Bonares — Ley ARG"
+        color="var(--positive)"
+        bonds={bonaresBonds}
+        order={BONARES_ORDER}
+        liquidacion={liquidacion}
+        pinnedTickers={pinnedTickers}
+        onTogglePin={handleTogglePin}
+        onOpenCalculator={handleOpenCalculator}
+      />
       <div style={{ padding: "4px 8px", fontSize: 9, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
-        Métricas: backend de La Pizarra · Precios: API Merval / Rava · Flujos: prospectos MECON
+        Métricas: backend La Pizarra · Precios: BYMA Data / Rava · Flujos: prospectos MECON / SEC · TNA semestral · Px Dirty editable (recalcula MEP en vivo) · Canje = px cable / px mep
       </div>
     </div>
   )

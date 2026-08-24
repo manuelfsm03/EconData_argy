@@ -121,14 +121,16 @@ export async function GET(_request: NextRequest) {
   // Spread calculado
   const spreadAr = arTir != null ? arTir - us10yPct : null
 
-  // Comparativos regionales fijos (EMBI+ oficiales históricos aproximados)
+  // Comparativos regionales — valores de referencia (sin API de JP Morgan en tiempo real).
+  // Actualizados manualmente a ago-2025. Mostrar siempre con badge de referencia en la UI.
+  const REGIONALES_REF_FECHA = "2025-08"
   const regionales = {
-    argentina: { bps: riesgoPaisBps, moneda: "ARS", ticker: "GD30", fuente: "EMBI+ argentinadatos.com" },
-    brasil: { bps: 225, moneda: "BRL", nota: "estimado EMBI+" },
-    chile: { bps: 70, moneda: "CLP", nota: "estimado EMBI+" },
-    colombia: { bps: 280, moneda: "COP", nota: "estimado EMBI+" },
-    peru: { bps: 155, moneda: "PEN", nota: "estimado EMBI+" },
-    mexico: { bps: 190, moneda: "MXN", nota: "estimado EMBI+" },
+    argentina: { bps: riesgoPaisBps, moneda: "ARS", ticker: "GD30", fuente: "EMBI+ argentinadatos.com", esVivo: true },
+    brasil:    { bps: 185, moneda: "BRL", nota: "referencia ago-2025", esVivo: false, refFecha: REGIONALES_REF_FECHA },
+    chile:     { bps: 80,  moneda: "CLP", nota: "referencia ago-2025", esVivo: false, refFecha: REGIONALES_REF_FECHA },
+    colombia:  { bps: 245, moneda: "COP", nota: "referencia ago-2025", esVivo: false, refFecha: REGIONALES_REF_FECHA },
+    peru:      { bps: 140, moneda: "PEN", nota: "referencia ago-2025", esVivo: false, refFecha: REGIONALES_REF_FECHA },
+    mexico:    { bps: 175, moneda: "MXN", nota: "referencia ago-2025", esVivo: false, refFecha: REGIONALES_REF_FECHA },
   }
 
   // Histórico: últimos 2 años para gráfico

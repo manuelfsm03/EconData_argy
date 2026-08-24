@@ -26,8 +26,38 @@ export const runtime = "nodejs"
 
 // ── Constantes que requieren update manual ────────────────────────────────────
 
-// Valores iniciales de banda Fase 3 (14/04/2025). Actualizar si el BCRA los cambia.
+/**
+ * Punto de anclaje del régimen de bandas cambiarias (Fase 1).
+ *
+ * Estos valores son CORRECTOS: el BCRA estableció $1.000 / $1.400 el 14/04/2025
+ * y NO los modificó como ancla. Lo que cambió fue la tasa de deslizamiento:
+ *
+ *   Fase 1 (14-abr-2025 → 31-dic-2025)
+ *     Piso:  $1.000 → −1 % mensual (se ensancha hacia abajo)
+ *     Techo: $1.400 → +1 % mensual (se ensancha hacia arriba)
+ *
+ *   Fase 2 (1-ene-2026 en adelante)
+ *     Ambas bandas se deslizan al ritmo del IPC T-2 publicado por INDEC.
+ *     Metodología: /api/bcra-bands (endpoint de máxima precisión, día a día).
+ *
+ * IMPORTANTE: este endpoint (bandas-cambiarias) sirve el anchor como referencia
+ * para el gráfico IPC+REM. Para la BANDA PRECISA calculada día a día, consumir
+ * /api/bcra-bands, que aplica la tasa correcta por Fase.
+ *
+ * TODO: si el BCRA modifica el ancla (implantando un nuevo régimen), actualizar:
+ *   - date: fecha de vigencia del nuevo régimen
+ *   - inferior / superior: nuevos valores de piso y techo en ARS/USD
+ *   - CURATED_DATASETS.bandas_cambiarias_policy en curated-registry.ts
+ */
 const BANDA_INICIAL = { date: "2025-04-14", inferior: 1000, superior: 1400 }
+
+/**
+ * Tasa de deslizamiento Fase 1 (1% mensual, simétrica).
+ * Solo se incluye en la respuesta para que el frontend evite hardcodearla.
+ * Para Fase 2, usar /api/bcra-bands (tasa IPC T-2, dinámica).
+ */
+const CRAWLING_PEG_FASE1_MENSUAL = 0.01   // 1 % mensual — Comunicado BCRA 11/04/2025
+
 const BANDA_POLICY = getCuratedDataset("bandas_cambiarias_policy")
 
 
@@ -118,6 +148,12 @@ export async function GET() {
       ...(Object.keys(ipcHistorico).length === 0 ? ["IPC histórico no disponible"] : []),
     ],
     bandaInicial: BANDA_INICIAL,
+    /**
+     * Tasa de deslizamiento diario para el período Fase 1 (abr-2025 → dic-2025).
+     * Fase 2 (ene-2026 en adelante) usa IPC T-2: consultar /api/bcra-bands.
+     */
+    crawlingPegFase1Mensual: CRAWLING_PEG_FASE1_MENSUAL,
+    bandaEndpointPreciso: "/api/bcra-bands",
     fuentes: {
       ipc:    Object.keys(ipcHistorico).length > 0 ? "apis.datos.gob.ar (INDEC — serie 145.3_INGNACUAL_DICI_M_38)" : "no disponible",
       rem:    "BCRA — Excel histórico oficial",
