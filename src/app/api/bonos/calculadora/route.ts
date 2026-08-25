@@ -22,7 +22,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import { ESQUEMAS, construirCashflows } from "@/lib/bond-schedule"
+import { construirCashflows } from "@/lib/bond-schedule"
+import { getInstrumentoBono, TICKERS_BONOS_HABILITADOS } from "@/lib/bond-instrument-catalog"
 import { todayInBuenosAires } from "@/lib/calendar-events"
 import {
   SHOCKS_POR_DEFECTO,
@@ -118,17 +119,22 @@ export async function GET(request: NextRequest) {
     return responderCER(ticker, valor, modo, searchParams)
   }
 
-  const esquema = ESQUEMAS.find((e) => e.ticker === ticker)
-  if (!esquema) {
+  const instrumento = getInstrumentoBono(ticker)
+  if (!instrumento || !instrumento.esquema) {
     return NextResponse.json(
       {
-        error: "Este bono todavía no tiene esquema de cashflows verificado contra el prospecto",
+        error: instrumento?.decision ?? "Este bono todavía no tiene esquema de cashflows verificado contra el prospecto",
         ticker,
-        disponibles: ESQUEMAS.map((e) => e.ticker),
+        estado: instrumento?.estado ?? "no_catalogado",
+        dayCount: instrumento?.dayCount ?? null,
+        frecuencia: instrumento?.frecuencia ?? null,
+        fuentePrimaria: instrumento?.fuentePrimaria ?? null,
+        disponibles: TICKERS_BONOS_HABILITADOS,
       },
-      { status: 404 },
+      { status: instrumento?.estado === "excluido" ? 422 : 404 },
     )
   }
+  const esquema = instrumento.esquema
 
   const liquidacionISO = liquidacionParam ?? todayInBuenosAires()
   if (!/^\d{4}-\d{2}-\d{2}$/.test(liquidacionISO)) {
@@ -174,6 +180,11 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     ticker,
+    nombre: instrumento.nombre,
+    dayCount: instrumento.dayCount,
+    frecuencia: instrumento.frecuencia,
+    fuentePrimaria: instrumento.fuentePrimaria,
+    dataQuality: "prospectus_schedule_verified",
     modo,
     valorIngresado: valor,
     liquidacion: liquidacion.toISOString().slice(0, 10),

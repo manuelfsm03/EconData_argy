@@ -1,4 +1,7 @@
 import { fetchRegistered } from "@/server/http/fetch-source"
+import { freshnessFor } from "@/server/cache/data-cache"
+import { unavailableNumeric, type NumericFreshness, type NumericProvenance } from "@/server/numeric/manifest"
+import { SOURCE_REGISTRY } from "@/server/sources/registry"
 /**
  * /api/energia-global — Producción mundial de petróleo
  * Fuente: U.S. Energy Information Administration (EIA) API v2
@@ -51,6 +54,45 @@ function getCache<T>(key: string): T | null {
 
 function setCache(key: string, data: unknown, ttlSec: number) {
   _cache[key] = { data, expiry: Date.now() + ttlSec * 1000 }
+}
+
+function latestAsOf(data: Record<string, [string, number][]>): string | null {
+  const periods = Object.values(data).flatMap((series) => series.map(([period]) => period)).sort()
+  const period = periods.at(-1)
+  if (!period) return null
+  if (/^\d{4}-\d{2}$/.test(period)) {
+    const [year, month] = period.split("-").map(Number)
+    return new Date(Date.UTC(year, month, 0, 23, 59, 59)).toISOString()
+  }
+  if (/^\d{4}$/.test(period)) return `${period}-12-31T23:59:59.000Z`
+  return Number.isFinite(Date.parse(period)) ? new Date(period).toISOString() : null
+}
+
+function successResponse(
+  data: Record<string, [string, number][]>,
+  source: string,
+  unit: string,
+  transform: string,
+) {
+  const retrievedAt = new Date().toISOString()
+  const asOf = latestAsOf(data)
+  const freshness: NumericFreshness = asOf
+    ? freshnessFor(asOf, SOURCE_REGISTRY.eia.freshness)
+    : "unavailable"
+  if (!asOf || freshness !== "fresh") {
+    throw new Error("NUMERIC_DATA_STALE")
+  }
+  const numericManifest: NumericProvenance = {
+    source: "eia",
+    unit,
+    transform,
+    asOf,
+    retrievedAt,
+    freshness,
+    estimate: false,
+    status: "available",
+  }
+  return NextResponse.json({ data, asOf, retrievedAt, updated_at: retrievedAt, freshness, estimate: false, numericManifest: [numericManifest], source })
 }
 
 // Mapeo de tipos de datos a IDs y unidades EIA
@@ -178,11 +220,7 @@ export async function GET(request: NextRequest) {
   try {
     if (endpoint === "production") {
       const data = await fetchEIAProduction(COUNTRY_GROUPS.top, "Top 10 productores")
-      return NextResponse.json({
-        data,
-        updated_at: new Date().toISOString(),
-        source: "U.S. EIA — Crude oil incl. lease condensate (TBPD)",
-      })
+      return successResponse(data, "U.S. EIA — Crude oil incl. lease condensate (TBPD)", "thousand barrels per day", "EIA production value; no client-side numeric transformation")
     }
 
     if (endpoint === "hormuz") {
@@ -205,47 +243,27 @@ export async function GET(request: NextRequest) {
           return [period, Math.round(total)]
         })
 
-      return NextResponse.json({
-        data: { ...data, HORMUZ_TOTAL: hormuzTotal },
-        updated_at: new Date().toISOString(),
-        source: "EIA — Suma producción SAU+IRN+IRQ+KWT+UAE+QAT+BHR",
-      })
+      return successResponse({ ...data, HORMUZ_TOTAL: hormuzTotal }, "EIA — Suma producción SAU+IRN+IRQ+KWT+UAE+QAT+BHR", "thousand barrels per day", "EIA production values summed by matching period for HORMUZ_TOTAL")
     }
 
     if (endpoint === "latam") {
       const data = await fetchEIAProduction(COUNTRY_GROUPS.latam, "LATAM")
-      return NextResponse.json({
-        data,
-        updated_at: new Date().toISOString(),
-        source: "U.S. EIA — LATAM crude oil production",
-      })
+      return successResponse(data, "U.S. EIA — LATAM crude oil production", "thousand barrels per day", "EIA production value; no client-side numeric transformation")
     }
 
     if (endpoint === "consumption") {
       const data = await fetchEIAData(COUNTRY_GROUPS.top, "1", "Consumption")
-      return NextResponse.json({
-        data,
-        updated_at: new Date().toISOString(),
-        source: "U.S. EIA — Crude oil consumption (TBPD)",
-      })
+      return successResponse(data, "U.S. EIA — Crude oil consumption (TBPD)", "thousand barrels per day", "EIA consumption value; no client-side numeric transformation")
     }
 
     if (endpoint === "reserves") {
       const data = await fetchEIAData(COUNTRY_GROUPS.top, "2", "Reserves")
-      return NextResponse.json({
-        data,
-        updated_at: new Date().toISOString(),
-        source: "U.S. EIA — Proved crude oil reserves (BB)",
-      })
+      return successResponse(data, "U.S. EIA — Proved crude oil reserves (BB)", "billion barrels", "EIA proved reserve value; no client-side numeric transformation")
     }
 
     if (endpoint === "refining") {
       const data = await fetchEIAData(COUNTRY_GROUPS.top, "3", "Refining")
-      return NextResponse.json({
-        data,
-        updated_at: new Date().toISOString(),
-        source: "U.S. EIA — Refinery crude oil capacity (TBPD)",
-      })
+      return successResponse(data, "U.S. EIA — Refinery crude oil capacity (TBPD)", "thousand barrels per day", "EIA refinery capacity value; no client-side numeric transformation")
     }
 
     // Precios spot de energía via Yahoo Finance — sin EIA_API_KEY
@@ -307,15 +325,19 @@ export async function GET(request: NextRequest) {
     )
   } catch (error) {
     console.error("[/api/energia-global]", error)
-    if (error instanceof Error && error.message.startsWith("SOURCE_NOT_CONFIGURED")) {
+    const message = error instanceof Error ? error.message : "SOURCE_UNAVAILABLE"
+    if (message.startsWith("SOURCE_NOT_CONFIGURED") || message.includes("EIA API 403") || message === "NUMERIC_DATA_STALE") {
       return NextResponse.json(
-        { error: { code: "SOURCE_NOT_CONFIGURED", message: "Fuente EIA no configurada", retryable: false } },
+        {
+          error: { code: message.includes("403") ? "SOURCE_UNAVAILABLE" : message === "NUMERIC_DATA_STALE" ? "DATA_EXPIRED" : "SOURCE_NOT_CONFIGURED", message: message.includes("403") ? "Fuente EIA no disponible" : message === "NUMERIC_DATA_STALE" ? "Datos EIA vencidos" : "Fuente EIA no configurada", retryable: false },
+          numeric: unavailableNumeric(message.includes("403") ? "EIA returned HTTP 403" : "EIA source is not fresh"),
+        },
         { status: 503 },
       )
     }
     return NextResponse.json(
-      { error: "Error EIA API", detail: String(error) },
-      { status: 500 }
+      { error: { code: "SOURCE_UNAVAILABLE", message: "Fuente EIA no disponible", retryable: true }, numeric: unavailableNumeric("EIA request failed") },
+      { status: 503 },
     )
   }
 }

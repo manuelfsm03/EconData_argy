@@ -1,3 +1,5 @@
+import { validateNumericProvenance, type NumericProvenance } from "@/server/numeric/manifest"
+
 export type Freshness = "fresh" | "stale" | "expired" | "static"
 export type Completeness = "complete" | "partial"
 export type SourceMode = "live" | "cache_fresh" | "cache_stale" | "fallback" | "curated_static"
@@ -44,7 +46,12 @@ export function buildSuccessEnvelope<T>(input: {
   completeness: Completeness
   source: SourceProvenance
   warnings?: string[]
+  numericManifest?: readonly NumericProvenance[]
 }) {
+  const numericManifest = input.numericManifest ?? []
+  const numericErrors = numericManifest.flatMap((entry) => validateNumericProvenance(entry))
+  if (numericErrors.length > 0) throw new Error(numericErrors.join(","))
+
   return {
     ok: true as const,
     data: input.data,
@@ -57,6 +64,7 @@ export function buildSuccessEnvelope<T>(input: {
       completeness: input.completeness,
       source: input.source,
       warnings: input.warnings ?? [],
+      ...(input.numericManifest ? { numericManifest } : {}),
     },
   }
 }

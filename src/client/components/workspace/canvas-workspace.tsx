@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react"
 import GridLayout, { type Layout, useContainerWidth } from "react-grid-layout"
 import { Copy, GripHorizontal, LayoutGrid, MessageCircle, Minimize2, Plus, Search, Trash2, X } from "lucide-react"
 import { Button } from "@/client/components/ui/button"
@@ -10,37 +10,18 @@ import { ForoActivo } from "@/client/components/dashboard/foro-activo"
 import { CardHealthBadge } from "./card-health-badge"
 import { DataCardRenderer } from "./data-card-renderer"
 import { CARD_CATEGORIES, DATA_CARD_BY_ID, searchDataCards, type CardCategory } from "@/lib/card-catalog"
+import {
+  buildCanvasLayout,
+  canvasReducer,
+  createInitialCanvasState,
+  getActiveSheet,
+  persistCanvasState,
+  pixelsToRows,
+  readCanvasState,
+  type CanvasWidget,
+} from "@/client/lib/canvas-workspace"
 import { cn } from "@/lib/utils"
-
-interface CanvasWidget {
-  instanceId: string
-  cardId: string
-  x: number
-  y: number
-  w: number
-  h: number
-  autoFit?: boolean
-}
-
-interface CanvasSheet {
-  id: string
-  name: string
-  widgets: CanvasWidget[]
-}
-
-const STORAGE_KEY = "lapizarra.canvas.sheets.v3"
-const ACTIVE_KEY = "lapizarra.canvas.active-sheet.v3"
-const LEGACY_STORAGE_KEY = "lapizarra.canvas.sheets.v2"
-const LEGACY_ACTIVE_KEY = "lapizarra.canvas.active-sheet.v2"
-const LEGACY_HEIGHT_SCALE = 2
-const GRID_ROW_HEIGHT = 22
-const GRID_ROW_GAP = 6
-const CARD_HEADER_HEIGHT = 40
-
-function pixelsToRows(contentHeight: number, minH: number, maxH: number) {
-  const measured = Math.ceil((CARD_HEADER_HEIGHT + contentHeight + GRID_ROW_GAP) / (GRID_ROW_HEIGHT + GRID_ROW_GAP))
-  return Math.max(minH, Math.min(maxH, measured))
-}
+import { CANVAS_CATALOG_RAIL_PX, CANVAS_CONTENT_GUTTER_PX, GRID_ROW_GAP, GRID_ROW_HEIGHT, LEGACY_HEIGHT_SCALE } from "@/client/lib/canvas-workspace"
 
 function MeasuredCardContent({
   widgetId,
@@ -86,39 +67,9 @@ function uid(prefix: string) {
   return `${prefix}-${typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Date.now().toString(36)}`
 }
 
-function initialSheets(): CanvasSheet[] {
-  return [{
-    id: "mi-pizarra",
-    name: "Mi Pizarra",
-    widgets: [
-      { instanceId: "inicio-tipo-cambio", cardId: "resumen-tipo-cambio", x: 0, y: 0, w: 12, h: 10, autoFit: true },
-      { instanceId: "inicio-riesgo", cardId: "resumen-riesgo", x: 0, y: 10, w: 4, h: 8, autoFit: true },
-      { instanceId: "inicio-reservas", cardId: "resumen-reservas", x: 4, y: 10, w: 4, h: 10, autoFit: true },
-      { instanceId: "inicio-rem", cardId: "rem", x: 8, y: 10, w: 4, h: 20, autoFit: true },
-    ],
-  }]
-}
-
-function isValidStoredSheets(value: unknown): value is CanvasSheet[] {
-  if (!Array.isArray(value) || value.length === 0) return false
-  return value.every((sheet) => sheet && typeof sheet.id === "string" && typeof sheet.name === "string" && Array.isArray(sheet.widgets))
-}
-
-function migrateLegacySheets(sheets: CanvasSheet[]): CanvasSheet[] {
-  return sheets.map((sheet) => ({
-    ...sheet,
-    widgets: sheet.widgets.map((widget) => ({
-      ...widget,
-      y: widget.y * LEGACY_HEIGHT_SCALE,
-      h: widget.h * LEGACY_HEIGHT_SCALE,
-      autoFit: widget.autoFit ?? true,
-    })),
-  }))
-}
-
 export function CanvasWorkspace() {
-  const [sheets, setSheets] = useState<CanvasSheet[]>(initialSheets)
-  const [activeId, setActiveId] = useState("mi-pizarra")
+  const [canvasState, dispatch] = useReducer(canvasReducer, undefined, createInitialCanvasState)
+  const { sheets, activeId } = canvasState
   const [catalogOpen, setCatalogOpen] = useState(true)
   const [query, setQuery] = useState("")
   const [category, setCategory] = useState<CardCategory | "all">("all")
@@ -128,21 +79,8 @@ export function CanvasWorkspace() {
   const { width, containerRef, mounted } = useContainerWidth()
 
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null")
-      if (isValidStoredSheets(stored)) {
-        setSheets(stored)
-      } else {
-        const legacy = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY) ?? "null")
-        if (isValidStoredSheets(legacy)) setSheets(migrateLegacySheets(legacy))
-      }
-      const storedActive = localStorage.getItem(ACTIVE_KEY) ?? localStorage.getItem(LEGACY_ACTIVE_KEY)
-      if (storedActive) setActiveId(storedActive)
-    } catch {
-      // A corrupt local draft should never block the workspace.
-    } finally {
-      setHydrated(true)
-    }
+    dispatch({ type: "hydrate", state: readCanvasState(localStorage) })
+    setHydrated(true)
   }, [])
 
   useEffect(() => {
@@ -151,29 +89,29 @@ export function CanvasWorkspace() {
 
   useEffect(() => {
     if (!hydrated) return
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sheets))
-    localStorage.setItem(ACTIVE_KEY, activeId)
-  }, [activeId, hydrated, sheets])
+    persistCanvasState(localStorage, canvasState)
+  }, [canvasState, hydrated])
 
   useEffect(() => {
-    if (!sheets.some((sheet) => sheet.id === activeId)) setActiveId(sheets[0]?.id ?? "")
+    if (!sheets.some((sheet) => sheet.id === activeId)) dispatch({ type: "set-active", id: sheets[0]?.id ?? "" })
   }, [activeId, sheets])
 
-  const activeSheet = sheets.find((sheet) => sheet.id === activeId) ?? sheets[0]
+  const activeSheet = getActiveSheet(canvasState)
   const results = useMemo(() => searchDataCards(query, category), [query, category])
   const compactLayout = mounted && width < 720
+  // The catalog is a fixed 20rem desktop rail. Clamp the first grid render to
+  // the available viewport while the ResizeObserver settles after opening it.
+  const gridWidth = catalogOpen && !compactLayout && typeof window !== "undefined"
+    ? Math.min(width, Math.max(0, window.innerWidth - CANVAS_CATALOG_RAIL_PX - CANVAS_CONTENT_GUTTER_PX))
+    : width
 
   const updateActiveWidgets = useCallback((updater: (widgets: CanvasWidget[]) => CanvasWidget[]) => {
-    setSheets((current) => current.map((sheet) => sheet.id === activeId ? { ...sheet, widgets: updater(sheet.widgets) } : sheet))
+    dispatch({ type: "update-active-widgets", sheetId: activeId, update: updater })
   }, [activeId])
 
   const handleLayoutChange = useCallback((layout: Layout) => {
-    const positions = new Map(layout.map((item) => [item.i, item]))
-    updateActiveWidgets((widgets) => widgets.map((widget) => {
-      const item = positions.get(widget.instanceId)
-      return item ? { ...widget, x: item.x, y: item.y, w: item.w, h: item.h } : widget
-    }))
-  }, [updateActiveWidgets])
+    dispatch({ type: "update-layout", sheetId: activeId, layout })
+  }, [activeId])
 
   const fitWidgetHeight = useCallback((instanceId: string, height: number) => {
     updateActiveWidgets((widgets) => widgets.map((widget) => widget.instanceId === instanceId && widget.h !== height ? { ...widget, h: height } : widget))
@@ -181,55 +119,35 @@ export function CanvasWorkspace() {
 
   function addWidget(cardId: string) {
     const definition = DATA_CARD_BY_ID.get(cardId)
-    if (!definition) return
+    if (!definition || !activeSheet) return
     const bottom = activeSheet.widgets.reduce((max, widget) => Math.max(max, widget.y + widget.h), 0)
-    updateActiveWidgets((widgets) => [...widgets, {
+    dispatch({ type: "add-widget", sheetId: activeId, widget: {
       instanceId: uid(cardId), cardId,
       x: 0, y: bottom,
       w: definition.defaultW, h: definition.defaultH * LEGACY_HEIGHT_SCALE, autoFit: true,
-    }])
+    } })
   }
 
   function addSheet() {
     const id = uid("hoja")
-    setSheets((current) => [...current, { id, name: `Hoja ${current.length + 1}`, widgets: [] }])
-    setActiveId(id)
+    dispatch({ type: "add-sheet", id })
     setEditingId(id)
   }
 
   function duplicateSheet() {
     if (!activeSheet) return
     const id = uid("hoja")
-    setSheets((current) => [...current, {
-      id,
-      name: `${activeSheet.name} copia`,
-      widgets: activeSheet.widgets.map((widget) => ({ ...widget, instanceId: uid(widget.cardId) })),
-    }])
-    setActiveId(id)
+    dispatch({ type: "duplicate-sheet", sourceId: activeId, id, widgetInstanceIds: activeSheet.widgets.map((widget) => uid(widget.cardId)) })
   }
 
   function deleteSheet() {
     if (sheets.length === 1) return
-    const index = sheets.findIndex((sheet) => sheet.id === activeId)
-    const next = sheets.filter((sheet) => sheet.id !== activeId)
-    setSheets(next)
-    setActiveId(next[Math.max(0, index - 1)]?.id ?? next[0].id)
+    dispatch({ type: "delete-sheet", id: activeId })
   }
 
   if (!activeSheet) return null
 
-  const layout: Layout = activeSheet.widgets.map((widget) => {
-    const definition = DATA_CARD_BY_ID.get(widget.cardId)
-    return {
-      i: widget.instanceId,
-      x: compactLayout ? 0 : widget.x,
-      y: widget.y,
-      w: compactLayout ? 1 : widget.w,
-      h: widget.h,
-      minW: compactLayout ? 1 : definition?.minW ?? 4,
-      minH: (definition?.minH ?? 6) * LEGACY_HEIGHT_SCALE,
-    }
-  })
+  const layout: Layout = buildCanvasLayout(activeSheet.widgets, compactLayout, DATA_CARD_BY_ID)
 
   return (
     <div className="min-h-[calc(100vh-49px)] bg-[var(--bg)]">
@@ -242,14 +160,14 @@ export function CanvasWorkspace() {
                 autoFocus
                 value={sheet.name}
                 className="h-8 w-36 shrink-0"
-                onChange={(event) => setSheets((current) => current.map((item) => item.id === sheet.id ? { ...item, name: event.target.value } : item))}
+                onChange={(event) => dispatch({ type: "rename-sheet", id: sheet.id, name: event.target.value })}
                 onBlur={() => setEditingId(null)}
                 onKeyDown={(event) => { if (event.key === "Enter" || event.key === "Escape") setEditingId(null) }}
               />
             ) : (
               <button
                 key={sheet.id}
-                onClick={() => setActiveId(sheet.id)}
+                onClick={() => dispatch({ type: "set-active", id: sheet.id })}
                 onDoubleClick={() => setEditingId(sheet.id)}
                 className={cn(
                   "h-8 shrink-0 rounded-md border px-3 text-xs transition-colors",
@@ -282,7 +200,7 @@ export function CanvasWorkspace() {
           )}
           {mounted && activeSheet.widgets.length > 0 && (
             <GridLayout
-              width={width}
+              width={gridWidth}
               layout={layout}
               gridConfig={{ cols: compactLayout ? 1 : 12, rowHeight: GRID_ROW_HEIGHT, margin: [10, GRID_ROW_GAP], containerPadding: [0, 0] }}
               dragConfig={{ enabled: !compactLayout, handle: ".canvas-card-handle", cancel: ".canvas-card-interactive" }}

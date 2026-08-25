@@ -10,6 +10,18 @@ export interface TickerFocus {
   ticker: string
 }
 
+/**
+ * Maps a cross-section ticker focus to the library card that can actually
+ * represent it. Variable links intentionally have no generic fallback: a
+ * ticker with no card-specific semantics must not silently open EMAE.
+ */
+export function libraryCardIdForTickerFocus(focus: TickerFocus | null | undefined): string | null {
+  if (!focus) return null
+  if (focus.kind === "accion" || focus.kind === "cap") return "acciones"
+  if (focus.kind === "bono") return "bonos"
+  return null
+}
+
 /** A qué sección saltar cuando se elige un destino para un ticker. */
 export type TickerDestino = "precio" | "foro" | "calendario" | "calculadora" | "empresa"
 
