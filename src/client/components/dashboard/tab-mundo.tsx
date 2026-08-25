@@ -23,6 +23,7 @@ function SubTabs({ tabs, active, onChange }: { tabs: { key: string; label: strin
       {tabs.map((t) => (
         <button
           key={t.key}
+          data-tab-key={t.key}
           onClick={() => onChange(t.key)}
           style={{
             padding: "4px 10px", fontSize: 10, background: active === t.key ? "var(--border)" : "transparent",
