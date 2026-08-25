@@ -24,8 +24,11 @@
  *   por resumen de IA). Ese año no incluye el 20/6 (Día de la Bandera) como
  *   feriado bancario -- se dejó tal cual figura en la fuente oficial, sin
  *   "corregirlo" a mano.
- * - 2027: solo 1/1 (fijo todos los años) -- el resto del año todavía no tiene
- *   decreto oficial publicado y el rango pedido solo llega hasta 1/1/2027.
+ * - 2027: solo los feriados INAMOVIBLES de Ley 27.399 (fijos todos los años:
+ *   1/1, 24/3, 2/4, 1/5, 25/5, 9/7, 8/12, 25/12) -- los TRASLADABLES
+ *   (Carnaval, Semana Santa, San Martín, Diversidad, Soberanía) dependen de
+ *   un decreto que todavía no salió. 20/6 (Bandera) queda afuera a propósito
+ *   -- ver nota en 2026, no está claro que siga siendo feriado bancario.
  */
 
 const FERIADOS_AR = [
@@ -69,9 +72,15 @@ const FERIADOS_AR = [
   "2026-04-02", "2026-04-03", "2026-05-01", "2026-05-25", "2026-06-15",
   "2026-07-09", "2026-07-10", "2026-08-17", "2026-10-12", "2026-11-23",
   "2026-12-08", "2026-12-25",
-  // 2027: solo 1/1 confirmado -- el resto del año no tiene decreto oficial
-  // todavía y el rango pedido para este calendario termina en 1/1/2027.
-  "2027-01-01",
+  // 2027: los feriados INAMOVIBLES de Ley 27.399 (fijos todos los años, no
+  // dependen de decreto) -- 1/1, 24/3, 2/4, 1/5, 25/5, 9/7, 8/12, 25/12. Los
+  // TRASLADABLES (Carnaval, Semana Santa, San Martín, Diversidad, Soberanía)
+  // sí necesitan decreto y quedan afuera hasta que se publique. Se dejó
+  // afuera el 20/6 (Bandera) a propósito: la fuente oficial de 2026 (BCRA,
+  // Comunicación "C" 101352) no lo incluyó como feriado bancario ese año, así
+  // que no se asume que valga para 2027 sin confirmarlo.
+  "2027-01-01", "2027-03-24", "2027-04-02", "2027-05-01", "2027-05-25",
+  "2027-07-09", "2027-12-08", "2027-12-25",
   // De acá en adelante (2028+): sólo los feriados que pisan fechas de pago de
   // bonos soberanos de largo plazo -- fuera del alcance de este fix.
   "2028-01-01", "2028-04-02", "2028-05-01", "2028-06-25", "2028-07-09",
