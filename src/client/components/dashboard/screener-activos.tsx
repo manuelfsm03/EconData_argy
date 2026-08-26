@@ -58,6 +58,18 @@ function number(value: number | null, suffix = "") {
   return value == null ? "—" : `${value.toLocaleString("es-AR", { maximumFractionDigits: 2 })}${suffix}`
 }
 
+// Columnas ordenables del screener. `key` null = columna sin sort (checkbox).
+type SortKey = "ticker" | "market" | "currency" | "price" | "change" | "yield"
+const HEADERS: { label: string; key: SortKey | null; align: "left" | "right" | "center" }[] = [
+  { label: "", key: null, align: "center" },
+  { label: "Ticker", key: "ticker", align: "left" },
+  { label: "Mercado", key: "market", align: "left" },
+  { label: "Moneda", key: "currency", align: "right" },
+  { label: "Último", key: "price", align: "right" },
+  { label: "Var. 1D", key: "change", align: "right" },
+  { label: "Tasa/TIR", key: "yield", align: "right" },
+]
+
 export function AssetScreener() {
   const [rows, setRows] = useState<AssetRow[]>([])
   const [selected, setSelected] = useState<string[]>(WATCHLIST_DEFAULT)
@@ -65,6 +77,8 @@ export function AssetScreener() {
   const [currency, setCurrency] = useState<"ALL" | "ARS" | "USD">("ALL")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [sortKey, setSortKey] = useState<SortKey | null>(null)
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
   const { navigateToTicker } = useTickerNav()
 
   // Hidratar desde localStorage y sincronizar en vivo con otras vistas que
@@ -127,12 +141,33 @@ export function AssetScreener() {
 
   const matches = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("es")
-    return rows.filter((row) => {
+    const filtered = rows.filter((row) => {
       if (currency !== "ALL" && row.currency !== currency) return false
       return !normalized || `${row.ticker} ${row.name} ${row.market}`.toLocaleLowerCase("es").includes(normalized)
     })
-  }, [currency, query, rows])
+    if (!sortKey) return filtered
+    const dir = sortDir === "asc" ? 1 : -1
+    return [...filtered].sort((a, b) => {
+      const av = a[sortKey]
+      const bv = b[sortKey]
+      // Nulos siempre al fondo, sin importar la dirección
+      if (av == null && bv == null) return 0
+      if (av == null) return 1
+      if (bv == null) return -1
+      if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir
+      return String(av).localeCompare(String(bv), "es") * dir
+    })
+  }, [currency, query, rows, sortKey, sortDir])
   const selectedRows = selected.map((id) => rows.find((row) => row.id === id)).filter((row): row is AssetRow => Boolean(row))
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"))
+    } else {
+      setSortKey(key)
+      setSortDir("desc")
+    }
+  }
 
   function toggle(id: string) {
     setSelected((current) => {
@@ -159,7 +194,20 @@ export function AssetScreener() {
       {loading ? <div className="p-10 text-center font-mono text-xs text-[var(--text-dim)]">Cargando instrumentos…</div> : error ? <div className="p-8 text-center text-xs text-[var(--negative)]">{error}</div> : (
         <div className="overflow-auto rounded-md border border-[var(--border)]">
           <table className="w-full min-w-[620px] border-collapse font-mono text-[10px]">
-            <thead className="sticky top-0 bg-[var(--bg-elev)] text-[var(--text-mute)]"><tr>{["", "Ticker", "Mercado", "Moneda", "Último", "Var. 1D", "Tasa/TIR"].map((label) => <th key={label} className="border-b border-[var(--border)] px-2 py-2 text-right font-normal first:text-center [&:nth-child(2)]:text-left [&:nth-child(3)]:text-left">{label}</th>)}</tr></thead>
+            <thead className="sticky top-0 bg-[var(--bg-elev)] text-[var(--text-mute)]"><tr>{HEADERS.map((h) => (
+              <th
+                key={h.label || "check"}
+                onClick={h.key ? () => toggleSort(h.key!) : undefined}
+                className={cn(
+                  "border-b border-[var(--border)] px-2 py-2 font-normal",
+                  h.align === "left" ? "text-left" : h.align === "center" ? "text-center" : "text-right",
+                  h.key && "cursor-pointer select-none hover:text-[var(--text)]",
+                )}
+              >
+                {h.label}
+                {h.key && sortKey === h.key && <span className="ml-0.5 text-[var(--amber)]">{sortDir === "asc" ? "▲" : "▼"}</span>}
+              </th>
+            ))}</tr></thead>
             <tbody>{matches.map((row) => {
               const active = selected.includes(row.id)
               // id formato "accion:GGAL" | "accion_usa:AAPL" | "bono:AL30" | "lecap:S31E5" | "mundo:SP500"
