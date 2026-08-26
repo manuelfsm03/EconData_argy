@@ -13,11 +13,12 @@ import { NextRequest, NextResponse } from "next/server"
 import { parseRavaDlrFutures } from "@/server/domain/rofex-rava"
 import { prisma } from "@/server/db/prisma"
 import { requireAdminAuthorization } from "@/server/api/admin-auth"
+import { leerFresco, guardarExito, leerUltimoBueno, borrarFresco } from "@/server/http/stale-cache"
 
 export const runtime = "nodejs"
 
 const RAVA_URL = "https://mercado.rava.com/api/prices/arg"
-let cache: { data: RofexRow[]; expiry: number } | null = null
+const CACHE_KEY = "rofex:futures"
 
 interface RofexRow {
   id: string
@@ -104,12 +105,26 @@ async function fetchFromDB(): Promise<RofexRow[]> {
 }
 
 export async function GET() {
-  if (cache && cache.expiry > Date.now()) return NextResponse.json(cache.data)
+  // Nivel 1 — fresco (TTL 5 min): sirve sin volver a pegarle a la fuente
+  const fresco = leerFresco<RofexRow[]>(CACHE_KEY)
+  if (fresco) return NextResponse.json(fresco)
 
+  // Fuente en vivo (Rava) → fallback a la DB
   const live = await fetchFromRava()
   const data = live?.length ? live : await fetchFromDB()
-  if (data.length) cache = { data, expiry: Date.now() + 300_000 }
-  return NextResponse.json(data)
+
+  if (data.length) {
+    // Guarda como fresco (5 min) y como "último bueno" (sin vencimiento)
+    guardarExito(CACHE_KEY, data, 300)
+    return NextResponse.json(data)
+  }
+
+  // Todas las fuentes cayeron: servir el último dato bueno en vez de vacío
+  const stale = leerUltimoBueno<RofexRow[]>(CACHE_KEY)
+  if (stale) return NextResponse.json(stale.data)
+
+  // Nunca hubo dato exitoso: recién ahí devolvemos vacío
+  return NextResponse.json([])
 }
 
 export async function POST(request: NextRequest) {
@@ -146,7 +161,7 @@ export async function POST(request: NextRequest) {
         cft: body.cft,
       },
     })
-    cache = null
+    borrarFresco(CACHE_KEY)  // invalida el fresco para que el próximo GET refresque
     return NextResponse.json(future)
   } catch (error) {
     console.error("[rofex POST]", error)

@@ -60,3 +60,12 @@ export function leerUltimoBueno<T>(clave: string): { data: T; staleSince: string
   if (!e) return null
   return { data: e.data as T, staleSince: new Date(e.savedAt).toISOString() }
 }
+
+/**
+ * Invalida el nivel "fresco" de una clave (deja intacto el "último bueno"),
+ * forzando que el próximo GET vuelva a consultar la fuente en vivo. Útil tras
+ * una escritura admin que debe reflejarse sin esperar el TTL.
+ */
+export function borrarFresco(clave: string): void {
+  _fresco.delete(clave)
+}
