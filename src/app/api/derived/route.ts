@@ -103,24 +103,31 @@ function riskLabel(score: number): string {
   return "Euforia"
 }
 
+// v7/quote requiere auth desde 2025; usamos v8/chart por ticker (sin auth)
 async function fetchYF(tickers: string[]): Promise<Map<string, { price: number | null; changePct: number | null }>> {
-  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${tickers.join(",")}&fields=regularMarketPrice,regularMarketChangePercent`
-  try {
-    const res = await fetch(url, { headers: YF_HEADERS, signal: AbortSignal.timeout(15_000) })
-    if (!res.ok) return new Map()
-    const json = await res.json() as {
-      quoteResponse?: {
-        result?: Array<{ symbol: string; regularMarketPrice?: number; regularMarketChangePercent?: number }>
-      }
+  async function fetchChart(t: string): Promise<{ price: number; changePct: number } | null> {
+    for (const host of ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]) {
+      try {
+        const res = await fetch(`https://${host}/v8/finance/chart/${encodeURIComponent(t)}?interval=1d&range=5d`, { headers: YF_HEADERS, signal: AbortSignal.timeout(8_000) })
+        if (!res.ok) continue
+        const json = await res.json() as { chart?: { result?: unknown[] } }
+        const result = json?.chart?.result?.[0] as { timestamp?: number[]; indicators?: { quote?: Array<{ close?: (number | null)[] }> } } | undefined
+        if (!result) continue
+        const closes = result.indicators?.quote?.[0]?.close ?? []
+        const valid: number[] = closes.filter((c): c is number => c != null)
+        if (!valid.length) continue
+        const last = valid[valid.length - 1]
+        const prev = valid.length > 1 ? valid[valid.length - 2] : null
+        const changePct = prev && prev > 0 ? ((last - prev) / prev) * 100 : 0
+        return { price: last, changePct }
+      } catch { /* next host */ }
     }
-    const map = new Map<string, { price: number | null; changePct: number | null }>()
-    for (const r of json.quoteResponse?.result ?? []) {
-      map.set(r.symbol, { price: r.regularMarketPrice ?? null, changePct: r.regularMarketChangePercent ?? null })
-    }
-    return map
-  } catch {
-    return new Map()
+    return null
   }
+  const entries = await Promise.all(tickers.map(async (t) => [t, await fetchChart(t)] as const))
+  const map = new Map<string, { price: number | null; changePct: number | null }>()
+  for (const [t, d] of entries) { map.set(t, { price: d?.price ?? null, changePct: d?.changePct ?? null }) }
+  return map
 }
 
 // ── Mapping banco-key → ISO3 para cruzar con IMF ──────────────────────────────
