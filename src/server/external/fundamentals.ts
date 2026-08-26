@@ -107,23 +107,25 @@ async function fetchSECEdgar(ticker: string): Promise<FundamentalsData | null> {
 
     type USDEntry = { end: string; val: number; form: string }
     type Concept  = { units?: { USD?: USDEntry[] } }
-    const facts = await res.json() as { facts?: { "us-gaap"?: Record<string, Concept> } }
+    const facts = await res.json() as { facts?: { "us-gaap"?: Record<string, Concept>; "ifrs-full"?: Record<string, Concept> } }
     const gaap  = facts?.facts?.["us-gaap"]
-    if (!gaap) return null
 
-    // Último valor anual de un concepto (10-K o 20-F)
-    function latestAnnual(...concepts: string[]): number | null {
-      for (const concept of concepts) {
-        const data = gaap?.[concept]?.units?.USD
-        if (!data) continue
-        const annuals = data.filter(d => d.form === "10-K" || d.form === "20-F")
-        if (annuals.length === 0) continue
-        annuals.sort((a, b) => b.end.localeCompare(a.end))
-        return annuals[0].val
+    function makeLatestFn(ns: Record<string, Concept> | undefined, forms: string[]) {
+      return function latestAnnual(...concepts: string[]): number | null {
+        for (const concept of concepts) {
+          const data = ns?.[concept]?.units?.USD
+          if (!data) continue
+          const annuals = data.filter(d => forms.includes(d.form))
+          if (annuals.length === 0) continue
+          annuals.sort((a, b) => b.end.localeCompare(a.end))
+          return annuals[0].val
+        }
+        return null
       }
-      return null
     }
 
+    // ── US-GAAP path ──────────────────────────────────────────────────────────
+    const latestAnnual = makeLatestFn(gaap, ["10-K", "20-F"])
     const revenue = latestAnnual(
       "Revenues",
       "RevenueFromContractWithCustomerExcludingAssessedTax",
@@ -141,33 +143,66 @@ async function fetchSECEdgar(ticker: string): Promise<FundamentalsData | null> {
     const debt        = latestAnnual("LongTermDebt", "LongTermDebtAndCapitalLeaseObligation")
     const opex        = latestAnnual("OperatingExpenses")
 
-    // Si no tenemos ningún dato relevante, consideramos que el ticker no tiene cobertura
-    if (revenue == null && ebit == null && netIncome == null) return null
+    if (revenue != null || ebit != null || netIncome != null) {
+      return {
+        source: "sec_edgar",
+        totalRevenue: revenue, grossProfit, ebitda, ebit, netIncome,
+        operatingExpenses: opex, operatingCashflow: ocf,
+        capitalExpenditures: capex != null ? Math.abs(capex) : null,
+        freeCashflow: fcf, totalDebt: debt,
+        ebitdaMargin: revenue && ebitda ? ebitda / revenue : null,
+        grossMargin: revenue && grossProfit ? grossProfit / revenue : null,
+        operatingMargin: revenue && ebit ? ebit / revenue : null,
+        profitMargin: revenue && netIncome ? netIncome / revenue : null,
+        marketCap: null, enterpriseValue: null, trailingPE: null, forwardPE: null,
+        priceToBook: null, beta: null, evToEbitda: null, evToRevenue: null,
+        revenueGrowth: null, earningsGrowth: null,
+        returnOnEquity: null, returnOnAssets: null,
+        dividendYield: null, eps: null,
+        periodo: "annual", currency: "USD",
+      }
+    }
+
+    // ── IFRS-full fallback (20-F foreign private issuers, e.g. YPF) ───────────
+    const ifrs = facts?.facts?.["ifrs-full"]
+    if (!ifrs) return null
+    const latestIFRS = makeLatestFn(ifrs, ["20-F"])
+
+    const iRev   = latestIFRS("Revenue")
+    const iGP    = latestIFRS("GrossProfit")
+    const iEbit  = latestIFRS("ProfitLossFromOperatingActivities", "OperatingProfit")
+    const iNet   = latestIFRS("ProfitLoss", "ProfitLossAttributableToOwnersOfParent")
+    const iDep   = latestIFRS("AdjustmentsForDepreciationExpense")
+    const iAmort = latestIFRS("AdjustmentsForAmortisationExpense")
+    const iDA    = (iDep ?? 0) + (iAmort ?? 0) || null
+    const iEbitda = iEbit != null && iDA != null ? iEbit + iDA : null
+    const iOcf   = latestIFRS("CashFlowsFromUsedInOperatingActivities")
+    const iCapex = latestIFRS(
+      "PurchaseOfPropertyPlantAndEquipmentIntangibleAssetsOtherThanGoodwillInvestmentPropertyAndOtherNoncurrentAssets",
+      "PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities",
+      "PurchaseOfPropertyPlantAndEquipment",
+    )
+    const iFcf   = iOcf != null && iCapex != null ? iOcf - iCapex : null
+    const iDebt  = latestIFRS("Borrowings")
+
+    if (iRev == null && iEbit == null && iNet == null) return null
 
     return {
       source: "sec_edgar",
-      totalRevenue: revenue,
-      grossProfit,
-      ebitda,
-      ebit,
-      netIncome,
-      operatingExpenses: opex,
-      operatingCashflow: ocf,
-      capitalExpenditures: capex != null ? Math.abs(capex) : null,
-      freeCashflow: fcf,
-      totalDebt: debt,
-      ebitdaMargin: revenue && ebitda ? ebitda / revenue : null,
-      grossMargin: revenue && grossProfit ? grossProfit / revenue : null,
-      operatingMargin: revenue && ebit ? ebit / revenue : null,
-      profitMargin: revenue && netIncome ? netIncome / revenue : null,
-      // Valuación: EDGAR no tiene precios de mercado — los cubre YF crumb/AV
+      totalRevenue: iRev, grossProfit: iGP, ebitda: iEbitda, ebit: iEbit, netIncome: iNet,
+      operatingExpenses: null, operatingCashflow: iOcf,
+      capitalExpenditures: iCapex != null ? Math.abs(iCapex) : null,
+      freeCashflow: iFcf, totalDebt: iDebt,
+      ebitdaMargin: iRev && iEbitda ? iEbitda / iRev : null,
+      grossMargin: iRev && iGP ? iGP / iRev : null,
+      operatingMargin: iRev && iEbit ? iEbit / iRev : null,
+      profitMargin: iRev && iNet ? iNet / iRev : null,
       marketCap: null, enterpriseValue: null, trailingPE: null, forwardPE: null,
       priceToBook: null, beta: null, evToEbitda: null, evToRevenue: null,
       revenueGrowth: null, earningsGrowth: null,
       returnOnEquity: null, returnOnAssets: null,
       dividendYield: null, eps: null,
-      periodo: "annual",
-      currency: "USD",
+      periodo: "annual", currency: "USD",
     }
   } catch {
     return null
