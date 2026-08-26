@@ -1681,7 +1681,6 @@ export function TabMundo() {
   }
 
   const label = TICKER_LABELS[selectedTicker] ?? selectedTicker.toUpperCase()
-  const selectedData = snapshot?.[selectedTicker]
 
   return (
     <div>
@@ -1737,56 +1736,24 @@ export function TabMundo() {
         </div>
       ))}
 
-      {/* Historical series */}
-      <div style={{ background: "var(--bg)", border: "1px solid var(--border)", margin: 1 }}>
-        <div style={{ padding: "4px 8px", background: "var(--bg-elev-2)", borderBottom: "1px solid var(--bg-elev-2)", fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1 }}>
-          {label} — Serie histórica (1 año) ·{" "}
-          {selectedData?.precio != null ? selectedData.precio.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "—"}{" "}
-          <span style={{ color: (selectedData?.variacion_pct ?? 0) >= 0 ? "var(--positive)" : "var(--negative)" }}>
-            {selectedData?.variacion_pct != null
-              ? `${(selectedData.variacion_pct) >= 0 ? "+" : ""}${selectedData.variacion_pct.toFixed(2)}%`
-              : ""}
-          </span>
+      {/* Historical series — gráfico interactivo con selector de período */}
+      {histLoading ? (
+        <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11, textAlign: "center", background: "var(--bg)", border: "1px solid var(--border)", margin: 1 }}>Cargando histórico...</div>
+      ) : historico && historico.length > 0 ? (
+        <div style={{ margin: 1 }}>
+          <BBGLineChart
+            title={`${label} — SERIE HISTÓRICA`}
+            data={historico.map(([date, precio]) => ({ date, precio }))}
+            lines={[{ key: "precio", name: label, color: "var(--amber)" }]}
+            height={300}
+            enableDateRange
+            defaultRange="all"
+            formatValue={(v) => v.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+          />
         </div>
-        {histLoading ? (
-          <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11, textAlign: "center" }}>Cargando histórico...</div>
-        ) : historico && historico.length > 0 ? (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  <th style={{ padding: "3px 8px", fontSize: 9, color: "var(--text-dim)", textAlign: "left", borderBottom: "1px solid var(--bg-elev-2)" }}>Fecha</th>
-                  <th style={{ padding: "3px 8px", fontSize: 9, color: "var(--text-dim)", textAlign: "right", borderBottom: "1px solid var(--bg-elev-2)" }}>Precio</th>
-                  <th style={{ padding: "3px 8px", fontSize: 9, color: "var(--text-dim)", textAlign: "right", borderBottom: "1px solid var(--bg-elev-2)" }}>Var % (vs anterior)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historico
-                  .slice()
-                  .reverse()
-                  .slice(0, 30)
-                  .map(([d, v], i, arr) => {
-                    const prev = arr[i + 1]?.[1]
-                    const chg = prev && prev !== 0 ? ((v - prev) / prev) * 100 : null
-                    return (
-                      <tr key={d} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg-row-alt)" }}>
-                        <td style={{ padding: "3px 8px", fontSize: 10, color: "var(--text-dim)" }}>{d}</td>
-                        <td style={{ padding: "3px 8px", fontSize: 10, color: "var(--text)", textAlign: "right", fontFamily: "var(--font-data)" }}>
-                          {v.toLocaleString("en-US", { maximumFractionDigits: 2 })}
-                        </td>
-                        <td style={{ padding: "3px 8px", fontSize: 10, textAlign: "right", fontFamily: "var(--font-data)", color: chg == null ? "var(--text-mute)" : chg >= 0 ? "var(--positive)" : "var(--negative)" }}>
-                          {chg != null ? `${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%` : "—"}
-                        </td>
-                      </tr>
-                    )
-                  })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div style={{ padding: 12, color: "var(--text-dim)", fontSize: 11 }}>Sin datos históricos disponibles.</div>
-        )}
-      </div>
+      ) : (
+        <div style={{ padding: 12, color: "var(--text-dim)", fontSize: 11, background: "var(--bg)", border: "1px solid var(--border)", margin: 1 }}>Sin datos históricos disponibles.</div>
+      )}
       </>)}
     </div>
   )
