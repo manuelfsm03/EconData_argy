@@ -61,36 +61,50 @@ interface Quote {
   fechaActualizacion: string | null
 }
 
-async function fetchYFQuotes(tickers: string[]): Promise<Map<string, { price: number; change: number; changePct: number; time: number }>> {
-  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${tickers.join(",")}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketTime`
-  const res = await fetch(url, {
-    headers: YF_HEADERS,
-    signal: AbortSignal.timeout(15_000),
-  })
-  if (!res.ok) throw new Error(`YF HTTP ${res.status}`)
+// v7/quote requiere auth desde 2025. Usamos v8/chart (sin auth, mismo que empresa/).
+async function fetchYFChart(ticker: string): Promise<{ price: number; change: number; changePct: number; time: number } | null> {
+  for (const host of ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]) {
+    const url = `https://${host}/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=5d`
+    try {
+      const res = await fetch(url, { headers: YF_HEADERS, signal: AbortSignal.timeout(8_000) })
+      if (!res.ok) continue
+      const json = await res.json() as { chart?: { result?: unknown[] } }
+      const result = json?.chart?.result?.[0] as {
+        timestamp?: number[]
+        indicators?: { quote?: Array<{ close?: (number | null)[] }> }
+      } | undefined
+      if (!result) continue
 
-  const json = await res.json() as {
-    quoteResponse?: {
-      result?: Array<{
-        symbol: string
-        regularMarketPrice?: number
-        regularMarketChange?: number
-        regularMarketChangePercent?: number
-        regularMarketTime?: number
-      }>
+      const closes = result.indicators?.quote?.[0]?.close ?? []
+      const timestamps = result.timestamp ?? []
+
+      const valid: { close: number; time: number }[] = []
+      for (let i = 0; i < closes.length; i++) {
+        const c = closes[i]
+        if (c != null) valid.push({ close: c, time: timestamps[i] ?? 0 })
+      }
+      if (valid.length === 0) continue
+
+      const last = valid[valid.length - 1]
+      const prev = valid.length > 1 ? valid[valid.length - 2] : null
+      const change = prev ? last.close - prev.close : 0
+      const changePct = prev && prev.close > 0 ? (change / prev.close) * 100 : 0
+
+      return { price: last.close, change, changePct, time: last.time }
+    } catch {
+      // próximo host
     }
   }
+  return null
+}
 
+async function fetchYFQuotes(tickers: string[]): Promise<Map<string, { price: number; change: number; changePct: number; time: number }>> {
+  const entries = await Promise.all(
+    tickers.map(async (ticker) => [ticker, await fetchYFChart(ticker)] as const)
+  )
   const map = new Map<string, { price: number; change: number; changePct: number; time: number }>()
-  for (const r of json.quoteResponse?.result ?? []) {
-    if (r.regularMarketPrice != null) {
-      map.set(r.symbol, {
-        price: r.regularMarketPrice,
-        change: r.regularMarketChange ?? 0,
-        changePct: r.regularMarketChangePercent ?? 0,
-        time: r.regularMarketTime ?? 0,
-      })
-    }
+  for (const [ticker, data] of entries) {
+    if (data) map.set(ticker, data)
   }
   return map
 }
