@@ -444,31 +444,30 @@ const SP500: Array<{ ticker: string; name: string; sector: Sector }> = [
   { ticker: "VICI",  name: "VICI Properties",        sector: "Real Estate" },
 ]
 
-// Batch quote: Yahoo Finance acepta múltiples símbolos en un solo request
-async function fetchBatchQuotes(
-  tickers: string[],
-): Promise<Map<string, { lastPrice: number | null; change1DPct: number | null; shortName: string | null }>> {
-  const symbols = tickers.join(",")
-  const url = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols)}&fields=symbol,regularMarketPrice,regularMarketChangePercent,shortName`
-  const result = new Map<string, { lastPrice: number | null; change1DPct: number | null; shortName: string | null }>()
-  try {
-    const res = await fetch(url, { headers: YF_HEADERS, signal: AbortSignal.timeout(12000) })
-    if (!res.ok) return result
-    const j = await res.json()
-    const quotes: Array<Record<string, unknown>> = j?.quoteResponse?.result ?? []
-    for (const q of quotes) {
-      const sym = (q.symbol as string | undefined)?.toUpperCase()
-      if (!sym) continue
-      result.set(sym, {
-        lastPrice:    typeof q.regularMarketPrice === "number" ? q.regularMarketPrice : null,
-        change1DPct:  typeof q.regularMarketChangePercent === "number" ? q.regularMarketChangePercent : null,
-        shortName:    typeof q.shortName === "string" ? q.shortName : null,
-      })
-    }
-  } catch {
-    // devuelve lo que tenga (parcial o vacío)
+// v7/quote requiere auth desde 2025; usamos v8/chart por ticker (sin auth)
+async function fetchYFChart(ticker: string): Promise<{ lastPrice: number | null; change1DPct: number | null } | null> {
+  for (const host of ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]) {
+    try {
+      const res = await fetch(
+        `https://${host}/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=5d`,
+        { headers: YF_HEADERS, signal: AbortSignal.timeout(8_000) },
+      )
+      if (!res.ok) continue
+      const json = await res.json() as { chart?: { result?: unknown[] } }
+      const result = json?.chart?.result?.[0] as {
+        indicators?: { quote?: Array<{ close?: (number | null)[] }> }
+      } | undefined
+      if (!result) continue
+      const closes = result.indicators?.quote?.[0]?.close ?? []
+      const valid: number[] = closes.filter((c): c is number => c != null)
+      if (!valid.length) continue
+      const last = valid[valid.length - 1]
+      const prev = valid.length > 1 ? valid[valid.length - 2] : null
+      const change1DPct = prev && prev > 0 ? ((last - prev) / prev) * 100 : 0
+      return { lastPrice: last, change1DPct }
+    } catch { /* next host */ }
   }
-  return result
+  return null
 }
 
 const _cache: Record<string, { data: unknown; expiry: number }> = {}
@@ -484,26 +483,26 @@ export async function GET() {
   const cached = getCached<unknown[]>("usa_stocks")
   if (cached) return NextResponse.json({ data: cached, cached: true })
 
-  // Batches de 100 tickers → requests en paralelo
-  const batchSize = 100
+  // v8/chart en chunks de 50 tickers: evita saturar YF con 400+ conexiones simultáneas
   const allTickers = SP500.map((s) => s.ticker)
-  const batches: string[][] = []
-  for (let i = 0; i < allTickers.length; i += batchSize) {
-    batches.push(allTickers.slice(i, i + batchSize))
+  const CHUNK = 50
+  const quoteMap = new Map<string, { lastPrice: number | null; change1DPct: number | null } | null>()
+
+  for (let i = 0; i < allTickers.length; i += CHUNK) {
+    const batch = allTickers.slice(i, i + CHUNK)
+    const entries = await Promise.all(batch.map(async (t) => [t, await fetchYFChart(t)] as const))
+    for (const [t, d] of entries) quoteMap.set(t, d)
   }
 
-  const maps = await Promise.all(batches.map((b) => fetchBatchQuotes(b)))
-  const merged = new Map(maps.flatMap((m) => [...m.entries()]))
-
   const results = SP500.map((stock) => {
-    const q = merged.get(stock.ticker)
+    const q = quoteMap.get(stock.ticker)
     return {
-      ticker:     stock.ticker,
-      name:       q?.shortName ?? stock.name,
-      sector:     stock.sector,
-      market:     "S&P 500",
-      currency:   "USD",
-      lastPrice:  q?.lastPrice ?? null,
+      ticker:      stock.ticker,
+      name:        stock.name,
+      sector:      stock.sector,
+      market:      "S&P 500",
+      currency:    "USD",
+      lastPrice:   q?.lastPrice ?? null,
       change1DPct: q?.change1DPct ?? null,
     }
   })
