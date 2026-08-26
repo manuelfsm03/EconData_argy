@@ -269,20 +269,34 @@ export async function GET(request: NextRequest) {
         Origin: "https://finance.yahoo.com",
         Referer: "https://finance.yahoo.com/commodities",
       }
-      const yfUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${tickers.join(",")}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketTime`
-      const yfRes = await fetchRegistered(yfUrl, { headers: yfHeaders, signal: AbortSignal.timeout(12_000) })
-      if (!yfRes.ok) throw new Error(`YF HTTP ${yfRes.status}`)
-      const yfJson = await yfRes.json() as {
-        quoteResponse?: { result?: Array<{ symbol: string; regularMarketPrice?: number; regularMarketChange?: number; regularMarketChangePercent?: number; regularMarketTime?: number }> }
+      // v7/quote requiere auth desde 2025; usamos v8/chart por ticker
+      async function fetchChart(t: string) {
+        for (const host of ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]) {
+          try {
+            const r = await fetchRegistered(`https://${host}/v8/finance/chart/${encodeURIComponent(t)}?interval=1d&range=5d`, { headers: yfHeaders, signal: AbortSignal.timeout(8_000) })
+            if (!r.ok) continue
+            const j = await r.json() as { chart?: { result?: unknown[] } }
+            const res = j?.chart?.result?.[0] as { timestamp?: number[]; indicators?: { quote?: Array<{ close?: (number | null)[] }> } } | undefined
+            if (!res) continue
+            const closes = res.indicators?.quote?.[0]?.close ?? []
+            const valid = closes.map((c, i) => c != null ? { c, t: (res.timestamp ?? [])[i] ?? 0 } : null).filter(Boolean) as { c: number; t: number }[]
+            if (!valid.length) continue
+            const last = valid[valid.length - 1], prev = valid[valid.length - 2]
+            const change = prev ? last.c - prev.c : 0
+            return { price: last.c, change, changePct: prev && prev.c > 0 ? (change / prev.c) * 100 : 0, time: last.t }
+          } catch { /* next host */ }
+        }
+        return null
       }
-      const data = (yfJson.quoteResponse?.result ?? []).map((r) => ({
-        ticker: r.symbol,
-        nombre: nombres[r.symbol] ?? r.symbol,
-        unidad: unidades[r.symbol] ?? "",
-        precio: r.regularMarketPrice ?? null,
-        cambio: r.regularMarketChange ?? null,
-        cambioPct: r.regularMarketChangePercent ?? null,
-        fechaActualizacion: r.regularMarketTime ? new Date(r.regularMarketTime * 1000).toISOString() : null,
+      const results = await Promise.all(tickers.map(async (t) => ({ ticker: t, q: await fetchChart(t) })))
+      const data = results.map(({ ticker, q }) => ({
+        ticker,
+        nombre: nombres[ticker] ?? ticker,
+        unidad: unidades[ticker] ?? "",
+        precio: q?.price ?? null,
+        cambio: q?.change ?? null,
+        cambioPct: q?.changePct ?? null,
+        fechaActualizacion: q?.time ? new Date(q.time * 1000).toISOString() : null,
       }))
       return NextResponse.json({ data, updated_at: new Date().toISOString(), source: "Yahoo Finance futures" })
     }
