@@ -4609,6 +4609,180 @@ export function SenorejaView() {
   )
 }
 
+// ── Agro ──────────────────────────────────────────────────────────────────────
+
+interface GranoLocalData {
+  disponible: number | null
+  fobOficial: number | null
+  retencion: number
+  unidad: string
+}
+
+interface AgroLocalPayload {
+  soja: GranoLocalData
+  maiz: GranoLocalData
+  trigo: GranoLocalData
+  girasol: GranoLocalData
+  updated_at: string
+  source: string
+}
+
+interface CbotQuote {
+  ticker: string
+  nombre: string
+  unidad: string
+  precio: number | null
+  cambio: number | null
+  cambioPct: number | null
+}
+
+// USc/bu → USD/tn: 1 tn soja/trigo = 36.744 bu; maíz = 39.368 bu
+const BU_TO_TON: Record<string, number | undefined> = {
+  "ZS=F": 36.744,
+  "ZC=F": 39.368,
+  "ZW=F": 36.744,
+}
+
+function cbotUsdTon(precio: number | null, ticker: string): number | null {
+  const factor = BU_TO_TON[ticker]
+  if (precio == null || !factor) return null
+  return precio * factor / 100
+}
+
+function AgroView() {
+  const [local, setLocal] = useState<AgroLocalPayload | null>(null)
+  const [cbot, setCbot] = useState<CbotQuote[]>([])
+  const [produccion, setProduccion] = useState<Record<string, number | string>[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/agro-local").then(r => r.json()),
+      fetch("/api/commodities?categoria=agro").then(r => r.json()),
+      fetch("/api/agro-soja").then(r => r.json()),
+    ])
+      .then(([l, c, s]) => {
+        setLocal(l as AgroLocalPayload)
+        setCbot((c.data ?? []) as CbotQuote[])
+        setProduccion((s.data ?? []) as Record<string, number | string>[])
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return (
+    <div style={{ padding: 24, color: "var(--text-dim)", fontSize: 11, fontFamily: "var(--font-data)" }}>
+      Cargando datos agro…
+    </div>
+  )
+
+  const granos: { key: keyof Pick<AgroLocalPayload, "soja" | "maiz" | "trigo">; label: string }[] = [
+    { key: "soja",  label: "Soja"  },
+    { key: "maiz",  label: "Maíz"  },
+    { key: "trigo", label: "Trigo" },
+  ]
+  const mainCbot = cbot.filter(q => ["ZS=F", "ZC=F", "ZW=F"].includes(q.ticker))
+  const prodData = produccion.slice(-12)
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      {/* ── Pizarra Rosario ── */}
+      <SectionHeader title="Pizarra Rosario — Precios disponibles" source={local?.source ?? "mercado.rava.com"} />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, padding: "12px 14px" }}>
+        {granos.map(({ key, label }) => {
+          const d = local?.[key]
+          return (
+            <div key={key} style={{
+              flex: "1 1 200px", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 14px",
+            }}>
+              <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+                {label}
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "var(--amber)", fontFamily: "var(--font-data)" }}>
+                {d?.disponible != null ? `USD ${fmtNum(d.disponible, 0)}/tn` : "—"}
+              </div>
+              <div style={{ display: "flex", gap: 16, fontSize: 10, color: "var(--text-dim)", marginTop: 4 }}>
+                <span>FOB teórico: <b style={{ color: "var(--text)" }}>{d?.fobOficial != null ? `USD ${fmtNum(d.fobOficial, 0)}/tn` : "—"}</b></span>
+                <span>Retención: <b style={{ color: "var(--text)" }}>{d?.retencion ?? "—"}%</b></span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ── CBOT Futuros ── */}
+      <SectionHeader title="CBOT — Futuros internacionales" source="Yahoo Finance" />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, padding: "12px 14px" }}>
+        {mainCbot.length === 0
+          ? <div style={{ fontSize: 11, color: "var(--text-mute)", padding: "4px 0" }}>Sin datos CBOT disponibles</div>
+          : mainCbot.map(q => {
+              const usdTon = cbotUsdTon(q.precio, q.ticker)
+              return (
+                <div key={q.ticker} style={{
+                  flex: "1 1 180px", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 14px",
+                }}>
+                  <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+                    {q.nombre} · {q.unidad}
+                  </div>
+                  <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "var(--font-data)", color: "var(--text)" }}>
+                    {q.precio != null ? fmtNum(q.precio, 2) : "—"}
+                  </div>
+                  {usdTon != null && (
+                    <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 2 }}>
+                      ≈ USD <b style={{ color: "var(--text)" }}>{fmtNum(usdTon, 0)}</b>/tn
+                    </div>
+                  )}
+                  {q.cambioPct != null && (
+                    <div style={{ fontSize: 10, color: q.cambioPct >= 0 ? "var(--positive)" : "var(--negative)", marginTop: 4 }}>
+                      {q.cambioPct >= 0 ? "+" : ""}{fmtNum(q.cambioPct, 2)}%
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+      </div>
+
+      {/* ── Producción mundial soja ── */}
+      {prodData.length > 0 && (
+        <>
+          <SectionHeader title="Producción mundial de soja" source="Our World in Data / FAO" />
+          <div style={{ padding: "12px 14px" }}>
+            <div style={{ height: 260 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={prodData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(d: string) => d.slice(0, 4)}
+                    tick={{ fontSize: 9, fill: "var(--text-mute)" }}
+                    tickLine={false} axisLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 9, fill: "var(--text-mute)" }}
+                    tickLine={false} axisLine={false}
+                    tickFormatter={(v: number) => `${v}M`}
+                  />
+                  <Tooltip
+                    contentStyle={{ background: "var(--bg-elev)", border: "1px solid var(--border)", fontSize: 10, color: "var(--text)" }}
+                    formatter={(v: unknown) => [`${v} M tn`, ""]}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 9 }} />
+                  <Area type="monotone" dataKey="Brazil" stackId="1" stroke="#4CAF50" fill="#4CAF50" fillOpacity={0.5} name="Brasil" />
+                  <Area type="monotone" dataKey="United States" stackId="1" stroke="#2196F3" fill="#2196F3" fillOpacity={0.5} name="EE.UU." />
+                  <Area type="monotone" dataKey="Argentina" stackId="1" stroke="var(--amber)" fill="var(--amber)" fillOpacity={0.7} name="Argentina" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 4 }}>
+              Millones de toneladas · datos anuales FAO
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 const MACRO_TABS = [
@@ -4616,6 +4790,7 @@ const MACRO_TABS = [
   { key: "ipc",         label: "IPC"              },
   { key: "balanza",     label: "Balanza Comercial" },
   { key: "fiscal",      label: "Fiscal"           },
+  { key: "agro",        label: "Agro"             },
   { key: "desigualdad", label: "Desigualdad"      },
   { key: "piramides",   label: "Pirámides"        },
   { key: "fx",          label: "FX"               },
@@ -4637,6 +4812,7 @@ export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
       {activeTab === "ipc"         && <IpcView />}
       {activeTab === "balanza"     && <BalanzaView />}
       {activeTab === "fiscal"      && <FiscalSankeyView />}
+      {activeTab === "agro"        && <AgroView />}
       {activeTab === "desigualdad" && <DesigualdadView />}
       {activeTab === "piramides"   && <PiramidesView />}
       {activeTab === "fx"          && <FXView />}
