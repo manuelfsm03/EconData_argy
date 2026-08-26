@@ -539,6 +539,9 @@ async function fetchYFCrumb(ticker: string): Promise<FundamentalsData | null> {
     const fcf         = rawYF(fd.freeCashflow)
     const debt        = rawYF(fd.totalDebt)
 
+    // Si YF no tiene datos financieros (empresa fuera de cobertura YF), continuar cascada
+    if (revenue == null && ebitda == null && ebit == null && netIncome == null) return null
+
     return {
       source: "yahoo_crumb",
       totalRevenue: revenue,
