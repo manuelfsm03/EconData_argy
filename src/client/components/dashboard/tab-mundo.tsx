@@ -674,10 +674,22 @@ function MacroComparadaView() {
   const data = Object.values(yearMap).sort((a, b) => (a.date as string).localeCompare(b.date as string))
 
   const indicadores = [
-    { key: "gdp_growth", label: "Crecimiento PIB (%)" },
-    { key: "inflation", label: "Inflación (%)" },
-    { key: "unemployment", label: "Desempleo (%)" },
+    { key: "gdp_growth",      label: "Crecimiento PIB (%)",        unit: "%" },
+    { key: "inflation",       label: "Inflación (CPI, %)",         unit: "%" },
+    { key: "unemployment",    label: "Desempleo (%)",              unit: "%" },
+    { key: "gdp_per_capita",  label: "PIB per cápita (USD)",       unit: "USD" },
+    { key: "trade_pct_gdp",   label: "Comercio / PIB (%)",         unit: "%" },
+    { key: "current_account", label: "Cuenta corriente / PIB (%)", unit: "%" },
+    { key: "fdi_inflows",     label: "IED entrante / PIB (%)",     unit: "%" },
+    // debt_pct_gdp omitido: el Banco Mundial no tiene dato reciente para
+    // este set de países (devuelve DATA_EXPIRED). Reponer si se actualiza.
   ]
+  const indicadorSel = indicadores.find((i) => i.key === indicador)
+  const unidad = indicadorSel?.unit ?? "%"
+  // PIB per cápita viene en USD (miles); el resto son porcentajes
+  const formatValue = unidad === "USD"
+    ? (v: number) => "US$" + (Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(1)}K` : v.toFixed(0))
+    : (v: number) => `${v.toFixed(1)}%`
 
   const lines = [
     { key: "Argentina",     name: "Argentina",  color: "#CE93D8" },
@@ -712,12 +724,13 @@ function MacroComparadaView() {
       </div>
 
       <BBGLineChart
-        title={`MACRO COMPARADA — ${indicadores.find(i => i.key === indicador)?.label || "Indicador"}`}
+        title={`MACRO COMPARADA — ${indicadorSel?.label || "Indicador"}`}
         data={data}
         lines={lines}
         enableLineToggle
         height={300}
-        yAxisLabel="%"
+        yAxisLabel={unidad}
+        formatValue={formatValue}
         defaultRange="all"
       />
       <div style={{ padding: "4px 10px", fontSize: 8, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
