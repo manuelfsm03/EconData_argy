@@ -328,3 +328,109 @@ test("IMF domain exposes partial and first-run total failure without synthetic v
   assert.equal(empty.allFailed, true)
   assert.equal(empty.data.every((country) => country.pib_crecimiento === null && country.inflacion === null), true)
 })
+
+test("cross-source redirects preserve only the explicit safe header allowlist", async () => {
+  const calls: Headers[] = []
+  const transport: typeof fetch = async (input, init) => {
+    calls.push(new Headers(init?.headers))
+    return calls.length === 1
+      ? new Response(null, { status: 302, headers: { location: "https://consent.yahoo.com/consent" } })
+      : new Response("ok")
+  }
+
+  await fetchRegisteredSession("https://finance.yahoo.com", {
+    headers: {
+      Accept: "application/json",
+      "Accept-Language": "en-US",
+      "Accept-Encoding": "gzip",
+      "Cache-Control": "no-cache",
+      "Content-Type": "application/json",
+      "User-Agent": "test-agent",
+      "X-Subscription-Key": "credential-sentinel",
+      "X-Arbitrary-Canary": "must-not-forward",
+      Authorization: "Bearer caller-secret",
+      Cookie: "caller-secret=1",
+      Origin: "https://finance.yahoo.com",
+      Referer: "https://finance.yahoo.com/",
+      Signature: "signature-sentinel",
+    },
+  }, transport)
+
+  assert.equal(calls.length, 2)
+  for (const [name, value] of [
+    ["accept", "application/json"],
+    ["accept-language", "en-US"],
+    ["accept-encoding", "gzip"],
+    ["cache-control", "no-cache"],
+    ["content-type", "application/json"],
+    ["user-agent", "test-agent"],
+  ]) assert.equal(calls[1].get(name), value, name)
+  for (const name of [
+    "x-subscription-key", "x-arbitrary-canary", "authorization", "cookie", "origin", "referer", "signature",
+  ]) assert.equal(calls[1].get(name), null, name)
+})
+
+function invalidCentralFixture(url: string, kind: "blank" | "null" | "non-finite"): Response {
+  const value = kind === "blank" ? "" : kind === "null" ? null : "Infinity"
+  if (url.includes("newyorkfed.org")) return Response.json({ refRates: [{ effectiveDate: "2026-08-27", targetRateHigh: null, percentRate: value }] })
+  if (url.includes("ecb.europa.eu")) return new Response(`TIME_PERIOD,OBS_VALUE\n2026-08-26,${value === null ? "" : value}\n`)
+  if (url.includes("api.bcb.gov.br")) return Response.json([{ data: "27/08/2026", valor: value }])
+  if (url.includes("bankofengland.co.uk")) return new Response(`DATE,VALUE\n2026-08-26,${value === null ? "" : value}\n`)
+  if (url.includes("bankofcanada.ca")) return Response.json({ observations: [{ d: "2026-08-26", V39079: { v: value } }] })
+  if (url.includes("rba.gov.au")) return Response.json({ dataSets: [{ series: { FIRMMCRT: { observations: { "2026-08-26": [value] } } } }] })
+  if (url.includes("sdmx.oecd.org")) return Response.json({ dataSets: [{ observations: { "0": [value] } }], structure: { dimensions: { observation: [{ values: [{ id: "2026-07" }] }] } } })
+  throw new Error(`unexpected fixture URL: ${url}`)
+}
+
+test("central-bank domain rejects blank, null, and non-finite observations without cache writes", async () => {
+  const previousFredKey = process.env.FRED_API_KEY
+  const previousBanxicoToken = process.env.BMX_TOKEN
+  delete process.env.FRED_API_KEY
+  delete process.env.BMX_TOKEN
+  try {
+    for (const kind of ["blank", "null", "non-finite"] as const) {
+      const cache = new MemoryDomainCache()
+      const at = new Date("2026-08-27T12:00:00Z")
+      const result = await loadCentralBankRates({ fetcher: async (input) => invalidCentralFixture(input.toString(), kind), now: () => at, cache })
+      assert.equal(result.allFailed, true, kind)
+      assert.equal(result.stale, false, kind)
+      assert.equal(Object.values(result.data).every((bank) => bank.tasa === null && !bank.esVivo), true, kind)
+
+      const retry = await loadCentralBankRates({ fetcher: async () => { throw new Error("must fetch after invalid result") }, now: () => new Date(at.getTime() + 1), cache })
+      assert.equal(retry.allFailed, true, `${kind} cache state`)
+      assert.equal(retry.cached, undefined, `${kind} cache state`)
+    }
+  } finally {
+    if (previousFredKey == null) delete process.env.FRED_API_KEY
+    else process.env.FRED_API_KEY = previousFredKey
+    if (previousBanxicoToken == null) delete process.env.BMX_TOKEN
+    else process.env.BMX_TOKEN = previousBanxicoToken
+  }
+})
+
+function responseWithJson(payload: unknown): Response {
+  const response = new Response(null, { status: 200 })
+  Object.defineProperty(response, "json", { value: async () => payload })
+  return response
+}
+
+test("IMF domain rejects malformed latest values without throwing or poisoning cache", async () => {
+  for (const malformed of [null, "3.4", NaN, Infinity, undefined] as const) {
+    const cache = new MemoryDomainCache()
+    const fetcher: typeof fetch = async (input) => {
+      const name = input.toString().includes("NGDP_RPCH") ? "NGDP_RPCH" : "PCPIPCH"
+      const values = malformed === undefined
+        ? {}
+        : Object.fromEntries(["USA", "ARG", "DEU", "JPN", "GBR"].map((code) => [code, { "2026": malformed }]))
+      return responseWithJson({ values: { [name]: values } })
+    }
+    const at = new Date("2026-08-27T12:00:00Z")
+    const result = await loadImfMacro({ fetcher, now: () => at, cache })
+    assert.equal(result.allFailed, true, String(malformed))
+    assert.equal(result.data.every((country) => country.pib_crecimiento === null && country.inflacion === null), true, String(malformed))
+
+    const retry = await loadImfMacro({ fetcher: async () => { throw new Error("must fetch after malformed result") }, now: () => new Date(at.getTime() + 1), cache })
+    assert.equal(retry.allFailed, true, `${String(malformed)} cache state`)
+    assert.equal(retry.cached, undefined, `${String(malformed)} cache state`)
+  }
+})

@@ -78,16 +78,19 @@ function cookieHeader(jar: CookieJar): string {
   return Array.from(jar).map(([name, value]) => `${name}=${value}`).join("; ")
 }
 
-function stripSourceBoundHeaders(headers: Headers): Headers {
-  const result = new Headers(headers)
-  for (const [name] of Array.from(result)) {
-    if (
-      name === "authorization" ||
-      name === "cookie" ||
-      name === "proxy-authorization" ||
-      name === "www-authenticate" ||
-      /(?:^|-)(?:api[-_]?key|token|credential|secret|signature)(?:$|-)/i.test(name)
-    ) result.delete(name)
+const SAFE_CROSS_SOURCE_HEADERS = new Set([
+  "accept",
+  "accept-encoding",
+  "accept-language",
+  "cache-control",
+  "content-type",
+  "user-agent",
+])
+
+function crossSourceHeaders(headers: Headers): Headers {
+  const result = new Headers()
+  for (const [name, value] of Array.from(headers)) {
+    if (SAFE_CROSS_SOURCE_HEADERS.has(name)) result.set(name, value)
   }
   return result
 }
@@ -147,7 +150,7 @@ async function fetchBounded(
           // Never carry credentials from one publisher to another. The next
           // hop starts from these sanitized headers, not from init.headers, so
           // a later return to the original source cannot resurrect them.
-          hopHeaders = crossSource ? stripSourceBoundHeaders(hopHeaders) : new Headers(hopHeaders)
+          hopHeaders = crossSource ? crossSourceHeaders(hopHeaders) : new Headers(hopHeaders)
           // A local session jar is allowed on an explicit cross-source edge;
           // same-source redirects retain it for the active session only.
           forwardCookies = session && (

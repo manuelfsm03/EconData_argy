@@ -38,12 +38,12 @@ const PAISES: Array<{ code: string; nombre: string; region: Region }> = [
   ["AUS", "Australia", "g20"], ["KOR", "Corea del Sur", "g20"], ["TUR", "Turquía", "g20"], ["SAU", "Arabia Saudita", "g20"], ["IDN", "Indonesia", "g20"], ["ESP", "España", "g20"], ["NLD", "Países Bajos", "g20"],
 ].map(([code, nombre, region]) => ({ code, nombre, region: region as Region }))
 
-type ImfBody = { values?: Record<string, Record<string, Record<string, number>>> }
+type ImfBody = { values?: Record<string, Record<string, Record<string, unknown>>> }
 
 async function indicator(
   fetcher: typeof fetchRegistered,
   name: string,
-): Promise<Record<string, Record<string, number>> | null> {
+): Promise<Record<string, Record<string, unknown>> | null> {
   try {
     const response = await fetcher(`https://www.imf.org/external/datamapper/api/v1/${name}`, { headers: { Accept: "application/json" } })
     if (!response.ok) return null
@@ -51,11 +51,13 @@ async function indicator(
   } catch { return null }
 }
 
-function latest(values: Record<string, number> | undefined, year: number): { value: number | null; year: number | null; forecast: boolean } {
+function latest(values: Record<string, unknown> | undefined, year: number): { value: number | null; year: number | null; forecast: boolean } {
   const years = Object.keys(values ?? {}).map(Number).filter(Number.isFinite).sort((a, b) => b - a)
   const selected = years.find((candidate) => candidate <= year + 2)
   if (selected == null) return { value: null, year: null, forecast: false }
-  return { value: Number(values?.[String(selected)]?.toFixed(2)), year: selected, forecast: selected > year }
+  const raw = values?.[String(selected)]
+  if (typeof raw !== "number" || !Number.isFinite(raw)) return { value: null, year: null, forecast: false }
+  return { value: Number(raw.toFixed(2)), year: selected, forecast: selected > year }
 }
 
 const DEFAULT_CACHE = new MemoryDomainCache()

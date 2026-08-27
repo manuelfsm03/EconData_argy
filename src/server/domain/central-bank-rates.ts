@@ -82,6 +82,15 @@ const FALLBACK: DatosBancosCentrales = {
 }
 const DEFAULT_CACHE = new MemoryDomainCache()
 
+function parseFiniteCentralBankNumber(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null
+  if (typeof value !== "string") return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const parsed = Number(trimmed)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 async function getJson(fetcher: typeof fetchRegistered, url: string, init?: RequestInit): Promise<unknown | null> {
   try {
     const response = await fetcher(url, init)
@@ -97,17 +106,17 @@ async function getCsv(fetcher: typeof fetchRegistered, url: string, init?: Reque
 }
 
 async function getTasaFed(fetcher: typeof fetchRegistered): Promise<DatosBanco> {
-  const raw = await getJson(fetcher, "https://markets.newyorkfed.org/api/rates/effr/last/1.json", { headers: { Accept: "application/json" } }) as { refRates?: Array<{ effectiveDate: string; percentRate: string; targetRateHigh?: number }> } | null
+  const raw = await getJson(fetcher, "https://markets.newyorkfed.org/api/rates/effr/last/1.json", { headers: { Accept: "application/json" } }) as { refRates?: Array<{ effectiveDate: string; percentRate?: unknown; targetRateHigh?: unknown }> } | null
   const rate = raw?.refRates?.[0]
-  const value = rate?.targetRateHigh ?? Number(rate?.percentRate)
-  if (rate && Number.isFinite(value)) return { pais: "USA", moneda: "USD", tasa: Number(value.toFixed(2)), esVivo: true, fuente: "NY Fed EFFR", sourceId: "ny_fed_rates", updated_at: rate.effectiveDate }
+  const value = parseFiniteCentralBankNumber(rate?.targetRateHigh) ?? parseFiniteCentralBankNumber(rate?.percentRate)
+  if (rate && value !== null) return { pais: "USA", moneda: "USD", tasa: Number(value.toFixed(2)), esVivo: true, fuente: "NY Fed EFFR", sourceId: "ny_fed_rates", updated_at: rate.effectiveDate }
 
   const key = process.env.FRED_API_KEY
   if (key) {
-    const fred = await getJson(fetcher, `https://api.stlouisfed.org/fred/series/observations?series_id=DFEDTARU&api_key=${key}&sort_order=desc&limit=1&file_type=json`, { headers: { Accept: "application/json" } }) as { observations?: Array<{ date: string; value: string }> } | null
+    const fred = await getJson(fetcher, `https://api.stlouisfed.org/fred/series/observations?series_id=DFEDTARU&api_key=${key}&sort_order=desc&limit=1&file_type=json`, { headers: { Accept: "application/json" } }) as { observations?: Array<{ date: string; value?: unknown }> } | null
     const observation = fred?.observations?.[0]
-    const value = Number(observation?.value)
-    if (observation && Number.isFinite(value)) return { pais: "USA", moneda: "USD", tasa: Number(value.toFixed(2)), esVivo: true, fuente: "FRED — St. Louis Fed (DFEDTARU)", sourceId: "fred", updated_at: observation.date }
+    const value = parseFiniteCentralBankNumber(observation?.value)
+    if (observation && value !== null) return { pais: "USA", moneda: "USD", tasa: Number(value.toFixed(2)), esVivo: true, fuente: "FRED — St. Louis Fed (DFEDTARU)", sourceId: "fred", updated_at: observation.date }
   }
   return FALLBACK.fed
 }
@@ -118,15 +127,15 @@ async function getOecdRate(fetcher: typeof fetchRegistered, countryCode: string)
     const response = await fetcher(url, { headers: { Accept: "application/json" } })
     if (!response.ok) return null
     const json = await response.json() as {
-      dataSets?: Array<{ observations?: Record<string, [number]> }>
+      dataSets?: Array<{ observations?: Record<string, [unknown]> }>
       structure?: { dimensions?: { observation?: Array<{ values?: Array<{ id: string }> }> } }
     }
     const observations = json.dataSets?.[0]?.observations
     const keys = observations ? Object.keys(observations) : []
     if (!keys.length) return null
     const key = keys[keys.length - 1]
-    const value = observations?.[key]?.[0]
-    if (typeof value !== "number" || !Number.isFinite(value)) return null
+    const value = parseFiniteCentralBankNumber(observations?.[key]?.[0])
+    if (value === null) return null
     const index = Number.parseInt(key.split(":").pop() ?? "0", 10)
     const date = json.structure?.dimensions?.observation?.[0]?.values?.[index]?.id
     if (!date) return null
@@ -140,10 +149,10 @@ async function getTasaBanxico(fetcher: typeof fetchRegistered): Promise<DatosBan
 
   const token = process.env.BMX_TOKEN
   if (token) {
-    const raw = await getJson(fetcher, "https://www.banxico.org.mx/SieAPIRest/service/v1/series/SR16850/datos/oportuno", { headers: { "Bmx-Token": token, Accept: "application/json" } }) as { bmx?: { series?: Array<{ datos?: Array<{ fecha: string; dato: string }> }> } } | null
+    const raw = await getJson(fetcher, "https://www.banxico.org.mx/SieAPIRest/service/v1/series/SR16850/datos/oportuno", { headers: { "Bmx-Token": token, Accept: "application/json" } }) as { bmx?: { series?: Array<{ datos?: Array<{ fecha: string; dato?: unknown }> }> } } | null
     const dato = raw?.bmx?.series?.[0]?.datos?.[0]
-    const value = Number(dato?.dato)
-    if (dato && Number.isFinite(value)) return { pais: "México", moneda: "MXN", tasa: Number(value.toFixed(2)), esVivo: true, fuente: "Banxico SIE (SR16850)", sourceId: "banxico_sie", updated_at: dato.fecha }
+    const value = parseFiniteCentralBankNumber(dato?.dato)
+    if (dato && value !== null) return { pais: "México", moneda: "MXN", tasa: Number(value.toFixed(2)), esVivo: true, fuente: "Banxico SIE (SR16850)", sourceId: "banxico_sie", updated_at: dato.fecha }
   }
   return FALLBACK.banxico
 }
@@ -164,16 +173,16 @@ async function getTasaBCE(fetcher: typeof fetchRegistered): Promise<DatosBanco> 
   const dateIndex = headers.indexOf("TIME_PERIOD")
   if (valueIndex < 0) return FALLBACK.bce
   const last = lines[lines.length - 1].split(",").map((value) => value.trim().replace(/^"|"$/g, ""))
-  const value = Number(last[valueIndex])
-  if (!Number.isFinite(value)) return FALLBACK.bce
+  const value = parseFiniteCentralBankNumber(last[valueIndex])
+  if (value === null) return FALLBACK.bce
   return { pais: "Eurozona", moneda: "EUR", tasa: Number(value.toFixed(2)), esVivo: true, fuente: "ECB SDW", sourceId: "ecb_sdw", updated_at: dateIndex >= 0 ? last[dateIndex] : new Date().toISOString() }
 }
 
 async function getTasaBCB(fetcher: typeof fetchRegistered): Promise<DatosBanco> {
-  const raw = await getJson(fetcher, "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json", { headers: { Accept: "application/json" } }) as Array<{ data?: string; valor?: string }> | null
+  const raw = await getJson(fetcher, "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json", { headers: { Accept: "application/json" } }) as Array<{ data?: string; valor?: unknown }> | null
   const item = Array.isArray(raw) ? raw[0] : undefined
-  const value = Number(item?.valor)
-  return item && Number.isFinite(value) ? { pais: "Brasil", moneda: "BRL", tasa: Number(value.toFixed(2)), esVivo: true, fuente: "BCB SGS 432", sourceId: "bcb_sgs", updated_at: item.data } : FALLBACK.bcb
+  const value = parseFiniteCentralBankNumber(item?.valor)
+  return item && value !== null ? { pais: "Brasil", moneda: "BRL", tasa: Number(value.toFixed(2)), esVivo: true, fuente: "BCB SGS 432", sourceId: "bcb_sgs", updated_at: item.data } : FALLBACK.bcb
 }
 
 async function getTasaBoE(fetcher: typeof fetchRegistered, now: () => Date): Promise<DatosBanco> {
@@ -184,15 +193,15 @@ async function getTasaBoE(fetcher: typeof fetchRegistered, now: () => Date): Pro
   const text = await getCsv(fetcher, url, { headers: { Accept: "text/csv, */*" } })
   const lines = text?.trim().split("\n").filter((line) => line.trim() && !line.startsWith("DATE") && !line.startsWith('"DATE')) ?? []
   const fields = lines.at(-1)?.split(",") ?? []
-  const value = Number(fields[1])
-  return Number.isFinite(value) ? { pais: "Reino Unido", moneda: "GBP", tasa: Number(value.toFixed(2)), esVivo: true, fuente: "Bank of England API (IUMABEDR)", sourceId: "bank_of_england", updated_at: fields[0]?.replace(/"/g, "").trim() } : FALLBACK.boe
+  const value = parseFiniteCentralBankNumber(fields[1])
+  return value !== null ? { pais: "Reino Unido", moneda: "GBP", tasa: Number(value.toFixed(2)), esVivo: true, fuente: "Bank of England API (IUMABEDR)", sourceId: "bank_of_england", updated_at: fields[0]?.replace(/"/g, "").trim() } : FALLBACK.boe
 }
 
 async function getTasaBoC(fetcher: typeof fetchRegistered): Promise<DatosBanco> {
-  const raw = await getJson(fetcher, "https://www.bankofcanada.ca/valet/observations/V39079/json?recent=1", { headers: { Accept: "application/json" } }) as { observations?: Array<{ d: string; V39079?: { v: string } }> } | null
+  const raw = await getJson(fetcher, "https://www.bankofcanada.ca/valet/observations/V39079/json?recent=1", { headers: { Accept: "application/json" } }) as { observations?: Array<{ d: string; V39079?: { v?: unknown } }> } | null
   const observation = raw?.observations?.[0]
-  const value = Number(observation?.V39079?.v)
-  return observation && Number.isFinite(value) ? { pais: "Canadá", moneda: "CAD", tasa: Number(value.toFixed(2)), esVivo: true, fuente: "Bank of Canada Valet API (V39079)", sourceId: "bank_of_canada", updated_at: observation.d } : FALLBACK.boc
+  const value = parseFiniteCentralBankNumber(observation?.V39079?.v)
+  return observation && value !== null ? { pais: "Canadá", moneda: "CAD", tasa: Number(value.toFixed(2)), esVivo: true, fuente: "Bank of Canada Valet API (V39079)", sourceId: "bank_of_canada", updated_at: observation.d } : FALLBACK.boc
 }
 
 async function getTasaBoJ(fetcher: typeof fetchRegistered): Promise<DatosBanco> {
@@ -201,13 +210,13 @@ async function getTasaBoJ(fetcher: typeof fetchRegistered): Promise<DatosBanco> 
 }
 
 async function getTasaRBA(fetcher: typeof fetchRegistered): Promise<DatosBanco> {
-  const raw = await getJson(fetcher, "https://api.rba.gov.au/statistics/tables/f1/?series_ids=FIRMMCRT", { headers: { Accept: "application/json" } }) as { dataSets?: Array<{ series?: Record<string, { observations?: Record<string, [string | number]> }> }> } | null
+  const raw = await getJson(fetcher, "https://api.rba.gov.au/statistics/tables/f1/?series_ids=FIRMMCRT", { headers: { Accept: "application/json" } }) as { dataSets?: Array<{ series?: Record<string, { observations?: Record<string, [unknown]> }> }> } | null
   const series = raw?.dataSets?.[0]?.series
   const key = series ? Object.keys(series)[0] : undefined
   const observations = key ? series?.[key]?.observations : undefined
   const period = observations ? Object.keys(observations).sort().at(-1) : undefined
-  const value = period ? Number(observations?.[period]?.[0]) : NaN
-  if (period && Number.isFinite(value)) return { pais: "Australia", moneda: "AUD", tasa: Number(value.toFixed(2)), esVivo: true, fuente: "RBA Statistics (FIRMMCRT)", sourceId: "rba_statistics", updated_at: period }
+  const value = period ? parseFiniteCentralBankNumber(observations?.[period]?.[0]) : null
+  if (period && value !== null) return { pais: "Australia", moneda: "AUD", tasa: Number(value.toFixed(2)), esVivo: true, fuente: "RBA Statistics (FIRMMCRT)", sourceId: "rba_statistics", updated_at: period }
   const oecd = await getOecdRate(fetcher, "AUS")
   return oecd ? { pais: "Australia", moneda: "AUD", tasa: oecd.tasa, esVivo: true, fuente: "OECD MEI Financial (IR3TIB01 AU)", sourceId: oecd.sourceId, updated_at: oecd.fecha, nota: "tasa interbancaria 3m — proxy del cash rate del RBA" } : FALLBACK.rba
 }
