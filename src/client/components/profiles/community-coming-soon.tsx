@@ -49,14 +49,29 @@ function nivelColor(nivel: string): string {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
+const WAITLIST_KEY = "lapizarra:community-waitlist"
+
 export function CommunityComingSoon() {
   const [email, setEmail]       = useState("")
   const [notified, setNotified] = useState(false)
+  const [error, setError]       = useState("")
 
   function handleNotify() {
-    if (!email.trim()) return
-    // Sin backend: log + estado local
-    console.log("[La Pizarra] Email pre-registro comunidad:", email)
+    const value = email.trim()
+    // Validación mínima de email
+    if (!value || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)) {
+      setError("Ingresá un email válido")
+      return
+    }
+    setError("")
+    // Persistir la lista de espera en el navegador (sin duplicados) hasta que
+    // haya un backend de waitlist. Se vacía a una tabla Supabase cuando esté.
+    try {
+      const raw = localStorage.getItem(WAITLIST_KEY)
+      const list: string[] = raw ? JSON.parse(raw) : []
+      if (!list.includes(value)) list.push(value)
+      localStorage.setItem(WAITLIST_KEY, JSON.stringify(list))
+    } catch { /* storage bloqueado → igual confirmamos al usuario */ }
     setNotified(true)
   }
 
@@ -320,40 +335,43 @@ export function CommunityComingSoon() {
             ✓ Te avisamos cuando abramos
           </div>
         ) : (
-          <div style={{ display: "flex", gap: 8, width: "100%" }}>
-            <input
-              type="email"
-              placeholder="tu@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleNotify()}
-              style={{
-                flex: 1,
-                padding: "8px 12px",
-                fontSize: 12,
-                borderRadius: 7,
-                border: "1px solid var(--border)",
-                background: "var(--bg)",
-                color: "var(--text)",
-                outline: "none",
-              }}
-            />
-            <button
-              onClick={handleNotify}
-              style={{
-                padding: "8px 16px",
-                fontSize: 12,
-                fontWeight: 700,
-                borderRadius: 7,
-                border: "none",
-                background: "var(--amber)",
-                color: "#000",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Notificarme
-            </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
+            <div style={{ display: "flex", gap: 8, width: "100%" }}>
+              <input
+                type="email"
+                placeholder="tu@email.com"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); if (error) setError("") }}
+                onKeyDown={(e) => e.key === "Enter" && handleNotify()}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  fontSize: 12,
+                  borderRadius: 7,
+                  border: `1px solid ${error ? "var(--negative)" : "var(--border)"}`,
+                  background: "var(--bg)",
+                  color: "var(--text)",
+                  outline: "none",
+                }}
+              />
+              <button
+                onClick={handleNotify}
+                style={{
+                  padding: "8px 16px",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  borderRadius: 7,
+                  border: "none",
+                  background: "var(--amber)",
+                  color: "#000",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Notificarme
+              </button>
+            </div>
+            {error && <span role="alert" style={{ fontSize: 10, color: "var(--negative)" }}>{error}</span>}
           </div>
         )}
       </div>
