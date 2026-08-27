@@ -9,6 +9,7 @@ import {
   validateSourceRegistry,
 } from "../src/server/sources/registry"
 import { fetchRegistered } from "../src/server/http/fetch-source"
+import { GET as rssNewsGET } from "../src/app/api/rss-news/route"
 
 function walk(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -396,4 +397,98 @@ test("MVP user APIs expose read-only gated GETs and no process-local mutations",
     assert.match(body, /if \(!USERS_ENABLED\) return new NextResponse\(null, \{ status: 404 \}\)/, file)
   }
   assert.ok(!sourceFiles.includes("src/app/api/predictions/_store.ts"))
+})
+
+test('RSS news route is runtime dynamic and separates upstream from response caching', () => {
+  const route = source("src/app/api/rss-news/route.ts")
+  assert.match(route, /export const dynamic = ["']force-dynamic["']/)
+  assert.doesNotMatch(route, /export const revalidate\s*=/)
+  assert.match(route, /fetchRegistered\([\s\S]*?cache:\s*["']no-store["']/)
+  assert.match(route, /s-maxage=900/)
+  assert.match(route, /stale-while-revalidate=900/)
+  assert.match(route, /private, no-store/)
+  for (const marker of [
+    "SOURCE_REGISTRY.news_rss",
+    "freshnessFor",
+    "buildErrorEnvelope",
+    "X-Data-As-Of",
+    "X-Data-Freshness",
+    "X-Feeds-Succeeded",
+    "X-Feeds-Failed",
+    "VERCEL_GIT_COMMIT_SHA",
+  ]) {
+    assert.match(route, new RegExp(marker.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")), marker)
+  }
+  assert.match(route, /freshness\s*===\s*["']expired["']/)
+  assert.match(route, /status:\s*503/)
+  assert.match(route, /DATA_EXPIRED/)
+  assert.doesNotMatch(route, /\bfetch\s*\(/)
+  assert.doesNotMatch(route, /Math\.random\s*\(/)
+  assert.doesNotMatch(route, /fallbackHeadline|synthetic headline/i)
+})
+
+test('RSS news route fails total outage honestly and surfaces stale max pubDate', { concurrency: false }, async () => {
+  const originalFetch = globalThis.fetch
+  const originalDateNow = Date.now
+  const fixedNow = Date.parse("2026-08-27T18:00:00.000Z")
+  const stalePubDate = new Date(fixedNow - 3 * 60 * 60 * 1000).toISOString()
+  const fixtureTitle = "Inflation headline fixture"
+  const transportCalls: Array<{ url: string; init?: RequestInit }> = []
+
+  try {
+    Date.now = () => fixedNow
+    globalThis.fetch = async (input, init) => {
+      transportCalls.push({ url: input.toString(), init })
+      return new Response("upstream unavailable", { status: 503 })
+    }
+
+    const outage = await rssNewsGET()
+    assert.equal(outage.status, 502)
+    const outagePayload = await outage.json() as { ok: boolean; error?: { code?: string }; data?: unknown }
+    assert.equal(outagePayload.ok, false)
+    assert.equal(outagePayload.error?.code, "SOURCE_UNAVAILABLE")
+    assert.equal("data" in outagePayload, false)
+    assert.match(outage.headers.get("Cache-Control") ?? "", /private, no-store/)
+    assert.equal(outage.headers.get("X-Data-Freshness"), "unavailable")
+    assert.doesNotMatch(JSON.stringify(outagePayload), /upstream unavailable/)
+    assert.ok(transportCalls.length >= 23)
+    for (const call of transportCalls) {
+      assert.equal(call.init?.cache, "no-store")
+      assert.equal(new URL(call.url).protocol, "https:")
+      assert.equal(findSourceForUrl(call.url).id, "news_rss")
+    }
+
+    transportCalls.length = 0
+    globalThis.fetch = async (input, init) => {
+      const url = input.toString()
+      transportCalls.push({ url, init })
+      const xml = `<rss><channel><item><title><![CDATA[${fixtureTitle}]]></title><link>${url}/fixture</link><description>fixture</description><pubDate>${stalePubDate}</pubDate></item></channel></rss>`
+      return new Response(xml, { status: 200, headers: { "content-type": "application/rss+xml" } })
+    }
+
+    const stale = await rssNewsGET()
+    assert.equal(stale.status, 200)
+    assert.equal(stale.headers.get("X-Data-Freshness"), "stale")
+    assert.equal(stale.headers.get("X-Data-As-Of"), stalePubDate)
+    assert.equal(stale.headers.get("Warning"), '110 - "Response is stale"')
+    assert.match(stale.headers.get("Cache-Control") ?? "", /s-maxage=900/)
+    assert.match(stale.headers.get("Cache-Control") ?? "", /stale-while-revalidate=900/)
+    assert.equal(stale.headers.get("X-Data-Source"), "news_rss")
+    assert.equal(stale.headers.get("X-Data-Completeness"), "complete")
+    assert.equal(stale.headers.get("X-Data-Mode"), "live")
+    assert.equal(stale.headers.get("X-Feeds-Succeeded"), "23")
+    assert.equal(stale.headers.get("X-Feeds-Failed"), "0")
+    assert.equal(stale.headers.get("X-Deployment-Commit"), process.env.VERCEL_GIT_COMMIT_SHA ?? "unknown")
+    const stalePayload = await stale.json() as Array<{ title: string }>
+    assert.equal(stalePayload.length, 1)
+    assert.equal(stalePayload[0]?.title, fixtureTitle)
+    assert.equal(transportCalls.length, 23)
+    for (const call of transportCalls) {
+      assert.equal(call.init?.cache, "no-store")
+      assert.equal(findSourceForUrl(call.url).id, "news_rss")
+    }
+  } finally {
+    globalThis.fetch = originalFetch
+    Date.now = originalDateNow
+  }
 })
