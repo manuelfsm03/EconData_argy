@@ -4215,7 +4215,7 @@ export function DeudaView() {
             <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>
               {errorLic}
               <div style={{ marginTop: 6, fontSize: 9, color: "var(--text-mute)" }}>
-                El sitio de origen (argentina.gob.ar) cambió de estructura y los resultados de licitaciones ya no están en páginas individuales enlazadas — quedan en PDFs bajo "Colocaciones de deuda". Pendiente de reconectar con un parser de PDF.
+                Las licitaciones del Tesoro no están disponibles en este momento. Reintentá en unos minutos.
               </div>
             </div>
           ) : (
@@ -4303,8 +4303,8 @@ export function DeudaView() {
               {/* Composición por acreedor y moneda — PieCharts */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, padding: "0 12px 8px" }}>
                 {([
-                  { title: "Por Acreedor", data: stock.data.composicion_acreedor },
-                  { title: "Por Moneda",   data: stock.data.composicion_moneda },
+                  { title: "Por Legislación", data: stock.data.composicion_acreedor },
+                  { title: "Por Moneda",      data: stock.data.composicion_moneda },
                 ] as const).map((section, si) => (
                   <div key={section.title} style={{ background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)", padding: "12px 16px" }}>
                     <div style={{ fontSize: 8, color: "var(--amber)", letterSpacing: 1.5, marginBottom: 12, textTransform: "uppercase" }}>{section.title}</div>

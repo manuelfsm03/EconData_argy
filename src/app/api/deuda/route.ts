@@ -14,16 +14,21 @@ import {
   attachQuarterlyGdp,
   buildAnnualDebtHistory,
   parseDebtSheetRows,
+  parseComposicionMoneda,
+  parseComposicionLegislacion,
   type QuarterlyGdpPoint,
 } from "@/server/domain/debt-stock"
 import { getUltimasLicitaciones } from "@/server/external/tesoro-licitaciones"
 import { leerFresco, guardarExito, leerUltimoBueno } from "@/server/http/stale-cache"
 
 const BASE_GOB = "https://www.argentina.gob.ar"
+const STOCK_CACHE_KEY = "deuda_stock_v4"  // v4: agrega composición moneda/legislación
 
 // ── Stock de Deuda Pública ─────────────────────────────────────────────────────
 
-async function fetchDebtWorkbookRows(): Promise<unknown[][]> {
+type DebtSheets = { a1: unknown[][]; a2: unknown[][]; a3: unknown[][] }
+
+async function fetchDebtWorkbook(): Promise<DebtSheets> {
   const pageResponse = await fetchRegistered(
     `${BASE_GOB}/economia/finanzas/datos-mensuales-de-la-deuda/datos`,
     {
@@ -49,9 +54,13 @@ async function fetchDebtWorkbookRows(): Promise<unknown[][]> {
   if (!workbookResponse.ok) throw new Error(`Debt workbook ${workbookResponse.status}`)
 
   const workbook = XLSX.read(new Uint8Array(await workbookResponse.arrayBuffer()), { type: "array" })
-  const sheet = workbook.Sheets["A.1"]
-  if (!sheet) throw new Error("Official debt workbook sheet A.1 not found")
-  return XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" })
+  if (!workbook.Sheets["A.1"]) throw new Error("Official debt workbook sheet A.1 not found")
+  const toRows = (name: string): unknown[][] => {
+    const sheet = workbook.Sheets[name]
+    return sheet ? XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" }) : []
+  }
+  // A.1: deuda por instrumento · A.2: por legislación · A.3: por moneda
+  return { a1: toRows("A.1"), a2: toRows("A.2"), a3: toRows("A.3") }
 }
 
 async function fetchQuarterlyGdp(): Promise<QuarterlyGdpPoint[]> {
@@ -69,20 +78,22 @@ async function fetchQuarterlyGdp(): Promise<QuarterlyGdpPoint[]> {
 }
 
 async function getStockDeuda() {
-  const cacheKey = "deuda_stock_v3"
-
   // Nivel 1 — fresco: dentro del TTL no volver a la fuente
-  const fresco = leerFresco<object>(cacheKey)
+  const fresco = leerFresco<object>(STOCK_CACHE_KEY)
   if (fresco) return { ...fresco, cached: true }
 
-  const [rows, gdp] = await Promise.all([fetchDebtWorkbookRows(), fetchQuarterlyGdp()])
-  const parsedDebt = parseDebtSheetRows(rows)
+  const [sheets, gdp] = await Promise.all([fetchDebtWorkbook(), fetchQuarterlyGdp()])
+  const parsedDebt = parseDebtSheetRows(sheets.a1)
   if (parsedDebt.length === 0) throw new Error("SOURCE_BAD_RESPONSE:DEBT_WORKBOOK_EMPTY")
 
   const monthly = attachQuarterlyGdp(parsedDebt, gdp)
   const historical = buildAnnualDebtHistory(monthly)
   const latest = monthly.at(-1)
   if (!latest || historical.length === 0) throw new Error("SOURCE_BAD_RESPONSE:DEBT_HISTORY_EMPTY")
+
+  // Composición del último mes: por moneda (A.3) y por legislación (A.2)
+  const composicion_moneda = parseComposicionMoneda(sheets.a3)
+  const composicion_acreedor = parseComposicionLegislacion(sheets.a2)
 
   const result = {
     data: {
@@ -91,15 +102,15 @@ async function getStockDeuda() {
       ultimo: { anio: latest.date, deuda_pib: latest.deuda_pib, deuda_usd: latest.deuda_usd },
       vencimientos: [],
       vencimientos_detalle: [],
-      composicion_acreedor: [],
-      composicion_moneda: [],
+      composicion_acreedor,
+      composicion_moneda,
       is_live: true,
     },
     updated_at: new Date().toISOString(),
     source: "Secretaría de Finanzas — boletín mensual de deuda · PIB USD INDEC",
   }
 
-  guardarExito(cacheKey, result, 86_400)
+  guardarExito(STOCK_CACHE_KEY, result, 86_400)
   return result
 }
 
@@ -114,7 +125,7 @@ export async function GET(request: NextRequest) {
     } catch (error) {
       console.error("[/api/deuda?endpoint=stock]", error)
       // Fallback stale — datos de deuda no cambian a diario, cache indefinido
-      const stale = leerUltimoBueno<object>("deuda_stock_v3")
+      const stale = leerUltimoBueno<object>(STOCK_CACHE_KEY)
       if (stale) {
         return NextResponse.json(
           { ...stale.data, cached: true, stale: true, stale_since: stale.staleSince },
