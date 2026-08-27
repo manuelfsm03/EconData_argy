@@ -12,6 +12,7 @@ import {
 } from "./mock-profiles"
 import { ProfileCard } from "./profile-card"
 import { ProfileDetail } from "./profile-detail"
+import { PredictionsFeed } from "./predictions-feed"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -399,6 +400,9 @@ export function CommunityView() {
 
       {/* ── Leaderboard ── */}
       <Leaderboard onSelect={openProfile} />
+
+      {/* ── Feed de predicciones (datos reales de /api/predictions) ── */}
+      <PredictionsFeed />
 
       {/* ── Section header ── */}
       <div style={{
