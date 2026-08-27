@@ -247,3 +247,101 @@ test("world macro reports multi-country partialness and timeout errors explicitl
   assert.match(route, /completeness/)
   assert.match(route, /TimeoutError/)
 })
+
+test("central-bank upstreams are registered with truthful provenance and preserved timeouts", () => {
+  const expected: Array<{
+    url: string
+    id: string
+    publisher: string
+    kind: string
+    dataClass: string
+    timeoutMs: number
+    credentialEnv?: string
+  }> = [
+    { url: "https://markets.newyorkfed.org/api/rates/effr/last/1.json", id: "ny_fed_rates", publisher: "Federal Reserve Bank of New York", kind: "json", dataClass: "official_daily", timeoutMs: 10_000 },
+    { url: "https://api.stlouisfed.org/fred/series/observations?series_id=DFEDTARU", id: "fred", publisher: "Federal Reserve Bank of St. Louis", kind: "json", dataClass: "official_daily", timeoutMs: 10_000, credentialEnv: "FRED_API_KEY" },
+    { url: "https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_STES@DF_FINMARK,1.0/M.MEX.IR3TIB01.ST.A", id: "oecd_sdmx", publisher: "Organisation for Economic Co-operation and Development", kind: "json", dataClass: "official_monthly", timeoutMs: 12_000 },
+    { url: "https://www.banxico.org.mx/SieAPIRest/service/v1/series/SR16850/datos/oportuno", id: "banxico_sie", publisher: "Banco de México", kind: "json", dataClass: "official_daily", timeoutMs: 10_000, credentialEnv: "BMX_TOKEN" },
+    { url: "https://data-api.ecb.europa.eu/service/data/FM/B.U2.EUR.4F.KR.MRR_RT.LEV", id: "ecb_sdw", publisher: "European Central Bank", kind: "csv", dataClass: "official_daily", timeoutMs: 10_000 },
+    { url: "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1", id: "bcb_sgs", publisher: "Banco Central do Brasil", kind: "json", dataClass: "official_daily", timeoutMs: 10_000 },
+    { url: "https://www.bankofengland.co.uk/boeapps/iadb/fromshowcolumns.asp?Identifier=IUMABEDR", id: "bank_of_england", publisher: "Bank of England", kind: "csv", dataClass: "official_daily", timeoutMs: 12_000 },
+    { url: "https://www.bankofcanada.ca/valet/observations/V39079/json", id: "bank_of_canada", publisher: "Bank of Canada", kind: "json", dataClass: "official_daily", timeoutMs: 10_000 },
+    { url: "https://api.rba.gov.au/statistics/tables/f1/", id: "rba_statistics", publisher: "Reserve Bank of Australia", kind: "json", dataClass: "official_daily", timeoutMs: 12_000 },
+  ] as const
+
+  for (const item of expected) {
+    const definition = findSourceForUrl(item.url)
+    assert.equal(definition.id, item.id)
+    assert.equal(definition.publisher, item.publisher)
+    assert.equal(definition.kind, item.kind)
+    assert.equal(definition.dataClass, item.dataClass)
+    assert.equal(definition.timeoutMs, item.timeoutMs)
+    assert.equal(definition.credentialEnv, item.credentialEnv)
+  }
+  assert.deepEqual(
+    [SOURCE_REGISTRY.fred.credentialEnv, SOURCE_REGISTRY.banxico_sie.credentialEnv],
+    ["FRED_API_KEY", "BMX_TOKEN"],
+  )
+
+  const route = source("src/app/api/bancos-centrales/route.ts")
+  assert.match(route, /fetchRegistered\s*\(/)
+  assert.doesNotMatch(route, /\bfetch\s*\(/)
+  assert.doesNotMatch(route, /AbortSignal\.timeout/)
+  for (const id of expected.map((item) => item.id)) assert.match(route, new RegExp(`sourceId:\\s*["']${id}["']`), id)
+  assert.equal(route.split("\n").filter((line) => /^\s+\w[\w_]*:\s+.*tasa:\s+null/.test(line)).length, 10)
+  assert.doesNotMatch(route, /hardcoded-fallback/)
+  assert.throws(() => findSourceForUrl("https://markets.newyorkfed.org.evil.test/steal"), /UNREGISTERED_SOURCE_HOST/)
+  assert.throws(() => findSourceForUrl("http://sdmx.oecd.org/private"), /SOURCE_REQUIRES_HTTPS/)
+  assert.throws(() => findSourceForUrl("https://127.0.0.1/internal"), /UNREGISTERED_SOURCE_HOST/)
+})
+
+test("Users surfaces share one disabled fail-closed feature gate", () => {
+  const flags = source("src/lib/feature-flags.ts")
+  assert.match(flags, /^export const USERS_ENABLED = false$/m)
+  assert.equal((flags.match(/USERS_ENABLED/g) ?? []).length, 1)
+
+  const appShell = source("src/client/components/workspace/app-shell.tsx")
+  assert.match(appShell, /USERS_ENABLED/)
+  assert.match(appShell, /item\.id !== "community" \|\| USERS_ENABLED/)
+  assert.match(appShell, /stored === "community" && !USERS_ENABLED/)
+  assert.match(appShell, /sectionParam === "community" && !USERS_ENABLED/)
+  assert.match(appShell, /USERS_ENABLED && section === "community"/)
+  assert.doesNotMatch(appShell, /CommunityComingSoon|COMMUNITY_ENABLED/)
+
+  const login = source("src/app/auth/login/page.tsx")
+  assert.match(login, /if \(!USERS_ENABLED\) notFound\(\)/)
+  assert.ok(login.indexOf("notFound()") < login.indexOf("<LoginForm"))
+
+  for (const file of [
+    "src/app/auth/callback/route.ts",
+    "src/app/api/profiles/route.ts",
+    "src/app/api/profiles/[id]/route.ts",
+    "src/app/api/predictions/route.ts",
+    "src/app/api/predictions/[id]/route.ts",
+  ]) {
+    const body = source(file)
+    assert.match(body, /import \{ USERS_ENABLED \} from "@\/lib\/feature-flags"/, file)
+    assert.match(body, /if \(!USERS_ENABLED\) return new NextResponse\(null, \{ status: 404 \}\)/, file)
+  }
+
+  const allSource = sourceFiles.map(source).join("\n")
+  assert.doesNotMatch(allSource, /\b(?:COMMUNITY_ENABLED|AUTH_ENABLED)\b/)
+})
+
+test("MVP user APIs expose read-only gated GETs and no process-local mutations", () => {
+  const userRoutes = [
+    "src/app/api/profiles/route.ts",
+    "src/app/api/profiles/[id]/route.ts",
+    "src/app/api/predictions/route.ts",
+    "src/app/api/predictions/[id]/route.ts",
+  ]
+  for (const file of userRoutes) {
+    const body = source(file)
+    assert.match(body, /export async function GET/, file)
+    assert.doesNotMatch(body, /export async function (POST|PUT|PATCH|DELETE)/, file)
+    assert.doesNotMatch(body, /runtimePredictions|new Map|Math\.random|\.push\(|\[[^\]]+\]\s*=/, file)
+    assert.doesNotMatch(body, /prisma\.[A-Za-z]+\.(?:create|update|upsert|delete|createMany|updateMany|deleteMany)\s*\(/, file)
+    assert.match(body, /if \(!USERS_ENABLED\) return new NextResponse\(null, \{ status: 404 \}\)/, file)
+  }
+  assert.ok(!sourceFiles.includes("src/app/api/predictions/_store.ts"))
+})

@@ -12,19 +12,19 @@
  *                   Fallback: Banxico SIE con BMX_TOKEN opcional
  *   - BCCh (Chile): OECD MEI Financial — tasa interbancaria 3m CL (proxy TPM)
  *
- * Fuentes hardcodeadas (último recurso):
- *   - BCRA (ARG)  : remite a /api/bcra para dato en tiempo real
+ * BCRA (ARG) remite a /api/bcra para dato en tiempo real; el resto falla
+ * cerrado a null si sus fuentes oficiales no están disponibles.
  *
  * Patrón de cache: stale-cache de dos niveles. TTL fresco = 1h.
- * Si una fuente en vivo falla → fallback al valor hardcodeado + esVivo:false.
+ * Si una fuente en vivo falla → fallback sin dato + esVivo:false.
  * Si el cache fresco está vigente → se sirve sin hacer requests externos.
  *
- * Nota: los hosts de ECB, BCB, FRED y Banxico no están en el SOURCE_REGISTRY.
- * Se usa fetch nativo. No hay input del usuario en las URLs → riesgo SSRF nulo.
+ * Las URLs son constantes o derivadas de series fijas y pasan por el registro.
  */
 
 import { NextResponse } from "next/server"
 import { guardarExito, leerFresco, leerUltimoBueno } from "@/server/http/stale-cache"
+import { fetchRegistered } from "@/server/http/fetch-source"
 
 export const runtime = "nodejs"
 
@@ -38,6 +38,7 @@ interface DatosBanco {
   tasa: number | null
   esVivo: boolean
   fuente?: string
+  sourceId?: string
   updated_at?: string
   refFecha?: string
   nota?: string
@@ -79,9 +80,8 @@ const FALLBACK: DatosBancosCentrales = {
 async function getTasaFed(): Promise<DatosBanco> {
   // Primero: NY Fed EFFR (sin key, pública oficial)
   try {
-    const res = await fetch("https://markets.newyorkfed.org/api/rates/effr/last/1.json", {
+    const res = await fetchRegistered("https://markets.newyorkfed.org/api/rates/effr/last/1.json", {
       headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(10_000),
     })
     if (res.ok) {
       const json = await res.json() as {
@@ -103,6 +103,7 @@ async function getTasaFed(): Promise<DatosBanco> {
             tasa: parseFloat(tasa.toFixed(2)),
             esVivo: true,
             fuente: "NY Fed EFFR",
+            sourceId: "ny_fed_rates",
             updated_at: rate.effectiveDate,
           }
         }
@@ -115,7 +116,7 @@ async function getTasaFed(): Promise<DatosBanco> {
   if (fredKey) {
     try {
       const url = `https://api.stlouisfed.org/fred/series/observations?series_id=DFEDTARU&api_key=${fredKey}&sort_order=desc&limit=1&file_type=json`
-      const res = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(10_000) })
+      const res = await fetchRegistered(url, { headers: { Accept: "application/json" } })
       if (res.ok) {
         const json = await res.json() as { observations?: Array<{ date: string; value: string }> }
         const obs = json.observations?.[0]
@@ -127,6 +128,7 @@ async function getTasaFed(): Promise<DatosBanco> {
             tasa: parseFloat(tasa.toFixed(2)),
             esVivo: true,
             fuente: "FRED — St. Louis Fed (DFEDTARU)",
+            sourceId: "fred",
             updated_at: obs?.date,
           }
         }
@@ -143,12 +145,11 @@ async function getTasaFed(): Promise<DatosBanco> {
 // Formato SDMX-JSON v2.
 async function fetchOecdRate(
   countryCode: string,
-): Promise<{ tasa: number; fecha: string } | null> {
+): Promise<{ tasa: number; fecha: string; sourceId: "oecd_sdmx" } | null> {
   try {
     const url = `https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_STES@DF_FINMARK,1.0/M.${countryCode}.IR3TIB01.ST.A?format=jsondata&lastNObservations=1`
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(12_000),
     })
     if (!res.ok) return null
     const json = await res.json() as {
@@ -166,7 +167,7 @@ async function fetchOecdRate(
     const periodoIdx = parseInt(lastKey.split(":").pop() ?? "0", 10)
     const periodoValues = json.structure?.dimensions?.observation?.[0]?.values
     const fecha = periodoValues?.[periodoIdx]?.id ?? new Date().toISOString().slice(0, 7)
-    return { tasa: parseFloat(tasa.toFixed(2)), fecha }
+    return { tasa: parseFloat(tasa.toFixed(2)), fecha, sourceId: "oecd_sdmx" }
   } catch {
     return null
   }
@@ -182,6 +183,7 @@ async function getTasaBanxico(): Promise<DatosBanco> {
       tasa: oecd.tasa,
       esVivo: true,
       fuente: "OECD MEI Financial (IR3TIB01 MX)",
+      sourceId: oecd.sourceId,
       updated_at: oecd.fecha,
       nota: "tasa interbancaria 3m — proxy de la tasa objetivo de Banxico",
     }
@@ -192,9 +194,8 @@ async function getTasaBanxico(): Promise<DatosBanco> {
   if (token) {
     try {
       const url = "https://www.banxico.org.mx/SieAPIRest/service/v1/series/SR16850/datos/oportuno"
-      const res = await fetch(url, {
+      const res = await fetchRegistered(url, {
         headers: { "Bmx-Token": token, Accept: "application/json" },
-        signal: AbortSignal.timeout(10_000),
       })
       if (res.ok) {
         const json = await res.json() as {
@@ -209,6 +210,7 @@ async function getTasaBanxico(): Promise<DatosBanco> {
             tasa: parseFloat(tasa.toFixed(2)),
             esVivo: true,
             fuente: "Banxico SIE (SR16850)",
+            sourceId: "banxico_sie",
             updated_at: dato?.fecha,
           }
         }
@@ -219,7 +221,7 @@ async function getTasaBanxico(): Promise<DatosBanco> {
   return FALLBACK.banxico
 }
 
-// ── BCCh (Chile): OECD IR3TIB01 → fallback hardcoded ─────────────────────
+// ── BCCh (Chile): OECD IR3TIB01 ────────────────────────────────────────────
 async function getTasaBCCh(): Promise<DatosBanco> {
   const oecd = await fetchOecdRate("CHL")
   if (oecd) {
@@ -229,6 +231,7 @@ async function getTasaBCCh(): Promise<DatosBanco> {
       tasa: oecd.tasa,
       esVivo: true,
       fuente: "OECD MEI Financial (IR3TIB01 CL)",
+      sourceId: oecd.sourceId,
       updated_at: oecd.fecha,
       nota: "tasa interbancaria 3m — proxy del TPM del BCCh",
     }
@@ -243,9 +246,8 @@ async function getTasaBCE(): Promise<DatosBanco> {
   try {
     const url =
       "https://data-api.ecb.europa.eu/service/data/FM/B.U2.EUR.4F.KR.MRR_RT.LEV?format=csvdata&lastNObservations=1"
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { Accept: "application/csv, text/csv, */*" },
-      signal: AbortSignal.timeout(10_000),
     })
     if (!res.ok) return FALLBACK.bce
 
@@ -272,6 +274,7 @@ async function getTasaBCE(): Promise<DatosBanco> {
       tasa: parseFloat(rawTasa.toFixed(2)),
       esVivo: true,
       fuente: "ECB SDW",
+      sourceId: "ecb_sdw",
       updated_at: fecha ?? new Date().toISOString(),
     }
   } catch {
@@ -285,9 +288,8 @@ async function getTasaBCB(): Promise<DatosBanco> {
   try {
     const url =
       "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json"
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(10_000),
     })
     if (!res.ok) return FALLBACK.bcb
 
@@ -305,6 +307,7 @@ async function getTasaBCB(): Promise<DatosBanco> {
       tasa: parseFloat(rawTasa.toFixed(2)),
       esVivo: true,
       fuente: "BCB SGS 432",
+      sourceId: "bcb_sgs",
       updated_at: ultimo?.data ?? new Date().toISOString(),
     }
   } catch {
@@ -323,9 +326,8 @@ async function getTasaBoE(): Promise<DatosBanco> {
     const [d2, m2, y2] = hoy.split("-").map(Number)
     const fmtDate = (d: number, m: number, y: number) => `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y}`
     const url = `https://www.bankofengland.co.uk/boeapps/iadb/fromshowcolumns.asp?CodeVer=new&xml.x=yes&Identifier=IUMABEDR&TD=${fmtDate(d1, m1, y1)}&HD=${fmtDate(d2, m2, y2)}&SERIES_MAX=10000&CSVF=TT&HideNums=-1&UsingCodes=Y&VFD=Y`
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { Accept: "text/csv, */*" },
-      signal: AbortSignal.timeout(12_000),
     })
     if (!res.ok) return FALLBACK.boe
     const text = await res.text()
@@ -341,6 +343,7 @@ async function getTasaBoE(): Promise<DatosBanco> {
       tasa: parseFloat(tasa.toFixed(2)),
       esVivo: true,
       fuente: "Bank of England API (IUMABEDR)",
+      sourceId: "bank_of_england",
       updated_at: fecha,
     }
   } catch {
@@ -354,9 +357,8 @@ async function getTasaBoE(): Promise<DatosBanco> {
 async function getTasaBoC(): Promise<DatosBanco> {
   try {
     const url = "https://www.bankofcanada.ca/valet/observations/V39079/json?recent=1"
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(10_000),
     })
     if (!res.ok) return FALLBACK.boc
     const json = await res.json() as {
@@ -372,6 +374,7 @@ async function getTasaBoC(): Promise<DatosBanco> {
       tasa: parseFloat(tasa.toFixed(2)),
       esVivo: true,
       fuente: "Bank of Canada Valet API (V39079)",
+      sourceId: "bank_of_canada",
       updated_at: obs.d,
     }
   } catch {
@@ -389,6 +392,7 @@ async function getTasaBoJ(): Promise<DatosBanco> {
       tasa: oecd.tasa,
       esVivo: true,
       fuente: "OECD MEI Financial (IR3TIB01 JP)",
+      sourceId: oecd.sourceId,
       updated_at: oecd.fecha,
       nota: "tasa interbancaria 3m — proxy de la tasa de política del BoJ",
     }
@@ -403,9 +407,8 @@ async function getTasaBoJ(): Promise<DatosBanco> {
 async function getTasaRBA(): Promise<DatosBanco> {
   try {
     const url = "https://api.rba.gov.au/statistics/tables/f1/?series_ids=FIRMMCRT"
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(12_000),
     })
     if (res.ok) {
       const json = await res.json() as {
@@ -426,6 +429,7 @@ async function getTasaRBA(): Promise<DatosBanco> {
               tasa: parseFloat(rawTasa.toFixed(2)),
               esVivo: true,
               fuente: "RBA Statistics (FIRMMCRT)",
+              sourceId: "rba_statistics",
               updated_at: lastPeriod,
             }
           }
@@ -443,6 +447,7 @@ async function getTasaRBA(): Promise<DatosBanco> {
       tasa: oecd.tasa,
       esVivo: true,
       fuente: "OECD MEI Financial (IR3TIB01 AU)",
+      sourceId: oecd.sourceId,
       updated_at: oecd.fecha,
       nota: "tasa interbancaria 3m — proxy del cash rate del RBA",
     }
@@ -515,12 +520,11 @@ export async function GET() {
     })
   }
 
-  // 5) Primera vez y todo falla → devolver hardcoded sin romper el contrato.
+  // 5) Primera vez y todo falla → devolver sin dato sin romper el contrato.
   return NextResponse.json({
     data,
     stale: false,
     updated_at: new Date().toISOString(),
-    source: "hardcoded-fallback",
-    nota: "Tasas de política monetaria de referencia. Fuentes en vivo donde hay API gratuita.",
+    nota: "Tasas de política monetaria de referencia. Fuentes oficiales no disponibles; datos ausentes se informan como N/D.",
   })
 }

@@ -23,12 +23,10 @@ import { MarketCalendar } from "./market-calendar"
 import { SiteFooter } from "./site-footer"
 import { BondsWorkspace } from "./bonds-workspace"
 import { CommunityView } from "@/client/components/profiles/community-view"
-import { CommunityComingSoon } from "@/client/components/profiles/community-coming-soon"
 import { EmpresaDrawer } from "@/client/components/empresa/empresa-drawer"
 import { DATA_CARD_CATALOG } from "@/lib/card-catalog"
 import { TickerNavContext, type TickerDestino, type TickerFocus, type TickerKind } from "@/lib/ticker-nav"
-
-const COMMUNITY_ENABLED = false
+import { USERS_ENABLED } from "@/lib/feature-flags"
 
 type WorkspaceSection = "canvas" | "library" | "calendar" | "bonds" | "forum" | "community"
 
@@ -48,7 +46,7 @@ const SECTIONS = [
   { id: "bonds" as const, label: "Bonos", description: "Calculadora y herramientas", Icon: Landmark },
   { id: "forum" as const, label: "Foro", description: "Conversaciones", Icon: MessageSquareText },
   { id: "community" as const, label: "Comunidad", description: "Perfiles y ranking", Icon: Users },
-].filter((item) => item.id !== "community" || COMMUNITY_ENABLED)
+].filter((item) => item.id !== "community" || USERS_ENABLED)
 
 export function AppShell() {
   const router = useRouter()
@@ -61,7 +59,11 @@ export function AppShell() {
 
   useEffect(() => {
     const stored = localStorage.getItem(SECTION_KEY)
-    if (stored === "canvas" || stored === "library" || stored === "calendar" || stored === "bonds" || stored === "forum" || stored === "community") setSection(stored)
+    if (stored === "community" && !USERS_ENABLED) {
+      localStorage.removeItem(SECTION_KEY)
+    } else if (stored === "canvas" || stored === "library" || stored === "calendar" || stored === "bonds" || stored === "forum" || stored === "community") {
+      setSection(stored)
+    }
   }, [])
 
   useEffect(() => {
@@ -74,7 +76,10 @@ export function AppShell() {
     const sectionParam = searchParams.get("section")
     const tickerParam = searchParams.get("ticker")
     const kindParam = searchParams.get("kind") as TickerKind | null
-    if (sectionParam === "canvas" || sectionParam === "library" || sectionParam === "calendar" || sectionParam === "bonds" || sectionParam === "forum" || sectionParam === "community") {
+    if (sectionParam === "community" && !USERS_ENABLED) {
+      setSection("canvas")
+      localStorage.removeItem(SECTION_KEY)
+    } else if (sectionParam === "canvas" || sectionParam === "library" || sectionParam === "calendar" || sectionParam === "bonds" || sectionParam === "forum" || sectionParam === "community") {
       setSection(sectionParam)
     }
     if (tickerParam && kindParam) {
@@ -142,7 +147,7 @@ export function AppShell() {
         {section === "calendar" && <MarketCalendar initialTicker={focusTicker?.ticker ?? null} />}
         {section === "bonds" && <BondsWorkspace initialTicker={focusTicker?.kind === "bono" ? focusTicker.ticker : null} />}
         {section === "forum" && <ForumHub initialFocus={focusTicker} />}
-        {section === "community" && (COMMUNITY_ENABLED ? <CommunityView /> : <CommunityComingSoon />)}
+        {USERS_ENABLED && section === "community" && <CommunityView />}
         <SiteFooter />
       </SidebarInset>
       <EmpresaDrawer

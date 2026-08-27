@@ -13,6 +13,7 @@ type SourceSeed = {
   credentialEnv?: string
   healthcheckPath?: string
   fallbackSourceIds?: readonly string[]
+  timeoutMs?: number
   maxResponseBytes?: number
 }
 
@@ -43,7 +44,7 @@ function source<Id extends string>(id: Id, seed: SourceSeed): SourceDefinition<I
     dataClass,
     baseUrl: seed.baseUrl ?? `https://${seed.host}`,
     allowedHosts: seed.allowedHosts ?? [seed.host],
-    timeoutMs: 10_000,
+    timeoutMs: seed.timeoutMs ?? 10_000,
     maxResponseBytes: seed.maxResponseBytes ?? (seed.kind === "csv" || seed.kind === "xlsx" ? 25 * MB : 5 * MB),
     retry: { attempts: 1, retryOn: ["timeout", "429", "5xx"] },
     cache: cacheByClass[dataClass],
@@ -67,6 +68,15 @@ export const SOURCE_REGISTRY = {
   bluelytics: source("bluelytics", { displayName: "Bluelytics", publisher: "Bluelytics", host: "api.bluelytics.com.ar", dataClass: "intraday_market", healthcheckPath: "/v2/latest" }),
   bcra_official: source("bcra_official", { displayName: "BCRA API", publisher: "Banco Central de la República Argentina", host: "api.bcra.gob.ar", dataClass: "official_daily", healthcheckPath: "/estadisticas/v4.0/Monetarias" }),
   bcra_files: source("bcra_files", { displayName: "BCRA archivos", publisher: "Banco Central de la República Argentina", host: "www.bcra.gob.ar", kind: "xlsx", dataClass: "official_monthly" }),
+  ny_fed_rates: source("ny_fed_rates", { displayName: "NY Fed EFFR API", publisher: "Federal Reserve Bank of New York", host: "markets.newyorkfed.org", timeoutMs: 10_000 }),
+  fred: source("fred", { displayName: "FRED DFEDTARU observations", publisher: "Federal Reserve Bank of St. Louis", host: "api.stlouisfed.org", credentialEnv: "FRED_API_KEY", timeoutMs: 10_000 }),
+  oecd_sdmx: source("oecd_sdmx", { displayName: "OECD SDMX DF_FINMARK IR3TIB01", publisher: "Organisation for Economic Co-operation and Development", host: "sdmx.oecd.org", dataClass: "official_monthly", timeoutMs: 12_000 }),
+  banxico_sie: source("banxico_sie", { displayName: "Banxico SIE SR16850", publisher: "Banco de México", host: "www.banxico.org.mx", credentialEnv: "BMX_TOKEN", timeoutMs: 10_000 }),
+  ecb_sdw: source("ecb_sdw", { displayName: "ECB SDW MRR_RT", publisher: "European Central Bank", host: "data-api.ecb.europa.eu", kind: "csv", timeoutMs: 10_000 }),
+  bcb_sgs: source("bcb_sgs", { displayName: "BCB SGS 432", publisher: "Banco Central do Brasil", host: "api.bcb.gov.br", timeoutMs: 10_000 }),
+  bank_of_england: source("bank_of_england", { displayName: "Bank of England IADB IUMABEDR", publisher: "Bank of England", host: "www.bankofengland.co.uk", kind: "csv", timeoutMs: 12_000 }),
+  bank_of_canada: source("bank_of_canada", { displayName: "Bank of Canada Valet V39079", publisher: "Bank of Canada", host: "www.bankofcanada.ca", timeoutMs: 10_000 }),
+  rba_statistics: source("rba_statistics", { displayName: "RBA Statistics FIRMMCRT", publisher: "Reserve Bank of Australia", host: "api.rba.gov.au", timeoutMs: 12_000 }),
   world_bank: source("world_bank", { displayName: "World Bank API", publisher: "World Bank", host: "api.worldbank.org", dataClass: "annual", healthcheckPath: "/v2/country/ARG/indicator/NY.GDP.MKTP.KD.ZG?format=json&per_page=1" }),
   yahoo_finance_chart: source("yahoo_finance_chart", { displayName: "Yahoo Finance Chart", publisher: "Yahoo Finance", host: "query1.finance.yahoo.com", dataClass: "intraday_market" }),
   yahoo_finance: source("yahoo_finance", { displayName: "Yahoo Finance", publisher: "Yahoo Finance", host: "finance.yahoo.com", dataClass: "intraday_market" }),
