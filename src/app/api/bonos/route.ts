@@ -503,6 +503,7 @@ export async function GET(request: NextRequest) {
         cupon: 0,
         vencimiento: new Date(s.vencimiento),
         precio: null,
+        asOf: null,
         cashflows: [],
       }))
     const allBonds: BondLike[] = [...bonds, ...supplementalBonds]

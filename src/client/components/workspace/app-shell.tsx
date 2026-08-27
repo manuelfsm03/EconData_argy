@@ -28,7 +28,7 @@ import { EmpresaDrawer } from "@/client/components/empresa/empresa-drawer"
 import { DATA_CARD_CATALOG } from "@/lib/card-catalog"
 import { TickerNavContext, type TickerDestino, type TickerFocus, type TickerKind } from "@/lib/ticker-nav"
 
-const COMMUNITY_ENABLED = true
+const COMMUNITY_ENABLED = false
 
 type WorkspaceSection = "canvas" | "library" | "calendar" | "bonds" | "forum" | "community"
 
@@ -48,7 +48,7 @@ const SECTIONS = [
   { id: "bonds" as const, label: "Bonos", description: "Calculadora y herramientas", Icon: Landmark },
   { id: "forum" as const, label: "Foro", description: "Conversaciones", Icon: MessageSquareText },
   { id: "community" as const, label: "Comunidad", description: "Perfiles y ranking", Icon: Users },
-]
+].filter((item) => item.id !== "community" || COMMUNITY_ENABLED)
 
 export function AppShell() {
   const router = useRouter()
