@@ -224,7 +224,7 @@ async function getStooqBatch(nombres: string[]): Promise<Record<string, QuoteRes
   try {
     const url = `https://stooq.com/q/l/?s=${simbolos.join("+")}&f=sd2t2ohlcv&h&e=csv`
     // fetch nativo: host no registrado en el registry (ver nota del encabezado).
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { Accept: "text/csv" },
       signal: AbortSignal.timeout(10000),
     })
@@ -265,7 +265,7 @@ async function getFrankfurterBatch(nombres: string[]): Promise<Record<string, Qu
   try {
     const url = `https://api.frankfurter.app/latest?from=USD&to=${monedas.join(",")}`
     // fetch nativo: host no registrado en el registry (ver nota del encabezado).
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(8000),
     })

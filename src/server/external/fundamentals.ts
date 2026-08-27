@@ -7,6 +7,7 @@
  * de earnings (7 días cerca del evento, 90 días en período tranquilo).
  */
 
+import { fetchRegistered, fetchRegisteredSession } from "@/server/http/fetch-source"
 import { fundamentalsTTL } from "@/lib/earnings-calendar"
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -80,7 +81,7 @@ let _cikMap: Record<string, number> | null = null
 
 async function getCIKMap(): Promise<Record<string, number>> {
   if (_cikMap) return _cikMap
-  const res = await fetch("https://www.sec.gov/files/company_tickers.json", {
+  const res = await fetchRegistered("https://www.sec.gov/files/company_tickers.json", {
     headers: { "User-Agent": SEC_UA },
     signal: AbortSignal.timeout(15000),
   })
@@ -99,7 +100,7 @@ async function fetchSECEdgar(ticker: string): Promise<FundamentalsData | null> {
     if (!cik) return null
 
     const cikPadded = String(cik).padStart(10, "0")
-    const res = await fetch(
+    const res = await fetchRegistered(
       `https://data.sec.gov/api/xbrl/companyfacts/CIK${cikPadded}.json`,
       { headers: { "User-Agent": SEC_UA }, signal: AbortSignal.timeout(20000) },
     )
@@ -221,15 +222,15 @@ async function fetchFMP(ticker: string): Promise<FundamentalsData | null> {
 
   try {
     const [incomeRes, cashRes, profileRes] = await Promise.all([
-      fetch(
+      fetchRegistered(
         `https://financialmodelingprep.com/api/v3/income-statement/${ticker}?limit=1&apikey=${apiKey}`,
         { signal: AbortSignal.timeout(10000) },
       ),
-      fetch(
+      fetchRegistered(
         `https://financialmodelingprep.com/api/v3/cash-flow-statement/${ticker}?limit=1&apikey=${apiKey}`,
         { signal: AbortSignal.timeout(10000) },
       ),
-      fetch(
+      fetchRegistered(
         `https://financialmodelingprep.com/api/v3/profile/${ticker}?apikey=${apiKey}`,
         { signal: AbortSignal.timeout(10000) },
       ),
@@ -315,7 +316,7 @@ async function getFXRate(from: string): Promise<number> {
   if (cached && cached.expiry > Date.now()) return cached.rate
 
   try {
-    const res = await fetch(
+    const res = await fetchRegistered(
       `https://open.er-api.com/v6/latest/${key}`,
       { signal: AbortSignal.timeout(8000) },
     )
@@ -342,15 +343,15 @@ async function fetchAlphaVantage(ticker: string): Promise<FundamentalsData | nul
 
   try {
     const [incomeRes, cashRes, overviewRes] = await Promise.all([
-      fetch(
+      fetchRegistered(
         `https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol=${ticker}&apikey=${apiKey}`,
         { signal: AbortSignal.timeout(12000) },
       ),
-      fetch(
+      fetchRegistered(
         `https://www.alphavantage.co/query?function=CASH_FLOW&symbol=${ticker}&apikey=${apiKey}`,
         { signal: AbortSignal.timeout(12000) },
       ),
-      fetch(
+      fetchRegistered(
         `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${ticker}&apikey=${apiKey}`,
         { signal: AbortSignal.timeout(12000) },
       ),
@@ -481,22 +482,16 @@ async function refreshYFCrumb(): Promise<{ crumb: string; cookie: string } | nul
   }
   try {
     // Step 1: GET finance.yahoo.com para obtener cookies de sesión
-    const homeRes = await fetch("https://finance.yahoo.com", {
+    const homeSession = await fetchRegisteredSession("https://finance.yahoo.com", {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       },
-      redirect: "follow",
       signal: AbortSignal.timeout(8000),
     })
-    const setCookie = homeRes.headers.get("set-cookie") ?? ""
-    const cookie = setCookie
-      .split(",")
-      .map(c => c.split(";")[0].trim())
-      .filter(Boolean)
-      .join("; ")
+    const cookie = homeSession.cookieHeader
 
     // Step 2: Obtener el crumb con las cookies de sesión
-    const crumbRes = await fetch("https://query2.finance.yahoo.com/v1/test/getcrumb", {
+    const crumbRes = await fetchRegistered("https://query2.finance.yahoo.com/v1/test/getcrumb", {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         Cookie: cookie,
@@ -533,7 +528,7 @@ async function fetchYFCrumb(ticker: string): Promise<FundamentalsData | null> {
       `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}` +
       `?modules=${modules}&crumb=${encodeURIComponent(auth.crumb)}`
 
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         Cookie: auth.cookie,

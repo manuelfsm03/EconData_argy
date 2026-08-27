@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 import { NextResponse } from "next/server"
 
 /**
@@ -448,7 +449,7 @@ const SP500: Array<{ ticker: string; name: string; sector: Sector }> = [
 async function fetchYFChart(ticker: string): Promise<{ lastPrice: number | null; change1DPct: number | null } | null> {
   for (const host of ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]) {
     try {
-      const res = await fetch(
+      const res = await fetchRegistered(
         `https://${host}/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=5d`,
         { headers: YF_HEADERS, signal: AbortSignal.timeout(8_000) },
       )

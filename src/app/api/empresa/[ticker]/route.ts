@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { fetchRegistered } from "@/server/http/fetch-source"
 import { getFundamentals } from "@/server/external/fundamentals"
 
 const YF_HEADERS = {
@@ -22,7 +23,7 @@ async function fetchYF(url: string): Promise<unknown> {
   for (const host of ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]) {
     const finalUrl = url.replace(/query\d\.finance\.yahoo\.com/, host)
     try {
-      const res = await fetch(finalUrl, {
+      const res = await fetchRegistered(finalUrl, {
         headers: YF_HEADERS,
         signal: AbortSignal.timeout(10000),
       })
