@@ -1,9 +1,11 @@
 "use client"
 
 import { ChevronDown, ChevronRight, Volume2, VolumeX } from "lucide-react"
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
-const DEFAULT_CHANNELS = [
+type Channel = { id: string; label: string; country: string; videoId: string }
+
+const DEFAULT_CHANNELS: Channel[] = [
   { id: "tn", label: "TN", country: "AR", videoId: "cb12KmMMDJA" },
   { id: "abc", label: "ABC NEWS", country: "US", videoId: "BC3LInervmo" },
   { id: "france24", label: "FRANCE 24", country: "FR", videoId: "Ap-UM1O9RBU" },
@@ -13,6 +15,13 @@ const DEFAULT_CHANNELS = [
   { id: "skynews", label: "SKY NEWS", country: "UK", videoId: "76zNJpupnqs" },
   { id: "euronews", label: "EURONEWS", country: "EU", videoId: "pykpO5kQJ98" },
 ]
+
+// Los canales customizados se guardan en el navegador para sobrevivir refresh
+const STORAGE_KEY = "lapizarra:live-channels"
+
+function persistChannels(list: Channel[]): void {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)) } catch { /* storage lleno o bloqueado */ }
+}
 
 const TILE_HEIGHT = 90
 
@@ -40,6 +49,19 @@ export function LiveSection() {
   const [labelInput, setLabelInput] = useState("")
   const [error, setError] = useState("")
 
+  // Hidratar canales guardados (en useEffect para no romper el render del server)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0 &&
+          parsed.every((c) => c && typeof c.id === "string" && typeof c.videoId === "string" && typeof c.label === "string")) {
+        setChannels(parsed as Channel[])
+      }
+    } catch { /* json inválido → ignorar y usar defaults */ }
+  }, [])
+
   const toggleMute = (id: string) => {
     const isMuted = muted[id]
     const iframe = iframeRefs.current[id]
@@ -61,11 +83,10 @@ export function LiveSection() {
     }
     const index = Number.parseInt(selectedSlot, 10)
     const label = labelInput.trim() || channels[index].label
-    setChannels((previous) => {
-      const next = [...previous]
-      next[index] = { ...next[index], label: label.toUpperCase(), videoId }
-      return next
-    })
+    const next = [...channels]
+    next[index] = { ...next[index], label: label.toUpperCase(), videoId }
+    setChannels(next)
+    persistChannels(next)  // guardar para que sobreviva al refresh
     setUrlInput("")
     setLabelInput("")
   }
