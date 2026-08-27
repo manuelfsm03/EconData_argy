@@ -11,6 +11,8 @@ type SourceSeed = {
   dataClass?: DataClass
   baseUrl?: string
   credentialEnv?: string
+  allowedRedirectSourceIds?: readonly string[]
+  cookieForwardSourceIds?: readonly string[]
   healthcheckPath?: string
   fallbackSourceIds?: readonly string[]
   timeoutMs?: number
@@ -44,6 +46,8 @@ function source<Id extends string>(id: Id, seed: SourceSeed): SourceDefinition<I
     dataClass,
     baseUrl: seed.baseUrl ?? `https://${seed.host}`,
     allowedHosts: seed.allowedHosts ?? [seed.host],
+    allowedRedirectSourceIds: seed.allowedRedirectSourceIds ?? [],
+    cookieForwardSourceIds: seed.cookieForwardSourceIds ?? [],
     timeoutMs: seed.timeoutMs ?? 10_000,
     maxResponseBytes: seed.maxResponseBytes ?? (seed.kind === "csv" || seed.kind === "xlsx" ? 25 * MB : 5 * MB),
     retry: { attempts: 1, retryOn: ["timeout", "429", "5xx"] },
@@ -72,14 +76,14 @@ export const SOURCE_REGISTRY = {
   fred: source("fred", { displayName: "FRED DFEDTARU observations", publisher: "Federal Reserve Bank of St. Louis", host: "api.stlouisfed.org", credentialEnv: "FRED_API_KEY", timeoutMs: 10_000 }),
   oecd_sdmx: source("oecd_sdmx", { displayName: "OECD SDMX DF_FINMARK IR3TIB01", publisher: "Organisation for Economic Co-operation and Development", host: "sdmx.oecd.org", dataClass: "official_monthly", timeoutMs: 12_000 }),
   banxico_sie: source("banxico_sie", { displayName: "Banxico SIE SR16850", publisher: "Banco de México", host: "www.banxico.org.mx", credentialEnv: "BMX_TOKEN", timeoutMs: 10_000 }),
-  ecb_sdw: source("ecb_sdw", { displayName: "ECB SDW MRR_RT", publisher: "European Central Bank", host: "data-api.ecb.europa.eu", kind: "csv", timeoutMs: 10_000 }),
+  ecb_sdw: source("ecb_sdw", { displayName: "ECB SDW MRR_RT", publisher: "European Central Bank", host: "data-api.ecb.europa.eu", kind: "csv", timeoutMs: 12_000 }),
   bcb_sgs: source("bcb_sgs", { displayName: "BCB SGS 432", publisher: "Banco Central do Brasil", host: "api.bcb.gov.br", timeoutMs: 10_000 }),
   bank_of_england: source("bank_of_england", { displayName: "Bank of England IADB IUMABEDR", publisher: "Bank of England", host: "www.bankofengland.co.uk", kind: "csv", timeoutMs: 12_000 }),
   bank_of_canada: source("bank_of_canada", { displayName: "Bank of Canada Valet V39079", publisher: "Bank of Canada", host: "www.bankofcanada.ca", timeoutMs: 10_000 }),
   rba_statistics: source("rba_statistics", { displayName: "RBA Statistics FIRMMCRT", publisher: "Reserve Bank of Australia", host: "api.rba.gov.au", timeoutMs: 12_000 }),
   world_bank: source("world_bank", { displayName: "World Bank API", publisher: "World Bank", host: "api.worldbank.org", dataClass: "annual", healthcheckPath: "/v2/country/ARG/indicator/NY.GDP.MKTP.KD.ZG?format=json&per_page=1" }),
-  yahoo_finance_chart: source("yahoo_finance_chart", { displayName: "Yahoo Finance Chart", publisher: "Yahoo Finance", host: "query1.finance.yahoo.com", dataClass: "intraday_market" }),
-  yahoo_finance: source("yahoo_finance", { displayName: "Yahoo Finance", publisher: "Yahoo Finance", host: "finance.yahoo.com", dataClass: "intraday_market" }),
+  yahoo_finance_chart: source("yahoo_finance_chart", { displayName: "Yahoo Finance APIs (chart/quote/fundamentals)", publisher: "Yahoo Finance", host: "query1.finance.yahoo.com", allowedHosts: ["query1.finance.yahoo.com", "query2.finance.yahoo.com"], dataClass: "intraday_market", timeoutMs: 8_000 }),
+  yahoo_finance: source("yahoo_finance", { displayName: "Yahoo Finance APIs (chart/quote/fundamentals)", publisher: "Yahoo Finance", host: "finance.yahoo.com", kind: "html", dataClass: "intraday_market", timeoutMs: 8_000, allowedRedirectSourceIds: ["yahoo_consent"], cookieForwardSourceIds: ["yahoo_consent", "yahoo_finance_chart"] }),
   yahoo_finance_rss: source("yahoo_finance_rss", { displayName: "Yahoo Finance RSS", publisher: "Yahoo Finance", host: "feeds.finance.yahoo.com", kind: "rss", dataClass: "news" }),
   api_merval: source("api_merval", { displayName: "API Merval", publisher: "API Merval", host: "api-merval-production.up.railway.app", dataClass: "intraday_market", healthcheckPath: "/health" }),
   byma_data_open: source("byma_data_open", {
@@ -124,6 +128,18 @@ export const SOURCE_REGISTRY = {
     dataClass: "news",
     healthcheckPath: "/arc/outboundfeeds/rss/",
   }),
+  alternative_me_fng: source("alternative_me_fng", { displayName: "Alternative.me Fear & Greed", publisher: "Alternative.me", host: "api.alternative.me", dataClass: "intraday_market", maxResponseBytes: 1 * MB, timeoutMs: 8_000 }),
+  blockchain_info_stats: source("blockchain_info_stats", { displayName: "Blockchain.com Stats", publisher: "Blockchain.com", host: "api.blockchain.info", dataClass: "intraday_market", maxResponseBytes: 2 * MB, timeoutMs: 10_000 }),
+  stooq_csv: source("stooq_csv", { displayName: "Stooq", publisher: "Stooq", host: "stooq.com", kind: "csv", dataClass: "daily_market", timeoutMs: 10_000, maxResponseBytes: 5 * MB }),
+  frankfurter_fx: source("frankfurter_fx", { displayName: "Frankfurter", publisher: "Frankfurter", host: "api.frankfurter.app", dataClass: "official_daily", maxResponseBytes: 1 * MB, timeoutMs: 8_000 }),
+  imf_datamapper: source("imf_datamapper", { displayName: "IMF DataMapper", publisher: "International Monetary Fund", host: "www.imf.org", dataClass: "annual", timeoutMs: 15_000, maxResponseBytes: 10 * MB }),
+  eurostat_sdmx: source("eurostat_sdmx", { displayName: "Eurostat SDMX", publisher: "Eurostat", host: "ec.europa.eu", dataClass: "official_monthly", timeoutMs: 12_000, maxResponseBytes: 10 * MB }),
+  fred_graph_csv: source("fred_graph_csv", { displayName: "FRED Graph CSV", publisher: "Federal Reserve Bank of St. Louis", host: "fred.stlouisfed.org", kind: "csv", dataClass: "official_daily", timeoutMs: 12_000, maxResponseBytes: 25 * MB }),
+  sec_edgar: source("sec_edgar", { displayName: "SEC EDGAR", publisher: "U.S. Securities and Exchange Commission", host: "www.sec.gov", allowedHosts: ["www.sec.gov", "data.sec.gov"], dataClass: "official_daily", timeoutMs: 15_000, maxResponseBytes: 25 * MB }),
+  financial_modeling_prep: source("financial_modeling_prep", { displayName: "Financial Modeling Prep", publisher: "Financial Modeling Prep", host: "financialmodelingprep.com", dataClass: "daily_market", credentialEnv: "FMP_API_KEY", timeoutMs: 10_000 }),
+  exchange_rate_api_open: source("exchange_rate_api_open", { displayName: "ExchangeRate-API", publisher: "ExchangeRate-API", host: "open.er-api.com", dataClass: "official_daily", timeoutMs: 8_000, maxResponseBytes: 2 * MB }),
+  alpha_vantage: source("alpha_vantage", { displayName: "Alpha Vantage", publisher: "Alpha Vantage", host: "www.alphavantage.co", dataClass: "daily_market", credentialEnv: "ALPHA_VANTAGE_KEY", timeoutMs: 12_000 }),
+  yahoo_consent: source("yahoo_consent", { displayName: "Yahoo consent boundary", publisher: "Yahoo Finance", host: "consent.yahoo.com", allowedHosts: ["consent.yahoo.com", "guce.yahoo.com"], kind: "html", dataClass: "intraday_market", timeoutMs: 8_000, maxResponseBytes: 5 * MB, allowedRedirectSourceIds: ["yahoo_finance"], cookieForwardSourceIds: ["yahoo_finance", "yahoo_finance_chart"] }),
 } as const satisfies Record<string, SourceDefinition>
 
 export type SourceId = keyof typeof SOURCE_REGISTRY
@@ -135,12 +151,13 @@ export function registeredHealthchecks(): Array<(typeof SOURCE_REGISTRY)[SourceI
 }
 
 export function hostMatches(hostname: string, allowedHost: string): boolean {
-  return hostname === allowedHost || hostname.endsWith(`.${allowedHost}`)
+  return hostname === allowedHost
 }
 
 export function findSourceForUrl(url: string): SourceDefinition {
   const parsed = new URL(url)
   if (parsed.protocol !== "https:") throw new Error("SOURCE_REQUIRES_HTTPS")
+  if (parsed.port || parsed.username || parsed.password) throw new Error("SOURCE_URL_NOT_ALLOWED")
   const match = Object.values(SOURCE_REGISTRY).find((definition) =>
     definition.allowedHosts.some((allowedHost) => hostMatches(parsed.hostname, allowedHost)),
   )
@@ -170,6 +187,10 @@ export function validateSourceRegistry(): string[] {
       if (fallbackDefinition && fallbackDefinition.dataClass !== definition.dataClass) {
         errors.push(`${key}: incompatible fallback ${fallback}`)
       }
+    }
+    for (const target of [...definition.allowedRedirectSourceIds, ...definition.cookieForwardSourceIds]) {
+      if (!(target in SOURCE_REGISTRY)) errors.push(`${key}: unknown policy target ${target}`)
+      if (target === key) errors.push(`${key}: self-referential policy target`)
     }
   }
   return errors

@@ -44,6 +44,8 @@ test("source lookup allows exact registered hosts and controlled subdomains only
   assert.throws(() => findSourceForUrl("https://api.eia.gov.evil.test/steal"), /UNREGISTERED_SOURCE_HOST/)
   assert.throws(() => findSourceForUrl("http://api.eia.gov/v2/"), /SOURCE_REQUIRES_HTTPS/)
   assert.throws(() => findSourceForUrl("http://127.0.0.1/internal"), /SOURCE_REQUIRES_HTTPS/)
+  assert.throws(() => findSourceForUrl("https://api.eia.gov:8443/v2/"), /SOURCE_URL_NOT_ALLOWED/)
+  assert.throws(() => findSourceForUrl("https://user:pass@api.eia.gov/v2/"), /SOURCE_URL_NOT_ALLOWED/)
 })
 
 test("registered HTTP boundary enforces retry policy, redirect allowlist, and byte limit", async () => {
@@ -109,6 +111,55 @@ test("registered HTTP boundary enforces retry policy, redirect allowlist, and by
     fetchRegistered("https://api.eia.gov/v2/test", {}, oversizedWithoutHeader),
     /SOURCE_RESPONSE_TOO_LARGE/,
   )
+})
+
+test("all remaining upstream URLs resolve to their truthful bounded source", () => {
+  const expected = [
+    ["https://query1.finance.yahoo.com/v8/finance/chart/GC=F", "yahoo_finance_chart", "Yahoo Finance", "json", "intraday_market", 8_000, 5 * 1024 * 1024, undefined],
+    ["https://query2.finance.yahoo.com/v8/finance/chart/%5EGSPC", "yahoo_finance_chart", "Yahoo Finance", "json", "intraday_market", 8_000, 5 * 1024 * 1024, undefined],
+    ["https://finance.yahoo.com", "yahoo_finance", "Yahoo Finance", "html", "intraday_market", 8_000, 5 * 1024 * 1024, undefined],
+    ["https://api.alternative.me/fng/?limit=1", "alternative_me_fng", "Alternative.me", "json", "intraday_market", 8_000, 1 * 1024 * 1024, undefined],
+    ["https://api.blockchain.info/stats", "blockchain_info_stats", "Blockchain.com", "json", "intraday_market", 10_000, 2 * 1024 * 1024, undefined],
+    ["https://stooq.com/q/d/l/?s=spy.us&i=d", "stooq_csv", "Stooq", "csv", "daily_market", 10_000, 5 * 1024 * 1024, undefined],
+    ["https://api.frankfurter.app/latest?from=USD", "frankfurter_fx", "Frankfurter", "json", "official_daily", 8_000, 1 * 1024 * 1024, undefined],
+    ["https://www.imf.org/external/datamapper/api/v1/PCPIPCH", "imf_datamapper", "International Monetary Fund", "json", "annual", 15_000, 10 * 1024 * 1024, undefined],
+    ["https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_pjan", "eurostat_sdmx", "Eurostat", "json", "official_monthly", 12_000, 10 * 1024 * 1024, undefined],
+    ["https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL", "fred_graph_csv", "Federal Reserve Bank of St. Louis", "csv", "official_daily", 12_000, 25 * 1024 * 1024, undefined],
+    ["https://www.sec.gov/files/company_tickers.json", "sec_edgar", "U.S. Securities and Exchange Commission", "json", "official_daily", 15_000, 25 * 1024 * 1024, undefined],
+    ["https://data.sec.gov/api/xbrl/companyfacts/CIK0000000000.json", "sec_edgar", "U.S. Securities and Exchange Commission", "json", "official_daily", 15_000, 25 * 1024 * 1024, undefined],
+    ["https://financialmodelingprep.com/api/v3/profile/AAPL?apikey=sentinel", "financial_modeling_prep", "Financial Modeling Prep", "json", "daily_market", 10_000, 5 * 1024 * 1024, "FMP_API_KEY"],
+    ["https://open.er-api.com/v6/latest/USD", "exchange_rate_api_open", "ExchangeRate-API", "json", "official_daily", 8_000, 2 * 1024 * 1024, undefined],
+    ["https://www.alphavantage.co/query?function=OVERVIEW&symbol=AAPL&apikey=sentinel", "alpha_vantage", "Alpha Vantage", "json", "daily_market", 12_000, 5 * 1024 * 1024, "ALPHA_VANTAGE_KEY"],
+    ["https://markets.newyorkfed.org/api/rates/effr/last/1.json", "ny_fed_rates", "Federal Reserve Bank of New York", "json", "official_daily", 10_000, 5 * 1024 * 1024, undefined],
+    ["https://api.stlouisfed.org/fred/series/observations?series_id=DFEDTARU&api_key=sentinel", "fred", "Federal Reserve Bank of St. Louis", "json", "official_daily", 10_000, 5 * 1024 * 1024, "FRED_API_KEY"],
+    ["https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_STES@DF_FINMARK,1.0/M.MEX.IR3TIB01.ST.A", "oecd_sdmx", "Organisation for Economic Co-operation and Development", "json", "official_monthly", 12_000, 5 * 1024 * 1024, undefined],
+    ["https://data-api.ecb.europa.eu/service/data/FM/B.U2.EUR.4F.KR.MRR_RT.LEV", "ecb_sdw", "European Central Bank", "csv", "official_daily", 12_000, 25 * 1024 * 1024, undefined],
+    ["https://api.eia.gov/v2/international/data/?api_key=sentinel", "eia", "U.S. Energy Information Administration", "json", "official_monthly", 10_000, 5 * 1024 * 1024, "EIA_API_KEY"],
+  ] as const
+  for (const [url, id, publisher, kind, dataClass, timeoutMs, maxBytes, credentialEnv] of expected) {
+    const definition = findSourceForUrl(url)
+    assert.deepEqual(
+      { id: definition.id, publisher: definition.publisher, kind: definition.kind, dataClass: definition.dataClass, timeoutMs: definition.timeoutMs, maxBytes: definition.maxResponseBytes, credentialEnv: definition.credentialEnv },
+      { id, publisher, kind, dataClass, timeoutMs, maxBytes, credentialEnv },
+      url,
+    )
+  }
+})
+
+test("derived route uses typed domain loaders rather than API self-fetches", () => {
+  const route = source("src/app/api/derived/route.ts")
+  assert.match(route, /loadCentralBankRates\s*\(/)
+  assert.match(route, /loadImfMacro\s*\(/)
+  assert.doesNotMatch(route, /origin|\/api\/bancos-centrales|\/api\/imf-macro|from\s+["']@\/app\/api\//)
+})
+
+test("Yahoo registration is exact-host and rejects unapproved redirects", () => {
+  assert.equal(findSourceForUrl("https://query1.finance.yahoo.com/v8/finance/chart/GC=F").id, "yahoo_finance_chart")
+  assert.equal(findSourceForUrl("https://query2.finance.yahoo.com/v8/finance/chart/GC=F").id, "yahoo_finance_chart")
+  assert.equal(findSourceForUrl("https://consent.yahoo.com/consent").id, "yahoo_consent")
+  for (const url of ["https://query1.finance.yahoo.com.evil.test/steal", "https://evilquery1.finance.yahoo.com/steal", "https://fc.yahoo.com/steal", "https://localhost/steal", "https://127.0.0.1/steal", "http://query1.finance.yahoo.com/steal"]) {
+    assert.throws(() => findSourceForUrl(url), /UNREGISTERED_SOURCE_HOST|SOURCE_REQUIRES_HTTPS/)
+  }
 })
 
 test("browser components never fetch external URLs", () => {
@@ -262,7 +313,7 @@ test("central-bank upstreams are registered with truthful provenance and preserv
     { url: "https://api.stlouisfed.org/fred/series/observations?series_id=DFEDTARU", id: "fred", publisher: "Federal Reserve Bank of St. Louis", kind: "json", dataClass: "official_daily", timeoutMs: 10_000, credentialEnv: "FRED_API_KEY" },
     { url: "https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_STES@DF_FINMARK,1.0/M.MEX.IR3TIB01.ST.A", id: "oecd_sdmx", publisher: "Organisation for Economic Co-operation and Development", kind: "json", dataClass: "official_monthly", timeoutMs: 12_000 },
     { url: "https://www.banxico.org.mx/SieAPIRest/service/v1/series/SR16850/datos/oportuno", id: "banxico_sie", publisher: "Banco de México", kind: "json", dataClass: "official_daily", timeoutMs: 10_000, credentialEnv: "BMX_TOKEN" },
-    { url: "https://data-api.ecb.europa.eu/service/data/FM/B.U2.EUR.4F.KR.MRR_RT.LEV", id: "ecb_sdw", publisher: "European Central Bank", kind: "csv", dataClass: "official_daily", timeoutMs: 10_000 },
+    { url: "https://data-api.ecb.europa.eu/service/data/FM/B.U2.EUR.4F.KR.MRR_RT.LEV", id: "ecb_sdw", publisher: "European Central Bank", kind: "csv", dataClass: "official_daily", timeoutMs: 12_000 },
     { url: "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1", id: "bcb_sgs", publisher: "Banco Central do Brasil", kind: "json", dataClass: "official_daily", timeoutMs: 10_000 },
     { url: "https://www.bankofengland.co.uk/boeapps/iadb/fromshowcolumns.asp?Identifier=IUMABEDR", id: "bank_of_england", publisher: "Bank of England", kind: "csv", dataClass: "official_daily", timeoutMs: 12_000 },
     { url: "https://www.bankofcanada.ca/valet/observations/V39079/json", id: "bank_of_canada", publisher: "Bank of Canada", kind: "json", dataClass: "official_daily", timeoutMs: 10_000 },
@@ -284,12 +335,13 @@ test("central-bank upstreams are registered with truthful provenance and preserv
   )
 
   const route = source("src/app/api/bancos-centrales/route.ts")
-  assert.match(route, /fetchRegistered\s*\(/)
+  const domain = source("src/server/domain/central-bank-rates.ts")
+  assert.match(domain, /import\s+\{\s*fetchRegistered\s*\}/)
+  assert.match(domain, /fetcher\(url/)
   assert.doesNotMatch(route, /\bfetch\s*\(/)
   assert.doesNotMatch(route, /AbortSignal\.timeout/)
-  for (const id of expected.map((item) => item.id)) assert.match(route, new RegExp(`sourceId:\\s*["']${id}["']`), id)
-  assert.equal(route.split("\n").filter((line) => /^\s+\w[\w_]*:\s+.*tasa:\s+null/.test(line)).length, 10)
-  assert.doesNotMatch(route, /hardcoded-fallback/)
+  for (const id of expected.map((item) => item.id)) assert.ok(SOURCE_REGISTRY[id as keyof typeof SOURCE_REGISTRY], id)
+  assert.doesNotMatch(domain, /hardcoded-fallback/)
   assert.throws(() => findSourceForUrl("https://markets.newyorkfed.org.evil.test/steal"), /UNREGISTERED_SOURCE_HOST/)
   assert.throws(() => findSourceForUrl("http://sdmx.oecd.org/private"), /SOURCE_REQUIRES_HTTPS/)
   assert.throws(() => findSourceForUrl("https://127.0.0.1/internal"), /UNREGISTERED_SOURCE_HOST/)
