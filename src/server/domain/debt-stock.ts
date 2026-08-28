@@ -102,6 +102,58 @@ function findDateHeader(rows: unknown[][]): { rowIndex: number; lastCol: number 
   return null
 }
 
+// ── Servicio de deuda (pagos históricos, hoja A.5) ─────────────────────────────
+
+export type ServicioAnual = { anio: string; nacional: number; extranjera: number; total: number }
+
+/**
+ * Servicio de deuda (PAGOS realizados) por año, desde la hoja A.5 del boletín
+ * ("Pagos de deuda bruta por moneda de pago"). Es una serie HISTÓRICA (lo pagado,
+ * capital + interés), NO un calendario de vencimientos futuros — el boletín
+ * oficial no publica ese calendario forward.
+ *
+ * Agrega los pagos mensuales a total anual, separando moneda nacional vs extranjera.
+ */
+export function parseServicioDeuda(rows: unknown[][]): ServicioAnual[] {
+  let headerIdx = -1
+  for (let i = 0; i < Math.min(25, rows.length); i += 1) {
+    const serials = rows[i].filter((v) => typeof v === "number" && v > 40_000 && v < 55_000)
+    if (serials.length >= 6) { headerIdx = i; break }
+  }
+  if (headerIdx < 0) return []
+
+  // Columnas con fecha → { col, año }
+  const cols: { col: number; anio: string }[] = []
+  rows[headerIdx].forEach((v, c) => {
+    if (typeof v === "number" && v > 40_000 && v < 55_000) {
+      const month = excelSerialToMonth(v)
+      if (month) cols.push({ col: c, anio: month.slice(0, 4) })
+    }
+  })
+
+  // Etiquetas en la columna 1 (col0 va vacío en A.5)
+  const byLabel = (pat: RegExp) => rows.find((r) => typeof r[1] === "string" && pat.test(r[1] as string))
+  const rTotal = byLabel(/total pagado por moneda/i)
+  const rNac = byLabel(/moneda nacional/i)
+  const rExt = byLabel(/moneda extranjera/i)
+  if (!rTotal || !rNac || !rExt) return []
+
+  const num = (row: unknown[], col: number): number => (typeof row[col] === "number" ? (row[col] as number) : 0)
+
+  const acc = new Map<string, ServicioAnual>()
+  for (const { col, anio } of cols) {
+    const a = acc.get(anio) ?? { anio, nacional: 0, extranjera: 0, total: 0 }
+    a.nacional += num(rNac, col)
+    a.extranjera += num(rExt, col)
+    a.total += num(rTotal, col)
+    acc.set(anio, a)
+  }
+
+  return Array.from(acc.values())
+    .map((a) => ({ anio: a.anio, nacional: Math.round(a.nacional), extranjera: Math.round(a.extranjera), total: Math.round(a.total) }))
+    .sort((x, y) => x.anio.localeCompare(y.anio))
+}
+
 /** Primer valor numérico en `col` cuya etiqueta (en `labelCol`) matchea `pattern`. */
 function rowValueByLabel(rows: unknown[][], col: number, labelCol: number, pattern: RegExp): number | null {
   for (const row of rows) {

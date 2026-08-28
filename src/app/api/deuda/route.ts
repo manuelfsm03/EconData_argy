@@ -16,17 +16,18 @@ import {
   parseDebtSheetRows,
   parseComposicionMoneda,
   parseComposicionLegislacion,
+  parseServicioDeuda,
   type QuarterlyGdpPoint,
 } from "@/server/domain/debt-stock"
 import { getUltimasLicitaciones } from "@/server/external/tesoro-licitaciones"
 import { leerFresco, guardarExito, leerUltimoBueno } from "@/server/http/stale-cache"
 
 const BASE_GOB = "https://www.argentina.gob.ar"
-const STOCK_CACHE_KEY = "deuda_stock_v4"  // v4: agrega composición moneda/legislación
+const STOCK_CACHE_KEY = "deuda_stock_v5"  // v5: agrega servicio de deuda (A.5)
 
 // ── Stock de Deuda Pública ─────────────────────────────────────────────────────
 
-type DebtSheets = { a1: unknown[][]; a2: unknown[][]; a3: unknown[][] }
+type DebtSheets = { a1: unknown[][]; a2: unknown[][]; a3: unknown[][]; a5: unknown[][] }
 
 async function fetchDebtWorkbook(): Promise<DebtSheets> {
   const pageResponse = await fetchRegistered(
@@ -59,8 +60,8 @@ async function fetchDebtWorkbook(): Promise<DebtSheets> {
     const sheet = workbook.Sheets[name]
     return sheet ? XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" }) : []
   }
-  // A.1: deuda por instrumento · A.2: por legislación · A.3: por moneda
-  return { a1: toRows("A.1"), a2: toRows("A.2"), a3: toRows("A.3") }
+  // A.1: deuda por instrumento · A.2: por legislación · A.3: por moneda · A.5: pagos
+  return { a1: toRows("A.1"), a2: toRows("A.2"), a3: toRows("A.3"), a5: toRows("A.5") }
 }
 
 async function fetchQuarterlyGdp(): Promise<QuarterlyGdpPoint[]> {
@@ -94,6 +95,8 @@ async function getStockDeuda() {
   // Composición del último mes: por moneda (A.3) y por legislación (A.2)
   const composicion_moneda = parseComposicionMoneda(sheets.a3)
   const composicion_acreedor = parseComposicionLegislacion(sheets.a2)
+  // Servicio de deuda: pagos históricos anuales por moneda (A.5)
+  const servicio_deuda = parseServicioDeuda(sheets.a5)
 
   const result = {
     data: {
@@ -104,6 +107,7 @@ async function getStockDeuda() {
       vencimientos_detalle: [],
       composicion_acreedor,
       composicion_moneda,
+      servicio_deuda,
       is_live: true,
     },
     updated_at: new Date().toISOString(),

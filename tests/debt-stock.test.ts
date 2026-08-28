@@ -8,6 +8,7 @@ import {
   parseDebtSheetRows,
   parseComposicionMoneda,
   parseComposicionLegislacion,
+  parseServicioDeuda,
 } from "../src/server/domain/debt-stock"
 
 const debtRoute = readFileSync("src/app/api/deuda/route.ts", "utf8")
@@ -108,6 +109,25 @@ test("parseComposicionLegislacion arma Argentina vs Extranjera (hoja A.2)", () =
 test("composición devuelve [] si falta el encabezado de fechas o las categorías", () => {
   assert.deepEqual(parseComposicionMoneda([["x"], ["Moneda local", "", 100]]), [])
   assert.deepEqual(parseComposicionLegislacion([["", "", ...dates6.map(serial)]]), [])
+})
+
+test("parseServicioDeuda agrega pagos mensuales a total anual por moneda (hoja A.5)", () => {
+  const dates = ["2025-01-01", "2025-02-01", "2025-03-01", "2026-01-01", "2026-02-01", "2026-03-01"]
+  const rows: unknown[][] = [
+    ["title"],
+    ["", "", ...dates.map(serial)],
+    ["", "TOTAL PAGADO POR MONEDA DE PAGO", 100, 100, 100, 200, 200, 200],
+    ["", " - MONEDA NACIONAL",              60,  60,  60,  120, 120, 120],
+    ["", " - MONEDA EXTRANJERA",            40,  40,  40,  80,  80,  80],
+  ]
+  assert.deepEqual(parseServicioDeuda(rows), [
+    { anio: "2025", nacional: 180, extranjera: 120, total: 300 },
+    { anio: "2026", nacional: 360, extranjera: 240, total: 600 },
+  ])
+})
+
+test("parseServicioDeuda devuelve [] sin encabezado o sin filas de pago", () => {
+  assert.deepEqual(parseServicioDeuda([["x"], ["", "TOTAL PAGADO POR MONEDA", 1]]), [])
 })
 
 test("debt route uses the live official workbook and drops the retired CSV", () => {

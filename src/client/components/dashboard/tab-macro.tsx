@@ -3967,6 +3967,7 @@ interface DeudaData {
     vencimientos_detalle: VencDet[]
     composicion_acreedor: { nombre: string; pct: number }[]
     composicion_moneda:   { nombre: string; pct: number }[]
+    servicio_deuda?:      { anio: string; nacional: number; extranjera: number; total: number }[]
     is_live: boolean
   }
   source: string
@@ -4376,6 +4377,35 @@ export function DeudaView() {
                   </div>
                 ))}
               </div>
+
+              {/* Servicio de deuda — pagos históricos anuales por moneda (A.5) */}
+              {stock.data.servicio_deuda && stock.data.servicio_deuda.length > 0 && (
+                <div style={{ padding: "0 12px 8px" }}>
+                  <div style={{ background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)", padding: "12px 16px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                      <div style={{ fontSize: 8, color: "var(--amber)", letterSpacing: 1.5, textTransform: "uppercase" }}>Servicio de deuda — pagos por año</div>
+                      <div style={{ fontSize: 8, color: "var(--text-mute)" }}>Capital + interés · millones USD · por moneda de pago</div>
+                    </div>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={stock.data.servicio_deuda} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
+                        <XAxis dataKey="anio" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} />
+                        <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={(v) => `${Math.round(v / 1000)}k`} />
+                        <Tooltip
+                          contentStyle={{ background: "var(--bg-elev)", border: "1px solid var(--border)", fontSize: 9, fontFamily: "var(--font-data)" }}
+                          formatter={(v: unknown, name: unknown) => [`${Math.round(Number(v)).toLocaleString("es-AR")} M USD`, name === "nacional" ? "Moneda nacional" : "Moneda extranjera"]}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 9 }} formatter={(v) => v === "nacional" ? "Moneda nacional" : "Moneda extranjera"} />
+                        <Bar dataKey="nacional" stackId="s" fill="var(--sky)" />
+                        <Bar dataKey="extranjera" stackId="s" fill="var(--amber)" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                    <div style={{ fontSize: 8, color: "var(--text-mute)", marginTop: 4 }}>
+                      Pagos efectivamente realizados (incluye rollover de instrumentos en pesos de corto plazo) · no es un calendario de vencimientos futuros · último año en curso, parcial.
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div style={{ padding: "4px 12px", fontSize: 8, color: "var(--text-mute)" }}>
                 {stock.source}
