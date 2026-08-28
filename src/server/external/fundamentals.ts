@@ -616,6 +616,80 @@ async function fetchYFCrumb(ticker: string): Promise<FundamentalsData | null> {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Datos de MERCADO (valuación) vía YF crumb — independiente de la cascada.
+// Sirve para empresas cuyos fundamentals salen de EDGAR (que no trae market cap
+// ni P/E ni beta), reemplazando al viejo fallback v7/quote (que hoy da 401).
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface YFMarketData {
+  marketCap: number | null
+  trailingPE: number | null
+  forwardPE: number | null
+  beta: number | null
+  priceToBook: number | null
+  dividendYield: number | null
+  eps: number | null
+  fiftyTwoWeekHigh: number | null
+  fiftyTwoWeekLow: number | null
+}
+
+const _marketCache: Record<string, { data: YFMarketData | null; expiry: number }> = {}
+
+export async function fetchYFMarketData(ticker: string): Promise<YFMarketData | null> {
+  const key = ticker.toUpperCase()
+  const cached = _marketCache[key]
+  if (cached && cached.expiry > Date.now()) return cached.data
+
+  const auth = await refreshYFCrumb()
+  if (!auth) return null
+
+  try {
+    const modules = "summaryDetail,defaultKeyStatistics,price"
+    const url =
+      `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${key}` +
+      `?modules=${modules}&crumb=${encodeURIComponent(auth.crumb)}`
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        Cookie: auth.cookie,
+        Accept: "application/json",
+      },
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!res.ok) return null
+    const j = await res.json() as Record<string, unknown>
+    if ((j.quoteSummary as Record<string, unknown>)?.error) return null
+    const qs = ((j.quoteSummary as Record<string, unknown>)?.result as Record<string, unknown>[])?.[0]
+    if (!qs) return null
+
+    const sd = (qs.summaryDetail        ?? {}) as Record<string, unknown>
+    const ks = (qs.defaultKeyStatistics ?? {}) as Record<string, unknown>
+    const pr = (qs.price                ?? {}) as Record<string, unknown>
+    const rawYF = (v: unknown): number | null => {
+      if (v == null || typeof v !== "object") return null
+      const o = v as Record<string, unknown>
+      return typeof o.raw === "number" ? o.raw : null
+    }
+
+    const data: YFMarketData = {
+      marketCap:        rawYF(sd.marketCap) ?? rawYF(pr.marketCap),
+      trailingPE:       rawYF(sd.trailingPE),
+      forwardPE:        rawYF(ks.forwardPE),
+      beta:             rawYF(sd.beta) ?? rawYF(ks.beta),
+      priceToBook:      rawYF(ks.priceToBook),
+      dividendYield:    rawYF(sd.dividendYield),
+      eps:              rawYF(ks.trailingEps),
+      fiftyTwoWeekHigh: rawYF(sd.fiftyTwoWeekHigh),
+      fiftyTwoWeekLow:  rawYF(sd.fiftyTwoWeekLow),
+    }
+    _marketCache[key] = { data, expiry: Date.now() + 6 * 3600 * 1000 } // 6h
+    return data
+  } catch {
+    return null
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Cache en memoria + función pública
 // ────────────────────────────────────────────────────────────────────────────
 

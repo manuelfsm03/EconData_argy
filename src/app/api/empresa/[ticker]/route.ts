@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getFundamentals } from "@/server/external/fundamentals"
+import { getFundamentals, fetchYFMarketData } from "@/server/external/fundamentals"
 
 const YF_HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -38,13 +38,6 @@ async function fetchYF(url: string): Promise<unknown> {
     }
   }
   return null
-}
-
-// Yahoo Finance devuelve números envueltos en { raw, fmt } — extraemos raw
-function raw(v: unknown): number | null {
-  if (v == null || typeof v !== "object") return null
-  const o = v as Record<string, unknown>
-  return typeof o.raw === "number" ? o.raw : null
 }
 
 const RANGE_PARAMS: Record<string, { interval: string; range: string }> = {
@@ -127,7 +120,7 @@ export async function GET(
   //  - assetProfile de YF (descripción, sector, industria — no requiere crumb)
   //  - v7/quote sin crumb (52w high/low, etc.)
   //  - getFundamentals: cascada FMP → Alpha Vantage → YF crumb
-  const [chartJson, summaryJson, quoteJson, fund] = await Promise.all([
+  const [chartJson, summaryJson, marketData, fund] = await Promise.all([
     fetchYF(
       `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(priceSymbol)}` +
       `?interval=${interval}&range=${yfRange}&includePrePost=false`,
@@ -137,11 +130,9 @@ export async function GET(
       `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(fundamentalsSymbol)}` +
       `?modules=assetProfile`,
     ),
-    // v7/quote no requiere crumb+cookie — útil para 52w high/low
-    fetchYF(
-      `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(fundamentalsSymbol)}` +
-      `&fields=marketCap,trailingPE,forwardPE,epsTrailingTwelveMonths,beta,priceToBook,dividendYield,trailingAnnualDividendYield,fiftyTwoWeekHigh,fiftyTwoWeekLow`,
-    ),
+    // Datos de mercado (marketCap, PE, beta, 52w) vía YF crumb — reemplaza al
+    // v7/quote que hoy da 401. Cubre valuación aun cuando fundamentals sale de EDGAR.
+    fetchYFMarketData(fundamentalsSymbol),
     getFundamentals(fundamentalsSymbol),
   ])
 
@@ -167,21 +158,9 @@ export async function GET(
 
   const meta = (chartResult?.meta ?? {}) as Record<string, unknown>
 
-  // ── Fallback v7/quote (valores directos, sin wrapper raw/fmt) ───────────
-  type QuoteV7 = {
-    marketCap?: number
-    trailingPE?: number
-    forwardPE?: number
-    epsTrailingTwelveMonths?: number
-    beta?: number
-    priceToBook?: number
-    dividendYield?: number
-    trailingAnnualDividendYield?: number
-    fiftyTwoWeekHigh?: number
-    fiftyTwoWeekLow?: number
-  }
-  const quoteResult = (quoteJson as { quoteResponse?: { result?: QuoteV7[] } })
-    ?.quoteResponse?.result?.[0]
+  // Datos de mercado (valuación) desde YF crumb — fallback de fund cuando la
+  // fuente de fundamentals (ej. EDGAR) no trae market cap / P/E / beta.
+  const quoteResult = marketData
 
   // ── Perfil de la empresa desde assetProfile de YF ───────────────────────
   const summaryResult = (summaryJson as {
@@ -320,14 +299,14 @@ export async function GET(
     enterpriseValue: fund.enterpriseValue,
     peRatioTtm:      fund.trailingPE      ?? quoteResult?.trailingPE      ?? null,
     peForward:       fund.forwardPE       ?? quoteResult?.forwardPE       ?? null,
-    eps:             fund.eps             ?? quoteResult?.epsTrailingTwelveMonths ?? null,
+    eps:             fund.eps             ?? quoteResult?.eps               ?? null,
     beta:            fund.beta            ?? quoteResult?.beta             ?? null,
     priceToBook:     fund.priceToBook     ?? quoteResult?.priceToBook     ?? null,
     // Guardrail: si el market cap y los estados están en monedas distintas, el
     // EV/EBITDA y EV/Revenue mezclan monedas → no comparables → no los exponemos.
     evToEbitda:      ratiosMonedaMismatch ? null : fund.evToEbitda,
     evToRevenue:     ratiosMonedaMismatch ? null : fund.evToRevenue,
-    dividendYield:   fund.dividendYield   ?? quoteResult?.dividendYield   ?? quoteResult?.trailingAnnualDividendYield ?? null,
+    dividendYield:   fund.dividendYield   ?? quoteResult?.dividendYield   ?? null,
     // Financials (de la cascada)
     ebitda:          fund.ebitda,
     ebit:            fund.ebit,
