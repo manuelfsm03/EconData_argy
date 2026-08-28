@@ -17,7 +17,8 @@ import { leerFresco, guardarExito, leerUltimoBueno, borrarFresco } from "@/serve
 
 export const runtime = "nodejs"
 
-const RAVA_URL = "https://mercado.rava.com/api/prices/arg"
+// El feed /arg dejó de exponer futuros DLR; /rofex sí trae la curva de dólar
+const RAVA_URL = "https://mercado.rava.com/api/prices/rofex"
 const CACHE_KEY = "rofex:futures"
 
 interface RofexRow {
@@ -61,10 +62,10 @@ async function fetchFromRava(): Promise<RofexRow[] | null> {
       maturity: future.maturity,
       maturityLabel: future.label,
       price: future.price,
-      devaluation: null,
-      monthlyDevaluation: null,
-      tna: null,
-      cft: null,
+      devaluation: future.devaluation,
+      monthlyDevaluation: future.monthlyDevaluation,
+      tna: future.tna,
+      cft: null,  // CFT requiere comisiones/derechos — no computable desde el feed
       volume: null,
       openInterest: null,
       source: "rava",

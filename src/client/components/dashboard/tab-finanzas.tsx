@@ -962,7 +962,7 @@ interface RofexRow {
   cft: number
   volume?: number | null
   openInterest?: number | null
-  source?: "matba" | "db"
+  source?: "matba" | "rava" | "db"
 }
 
 export function RofexView() {
@@ -1059,7 +1059,7 @@ export function RofexView() {
       </div>
 
       <div style={{ padding: "6px 14px", fontSize: 8, color: "var(--text-dim)", borderTop: "1px solid var(--bg-elev-2)", fontFamily: "var(--font-data)" }}>
-        Fuente: {data[0]?.source === "matba" ? "Matba Rofex API (apicem.matbarofex.com.ar)" : "ROFEX DB (cron)"} · Actualización cada 5 min
+        Fuente: {data[0]?.source === "matba" ? "Matba Rofex API (apicem.matbarofex.com.ar)" : data[0]?.source === "rava" ? "Rava Bursátil — futuros ROFEX (dólar) · devaluación implícita vs DLR/SPOT" : "ROFEX DB (cron)"} · Actualización cada 5 min
       </div>
     </div>
   )
