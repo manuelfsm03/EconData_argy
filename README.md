@@ -130,6 +130,16 @@ Props principales:
 ### `/api/macro?endpoint=estructural`
 - PBI, PBI per cápita, SMVM, Gini (EPH), población, natalidad, mortalidad infantil, esperanza de vida
 
+### `/api/news-search?q=<consulta>&limit=<n>`
+- Búsqueda inteligente sobre las noticias (retrieval BM25, sin API key) — la mitad "R" de un RAG financiero
+- Toma el corpus en vivo de `/api/rss-news` y lo rankea por relevancia con Okapi BM25 (`src/server/domain/news-search.ts`, k1=1.5 b=0.75, tokenización ES/EN sin acentos)
+- Retorna resultados con `score` y `matched` (términos que aparecen). La capa "G" (respuesta generada por LLM) se enchufa cuando exista una API key de LLM
+- UI: barra de búsqueda en el tab Noticias (`news-feed.tsx`)
+
+### `/api/rofex`
+- Futuros de dólar ROFEX desde Rava (`/api/prices/rofex`) — curva DLR/MESYY
+- Computa devaluación implícita vs `DLR/SPOT`: acumulada, TNA anualizada y TEM mensual (`src/server/domain/rofex-rava.ts`)
+
 ---
 
 ## Estética Bloomberg dark
