@@ -31,6 +31,10 @@ interface BBGLineChartProps {
   enableDateRange?: boolean
   defaultRange?: DateRange
   enableLineToggle?: boolean
+  // Toggle controlado (opcional): si se pasan, el padre maneja qué líneas se ocultan.
+  // Si no, el chart usa su estado interno (comportamiento por defecto).
+  hiddenLines?: Set<string>
+  onToggleLine?: (key: string) => void
 }
 
 function compactNum(v: number): string {
@@ -107,14 +111,18 @@ const RANGE_OPTIONS: { value: DateRange; label: string }[] = [
 export function BBGLineChart({
   data, lines, title, glossaryKey, yAxisLabel, yAxisRight, height = 180,
   showZeroLine, formatValue, enableDateRange = true, defaultRange = "1m",
-  enableLineToggle = false,
+  enableLineToggle = false, hiddenLines, onToggleLine,
 }: BBGLineChartProps) {
   const [range, setRange] = useState<DateRange>(defaultRange)
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [hiddenInternal, setHiddenInternal] = useState<Set<string>>(new Set())
   const fmt = formatValue || compactNum
 
-  const toggleLine = (key: string) =>
-    setHidden(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s })
+  // Modo controlado si el padre pasa hiddenLines; si no, estado interno
+  const hidden = hiddenLines ?? hiddenInternal
+  const toggleLine = (key: string) => {
+    if (onToggleLine) { onToggleLine(key); return }
+    setHiddenInternal(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s })
+  }
 
   const visibleLines = enableLineToggle ? lines.filter(l => !hidden.has(l.key)) : lines
 

@@ -618,6 +618,8 @@ export function EmaeView() {
   const [emaeSectorialCompleto, setEmaeSectorialCompleto] = useState<EmaeSectorialRow[]>([])
   const [emaeSectorialCompletoLoading, setEmaeSectorialCompletoLoading] = useState(false)
   const [emaeModoParticipacion, setEmaeModoPBI] = useState(false)
+  // Sectores ocultos en el gráfico (controlado desde el ranking clickeable + leyenda)
+  const [emaeSectoresOcultos, setEmaeSectoresOcultos] = useState<Set<string>>(new Set())
   const [emaeSubTab, setEmaeSubTab] = useState("actividad")
   const [emaeEstrTab, setEmaeEstrTab] = useState("indicadores")
   const [actividadData, setActividadData] = useState<ActividadData | null>(null)
@@ -1050,8 +1052,19 @@ export function EmaeView() {
                     const v = s.varIA ?? 0
                     const positive = v >= 0
                     const barPct = Math.abs(v) / maxAbs * 44  // max 44% of width
+                    const oculto = emaeSectoresOcultos.has(s.key as string)
+                    // Aislar: mostrar solo este sector; si ya está aislado, volver a todos
+                    const aislarSector = () => setEmaeSectoresOcultos(prev => {
+                      const soloEste = prev.size === EMAE_SECTOR_KEYS.length - 1 && !prev.has(s.key as string)
+                      return soloEste ? new Set() : new Set(EMAE_SECTOR_KEYS.filter(k => k !== s.key))
+                    })
                     return (
-                      <div key={s.key} style={{ display: "grid", gridTemplateColumns: "180px 1fr 56px", alignItems: "center", gap: 8 }}>
+                      <div
+                        key={s.key}
+                        onClick={aislarSector}
+                        title="Click para aislar este sector en el gráfico"
+                        style={{ display: "grid", gridTemplateColumns: "180px 1fr 56px", alignItems: "center", gap: 8, cursor: "pointer", opacity: oculto ? 0.4 : 1, padding: "1px 2px", borderRadius: 2 }}
+                      >
                         <div style={{ fontSize: 9, color: "var(--text-dim)", textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           {s.label}
                         </div>
@@ -1136,6 +1149,10 @@ export function EmaeView() {
                 return computePctVAB(base)
               })()}
               enableLineToggle
+              hiddenLines={emaeSectoresOcultos}
+              onToggleLine={(k) => setEmaeSectoresOcultos(prev => {
+                const s = new Set(prev); s.has(k) ? s.delete(k) : s.add(k); return s
+              })}
               lines={[
                 { key: "agro",          name: "Agro",         color: "var(--positive)" },
                 { key: "pesca",         name: "Pesca",        color: "#26C6DA" },
@@ -2440,19 +2457,33 @@ export function IpcView() {
 
       {ipcTab === "personal" && <MiInflacionView />}
 
-      {ipcTab === "mundo" && (
-        <div style={{ padding: "0 0 4px" }}>
-          <iframe
-            src="/api/inflation-map?type=global"
-            style={{ width: "100%", height: 480, border: "none", background: "var(--bg)", display: "block" }}
-            title="Mapa de inflación mundial"
-            loading="lazy"
-          />
-          <div style={{ padding: "4px 12px", fontSize: 8, color: "var(--text-mute)", fontFamily: "var(--font-data)", borderTop: "1px solid #0e0e0e" }}>
-            Mapa generado con datos de inflación global · lapizarra.ar
+      {ipcTab === "mundo" && <InflationMapFrame />}
+    </div>
+  )
+}
+
+// Mapa de inflación mundial (iframe con Plotly server-side) + estado de carga
+function InflationMapFrame() {
+  const [loaded, setLoaded] = useState(false)
+  return (
+    <div style={{ padding: "0 0 4px" }}>
+      <div style={{ position: "relative", width: "100%", height: 480 }}>
+        {!loaded && (
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 11, background: "var(--bg)" }}>
+            Cargando mapa de inflación mundial…
           </div>
-        </div>
-      )}
+        )}
+        <iframe
+          src="/api/inflation-map?type=global"
+          onLoad={() => setLoaded(true)}
+          style={{ width: "100%", height: 480, border: "none", background: "var(--bg)", display: "block" }}
+          title="Mapa de inflación mundial"
+          loading="lazy"
+        />
+      </div>
+      <div style={{ padding: "4px 12px", fontSize: 8, color: "var(--text-mute)", fontFamily: "var(--font-data)", borderTop: "1px solid #0e0e0e" }}>
+        Mapa generado con datos de inflación global · lapizarra.ar
+      </div>
     </div>
   )
 }

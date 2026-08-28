@@ -1665,7 +1665,8 @@ export function TabMundo() {
     }
   }, [])
 
-  const fetchHistorico = useCallback(async (ticker: string, period = "1y") => {
+  // 5 años de historia; el BBGLineChart tiene selector de rango interno (1s→todo)
+  const fetchHistorico = useCallback(async (ticker: string, period = "5y") => {
     setHistLoading(true)
     try {
       const res = await fetch(`/api/mundo?ticker=${ticker}&hist=${period}`)
