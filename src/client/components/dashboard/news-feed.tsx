@@ -15,6 +15,12 @@ interface RSSItem {
   country?: string
 }
 
+// Resultado del retrieval BM25 (/api/news-search): RSSItem + relevancia
+interface SearchResult extends RSSItem {
+  score: number
+  matched: string[]
+}
+
 const COUNTRIES = [
   { key: "todos",        label: "Todos"        },
   { key: "eeuu",         label: "EEUU"         },
@@ -365,6 +371,44 @@ function NewsTable({ rows, extra, loading, expandedId, onToggle, onMore }: NewsT
   )
 }
 
+// Panel de resultados de la búsqueda inteligente (retrieval BM25 sobre noticias)
+function SearchResults({ results, loading, query }: { results: SearchResult[]; loading: boolean; query: string }) {
+  if (loading) {
+    return <div style={{ padding: 32, textAlign: "center", color: "var(--text-mute)", fontFamily: "var(--font-data)", fontSize: 10 }}>BUSCANDO…</div>
+  }
+  if (results.length === 0) {
+    return <div style={{ padding: 32, textAlign: "center", color: "var(--text-mute)", fontFamily: "var(--font-data)", fontSize: 10 }}>Sin resultados para “{query}”. Probá con otros términos (ej. dólar, riesgo país, vaca muerta).</div>
+  }
+  return (
+    <div style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
+      <div style={{ padding: "6px 14px", borderBottom: "1px solid var(--bg-elev-2)", background: "var(--bg)", fontSize: 9, color: "var(--text-mute)", fontFamily: "var(--font-data)", letterSpacing: 0.5 }}>
+        {results.length} noticias ordenadas por relevancia (BM25)
+      </div>
+      {results.map((item, index) => {
+        const cat = CATEGORIES.find((c) => c.key === item.category)
+        return (
+          <article key={`${item.id}-${index}`} style={{ display: "grid", gridTemplateColumns: "54px minmax(70px, 90px) minmax(0, 1fr)", padding: "9px 12px", borderBottom: "1px solid var(--bg-elev-2)", background: index % 2 === 0 ? "var(--bg)" : "var(--bg-row-alt)" }}>
+            <time dateTime={item.pubDate} style={{ paddingTop: 1, color: "var(--amber)", fontFamily: "var(--font-data)", fontSize: 11, whiteSpace: "nowrap" }}>{fmtTime(item.pubDate)}</time>
+            <span title={item.source} style={{ paddingTop: 1, overflow: "hidden", color: "var(--sky)", fontFamily: "var(--font-data)", fontSize: 10, fontWeight: 600, textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.source.toUpperCase().slice(0, 12)}</span>
+            <div style={{ minWidth: 0 }}>
+              <div>
+                <CategoryBadge category={item.category} />
+                <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text)", fontFamily: "var(--font-data)", fontSize: 13, lineHeight: 1.55, textDecoration: "none" }}>{item.title}</a>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                {item.matched.map((m) => (
+                  <span key={m} style={{ fontSize: 8, fontFamily: "var(--font-data)", color: cat?.color ?? "var(--amber)", border: `1px solid ${(cat?.color ?? "var(--amber)")}44`, borderRadius: 10, padding: "0 6px" }}>{m}</span>
+                ))}
+                <span style={{ fontSize: 8, color: "var(--text-mute)", fontFamily: "var(--font-data)", marginLeft: "auto" }}>relevancia {item.score.toFixed(1)}</span>
+              </div>
+            </div>
+          </article>
+        )
+      })}
+    </div>
+  )
+}
+
 export function NewsFeed() {
   const [items, setItems]           = useState<RSSItem[]>([])
   const [loading, setLoading]       = useState(true)
@@ -374,6 +418,27 @@ export function NewsFeed() {
   const [moreIN, setMoreIN]         = useState(0)
   const [country, setCountry]       = useState("todos")
   const [viewMode, setViewMode]     = useState<"lista" | "calendario">("lista")
+  const [query, setQuery]           = useState("")
+  const [results, setResults]       = useState<SearchResult[] | null>(null)
+  const [searching, setSearching]   = useState(false)
+
+  // Búsqueda inteligente con debounce: pega a /api/news-search (retrieval BM25)
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < 2) { setResults(null); setSearching(false); return }
+    setSearching(true)
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/news-search?q=${encodeURIComponent(q)}&limit=30`)
+        const j = await res.json()
+        setResults(Array.isArray(j.data) ? j.data : [])
+      } catch { setResults([]) }
+      finally { setSearching(false) }
+    }, 350)
+    return () => clearTimeout(t)
+  }, [query])
+
+  const searchActive = query.trim().length >= 2
 
   const fetchRSS = useCallback(async () => {
     setLoading(true)
@@ -418,8 +483,23 @@ export function NewsFeed() {
         containerName: "news-feed",
       }}
     >
-      {/* Filtros de categoría — pill */}
-      <div
+      {/* Búsqueda inteligente (retrieval BM25 sobre las noticias) */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderBottom: "1px solid var(--bg-elev-2)", background: "var(--bg)" }}>
+        <span style={{ color: "var(--amber)", fontSize: 13 }}>🔎</span>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar en las noticias… (ej. dólar cepo, riesgo país, vaca muerta)"
+          aria-label="Buscar en las noticias"
+          style={{ flex: 1, background: "var(--bg-elev)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text)", fontFamily: "var(--font-data)", fontSize: 12, padding: "7px 10px", outline: "none" }}
+        />
+        {searchActive && (
+          <button onClick={() => setQuery("")} title="Limpiar búsqueda" style={{ border: "1px solid var(--border)", background: "transparent", color: "var(--text-mute)", cursor: "pointer", borderRadius: 6, fontSize: 11, padding: "6px 10px", fontFamily: "var(--font-data)" }}>✕ Limpiar</button>
+        )}
+      </div>
+
+      {/* Filtros de categoría — pill (ocultos durante la búsqueda) */}
+      {!searchActive && <div
         style={{
           display: "flex",
           gap: 6,
@@ -476,17 +556,24 @@ export function NewsFeed() {
             {mode === "lista" ? "≡ LISTA" : "📅 CALENDARIO"}
           </button>
         ))}
-      </div>
+      </div>}
+
+      {/* Resultados de búsqueda inteligente (reemplaza el feed cuando hay query) */}
+      {searchActive && (
+        <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", background: "var(--bg)" }}>
+          <SearchResults results={results ?? []} loading={searching} query={query.trim()} />
+        </div>
+      )}
 
       {/* Calendar view */}
-      {viewMode === "calendario" && (
+      {!searchActive && viewMode === "calendario" && (
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", background: "var(--bg)" }}>
           <CalendarTimelineView items={timelineItems} loading={loading} />
         </div>
       )}
 
       {/* Dos columnas: Argentina | Internacional */}
-      {viewMode === "lista" && <div className="news-feed-layout" style={{ display: "flex", gap: 1, background: "var(--bg-elev-2)", flex: 1, minHeight: 0 }}>
+      {!searchActive && viewMode === "lista" && <div className="news-feed-layout" style={{ display: "flex", gap: 1, background: "var(--bg-elev-2)", flex: 1, minHeight: 0 }}>
         {/* Argentina */}
         <div style={{ flex: 1, minWidth: 0, background: "var(--bg)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
           <div
