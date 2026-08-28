@@ -15,3 +15,8 @@
 import type { Prediccion } from "@/lib/prediction-contract"
 
 export const runtimePredictions: Prediccion[] = []
+
+/** Reescribe el store en el lugar (para la resolución automática). */
+export function setRuntimePredictions(next: Prediccion[]): void {
+  runtimePredictions.splice(0, runtimePredictions.length, ...next)
+}
