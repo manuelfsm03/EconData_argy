@@ -6,6 +6,8 @@ import {
   attachQuarterlyGdp,
   buildAnnualDebtHistory,
   parseDebtSheetRows,
+  parseComposicionMoneda,
+  parseComposicionLegislacion,
 } from "../src/server/domain/debt-stock"
 
 const debtRoute = readFileSync("src/app/api/deuda/route.ts", "utf8")
@@ -68,6 +70,44 @@ test("preserves null without a prior GDP point and uses the latest month per yea
     { anio: "2025", deuda_pib: 67.1, deuda_usd: 470000 },
     { anio: "2026", deuda_pib: 69.1, deuda_usd: 483855 },
   ])
+})
+
+const dates6 = ["2026-01-01", "2026-02-01", "2026-03-01", "2026-04-01", "2026-05-01", "2026-06-01"]
+
+test("parseComposicionMoneda desglosa Pesos/Dólares/Euros/Otras (hoja A.3)", () => {
+  // header con 6 seriales (idx 2-7) → lastCol=7; los valores van en idx 7
+  const rows: unknown[][] = [
+    ["title"],
+    ["", "", ...dates6.map(serial)],
+    ["Moneda local",      "Moneda local (1)",                 0, 0, 0, 0, 0, 462],
+    ["Moneda extranjera", "Moneda extranjera",                0, 0, 0, 0, 0, 538],
+    ["",                  "Deuda en dólares estadounidenses", 0, 0, 0, 0, 0, 407],
+    ["",                  "Deuda en euros",                   0, 0, 0, 0, 0, 12],
+  ]
+  assert.deepEqual(parseComposicionMoneda(rows), [
+    { nombre: "Pesos (moneda local)", pct: 46.2 },
+    { nombre: "Dólares", pct: 40.7 },
+    { nombre: "Euros", pct: 1.2 },
+    { nombre: "Otras monedas", pct: 11.9 },
+  ])
+})
+
+test("parseComposicionLegislacion arma Argentina vs Extranjera (hoja A.2)", () => {
+  const rows: unknown[][] = [
+    ["title"],
+    ["", "", ...dates6.map(serial)],
+    ["Legislación Argentina",  "I- LEGISLACIÓN ARGENTINA",  0, 0, 0, 0, 0, 665],
+    ["Legislación extranjera", "II- LEGISLACIÓN EXTRANJERA", 0, 0, 0, 0, 0, 335],
+  ]
+  assert.deepEqual(parseComposicionLegislacion(rows), [
+    { nombre: "Legislación argentina", pct: 66.5 },
+    { nombre: "Legislación extranjera", pct: 33.5 },
+  ])
+})
+
+test("composición devuelve [] si falta el encabezado de fechas o las categorías", () => {
+  assert.deepEqual(parseComposicionMoneda([["x"], ["Moneda local", "", 100]]), [])
+  assert.deepEqual(parseComposicionLegislacion([["", "", ...dates6.map(serial)]]), [])
 })
 
 test("debt route uses the live official workbook and drops the retired CSV", () => {
