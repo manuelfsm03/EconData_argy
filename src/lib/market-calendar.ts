@@ -6,16 +6,44 @@
  * más días después de la fecha del prospecto. Ignorar ese corrimiento mueve
  * todos los flujos de julio y ensucia la TIR.
  *
- * Fuente: hoja "Feriados" de la calculadora de referencia del equipo
- * (Copia de Calculadoras de bonos.xlsx).
+ * También es la tabla que usan las LECAP/BONCAP (`peso-bonds.ts`) para
+ * liquidación T+1: cualquier fecha puede ser liquidación, no solo las 5 fechas
+ * de pago de los soberanos, así que acá SÍ hace falta un calendario completo.
  *
- * OJO: de 2026 en adelante la planilla sólo carga los feriados que caen sobre
- * fechas de pago de bonos (1/1, 2/4, 1/5, 25/6, 9/7). No es un calendario
- * completo: sirve para soberanos HD, no para instrumentos que paguen en otras
- * fechas.
+ * Fuentes por rango (pedido explícito: cobertura completa 2018-01-01 a
+ * 2027-01-01, verificado 2026-08-22):
+ * - 2021-2025: hoja "Feriados" de la calculadora de referencia del equipo
+ *   (Copia de Calculadoras de bonos.xlsx) -- incluye feriados bancarios/
+ *   puentes turísticos, no solo los feriados nacionales "de ley".
+ * - 2018-2020: Nager.Date API (date.nager.at/api/v3/publicholidays/{year}/AR)
+ *   -- cubre los feriados nacionales oficiales; puede faltarle algún puente
+ *   turístico específico de banco que no esté en esa fuente genérica (menor
+ *   confianza que 2021-2025).
+ * - 2026: BCRA -- Comunicación "C" 101352 (30/12/2025), página oficial
+ *   bcra.gob.ar/en/check-bank-holidays/, verificada leyendo el HTML crudo (no
+ *   por resumen de IA). Ese año no incluye el 20/6 (Día de la Bandera) como
+ *   feriado bancario -- se dejó tal cual figura en la fuente oficial, sin
+ *   "corregirlo" a mano.
+ * - 2027: solo los feriados INAMOVIBLES de Ley 27.399 (fijos todos los años:
+ *   1/1, 24/3, 2/4, 1/5, 25/5, 9/7, 8/12, 25/12) -- los TRASLADABLES
+ *   (Carnaval, Semana Santa, San Martín, Diversidad, Soberanía) dependen de
+ *   un decreto que todavía no salió. 20/6 (Bandera) queda afuera a propósito
+ *   -- ver nota en 2026, no está claro que siga siendo feriado bancario.
  */
 
 const FERIADOS_AR = [
+  "2018-01-01", "2018-02-12", "2018-02-13", "2018-03-24", "2018-03-30",
+  "2018-04-02", "2018-05-01", "2018-05-25", "2018-06-17", "2018-06-20",
+  "2018-07-09", "2018-08-20", "2018-10-15", "2018-11-19", "2018-12-08",
+  "2018-12-25",
+  "2019-01-01", "2019-03-04", "2019-03-05", "2019-03-24", "2019-04-02",
+  "2019-04-19", "2019-05-01", "2019-05-25", "2019-06-17", "2019-06-20",
+  "2019-07-09", "2019-08-17", "2019-10-12", "2019-11-18", "2019-12-08",
+  "2019-12-25",
+  "2020-01-01", "2020-02-24", "2020-02-25", "2020-03-24", "2020-04-02",
+  "2020-04-10", "2020-05-01", "2020-05-25", "2020-06-15", "2020-06-20",
+  "2020-07-09", "2020-08-17", "2020-10-12", "2020-11-23", "2020-12-08",
+  "2020-12-25",
   "2021-01-01", "2021-02-15", "2021-02-16", "2021-03-24", "2021-04-01",
   "2021-04-02", "2021-04-24", "2021-05-01", "2021-05-24", "2021-05-25",
   "2021-06-20", "2021-06-21", "2021-07-09", "2021-08-16", "2021-10-08",
@@ -39,9 +67,22 @@ const FERIADOS_AR = [
   "2025-04-17", "2025-04-18", "2025-05-01", "2025-05-02", "2025-05-25",
   "2025-06-16", "2025-06-20", "2025-07-09", "2025-08-15", "2025-08-17",
   "2025-10-12", "2025-11-21", "2025-11-24", "2025-12-08", "2025-12-25",
-  // De acá en adelante: sólo los feriados que pisan fechas de pago de bonos.
-  "2026-01-01", "2026-04-02", "2026-05-01", "2026-06-25", "2026-07-09",
-  "2027-01-01", "2027-04-02", "2027-05-01", "2027-06-25", "2027-07-09",
+  // 2026: BCRA, Comunicación "C" 101352 (calendario completo, no solo pagos de bonos).
+  "2026-01-01", "2026-02-16", "2026-02-17", "2026-03-23", "2026-03-24",
+  "2026-04-02", "2026-04-03", "2026-05-01", "2026-05-25", "2026-06-15",
+  "2026-07-09", "2026-07-10", "2026-08-17", "2026-10-12", "2026-11-23",
+  "2026-12-08", "2026-12-25",
+  // 2027: los feriados INAMOVIBLES de Ley 27.399 (fijos todos los años, no
+  // dependen de decreto) -- 1/1, 24/3, 2/4, 1/5, 25/5, 9/7, 8/12, 25/12. Los
+  // TRASLADABLES (Carnaval, Semana Santa, San Martín, Diversidad, Soberanía)
+  // sí necesitan decreto y quedan afuera hasta que se publique. Se dejó
+  // afuera el 20/6 (Bandera) a propósito: la fuente oficial de 2026 (BCRA,
+  // Comunicación "C" 101352) no lo incluyó como feriado bancario ese año, así
+  // que no se asume que valga para 2027 sin confirmarlo.
+  "2027-01-01", "2027-03-24", "2027-04-02", "2027-05-01", "2027-05-25",
+  "2027-07-09", "2027-12-08", "2027-12-25",
+  // De acá en adelante (2028+): sólo los feriados que pisan fechas de pago de
+  // bonos soberanos de largo plazo -- fuera del alcance de este fix.
   "2028-01-01", "2028-04-02", "2028-05-01", "2028-06-25", "2028-07-09",
   "2029-01-01", "2029-04-02", "2029-05-01", "2029-06-25", "2029-07-09",
   "2030-01-01", "2030-04-02", "2030-05-01", "2030-06-25", "2030-07-09",
@@ -90,6 +131,22 @@ export function esDiaHabil(fecha: Date): boolean {
  */
 export function siguienteDiaHabil(fecha: Date): Date {
   const resultado = new Date(fecha.getTime())
+  let intentos = 0
+  while (!esDiaHabil(resultado) && intentos < 10) {
+    resultado.setTime(resultado.getTime() + MS_POR_DIA)
+    intentos += 1
+  }
+  return resultado
+}
+
+/**
+ * Equivalente a WORKDAY(fecha, 1, feriados) de Excel: SIEMPRE avanza al
+ * menos un día hábil, a diferencia de siguienteDiaHabil (que devuelve la
+ * misma fecha si ya es hábil). Es la liquidación T+1 -- lo que se paga hoy
+ * se cobra/liquida el próximo día hábil, nunca el mismo día.
+ */
+export function proximoDiaHabil(fecha: Date): Date {
+  const resultado = new Date(fecha.getTime() + MS_POR_DIA)
   let intentos = 0
   while (!esDiaHabil(resultado) && intentos < 10) {
     resultado.setTime(resultado.getTime() + MS_POR_DIA)

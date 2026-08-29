@@ -10,13 +10,15 @@ import { fetchRegistered } from "@/server/http/fetch-source"
 
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/server/db/prisma"
-import { BOND_DEFS, CAP_INSTRUMENT_DEFS, type BondDef } from "@/server/domain/bonds-data"
+import { BOND_DEFS, type BondDef } from "@/server/domain/bonds-data"
+import { CAP_INSTRUMENTOS_CURADOS } from "@/server/domain/lecap-boncap"
+import { calcularMetricasCap } from "@/lib/lecap-math"
 import { metricasDeMercado, metricasDevengadas } from "@/lib/bond-math"
 import { construirCashflows, ESQUEMAS } from "@/lib/bond-schedule"
 import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
 import { fetchRavaBondPrices, type RavaBondPrice } from "@/server/external/rava-prices"
 import { pesoBondsVigentes } from "@/server/domain/peso-bonds"
-import { fetchBymaCapInstruments, fetchBymaQuotes, marketMetaForRows } from "@/server/external/byma-data"
+import { fetchBymaQuotes, marketMetaForRows } from "@/server/external/byma-data"
 
 type Cashflow = { fechaPago: Date; cupon: number; amortizacion: number; flujoTotal: number }
 
@@ -252,114 +254,44 @@ export async function GET(request: NextRequest) {
     const cached = getCache<unknown[]>(cacheKey)
     if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), cached: true, ...marketMetaForRows(cached) })
 
-    let cclActual: number | null = null
-    try {
-      const dolarRes = await fetchRegistered("https://dolarapi.com/v1/dolares", {
-        headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
-        signal: AbortSignal.timeout(5000),
-        next: { revalidate: 60 },
-      })
-      if (dolarRes.ok) {
-        const dolarData = await dolarRes.json() as Array<{ casa?: string; venta?: number }>
-        const ccl = dolarData.find((d) => d.casa === "contadoconliqui")
-        cclActual = ccl?.venta ?? null
-      }
-    } catch {
-      // noop
-    }
-
-    const bymaCatalog = await fetchBymaCapInstruments()
-    let dbInstruments: Awaited<ReturnType<typeof prisma.capInstrument.findMany>> = []
-    try {
-      dbInstruments = await prisma.capInstrument.findMany({
-        where: { vencimiento: { gt: new Date() } },
-        orderBy: { vencimiento: "asc" },
-      })
-    } catch {
-      // BYMA abierto sigue siendo suficiente para catálogo y precios.
-    }
-
-    if (dbInstruments.length > 0 || bymaCatalog.length > 0) {
-      const dbByTicker = new Map(dbInstruments.map((instrumento) => [instrumento.ticker, instrumento]))
-      const instruments = bymaCatalog.length > 0
-        ? bymaCatalog
-        : dbInstruments.map((instrumento) => ({
-            ticker: instrumento.ticker,
-            tipo: instrumento.tipo as "LECAP" | "BONCAP",
-            vencimiento: instrumento.vencimiento.toISOString().slice(0, 10),
-          }))
-      const bymaQuotes = await fetchBymaQuotes(instruments.map((instrumento) => instrumento.ticker))
-      const screener = instruments.map((instrument) => {
-        const inst = dbByTicker.get(instrument.ticker)
-        const maturity = new Date(instrument.vencimiento)
-        const hoy = new Date()
-        const diasVto = Math.round((maturity.getTime() - hoy.getTime()) / (24 * 3600 * 1000))
-        const byma = bymaQuotes.get(instrument.ticker)
-        const tcImplicito =
-          cclActual != null && inst?.tem != null && diasVto > 0
-            ? Number((cclActual * Math.pow(1 + inst.tem / 100, diasVto / 30)).toFixed(2))
-            : null
-
-        return {
-          ticker: instrument.ticker,
-          tipo: instrument.tipo,
-          vencimiento: instrument.vencimiento,
-          diasVencimiento: diasVto,
-          precio: byma?.lastPrice ?? inst?.precio ?? null,
-          tir: inst?.tir ?? null,
-          tea: inst?.tea ?? null,
-          tem: inst?.tem ?? null,
-          tcImplicito,
-          change1D: byma?.change1D ?? null,
-          asOf: byma?.asOf ?? null,
-          fuente: byma ? "byma_data_open" : inst ? "db_local" : "fuente no conectada",
-        }
-      })
-      setCache(cacheKey, screener, 300)
-      return NextResponse.json({
-        data: screener,
-        updated_at: new Date().toISOString(),
-        ...marketMetaForRows(screener),
-        nota: "catálogo y precios priorizados desde BYMA Data; métricas complementarias desde DB local cuando existen",
-      })
-    }
-
+    // El catálogo abierto "lebacs" de BYMA solo lista LECAP (prefijo S), no
+    // BONCAP (prefijo T) -- confirmado bajando el JSON crudo (640 filas, 0
+    // con prefijo T). Por eso el catálogo sale de la lista curada, no de ese
+    // endpoint; el precio en vivo de BYMA sí funciona para ambos por símbolo.
     const hoy = new Date()
-    const activeDefinitions = CAP_INSTRUMENT_DEFS
-      .filter((inst) => new Date(inst.vencimiento).getTime() >= hoy.getTime())
-    const bymaQuotes = await fetchBymaQuotes(activeDefinitions.map((instrumento) => instrumento.ticker))
-    const screener = activeDefinitions
-      .map((inst) => {
-        const vencimiento = new Date(inst.vencimiento)
-        const diasVto = Math.round((vencimiento.getTime() - hoy.getTime()) / (24 * 3600 * 1000))
-        const byma = bymaQuotes.get(inst.ticker)
-        const tcImplicito =
-          cclActual != null && inst.tem != null && diasVto > 0
-            ? Number((cclActual * Math.pow(1 + inst.tem / 100, diasVto / 30)).toFixed(2))
-            : null
+    const vigentes = CAP_INSTRUMENTOS_CURADOS.filter((inst) => fechaUTC(inst.vencimiento).getTime() >= hoy.getTime())
+    const bymaQuotes = await fetchBymaQuotes(vigentes.map((inst) => inst.ticker))
 
-        return {
-          ticker: inst.ticker,
-          tipo: inst.tipo,
-          vencimiento: inst.vencimiento,
-          diasVencimiento: diasVto,
-          precio: byma?.lastPrice ?? null,
-          tir: null,
-          tea: null,
-          tem: inst.tem ?? null,
-          tcImplicito,
-          change1D: byma?.change1D ?? null,
-          asOf: byma?.asOf ?? null,
-          fuente: byma ? "byma_data_open" : "fuente no conectada",
-        }
-      })
+    const screener = vigentes.map((inst) => {
+      const byma = bymaQuotes.get(inst.ticker)
+      const pxDirty = byma?.lastPrice ?? null
+      const metricas = calcularMetricasCap(pxDirty, inst.pxFinish, inst.vencimiento, hoy)
+
+      return {
+        ticker: inst.ticker,
+        tipo: inst.tipo,
+        vencimiento: inst.vencimiento,
+        diasVencimiento: metricas.diasVencimiento,
+        precio: pxDirty,
+        pxFinish: inst.pxFinish,
+        tem: metricas.tem,
+        tna: metricas.tna,
+        tea: metricas.tea,
+        duration: metricas.duration,
+        durationMod: metricas.durationMod,
+        paridad: metricas.paridad,
+        change1D: byma?.change1D ?? null,
+        asOf: byma?.asOf ?? null,
+        fuente: byma ? "byma_data_open" : "sin_precio_en_vivo",
+      }
+    })
 
     setCache(cacheKey, screener, 300)
     return NextResponse.json({
       data: screener,
       updated_at: new Date().toISOString(),
       ...marketMetaForRows(screener),
-      nota: "precios desde BYMA Data con metadata estática cuando la DB local no está disponible",
+      nota: "Catálogo curado (LECAP + BONCAP, el catálogo abierto de BYMA no trae BONCAP) con precio en vivo de BYMA Data por símbolo. pxFinish (pago al vencimiento) es dato estructural fijo de la emisión, no de mercado -- fuente: equipo, verificado contra Rava y el código de mes estándar del ticker. Días a vencimiento contados desde la próxima liquidación hábil (T+1), no desde hoy. S30S6 sin pxFinish confirmado todavía (dato recibido inválido) -- TEM/TNA/TEA/duration/paridad quedan en blanco para ese ticker hasta confirmarlo.",
     })
   }
 

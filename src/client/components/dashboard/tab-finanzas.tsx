@@ -571,9 +571,98 @@ function FamiliaSinFuente({ label, detalle }: { label: string; detalle: string }
   )
 }
 
+/**
+ * Panel educativo -- pedido explícito de Pista: 1 página, explicación
+ * profunda pero no extensa de qué es una LECAP/BONCAP, desde cero.
+ */
+function EducacionLecapPanel({ onClose }: { onClose: () => void }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--bg)", overflowY: "auto" }}>
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 20px 60px" }}>
+        <button onClick={onClose} style={{
+          marginBottom: 24, padding: "6px 14px", borderRadius: 20, cursor: "pointer",
+          background: "transparent", border: "1px solid var(--border)", color: "var(--text-dim)",
+          fontFamily: "var(--font-data)", fontSize: 10,
+        }}>← Volver</button>
+
+        <h1 style={{ fontSize: 20, fontFamily: "var(--font-data)", color: "var(--text)", marginBottom: 4 }}>
+          ¿Qué es una LECAP y cómo funciona?
+        </h1>
+        <p style={{ fontSize: 10, color: "var(--text-mute)", marginBottom: 28, fontFamily: "var(--font-data)" }}>
+          Guía rápida antes de mirar la tabla de arriba.
+        </p>
+
+        <div style={{ fontSize: 12, lineHeight: 1.8, color: "var(--text-dim)", display: "flex", flexDirection: "column", gap: 18 }}>
+          <section>
+            <h2 style={{ fontSize: 13, color: "#FFD700", marginBottom: 6 }}>El instrumento</h2>
+            <p>
+              Una <b style={{ color: "var(--text)" }}>LECAP</b> (Letra del Tesoro Capitalizable en Pesos) es la forma que tiene
+              el Tesoro Nacional argentino de pedir plata prestada a corto plazo (semanas a un año) pagando una
+              tasa fija en pesos. Cuando el vencimiento supera el año, el mismo instrumento se llama{" "}
+              <b style={{ color: "#7DD3C0" }}>BONCAP</b> -- funciona exactamente igual, solo cambia el plazo (y el prefijo
+              del ticker: LECAP arranca con &quot;S&quot;, BONCAP con &quot;T&quot;).
+            </p>
+          </section>
+
+          <section>
+            <h2 style={{ fontSize: 13, color: "#FFD700", marginBottom: 6 }}>El mecanismo: VN 100 y la TEM</h2>
+            <p>
+              Cada LECAP se emite con un <b style={{ color: "var(--text)" }}>valor nominal (VN) de 100</b>. En la licitación,
+              el Tesoro no negocia un precio: negocia directamente la <b style={{ color: "var(--text)" }}>TEM</b> (tasa
+              efectiva mensual) a la que va a pagar. Esa TEM se capitaliza mes a mes -- por eso &quot;capitalizable&quot; -- desde
+              la emisión hasta el vencimiento, y define un único número fijo: cuánto vas a cobrar el día del
+              vencimiento por cada 100 de VN (lo llamamos <i>pago al vencimiento</i>). Ese número no cambia nunca
+              más, pase lo que pase con el precio de mercado en el medio.
+            </p>
+          </section>
+
+          <section>
+            <h2 style={{ fontSize: 13, color: "#FFD700", marginBottom: 6 }}>Del precio de hoy al pago fijo: TEM, TNA y TEA</h2>
+            <p>
+              Una vez que la LECAP ya está circulando, se compra y se vende en el mercado secundario a un precio
+              que casi nunca es 100 (depende de cuánto falta para el vencimiento y de la tasa que pide el
+              mercado hoy). Comparando ese <b style={{ color: "var(--text)" }}>precio de hoy</b> contra el{" "}
+              <b style={{ color: "var(--text)" }}>pago fijo al vencimiento</b> -- y contra cuántos días faltan --
+              se puede recalcular la tasa de rendimiento implícita de tres formas distintas, todas la misma
+              información expresada distinto:
+            </p>
+            <ul style={{ marginTop: 8, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 6 }}>
+              <li><b style={{ color: "var(--text)" }}>TEM</b> (tasa efectiva mensual): el rendimiento normalizado a 30 días. Es la que se compara directamente contra la que licitó el Tesoro.</li>
+              <li><b style={{ color: "var(--text)" }}>TNA</b> (tasa nominal anual): el rendimiento anualizado de forma lineal (sin componer). Es la que suelen publicar los bancos.</li>
+              <li><b style={{ color: "var(--text)" }}>TEA</b> (tasa efectiva anual): el rendimiento anualizado componiendo mes a mes. Siempre es un poco más alta que la TNA -- por eso conviene para comparar contra un plazo fijo a un año.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 style={{ fontSize: 13, color: "#FFD700", marginBottom: 6 }}>Duration y paridad</h2>
+            <p>
+              Como una LECAP paga todo junto al vencimiento (no tiene cupones en el medio), su duration
+              -- la sensibilidad del precio a cambios de tasa -- es simplemente el tiempo que falta para
+              cobrar. La <b style={{ color: "var(--text)" }}>paridad</b> compara el precio de hoy contra el pago final:
+              cuanto más lejos está el vencimiento, más baja la paridad (estás pagando menos hoy por cada
+              peso que vas a cobrar en el futuro).
+            </p>
+          </section>
+
+          <div style={{ marginTop: 8, padding: 12, background: "var(--bg-elev)", borderRadius: 6, fontSize: 9, color: "var(--text-mute)", lineHeight: 1.6 }}>
+            Esta página es material educativo general, no recomendación de inversión.
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function BonosView({ initialTicker = null }: { initialTicker?: string | null } = {}) {
   const [bonos, setBonos] = useState<BondRow[]>([])
-  const [lecaps, setLecaps] = useState<{ ticker: string; tipo: string; vencimiento: string; diasVencimiento: number; precio: number | null; tir: number | null; tea: number | null; tem: number | null }[]>([])
+  const [lecaps, setLecaps] = useState<{
+    ticker: string; tipo: "LECAP" | "BONCAP"; vencimiento: string; diasVencimiento: number
+    precio: number | null; pxFinish: number | null
+    tem: number | null; tna: number | null; tea: number | null
+    duration: number | null; durationMod: number | null; paridad: number | null
+  }[]>([])
+  const [capTipoFiltro, setCapTipoFiltro] = useState<"todos" | "LECAP" | "BONCAP">("todos")
+  const [showEducacionLecap, setShowEducacionLecap] = useState(false)
   const [tab, setTab] = useState<FamiliaRentaFija>("soberanos")
   const [pesos, setPesos] = useState<PesoRow[]>([])
   const [pesosLoading, setPesosLoading] = useState(true)
@@ -706,60 +795,100 @@ export function BonosView({ initialTicker = null }: { initialTicker?: string | n
 
       {tab === "lecap" && (
         <div style={{ padding: 16, background: "var(--bg)" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "var(--bg-elev-2)", marginBottom: 1 }}>
-            {/* Curva LECAP */}
-            <div style={{ background: "var(--bg)", padding: 16 }}>
-              <SectionTitle title="Curva LECAP / BONCAP — TEM vs plazo" />
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={lecaps.filter(l => l.tem != null).sort((a, b) => a.diasVencimiento - b.diasVencimiento).map(l => ({ label: l.ticker, dias: l.diasVencimiento, tem: l.tem }))} margin={{ top: 8, right: 20, left: 0, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
-                  <XAxis dataKey="dias" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}d`} />
-                  <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}%`} />
-                  <Tooltip {...tooltipStyle} formatter={(v: unknown) => [`${fmtNum(v as number, 2)}%`, "TEM"]} />
-                  <Line type="monotone" dataKey="tem" stroke="#FFD700" strokeWidth={2} dot={{ r: 3, fill: "#FFD700" }} isAnimationActive={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+          <button
+            onClick={() => setShowEducacionLecap(true)}
+            style={{
+              display: "flex", alignItems: "center", gap: 6, marginBottom: 12,
+              padding: "6px 14px", borderRadius: 20, cursor: "pointer",
+              background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.35)",
+              color: "#FFD700", fontFamily: "var(--font-data)", fontSize: 10, fontWeight: 700,
+            }}
+          >
+            ❓ ¿Qué es una LECAP y cómo funcionan?
+          </button>
 
-            {/* Tabla LECAP */}
-            <div style={{ background: "var(--bg)", padding: 16 }}>
-              <SectionTitle title="Detalle instrumentos" />
-              <div style={{ overflowY: "auto", maxHeight: 240 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-data)", fontSize: 9 }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                      {["Ticker", "Tipo", "Vto.", "Días", "Precio", "TEM", "TEA"].map(h => (
-                        <th key={h} style={{ padding: "4px 6px", color: "var(--text-dim)", fontWeight: 400, textAlign: h === "Ticker" || h === "Tipo" ? "left" : "right" }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lecaps.sort((a, b) => a.diasVencimiento - b.diasVencimiento).map((l, i) => (
-                      <tr
-                        key={i}
-                        onClick={() => setSelected(prev => prev?.type === "cap" && prev.ticker === l.ticker ? null : { type: "cap", ticker: l.ticker })}
-                        style={{
-                          borderBottom: "1px solid var(--bg-elev-2)",
-                          cursor: "pointer",
-                          background: selected?.type === "cap" && selected.ticker === l.ticker ? "var(--bg-elev-2)" : "transparent",
-                        }}
-                      >
-                        <td style={{ padding: "3px 6px", color: "var(--amber)", fontWeight: 700 }}>{l.ticker}</td>
-                        <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{l.tipo}</td>
-                        <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{l.vencimiento}</td>
-                        <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{l.diasVencimiento}</td>
-                        <td style={{ padding: "3px 6px", color: "var(--text)", textAlign: "right" }}>{l.precio != null ? fmtNum(l.precio, 2) : "—"}</td>
-                        <td style={{ padding: "3px 6px", color: "#FFD700", textAlign: "right", fontWeight: 700 }}>{l.tem != null ? fmtPct(l.tem) : "—"}</td>
-                        <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{l.tea != null ? fmtPct(l.tea) : "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+          <div style={{ padding: "8px 0 12px", display: "flex", gap: 4 }}>
+            {(["todos", "LECAP", "BONCAP"] as const).map(t => (
+              <button key={t} onClick={() => setCapTipoFiltro(t)} style={{
+                fontSize: 9, fontFamily: "var(--font-data)", padding: "3px 12px", borderRadius: 20, cursor: "pointer",
+                background: capTipoFiltro === t ? "rgba(255,215,0,0.12)" : "transparent",
+                border: capTipoFiltro === t ? "1px solid rgba(255,215,0,0.4)" : "1px solid var(--border)",
+                color: capTipoFiltro === t ? "#FFD700" : "#666",
+              }}>
+                {t === "todos" ? "Todos" : t === "LECAP" ? "Solo LECAP" : "Solo BONCAP"}
+              </button>
+            ))}
           </div>
+
+          {(() => {
+            const filtrados = lecaps.filter(l => capTipoFiltro === "todos" || l.tipo === capTipoFiltro)
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "var(--bg-elev-2)", marginBottom: 1 }}>
+                {/* Curva LECAP */}
+                <div style={{ background: "var(--bg)", padding: 16 }}>
+                  <SectionTitle title="Curva LECAP / BONCAP — TEM vs Duration" />
+                  <ResponsiveContainer width="100%" height={240}>
+                    <LineChart data={filtrados.filter(l => l.tem != null && l.durationMod != null).sort((a, b) => (a.durationMod ?? 0) - (b.durationMod ?? 0)).map(l => ({ label: l.ticker, duration: l.durationMod, tem: l.tem }))} margin={{ top: 8, right: 20, left: 0, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
+                      <XAxis dataKey="duration" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => fmtNum(v as number, 2)} label={{ value: "Modified duration (años)", position: "insideBottom", offset: -10, fill: "#666", fontSize: 8 }} />
+                      <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}%`} />
+                      <Tooltip {...tooltipStyle} formatter={(v: unknown) => [`${fmtNum(v as number, 2)}%`, "TEM"]} labelFormatter={(v: unknown) => `Duration: ${fmtNum(v as number, 3)} años`} />
+                      <Line type="monotone" dataKey="tem" stroke="#FFD700" strokeWidth={2} dot={{ r: 3, fill: "#FFD700" }} isAnimationActive={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Tabla LECAP */}
+                <div style={{ background: "var(--bg)", padding: 16 }}>
+                  <SectionTitle title="Detalle instrumentos" />
+                  <div style={{ overflow: "auto", maxHeight: 240 }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-data)", fontSize: 9 }}>
+                      <thead>
+                        <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                          {["Ticker", "Tipo", "Vto.", "Días", "Precio", "TEM", "TNA", "TEA", "Dur.Mod", "Paridad"].map(h => (
+                            <th key={h} style={{ padding: "4px 6px", color: "var(--text-dim)", fontWeight: 400, textAlign: h === "Ticker" || h === "Tipo" ? "left" : "right", whiteSpace: "nowrap" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filtrados.sort((a, b) => a.diasVencimiento - b.diasVencimiento).map((l, i) => (
+                          <tr
+                            key={i}
+                            onClick={() => setSelected(prev => prev?.type === "cap" && prev.ticker === l.ticker ? null : { type: "cap", ticker: l.ticker })}
+                            title={l.pxFinish == null ? "Sin pago de vencimiento confirmado todavía -- métricas en blanco" : undefined}
+                            style={{
+                              borderBottom: "1px solid var(--bg-elev-2)",
+                              cursor: "pointer",
+                              background: selected?.type === "cap" && selected.ticker === l.ticker ? "var(--bg-elev-2)" : "transparent",
+                              opacity: l.pxFinish == null ? 0.5 : 1,
+                            }}
+                          >
+                            <td style={{ padding: "3px 6px", color: "var(--amber)", fontWeight: 700 }}>{l.ticker}</td>
+                            <td style={{ padding: "3px 6px", color: l.tipo === "LECAP" ? "#FFD700" : "#7DD3C0" }}>{l.tipo}</td>
+                            <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{l.vencimiento}</td>
+                            <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{l.diasVencimiento}</td>
+                            <td style={{ padding: "3px 6px", color: "var(--text)", textAlign: "right" }}>{l.precio != null ? fmtNum(l.precio, 2) : "—"}</td>
+                            <td style={{ padding: "3px 6px", color: "#FFD700", textAlign: "right", fontWeight: 700 }}>{l.tem != null ? fmtPct(l.tem) : "—"}</td>
+                            <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{l.tna != null ? fmtPct(l.tna) : "—"}</td>
+                            <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{l.tea != null ? fmtPct(l.tea) : "—"}</td>
+                            <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{l.durationMod != null ? fmtNum(l.durationMod, 3) : "—"}</td>
+                            <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{l.paridad != null ? fmtPct(l.paridad) : "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 8, color: "var(--text-mute)", lineHeight: 1.6 }}>
+                    Paridad = precio / pago al vencimiento × 100. Duration modificada: instrumento bullet (un solo flujo), Macaulay = plazo en años.
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
+
+      {showEducacionLecap && <EducacionLecapPanel onClose={() => setShowEducacionLecap(false)} />}
 
       {(tab === "cer" || tab === "dual") && (() => {
         const filas = pesos.filter(p => (tab === "dual" ? esDual(p.ticker) : !esDual(p.ticker)))
