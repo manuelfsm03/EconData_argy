@@ -23,5 +23,9 @@ export type SourceDefinition<Id extends string = string> = {
   freshness: { warnAfterSeconds: number | null; rejectAfterSeconds: number | null }
   credentialEnv?: string
   fallbackSourceIds: readonly string[]
-  healthcheck?: { path: string; expectedStatuses: readonly number[] }
+  healthcheck?: {
+    path: string
+    expectedStatuses: readonly number[]
+    credentialQueryParam?: string
+  }
 }

@@ -14,6 +14,7 @@ type SourceSeed = {
   allowedRedirectSourceIds?: readonly string[]
   cookieForwardSourceIds?: readonly string[]
   healthcheckPath?: string
+  healthcheckCredentialQueryParam?: string
   fallbackSourceIds?: readonly string[]
   timeoutMs?: number
   maxResponseBytes?: number
@@ -56,7 +57,11 @@ function source<Id extends string>(id: Id, seed: SourceSeed): SourceDefinition<I
     freshness: seed.freshness ?? freshnessByClass[dataClass],
     credentialEnv: seed.credentialEnv,
     fallbackSourceIds: seed.fallbackSourceIds ?? [],
-    healthcheck: seed.healthcheckPath ? { path: seed.healthcheckPath, expectedStatuses: [200] } : undefined,
+    healthcheck: seed.healthcheckPath ? {
+      path: seed.healthcheckPath,
+      expectedStatuses: [200],
+      credentialQueryParam: seed.healthcheckCredentialQueryParam,
+    } : undefined,
   }
 }
 
@@ -86,7 +91,7 @@ export const SOURCE_REGISTRY = {
   yahoo_finance_chart: source("yahoo_finance_chart", { displayName: "Yahoo Finance APIs (chart/quote/fundamentals)", publisher: "Yahoo Finance", host: "query1.finance.yahoo.com", allowedHosts: ["query1.finance.yahoo.com", "query2.finance.yahoo.com"], dataClass: "intraday_market", timeoutMs: 8_000 }),
   yahoo_finance: source("yahoo_finance", { displayName: "Yahoo Finance APIs (chart/quote/fundamentals)", publisher: "Yahoo Finance", host: "finance.yahoo.com", kind: "html", dataClass: "intraday_market", timeoutMs: 8_000, allowedRedirectSourceIds: ["yahoo_consent"], cookieForwardSourceIds: ["yahoo_consent", "yahoo_finance_chart"] }),
   yahoo_finance_rss: source("yahoo_finance_rss", { displayName: "Yahoo Finance RSS", publisher: "Yahoo Finance", host: "feeds.finance.yahoo.com", kind: "rss", dataClass: "news" }),
-  api_merval: source("api_merval", { displayName: "API Merval", publisher: "API Merval", host: "api-merval-production.up.railway.app", dataClass: "intraday_market", healthcheckPath: "/health" }),
+  api_merval: source("api_merval", { displayName: "API Merval", publisher: "API Merval", host: "api-merval-production.up.railway.app", dataClass: "intraday_market" }),
   byma_data_open: source("byma_data_open", {
     displayName: "BYMA Data abierto",
     publisher: "Bolsas y Mercados Argentinos",
@@ -113,6 +118,7 @@ export const SOURCE_REGISTRY = {
     dataClass: "official_monthly",
     credentialEnv: "EIA_API_KEY",
     healthcheckPath: "/v2/",
+    healthcheckCredentialQueryParam: "api_key",
     freshness: { warnAfterSeconds: 155 * 86_400, rejectAfterSeconds: 245 * 86_400 },
   }),
   polymarket: source("polymarket", { displayName: "Polymarket Gamma", publisher: "Polymarket", host: "gamma-api.polymarket.com", dataClass: "intraday_market", healthcheckPath: "/markets?limit=1" }),
@@ -188,6 +194,9 @@ export function validateSourceRegistry(): string[] {
     if (definition.baseUrl && new URL(definition.baseUrl).protocol !== "https:") errors.push(`${key}: baseUrl must be HTTPS`)
     if (definition.timeoutMs < 3_000 || definition.timeoutMs > 15_000) errors.push(`${key}: invalid timeout`)
     if (definition.retry.attempts > 1) errors.push(`${key}: too many retries`)
+    if (definition.healthcheck?.credentialQueryParam && !definition.credentialEnv) {
+      errors.push(`${key}: healthcheck credential query requires credentialEnv`)
+    }
     for (const host of definition.allowedHosts) {
       if (hosts.has(host)) errors.push(`${key}: duplicate host ${host}`)
       hosts.add(host)

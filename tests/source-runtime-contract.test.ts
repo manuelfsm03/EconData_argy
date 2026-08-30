@@ -91,6 +91,8 @@ test("status healthchecks are derived only from the canonical registry", () => {
     assert.equal(check, SOURCE_REGISTRY[check.id])
     assert.ok(check.healthcheck)
   }
+  assert.ok(!checks.some((check) => check.id === "api_merval"))
+  assert.equal(SOURCE_REGISTRY.eia.healthcheck?.credentialQueryParam, "api_key")
 })
 
 test("registry timeout cannot be disabled by a caller signal and retries get fresh signals", async () => {
