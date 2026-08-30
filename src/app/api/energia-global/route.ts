@@ -120,7 +120,7 @@ async function fetchEIAData(
 
     const countryFacets = countries.map((c) => `facets[countryRegionId][]=${c}`).join("&")
     const frequency = dataTypeId === "2" ? "annual" : "monthly"
-    const url = `${EIA_BASE}/international/data/?api_key=${apiKey}&frequency=${frequency}&data[0]=value&facets[activityId][]=${dataConfig.activityId}&facets[productId][]=57&${countryFacets}&facets[unitId][]=${dataConfig.unit}&sort[0][column]=period&sort[0][direction]=desc&length=600`
+    const url = `${EIA_BASE}/international/data/?api_key=${apiKey}&frequency=${frequency}&data[0]=value&facets[activityId][]=${dataConfig.activityId}&facets[productId][]=57&${countryFacets}&facets[unit][]=${dataConfig.unit}&sort[0][column]=period&sort[0][direction]=desc&length=600`
 
     const res = await fetchRegistered(url, {
       headers: { "User-Agent": "PanelDeControl/2.0" },
@@ -173,7 +173,7 @@ async function fetchEIAProduction(
 
   try {
     const countryFacets = countries.map((c) => `facets[countryRegionId][]=${c}`).join("&")
-    const url = `${EIA_BASE}/international/data/?api_key=${apiKey}&frequency=monthly&data[0]=value&facets[activityId][]=1&facets[productId][]=57&${countryFacets}&facets[unitId][]=TBPD&sort[0][column]=period&sort[0][direction]=desc&length=600`
+    const url = `${EIA_BASE}/international/data/?api_key=${apiKey}&frequency=monthly&data[0]=value&facets[activityId][]=1&facets[productId][]=57&${countryFacets}&facets[unit][]=TBPD&sort[0][column]=period&sort[0][direction]=desc&length=600`
 
     const res = await fetchRegistered(url, {
       headers: { "User-Agent": "PanelDeControl/2.0" },

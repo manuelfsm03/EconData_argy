@@ -105,6 +105,8 @@ test("EIA 403 and source failures are audited as unavailable, without leaking ra
   assert.match(route, /unavailableNumeric\(/)
   assert.doesNotMatch(route, /detail:\s*String\(error\)/)
   assert.doesNotMatch(route, /status:\s*500/)
+  assert.match(route, /facets\[unit\]\[\]=/)
+  assert.doesNotMatch(route, /facets\[unitId\]/)
 })
 
 test("runtime bindings connect every catalog id to its endpoint, renderer and concrete numeric field", () => {

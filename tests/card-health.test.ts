@@ -66,12 +66,26 @@ test("card health accepts only non-empty finite fresh payloads with an asOf", ()
   assert.equal(assessCardHealthPayload({ ...provenance, asOf: "2026-08-26T11:59:00.000Z", data: { value: Number.NaN } }, now), "unavailable")
   assert.equal(assessCardHealthPayload({ ...provenance, asOf: "2026-08-26T11:59:00.000Z", data: { value: Infinity } }, now), "unavailable")
   assert.equal(assessCardHealthPayload({ ...provenance, asOf: "2026-08-26T11:59:00.000Z", data: { value: 0 } }, now), "available")
+  assert.equal(assessCardHealthPayload({ ...provenance, asOf: "2026-08-26T11:59:00.000Z", data: { value: 42, optional: null } }, now), "available")
   assert.equal(assessCardHealthPayload({ ...provenance, asOf: "2026-08-26T11:59:00.000Z", data: [] }, now), "unavailable")
   assert.equal(assessCardHealthPayload({ asOf: "2026-08-26T11:59:00.000Z", data: { value: 42 } }, now), "unavailable")
   assert.equal(assessCardHealthPayload({ ...provenance, asOf: "2026-08-26T12:01:00.000Z", data: { value: 42 } }, now), "unavailable")
   assert.equal(assessCardHealthPayload({ ...provenance, asOf: "2026-08-24T11:59:00.000Z", data: { value: 42 } }, now), "unavailable")
   assert.equal(assessCardHealthPayload({ ...provenance, asOf: "2026-08-26T11:59:00.000Z", data: { value: 42 }, freshness: "stale" }, now), "unavailable")
   assert.equal(assessCardHealthPayload({ ...provenance, asOf: "2026-08-26T11:59:00.000Z", error: "upstream failed", data: { value: 42 } }, now), "unavailable")
+})
+
+test("card health consumes truthful response provenance headers for array feeds", () => {
+  const headers = new Headers({
+    "X-Data-Source": "news_rss",
+    "X-Data-As-Of": "2026-08-26T11:59:00.000Z",
+    "X-Data-Freshness": "fresh",
+  })
+  assert.equal(
+    assessCardHealthPayload([{ title: "Mercados en alza", pubDate: "2026-08-26T11:59:00.000Z" }], Date.parse("2026-08-26T12:00:00.000Z"), undefined, headers),
+    "available",
+  )
+  assert.equal(assessCardHealthPayload([], Date.parse("2026-08-26T12:00:00.000Z"), undefined, headers), "unavailable")
 })
 
 test("a 200 response with an empty payload is still unavailable", async () => {

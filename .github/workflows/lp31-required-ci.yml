@@ -157,7 +157,7 @@ jobs:
     name: canvas
     runs-on: ubuntu-latest
     env:
-      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/ms-playwright
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/ms-playwright
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
