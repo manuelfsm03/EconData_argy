@@ -97,14 +97,19 @@ export const DATA_CARD_CATALOG: DataCardDefinition[] = [
 
 export const DATA_CARD_BY_ID = new Map(DATA_CARD_CATALOG.map((item) => [item.id, item]))
 
+function normalizeSearchText(value: string): string {
+  return value
+    .trim()
+    .toLocaleLowerCase("es")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+}
+
 export function searchDataCards(query: string, category?: CardCategory | "all"): DataCardDefinition[] {
-  const normalized = query.trim().toLocaleLowerCase("es")
+  const normalized = normalizeSearchText(query)
   return DATA_CARD_CATALOG.filter((item) => {
     if (category && category !== "all" && item.category !== category) return false
     if (!normalized) return true
-    return [item.title, item.description, item.category, ...item.keywords]
-      .join(" ")
-      .toLocaleLowerCase("es")
-      .includes(normalized)
+    return normalizeSearchText([item.title, item.description, item.category, ...item.keywords].join(" ")).includes(normalized)
   })
 }
