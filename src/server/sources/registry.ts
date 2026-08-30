@@ -17,6 +17,7 @@ type SourceSeed = {
   fallbackSourceIds?: readonly string[]
   timeoutMs?: number
   maxResponseBytes?: number
+  freshness?: SourceDefinition["freshness"]
 }
 
 function source<Id extends string>(id: Id, seed: SourceSeed): SourceDefinition<Id> {
@@ -52,7 +53,7 @@ function source<Id extends string>(id: Id, seed: SourceSeed): SourceDefinition<I
     maxResponseBytes: seed.maxResponseBytes ?? (seed.kind === "csv" || seed.kind === "xlsx" ? 25 * MB : 5 * MB),
     retry: { attempts: 1, retryOn: ["timeout", "429", "5xx"] },
     cache: cacheByClass[dataClass],
-    freshness: freshnessByClass[dataClass],
+    freshness: seed.freshness ?? freshnessByClass[dataClass],
     credentialEnv: seed.credentialEnv,
     fallbackSourceIds: seed.fallbackSourceIds ?? [],
     healthcheck: seed.healthcheckPath ? { path: seed.healthcheckPath, expectedStatuses: [200] } : undefined,
@@ -102,7 +103,18 @@ export const SOURCE_REGISTRY = {
   rava_market: source("rava_market", { displayName: "Rava Mercado", publisher: "Rava Bursátil", host: "mercado.rava.com", dataClass: "intraday_market", maxResponseBytes: 15 * MB }),
   owid: source("owid", { displayName: "Our World in Data", publisher: "Our World in Data", host: "ourworldindata.org", kind: "csv", dataClass: "annual", healthcheckPath: "/grapher/soybean-production.csv" }),
   owid_github: source("owid_github", { displayName: "OWID datasets", publisher: "Our World in Data", host: "raw.githubusercontent.com", kind: "csv", dataClass: "annual" }),
-  eia: source("eia", { displayName: "EIA API", publisher: "U.S. Energy Information Administration", host: "api.eia.gov", dataClass: "official_monthly", credentialEnv: "EIA_API_KEY", healthcheckPath: "/v2/" }),
+  // International monthly petroleum observations are published with a material
+  // reporting lag. This source-specific window judges freshness against that
+  // cadence instead of the tighter default used by Argentine monthly series.
+  eia: source("eia", {
+    displayName: "EIA API",
+    publisher: "U.S. Energy Information Administration",
+    host: "api.eia.gov",
+    dataClass: "official_monthly",
+    credentialEnv: "EIA_API_KEY",
+    healthcheckPath: "/v2/",
+    freshness: { warnAfterSeconds: 155 * 86_400, rejectAfterSeconds: 245 * 86_400 },
+  }),
   polymarket: source("polymarket", { displayName: "Polymarket Gamma", publisher: "Polymarket", host: "gamma-api.polymarket.com", dataClass: "intraday_market", healthcheckPath: "/markets?limit=1" }),
   huggingface: source("huggingface", { displayName: "Hugging Face Hub", publisher: "Hugging Face", host: "huggingface.co", dataClass: "daily_market", healthcheckPath: "/api/models?limit=1" }),
   coingecko: source("coingecko", { displayName: "CoinGecko", publisher: "CoinGecko", host: "api.coingecko.com", dataClass: "intraday_market", healthcheckPath: "/api/v3/ping" }),

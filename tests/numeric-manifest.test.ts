@@ -19,6 +19,7 @@ import {
   UNAVAILABLE_SOURCE_FIXTURE,
 } from "../fixtures/numeric-manifest.fixture"
 import { buildSuccessEnvelope } from "../src/server/api/envelope"
+import { SOURCE_REGISTRY } from "../src/server/sources/registry"
 
 const NOW = new Date("2026-08-26T00:00:00.000Z")
 
@@ -107,6 +108,8 @@ test("EIA 403 and source failures are audited as unavailable, without leaking ra
   assert.doesNotMatch(route, /status:\s*500/)
   assert.match(route, /facets\[unit\]\[\]=/)
   assert.doesNotMatch(route, /facets\[unitId\]/)
+  assert.equal(SOURCE_REGISTRY.eia.freshness.warnAfterSeconds, 155 * 86_400)
+  assert.equal(SOURCE_REGISTRY.eia.freshness.rejectAfterSeconds, 245 * 86_400)
 })
 
 test("runtime bindings connect every catalog id to its endpoint, renderer and concrete numeric field", () => {
