@@ -183,6 +183,19 @@ try {
     const focusedLibraryOverflow = await assertNoHorizontalOverflow(page, `${viewport.name} focused library`)
     await page.screenshot({ path: join(artifactDir, `${viewport.name}-library-focus.png`) })
 
+    const connectUrl = `${baseUrl}/?section=connect`
+    await page.goto(connectUrl, { waitUntil: "domcontentloaded" })
+    const connectHeader = page.locator("header").first()
+    const connectHeading = page.getByRole("heading", { name: "Conectar La Pizarra", exact: true })
+    const mcpUrl = page.getByText("https://www.lapizarra.ar/api/mcp", { exact: true }).first()
+    await connectHeading.waitFor()
+    await waitForStableLayout(page, [connectHeader, connectHeading, mcpUrl], `${viewport.name} connect readiness`)
+    await assertVisibleAndUnobscured(page, connectHeader, `${viewport.name} connect header`)
+    await assertVisibleAndUnobscured(page, connectHeading, `${viewport.name} connect heading`)
+    await assertVisibleAndUnobscured(page, mcpUrl, `${viewport.name} MCP URL`)
+    const connectOverflow = await assertNoHorizontalOverflow(page, `${viewport.name} connect`)
+    await page.screenshot({ path: join(artifactDir, `${viewport.name}-connect.png`), fullPage: true })
+
     assert.deepEqual(pageErrors, [], `${viewport.name} page errors: ${pageErrors.join("; ")}`)
     results.push({
       viewport,
@@ -191,6 +204,7 @@ try {
         library: { heading: "Biblioteca de datos", headerGeometry: libraryHeaderGeometry, cardGeometry: libraryCardGeometry, overflow: libraryOverflow },
         drawer: { openGeometry: drawerOpenGeometry, libraryHeading: Boolean(drawerLibraryHeading), canvasHeading: Boolean(drawerCanvasHeading) },
         libraryFocus: { ticker: "YPFD", cardId: "acciones", overflow: focusedLibraryOverflow },
+        connect: { heading: "Conectar La Pizarra", mcpUrl: true, overflow: connectOverflow },
       },
       pageErrors,
     })
@@ -204,4 +218,4 @@ try {
 }
 
 if (smokeError) throw smokeError
-console.log(`browser smoke passed: ${results.length} viewports, ${results.length * 4} routes`)
+console.log(`browser smoke passed: ${results.length} viewports, ${results.length * 5} routes`)
