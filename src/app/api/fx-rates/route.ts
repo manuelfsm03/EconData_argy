@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 import { NextResponse } from "next/server"
 import { guardarExito, leerFresco, leerUltimoBueno } from "@/server/http/stale-cache"
 
@@ -49,7 +50,7 @@ interface TipoCambio {
 async function fetchEcbRates(): Promise<TipoCambio[] | null> {
   const url = `https://data-api.ecb.europa.eu/service/data/EXR/D.${PAIRS}.EUR.SP00.A?format=csvdata&lastNObservations=1`
   try {
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { Accept: "text/csv, */*" },
       signal: AbortSignal.timeout(12_000),
     })

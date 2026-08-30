@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 export function CardHealthBadge({ cardId, compact = false, auto = true }: { cardId: string; compact?: boolean; auto?: boolean }) {
   const health = useCardHealth(cardId, auto)
   const title = health.endpoints.length
-    ? health.endpoints.map((endpoint) => `${endpoint.label}: ${endpoint.ok ? `OK · ${endpoint.latencyMs} ms` : `error ${endpoint.status ?? "timeout"}`}`).join("\n")
+    ? health.endpoints.map((endpoint) => `${endpoint.label}: ${endpoint.ok ? `${endpoint.quality} · ${endpoint.latencyMs} ms` : `${endpoint.quality} · error ${endpoint.status ?? "timeout"}`}`).join("\n")
     : "Comprobando endpoints"
 
   const Icon = health.state === "checking" ? LoaderCircle : health.state === "healthy" ? Activity : health.state === "degraded" ? CircleAlert : RefreshCw

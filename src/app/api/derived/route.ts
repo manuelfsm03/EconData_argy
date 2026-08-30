@@ -1,5 +1,8 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 import { NextResponse } from "next/server"
-import { guardarExito, leerFresco, leerUltimoBueno } from "@/server/http/stale-cache"
+import { guardarExito, leerFresco } from "@/server/http/stale-cache"
+import { loadCentralBankRates } from "@/server/domain/central-bank-rates"
+import { loadImfMacro } from "@/server/domain/imf-macro-data"
 
 /**
  * /api/derived — Variables calculadas a partir de fuentes propias.
@@ -11,8 +14,8 @@ import { guardarExito, leerFresco, leerUltimoBueno } from "@/server/http/stale-c
  *   risk_score      — índice propio 0-100 (VIX + S&P + DXY + Fear&Greed)
  *   ntv_btc         — Network Value to Transactions (Blockchain.com)
  *
- * Llama internamente a /api/bancos-centrales y /api/imf-macro (ya cacheados),
- * más Yahoo Finance, Blockchain.com y Alternative.me directamente.
+ * Usa loaders de dominio para macro oficial y la infraestructura registrada para
+ * Yahoo Finance, Blockchain.com y Alternative.me.
  *
  * TTL cache: 20 min.
  */
@@ -108,7 +111,7 @@ async function fetchYF(tickers: string[]): Promise<Map<string, { price: number |
   async function fetchChart(t: string): Promise<{ price: number; changePct: number } | null> {
     for (const host of ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]) {
       try {
-        const res = await fetch(`https://${host}/v8/finance/chart/${encodeURIComponent(t)}?interval=1d&range=5d`, { headers: YF_HEADERS, signal: AbortSignal.timeout(8_000) })
+        const res = await fetchRegistered(`https://${host}/v8/finance/chart/${encodeURIComponent(t)}?interval=1d&range=5d`, { headers: YF_HEADERS, signal: AbortSignal.timeout(8_000) })
         if (!res.ok) continue
         const json = await res.json() as { chart?: { result?: unknown[] } }
         const result = json?.chart?.result?.[0] as { timestamp?: number[]; indicators?: { quote?: Array<{ close?: (number | null)[] }> } } | undefined
@@ -147,36 +150,28 @@ const BANCO_META: Record<string, { iso3: string; pais: string; moneda: string }>
 
 // ── GET ────────────────────────────────────────────────────────────────────────
 
-export async function GET(req: Request) {
+export async function GET() {
   const cached = leerFresco<DerivedData>(CACHE_KEY)
   if (cached) {
     return NextResponse.json({ data: cached, cached: true, updated_at: new Date().toISOString() })
   }
 
-  const origin = new URL(req.url).origin
-
   // Fetch todas las fuentes en paralelo
   const [bancosRes, imfRes, blockchainRes, fearGreedRes, yfSettled] = await Promise.allSettled([
-    fetch(`${origin}/api/bancos-centrales`, { signal: AbortSignal.timeout(25_000) }),
-    fetch(`${origin}/api/imf-macro`, { signal: AbortSignal.timeout(25_000) }),
-    fetch("https://api.blockchain.info/stats", { signal: AbortSignal.timeout(10_000) }),
-    fetch("https://api.alternative.me/fng/?limit=1&format=json", { signal: AbortSignal.timeout(8_000) }),
+    loadCentralBankRates(),
+    loadImfMacro(),
+    fetchRegistered("https://api.blockchain.info/stats", { signal: AbortSignal.timeout(10_000) }),
+    fetchRegistered("https://api.alternative.me/fng/?limit=1&format=json", { signal: AbortSignal.timeout(8_000) }),
     fetchYF(["GC=F", "SI=F", "HG=F", "CL=F", "BZ=F", "ZS=F", "ZC=F", "ZW=F", "^VIX", "DX-Y.NYB", "^GSPC"]),
   ])
 
   // ── Parsear bancos centrales ──────────────────────────────────────────────
   interface BancoRaw { pais: string; moneda: string; tasa: number | null; esVivo: boolean }
-  const bancos: Record<string, BancoRaw> =
-    bancosRes.status === "fulfilled" && bancosRes.value.ok
-      ? ((await bancosRes.value.json()) as { data: Record<string, BancoRaw> }).data ?? {}
-      : {}
+  const bancos: Record<string, BancoRaw> = (bancosRes.status === "fulfilled" ? bancosRes.value.data : {}) as Record<string, BancoRaw>
 
   // ── Parsear IMF macro ─────────────────────────────────────────────────────
   interface ImfPaisRaw { code: string; inflacion: number | null; inflacion_anio: number | null }
-  const imfList: ImfPaisRaw[] =
-    imfRes.status === "fulfilled" && imfRes.value.ok
-      ? ((await imfRes.value.json()) as { data: ImfPaisRaw[] }).data ?? []
-      : []
+  const imfList: ImfPaisRaw[] = imfRes.status === "fulfilled" ? imfRes.value.data : []
   const inflMap = new Map(imfList.map((p) => [p.code, { inflacion: p.inflacion, anio: p.inflacion_anio }]))
 
   // ── Parsear Blockchain.com ────────────────────────────────────────────────

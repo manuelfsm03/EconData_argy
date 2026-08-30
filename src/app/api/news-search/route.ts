@@ -15,19 +15,28 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { rankNewsByRelevance, type NewsDoc } from "@/server/domain/news-search"
+import { loadRssNewsCorpus } from "@/server/domain/rss-news-corpus"
+import { fetchRegistered } from "@/server/http/fetch-source"
 
 export const runtime = "nodejs"
 
-// Reusa el corpus ya cacheado de /api/rss-news (no reimplementa el fetch de feeds)
-async function fetchCorpus(origin: string): Promise<NewsDoc[]> {
-  const res = await fetch(`${origin}/api/rss-news`, { signal: AbortSignal.timeout(15_000) })
-  if (!res.ok) throw new Error(`rss-news ${res.status}`)
-  const items = await res.json()
-  return Array.isArray(items) ? (items as NewsDoc[]) : []
+// Comparte la misma política de fuentes y normalización sin hacer un self-fetch HTTP.
+async function fetchCorpus(): Promise<NewsDoc[]> {
+  const corpus = await loadRssNewsCorpus(async (feed) => {
+    const response = await fetchRegistered(feed.url, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+      headers: { "User-Agent": "LaPizarra/1.0" },
+    })
+    return response.ok ? response.text() : null
+  })
+  if (corpus.feedsSucceeded === 0) throw new Error("SOURCE_UNAVAILABLE")
+  if (corpus.items.length === 0) throw new Error("SOURCE_BAD_RESPONSE")
+  return corpus.items
 }
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url)
+  const { searchParams } = new URL(request.url)
   const q = (searchParams.get("q") ?? "").trim()
   const limit = Math.min(Math.max(parseInt(searchParams.get("limit") ?? "20", 10) || 20, 1), 50)
 
@@ -39,7 +48,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const corpus = await fetchCorpus(origin)
+    const corpus = await fetchCorpus()
     const results = rankNewsByRelevance(corpus, q, limit)
     return NextResponse.json({
       query: q,

@@ -84,7 +84,7 @@ async function getFrankfurterFX(): Promise<Partial<DatosFX>> {
   try {
     const url = "https://api.frankfurter.app/latest?from=USD&to=EUR,JPY,BRL"
     // fetch nativo: host no registrado en el registry (ver nota del encabezado).
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(8000),
     })
@@ -107,7 +107,7 @@ async function getStooqDXY(): Promise<number | null> {
   try {
     const url = "https://stooq.com/q/l/?s=dx.f&f=sd2t2ohlcv&h&e=csv"
     // fetch nativo: host no registrado en el registry (ver nota del encabezado).
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { Accept: "text/csv" },
       signal: AbortSignal.timeout(8000),
     })

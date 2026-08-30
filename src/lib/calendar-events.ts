@@ -7,6 +7,7 @@ import { INTL_CPI_2026, fuenteDe } from "@/server/domain/intl-cpi-calendar"
 import { CENTRAL_BANK_MEETINGS_2026, fuenteBancoCentral, type CentralBankCode } from "@/server/domain/central-bank-calendar"
 import { BRAZIL_IPCA_2026, MEXICO_INPC_2026, CHILE_IPC_2026, COPOM_2026, BCCH_RPM_2026, BANXICO_2026, fuenteCpiLatam, fuenteBancoLatam } from "@/server/domain/latam-calendar"
 import { EARNINGS_2026 } from "@/server/domain/earnings-calendar"
+import { getCalendarCoverage, type CalendarCoverage } from "./calendar-coverage"
 
 /** Países que puede elegir el usuario para filtrar el calendario. */
 export type CountryCode = "AR" | "US" | "JP" | "EU" | "GB" | "BR" | "CL" | "MX"
@@ -26,6 +27,7 @@ export interface BondCalendarEvent {
   law: "local" | "NY"
   source: string
   impact: "medium" | "high"
+  coverage?: CalendarCoverage
 }
 
 export interface FomcCalendarEvent {
@@ -38,6 +40,7 @@ export interface FomcCalendarEvent {
   detail: string
   source: string
   impact: "high"
+  coverage?: CalendarCoverage
 }
 
 export interface IndecCalendarEvent {
@@ -50,6 +53,7 @@ export interface IndecCalendarEvent {
   detail: string
   source: string
   impact: "high"
+  coverage?: CalendarCoverage
 }
 
 export interface BcraCalendarEvent {
@@ -62,6 +66,7 @@ export interface BcraCalendarEvent {
   detail: string
   source: string
   impact: "high"
+  coverage?: CalendarCoverage
 }
 
 export interface IntlCpiCalendarEvent {
@@ -74,6 +79,7 @@ export interface IntlCpiCalendarEvent {
   detail: string
   source: string
   impact: "high"
+  coverage?: CalendarCoverage
 }
 
 export interface CentralBankCalendarEvent {
@@ -86,6 +92,7 @@ export interface CentralBankCalendarEvent {
   detail: string
   source: string
   impact: "high"
+  coverage?: CalendarCoverage
 }
 
 export interface LatamCpiCalendarEvent {
@@ -98,6 +105,7 @@ export interface LatamCpiCalendarEvent {
   detail: string
   source: string
   impact: "high"
+  coverage?: CalendarCoverage
 }
 
 export interface LatamBankCalendarEvent {
@@ -110,6 +118,7 @@ export interface LatamBankCalendarEvent {
   detail: string
   source: string
   impact: "high"
+  coverage?: CalendarCoverage
 }
 
 export interface EarningsCalendarEvent {
@@ -124,6 +133,7 @@ export interface EarningsCalendarEvent {
   impact: "medium"
   /** false siempre: estas fechas son estimadas, no publicadas por una fuente oficial única. */
   confirmado: false
+  coverage?: CalendarCoverage
 }
 
 export type MarketCalendarEvent =
@@ -136,6 +146,10 @@ export type MarketCalendarEvent =
   | LatamCpiCalendarEvent
   | LatamBankCalendarEvent
   | EarningsCalendarEvent
+
+function coverageFor(kind: MarketCalendarEvent["kind"], country: CountryCode, source: string): CalendarCoverage {
+  return getCalendarCoverage(kind, country, source)
+}
 
 export function todayInBuenosAires(now: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -325,5 +339,5 @@ export function deriveMarketCalendarEvents(today: string = todayInBuenosAires())
     ...deriveLatamCpiCalendarEvents(today),
     ...deriveLatamBankCalendarEvents(today),
     ...deriveEarningsCalendarEvents(today),
-  ].sort((left, right) => left.paymentDate.localeCompare(right.paymentDate) || left.ticker.localeCompare(right.ticker))
+  ].map((event) => ({ ...event, coverage: coverageFor(event.kind, event.country, event.source) })).sort((left, right) => left.paymentDate.localeCompare(right.paymentDate) || left.ticker.localeCompare(right.ticker))
 }

@@ -40,6 +40,11 @@ interface EscenarioTasa {
 }
 interface RespuestaCalculadora {
   ticker: string
+  nombre: string
+  dayCount: string
+  frecuencia: string
+  fuentePrimaria: string
+  dataQuality: string
   modo: "precio" | "tir"
   valorIngresado: number
   liquidacion: string
@@ -203,7 +208,7 @@ export function BondsWorkspace({ initialTicker = null }: { initialTicker?: strin
       .then((r) => r.json())
       .then((j) => {
         if (cancelado) return
-        const precio = j?.data?.precio
+        const precio = j?.data?.priceStatus === "fresh" ? j.data.precio : null
         if (typeof precio === "number") {
           setPrecioMercado(precio)
           setModo("precio")
@@ -323,6 +328,9 @@ export function BondsWorkspace({ initialTicker = null }: { initialTicker?: strin
               <>
                 <div className="mb-3 text-[10px] text-[var(--text-mute)]">
                   {resultado.ticker} · liquidación {resultado.liquidacion} · simulación, no usa precio de mercado en vivo
+                </div>
+                <div className="mb-3 rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[9px] leading-4 text-[var(--text-mute)]">
+                  Convención: {resultado.dayCount} · frecuencia: {resultado.frecuencia} · fuente: {resultado.fuentePrimaria}
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
                   <Metrica label="TIR" value={fmt(m?.tir)} unit="% anual" />

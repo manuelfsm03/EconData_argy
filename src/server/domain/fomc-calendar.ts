@@ -17,7 +17,7 @@ export interface FomcMeeting {
   proyecciones: boolean
 }
 
-const FUENTE_FOMC = "Federal Reserve — federalreserve.gov/monetarypolicy/fomccalendars.htm"
+const FUENTE_FOMC = "Federal Reserve — federalreserve.gov/monetarypolicy/fomccalendars.htm, verificado 2026-08-12"
 
 export const FOMC_MEETINGS_2026: FomcMeeting[] = [
   { fecha: "2026-01-28", fechaInicio: "2026-01-27", tipo: "FOMC", descripcion: "Decisión de tasa Fed", proyecciones: false },

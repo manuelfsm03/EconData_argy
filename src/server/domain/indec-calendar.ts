@@ -18,7 +18,7 @@ export interface IndecPublicacion {
   descripcion: string
 }
 
-const FUENTE_INDEC = "INDEC — Calendario de difusión, segundo semestre de 2026 (indec.gob.ar/ftp/cuadros/publicaciones/calendario_2sem2026.pdf)"
+const FUENTE_INDEC = "INDEC — Calendario de difusión, segundo semestre de 2026 (indec.gob.ar/ftp/cuadros/publicaciones/calendario_2sem2026.pdf), verificado 2026-08-17"
 
 export const INDEC_PUBLICACIONES_2026: IndecPublicacion[] = [
   { fecha: "2026-07-14", indicador: "IPC", descripcion: "Índice de precios al consumidor — cobertura nacional, junio 2026" },

@@ -10,13 +10,15 @@ import { fetchRegistered } from "@/server/http/fetch-source"
 
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/server/db/prisma"
-import { BOND_DEFS, CAP_INSTRUMENT_DEFS, type BondDef } from "@/server/domain/bonds-data"
+import { CAP_INSTRUMENT_DEFS, type BondDef } from "@/server/domain/bonds-data"
 import { metricasDeMercado, metricasDevengadas } from "@/lib/bond-math"
 import { construirCashflows, ESQUEMAS } from "@/lib/bond-schedule"
+import { INSTRUMENTOS_BONOS, getInstrumentoBono } from "@/lib/bond-instrument-catalog"
 import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
-import { fetchRavaBondPrices, type RavaBondPrice } from "@/server/external/rava-prices"
+import { fetchRavaBondPrices } from "@/server/external/rava-prices"
 import { pesoBondsVigentes } from "@/server/domain/peso-bonds"
 import { fetchBymaCapInstruments, fetchBymaQuotes, marketMetaForRows } from "@/server/external/byma-data"
+import { chooseFreshPrice, gateMarketPrice, type SelectedMarketPrice } from "@/server/domain/market-freshness"
 
 type Cashflow = { fechaPago: Date; cupon: number; amortizacion: number; flujoTotal: number }
 
@@ -28,6 +30,7 @@ type BondLike = {
   cupon: number
   vencimiento: Date
   precio: number | null
+  asOf: string | null
   cashflows: Cashflow[]
 }
 
@@ -113,12 +116,62 @@ function tirToTna(tir: number | null): number | null {
   return Number((2 * (Math.pow(1 + tir / 100, 0.5) - 1) * 100).toFixed(4))
 }
 
-async function scrapePrecioRava(ticker: string): Promise<{ precio: number | null; precioCci: number | null }> {
+async function scrapePrecioRava(ticker: string): Promise<{
+  precio: number | null
+  precioCci: number | null
+  asOf: string | null
+  asOfNominal: string | null
+  asOfCci: string | null
+}> {
   const prices = await fetchRavaBondPrices()
+  const nominal = prices.get(ticker.toUpperCase())
+  const cci = prices.get(`${ticker.toUpperCase()}D`)
   return {
-    precio: prices.get(ticker.toUpperCase())?.precio ?? null,
-    precioCci: prices.get(`${ticker.toUpperCase()}D`)?.precio ?? null,
+    precio: nominal?.precio ?? null,
+    precioCci: cci?.precio ?? null,
+    asOf: nominal?.fecha ?? cci?.fecha ?? null,
+    asOfNominal: nominal?.fecha ?? null,
+    asOfCci: cci?.fecha ?? null,
   }
+}
+
+function asOfFromDate(value: unknown): string | null {
+  return value instanceof Date && Number.isFinite(value.getTime()) ? value.toISOString() : null
+}
+
+function sourceLabel(selected: SelectedMarketPrice, fallback = "fuente no conectada"): string {
+  if (selected.price == null) return fallback
+  if (selected.source === "byma_data_open") return "byma_data_open"
+  if (selected.source === "rava_market") return selected.sourceMode === "fallback" ? "rava_fallback" : "rava"
+  if (selected.source === "db_local") return selected.sourceMode === "fallback" ? "db_fallback" : "db"
+  return selected.source
+}
+
+function sourceIdForLabel(label: string): string {
+  if (label.startsWith("rava")) return "rava_market"
+  if (label.startsWith("db")) return "db_local"
+  return "byma_data_open"
+}
+
+function invalidateMarketRow<T extends Record<string, unknown>>(row: T): T {
+  if (row.precio == null || row.asOf == null) return row
+  const gate = gateMarketPrice(sourceIdForLabel(String(row.fuente ?? "")), row.asOf)
+  if (gate.accepted) return { ...row, priceStatus: "fresh" } as T
+  return {
+    ...row,
+    precio: null,
+    precioDirty: null,
+    paridad: null,
+    tir: null,
+    currentYield: null,
+    durationMod: null,
+    valorTecnico: null,
+    change1D: null,
+    asOf: null,
+    priceAsOf: null,
+    priceStatus: gate.freshness,
+    priceSourceMode: "unavailable",
+  } as T
 }
 
 async function fetchCclReference(): Promise<number | null> {
@@ -144,6 +197,7 @@ function staticBondToRuntime(bond: BondDef): BondLike {
     cupon: bond.cupon,
     vencimiento: new Date(bond.vencimiento),
     precio: null,
+    asOf: null,
     cashflows: bond.cashflows.map((cf) => ({
       fechaPago: new Date(cf.fecha),
       cupon: cf.cupon,
@@ -152,6 +206,29 @@ function staticBondToRuntime(bond: BondDef): BondLike {
     })),
   }
 }
+
+function esquemaToBondDef(esquema: (typeof ESQUEMAS)[number]): BondDef {
+  const cashflows = construirCashflows(esquema)
+  return {
+    ticker: esquema.ticker,
+    nombre: esquema.nombre,
+    moneda: esquema.moneda,
+    ley: esquema.ley,
+    cupon: Math.max(...esquema.filas.map((fila) => fila.tasa)) * 100,
+    amortizacion: "amortizing",
+    emision: esquema.emision,
+    vencimiento: esquema.vencimiento,
+    cashflows: cashflows.map((cashflow) => ({
+      fecha: cashflow.fechaPago.toISOString().slice(0, 10),
+      cupon: cashflow.cupon,
+      amortizacion: cashflow.amortizacion,
+    })),
+  }
+}
+
+const VERIFIED_STATIC_BONDS = INSTRUMENTOS_BONOS
+  .filter((instrumento) => instrumento.estado === "habilitado" && instrumento.esquema)
+  .map((instrumento) => esquemaToBondDef(instrumento.esquema!))
 
 async function loadRuntimeBonds(tickerParam: string | null): Promise<{ bonds: BondLike[]; sourceMode: string }> {
   try {
@@ -172,6 +249,7 @@ async function loadRuntimeBonds(tickerParam: string | null): Promise<{ bonds: Bo
           cupon: bond.cupon,
           vencimiento: bond.vencimiento,
           precio: bond.precio,
+          asOf: asOfFromDate(bond.updatedAt),
           cashflows: bond.cashflows.map((cf: typeof bond.cashflows[number]) => ({
             fechaPago: cf.fechaPago,
             cupon: cf.cupon,
@@ -186,7 +264,7 @@ async function loadRuntimeBonds(tickerParam: string | null): Promise<{ bonds: Bo
     // noop: caer a fallback estático
   }
 
-  const staticBonds = BOND_DEFS
+  const staticBonds = VERIFIED_STATIC_BONDS
     .filter((bond) => !tickerParam || bond.ticker === tickerParam.toUpperCase())
     .map(staticBondToRuntime)
 
@@ -201,7 +279,10 @@ export async function GET(request: NextRequest) {
   if (tipoParam === "pesos") {
     const cacheKey = "bonos_pesos_screener"
     const cached = getCache<unknown[]>(cacheKey)
-    if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), cached: true, ...marketMetaForRows(cached) })
+    if (cached) {
+      const freshCached = cached.map((row) => invalidateMarketRow(row as Record<string, unknown>))
+      return NextResponse.json({ data: freshCached, updated_at: new Date().toISOString(), cached: true, ...marketMetaForRows(freshCached) })
+    }
 
     // Se resuelve acá adentro y no en un const de módulo: si el server queda
     // levantado semanas, un instrumento que vence el martes tiene que dejar de
@@ -215,23 +296,34 @@ export async function GET(request: NextRequest) {
     const screener = vigentes.map(({ ticker, vencimiento: vencimientoEmision }) => {
       const q = ravaPrices.get(ticker)
       const byma = bymaQuotes.get(ticker)
+      const selected = chooseFreshPrice([
+        ...(byma ? [{ source: "byma_data_open", price: byma.lastPrice, asOf: byma.asOf }] : []),
+        ...(q ? [{ source: "rava_market", price: q.precio, asOf: q.fecha }] : []),
+      ])
+      const bymaGate = gateMarketPrice("byma_data_open", byma?.asOf)
+      const ravaFresh = gateMarketPrice("rava_market", q?.fecha).accepted
       return {
         ticker,
         nombre: q?.nombre ?? ticker,
-        precio: byma?.lastPrice ?? q?.precio ?? null,
-        tir: q?.tir ?? null,
-        dm: q?.dm ?? null,
-        paridad: q?.paridad ?? null,
-        valorTecnico: q?.valorTecnico ?? null,
-        currentYield: q?.currentYield ?? null,
+        precio: selected.price,
+        tir: ravaFresh ? q?.tir ?? null : null,
+        dm: ravaFresh ? q?.dm ?? null : null,
+        paridad: ravaFresh ? q?.paridad ?? null : null,
+        valorTecnico: ravaFresh ? q?.valorTecnico ?? null : null,
+        currentYield: ravaFresh ? q?.currentYield ?? null : null,
         // De la condición de emisión, no de la fuente: es un dato que no
         // cambia, y la fuente deja de publicarlo cuando el papel se acerca al
         // final (TZX26 y TZXM6 ya venían sin fecha).
         vencimiento: vencimientoEmision,
-        fechaCotizacion: q?.fecha ? q.fecha.slice(0, 10) : null,
-        change1D: byma?.change1D ?? null,
-        asOf: byma?.asOf ?? q?.fecha ?? null,
-        fuente: byma ? "byma_data_open" : q ? "rava" : "fuente no conectada",
+        fechaCotizacion: ravaFresh && q?.fecha ? q.fecha.slice(0, 10) : null,
+        change1D: bymaGate.accepted ? byma?.change1D ?? null : null,
+        asOf: selected.asOf,
+        priceAsOf: selected.asOf,
+        priceStatus: selected.freshness,
+        priceSourceMode: selected.sourceMode,
+        priceFallbackFrom: selected.fallbackFrom,
+        retrievedAt: new Date().toISOString(),
+        fuente: sourceLabel(selected),
       }
     })
 
@@ -242,15 +334,18 @@ export async function GET(request: NextRequest) {
       updated_at: new Date().toISOString(),
       ...marketMetaForRows(screener),
       universo: { vigentes: vigentes.length, total: 33 },
-      dataQuality: "rava_passthrough_unverified",
-      nota: "Precio priorizado desde BYMA Data; TIR, duration modificada y paridad se conservan tal como las publica Rava. Son bonos ajustados por CER (y CER/TAMAR en los Bono DUAL); no pasan por el motor propio de bond-math.",
+      dataQuality: "market_freshness_gated",
+      nota: "Precio priorizado desde BYMA Data; las métricas Rava solo se muestran con asOf fresco. Precios stale, futuros o sin fecha quedan unavailable y todo fallback queda rotulado.",
     })
   }
 
   if (tipoParam === "lecap") {
     const cacheKey = "lecaps_screener"
     const cached = getCache<unknown[]>(cacheKey)
-    if (cached) return NextResponse.json({ data: cached, updated_at: new Date().toISOString(), cached: true, ...marketMetaForRows(cached) })
+    if (cached) {
+      const freshCached = cached.map((row) => invalidateMarketRow(row as Record<string, unknown>))
+      return NextResponse.json({ data: freshCached, updated_at: new Date().toISOString(), cached: true, ...marketMetaForRows(freshCached) })
+    }
 
     let cclActual: number | null = null
     try {
@@ -295,8 +390,14 @@ export async function GET(request: NextRequest) {
         const hoy = new Date()
         const diasVto = Math.round((maturity.getTime() - hoy.getTime()) / (24 * 3600 * 1000))
         const byma = bymaQuotes.get(instrument.ticker)
+        const dbAsOf = asOfFromDate(inst?.updatedAt)
+        const dbGate = gateMarketPrice("db_local", dbAsOf)
+        const selected = chooseFreshPrice([
+          ...(byma ? [{ source: "byma_data_open", price: byma.lastPrice, asOf: byma.asOf }] : []),
+          ...(inst?.precio != null ? [{ source: "db_local", price: inst.precio, asOf: dbAsOf }] : []),
+        ])
         const tcImplicito =
-          cclActual != null && inst?.tem != null && diasVto > 0
+          cclActual != null && dbGate.accepted && inst?.tem != null && diasVto > 0
             ? Number((cclActual * Math.pow(1 + inst.tem / 100, diasVto / 30)).toFixed(2))
             : null
 
@@ -305,14 +406,19 @@ export async function GET(request: NextRequest) {
           tipo: instrument.tipo,
           vencimiento: instrument.vencimiento,
           diasVencimiento: diasVto,
-          precio: byma?.lastPrice ?? inst?.precio ?? null,
-          tir: inst?.tir ?? null,
-          tea: inst?.tea ?? null,
-          tem: inst?.tem ?? null,
+          precio: selected.price,
+          tir: dbGate.accepted ? inst?.tir ?? null : null,
+          tea: dbGate.accepted ? inst?.tea ?? null : null,
+          tem: dbGate.accepted ? inst?.tem ?? null : null,
           tcImplicito,
-          change1D: byma?.change1D ?? null,
-          asOf: byma?.asOf ?? null,
-          fuente: byma ? "byma_data_open" : inst ? "db_local" : "fuente no conectada",
+          change1D: gateMarketPrice("byma_data_open", byma?.asOf).accepted ? byma?.change1D ?? null : null,
+          asOf: selected.asOf,
+          priceAsOf: selected.asOf,
+          priceStatus: selected.freshness,
+          priceSourceMode: selected.sourceMode,
+          priceFallbackFrom: selected.fallbackFrom,
+          retrievedAt: new Date().toISOString(),
+          fuente: sourceLabel(selected),
         }
       })
       setCache(cacheKey, screener, 300)
@@ -333,8 +439,9 @@ export async function GET(request: NextRequest) {
         const vencimiento = new Date(inst.vencimiento)
         const diasVto = Math.round((vencimiento.getTime() - hoy.getTime()) / (24 * 3600 * 1000))
         const byma = bymaQuotes.get(inst.ticker)
+        const selected = chooseFreshPrice(byma ? [{ source: "byma_data_open", price: byma.lastPrice, asOf: byma.asOf }] : [])
         const tcImplicito =
-          cclActual != null && inst.tem != null && diasVto > 0
+          cclActual != null && selected.price != null && inst.tem != null && diasVto > 0
             ? Number((cclActual * Math.pow(1 + inst.tem / 100, diasVto / 30)).toFixed(2))
             : null
 
@@ -343,14 +450,19 @@ export async function GET(request: NextRequest) {
           tipo: inst.tipo,
           vencimiento: inst.vencimiento,
           diasVencimiento: diasVto,
-          precio: byma?.lastPrice ?? null,
+          precio: selected.price,
           tir: null,
           tea: null,
           tem: inst.tem ?? null,
           tcImplicito,
-          change1D: byma?.change1D ?? null,
-          asOf: byma?.asOf ?? null,
-          fuente: byma ? "byma_data_open" : "fuente no conectada",
+          change1D: selected.price != null ? byma?.change1D ?? null : null,
+          asOf: selected.asOf,
+          priceAsOf: selected.asOf,
+          priceStatus: selected.freshness,
+          priceSourceMode: selected.sourceMode,
+          priceFallbackFrom: selected.fallbackFrom,
+          retrievedAt: new Date().toISOString(),
+          fuente: sourceLabel(selected),
         }
       })
 
@@ -365,12 +477,17 @@ export async function GET(request: NextRequest) {
 
   const cacheKey = tickerParam ? `bono_${tickerParam}` : "bonos_screener"
   const cached = getCache<unknown>(cacheKey)
-  if (cached) return NextResponse.json({
-    data: cached,
-    updated_at: new Date().toISOString(),
-    cached: true,
-    ...marketMetaForRows(cached),
-  })
+  if (cached) {
+    const freshCached = Array.isArray(cached)
+      ? cached.map((row) => invalidateMarketRow(row as Record<string, unknown>))
+      : invalidateMarketRow(cached as Record<string, unknown>)
+    return NextResponse.json({
+      data: freshCached,
+      updated_at: new Date().toISOString(),
+      cached: true,
+      ...marketMetaForRows(freshCached),
+    })
+  }
 
   try {
     const { bonds, sourceMode } = await loadRuntimeBonds(tickerParam)
@@ -386,6 +503,7 @@ export async function GET(request: NextRequest) {
         cupon: 0,
         vencimiento: new Date(s.vencimiento),
         precio: null,
+        asOf: null,
         cashflows: [],
       }))
     const allBonds: BondLike[] = [...bonds, ...supplementalBonds]
@@ -426,15 +544,31 @@ export async function GET(request: NextRequest) {
           : bond.cashflows.filter((cf) => cf.fechaPago > hoy)
 
         const byma = bymaQuotesMep.get(bond.ticker)
-        let precio = byma?.lastPrice ?? bond.precio
-        let fuente = byma ? "byma_data_open" : precio ? "db" : "byma_data_open"
-        if (!precio) {
+        const instrumento = getInstrumentoBono(bond.ticker)
+        const initialPriceCandidates = [
+          ...(byma ? [{ source: "byma_data_open", price: byma.lastPrice, asOf: byma.asOf }] : []),
+          ...(bond.precio != null ? [{ source: "db_local", price: bond.precio, asOf: bond.asOf }] : []),
+        ]
+        let selected = chooseFreshPrice(initialPriceCandidates)
+        if (selected.price == null) {
           const scraped = await scrapePrecioRava(bond.ticker)
           const precioNominal = scraped.precio
-          const precioDolarizado = scraped.precioCci ?? (precioNominal && cclReference ? precioNominal / cclReference : precioNominal)
-          precio = precioDolarizado && precioDolarizado > 1000 && cclReference ? precioDolarizado / cclReference : precioDolarizado
-          fuente = precio ? "rava" : sourceMode.includes("fallback") ? "fallback_sin_precio" : "db_sin_precio"
+          const useCci = scraped.precioCci != null
+          const precioDolarizado = useCci
+            ? scraped.precioCci
+            : precioNominal && cclReference
+              ? precioNominal / cclReference
+              : precioNominal
+          const ravaPrice = precioDolarizado && precioDolarizado > 1000 && cclReference
+            ? precioDolarizado / cclReference
+            : precioDolarizado
+          selected = chooseFreshPrice([
+            ...initialPriceCandidates,
+            { source: "rava_market", price: ravaPrice, asOf: useCci ? scraped.asOfCci : scraped.asOfNominal },
+          ])
         }
+        const precio = selected.price
+        const fuente = sourceLabel(selected, sourceMode.includes("fallback") ? "fallback_sin_precio" : "db_sin_precio")
 
         const vnResidual = devengadas?.valorResidual ?? flujosFF.reduce((sum, cf) => sum + cf.amortizacion, 0)
         let paridad = vnResidual > 0 && precio ? (precio / vnResidual) * 100 : null
@@ -489,6 +623,10 @@ export async function GET(request: NextRequest) {
           ticker: bond.ticker,
           nombre: bond.nombre,
           ley: bond.ley,
+          dayCount: instrumento?.dayCount ?? null,
+          frecuencia: instrumento?.frecuencia ?? null,
+          fuentePrimaria: instrumento?.fuentePrimaria ?? null,
+          instrumentStatus: instrumento?.estado ?? "no_catalogado",
           cupon: devengadas ? Number((devengadas.tasaVigente * 100).toFixed(4)) : bond.cupon,
           vencimiento: bond.vencimiento.toISOString().split("T")[0],
           precio: precio ? Number(precio.toFixed(2)) : null,
@@ -504,9 +642,16 @@ export async function GET(request: NextRequest) {
           vidaPromedio: devengadas ? Number(devengadas.vidaPromedio.toFixed(4)) : null,
           plazoResidual: devengadas ? Number(devengadas.plazoResidual.toFixed(4)) : null,
           calculationModel: esquemaVerificado ? "excel_parity_verified" : "legacy_unverified_schedule",
-          dataQuality: (esquemaVerificado ? "prospectus_schedule_verified" : bond.cashflows.length === 0 ? "no_cashflows_pending_prospecto" : "legacy_schedule_pending_source_verification"),
-          change1D: byma?.change1D ?? null,
-          asOf: byma?.asOf ?? null,
+          dataQuality: esquemaVerificado
+            ? "prospectus_schedule_verified"
+            : "legacy_schedule_pending_source_verification",
+          change1D: gateMarketPrice("byma_data_open", byma?.asOf).accepted ? byma?.change1D ?? null : null,
+          asOf: selected.asOf,
+          priceAsOf: selected.asOf,
+          priceStatus: selected.freshness,
+          priceSourceMode: selected.sourceMode,
+          priceFallbackFrom: selected.fallbackFrom,
+          retrievedAt: new Date().toISOString(),
           flujosFF: tickerParam
             ? flujosFF.map((cf) => ({
                 fecha: cf.fechaPago.toISOString().split("T")[0],
@@ -542,7 +687,7 @@ export async function GET(request: NextRequest) {
       count: screener.length,
       updated_at: new Date().toISOString(),
       ...marketMetaForRows(screener),
-      nota: "GD30, AL30, GD29, AL29, GD35, AL35, GD41, AL41 y AE38 usan el motor verificado contra el decreto oficial del canje 2020; el resto conserva el cálculo legado y se marca como pendiente de validar contra fuente primaria",
+      nota: "GD30, AL30, GD29, AL29, GD35, AL35, GD41, AL41, AE38 y GD38 usan el motor verificado contra el decreto oficial del canje 2020; S30S6 está enumerado en el catálogo PR76 pero excluido de TEA hasta contar con cashflow primario verificable",
     })
   } catch (error) {
     console.error("[/api/bonos]", error)

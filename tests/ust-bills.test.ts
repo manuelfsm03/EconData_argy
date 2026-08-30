@@ -24,6 +24,6 @@ test("bill maturities use coupon equivalent, not bank discount", () => {
 
 test("default GET (sin ?tipo) sigue devolviendo la curva par, sin romper compatibilidad", () => {
   assert.match(route, /daily_treasury_yield_curve/)
-  const defaultBranch = route.slice(route.indexOf("if (tipoParam"), route.length)
-  assert.match(defaultBranch, /MATURITIES\.map/)
+  const defaultBranch = route.slice(route.indexOf("async function fetchYieldCurve"), route.indexOf("export async function GET"))
+  assert.match(defaultBranch, /fetchCsvCurve\("daily_treasury_yield_curve", MATURITIES\)/)
 })
