@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto"
+
 import { fetchRegistered } from "@/server/http/fetch-source"
 import { NextResponse } from "next/server"
 import {
@@ -6,9 +8,13 @@ import {
   isRelevantNewsItem,
   matchesAnyWholeTerm,
 } from "@/server/domain/rss-news-policy"
+import { buildErrorEnvelope } from "@/server/api/envelope"
+import { freshnessFor } from "@/server/cache/data-cache"
+import { SOURCE_REGISTRY } from "@/server/sources/registry"
+import type { CacheFreshness } from "@/server/cache/data-cache"
 
 // Vercel CDN cachea esta route 15 minutos — sin tokens, escala infinitamente
-export const revalidate = 900
+export const dynamic = "force-dynamic"
 
 interface RSSFeed {
   url: string
@@ -206,42 +212,217 @@ function extractItems(xml: string, feed: RSSFeed): RSSItem[] {
 }
 
 // Cache por instancia (secundario — el CDN de Vercel es la capa primaria)
-let _cache: { items: RSSItem[]; ts: number; v: number } | null = null
+const NEWS_SOURCE = SOURCE_REGISTRY.news_rss
+const DEPLOYMENT_COMMIT = process.env.VERCEL_GIT_COMMIT_SHA || "unknown"
+const RESPONSE_CACHE_CONTROL = "public, s-maxage=900, stale-while-revalidate=900"
+const ERROR_CACHE_CONTROL = "private, no-store, max-age=0"
+
+let _cache: {
+  items: RSSItem[]
+  ts: number
+  v: number
+  retrievedAt: string
+  feedsSucceeded: number
+  feedsFailed: number
+} | null = null
 // Versión del cache — cambiar para forzar invalidación
-const CACHE_VERSION = 6
+const CACHE_VERSION = 7
 const INSTANCE_TTL = 5 * 60 * 1000
 
+function nowIso(): string {
+  return new Date(Date.now()).toISOString()
+}
+
+function newestPubDate(items: readonly RSSItem[]): string | null {
+  let newest: { value: string; timestamp: number } | null = null
+  for (const item of items) {
+    const timestamp = Date.parse(item.pubDate)
+    if (!Number.isFinite(timestamp)) continue
+    if (!newest || timestamp > newest.timestamp) newest = { value: item.pubDate, timestamp }
+  }
+  return newest?.value ?? null
+}
+
+function successHeaders(input: {
+  asOf: string
+  freshness: Exclude<CacheFreshness, "expired">
+  retrievedAt: string
+  feedsSucceeded: number
+  feedsFailed: number
+  mode: "live" | "cache_fresh" | "cache_stale"
+}): HeadersInit {
+  return {
+    "Cache-Control": RESPONSE_CACHE_CONTROL,
+    "X-Data-Source": NEWS_SOURCE.id,
+    "X-Data-As-Of": input.asOf,
+    "X-Data-Freshness": input.freshness,
+    "X-Data-Retrieved-At": input.retrievedAt,
+    "X-Data-Completeness": input.feedsFailed > 0 ? "partial" : "complete",
+    "X-Data-Mode": input.mode,
+    "X-Feeds-Succeeded": String(input.feedsSucceeded),
+    "X-Feeds-Failed": String(input.feedsFailed),
+    "X-Deployment-Commit": DEPLOYMENT_COMMIT,
+    ...(input.freshness === "stale" ? { Warning: '110 - "Response is stale"' } : {}),
+  }
+}
+
+function errorHeaders(input: {
+  freshness: "unavailable" | "expired"
+  asOf?: string
+  retrievedAt?: string
+  feedsSucceeded?: number
+  feedsFailed?: number
+}): HeadersInit {
+  return {
+    "Cache-Control": ERROR_CACHE_CONTROL,
+    "X-Data-Source": NEWS_SOURCE.id,
+    ...(input.asOf ? { "X-Data-As-Of": input.asOf } : {}),
+    "X-Data-Freshness": input.freshness,
+    ...(input.retrievedAt ? { "X-Data-Retrieved-At": input.retrievedAt } : {}),
+    ...(input.feedsSucceeded != null ? { "X-Feeds-Succeeded": String(input.feedsSucceeded) } : {}),
+    ...(input.feedsFailed != null ? { "X-Feeds-Failed": String(input.feedsFailed) } : {}),
+    ...(input.feedsFailed != null ? { "X-Data-Completeness": input.feedsFailed > 0 ? "partial" : "complete" } : {}),
+    "X-Data-Mode": "live",
+    "X-Deployment-Commit": DEPLOYMENT_COMMIT,
+  }
+}
+
+function errorResponse(input: {
+  status: 502 | 503
+  code: "SOURCE_UNAVAILABLE" | "SOURCE_BAD_RESPONSE" | "DATA_EXPIRED"
+  requestId: string
+  generatedAt: string
+  freshness: "unavailable" | "expired"
+  asOf?: string
+  retrievedAt?: string
+  feedsSucceeded?: number
+  feedsFailed?: number
+}) {
+  return NextResponse.json(buildErrorEnvelope({
+    requestId: input.requestId,
+    dataset: "news.rss",
+    generatedAt: input.generatedAt,
+    code: input.code,
+    retryable: true,
+  }), {
+    status: input.status,
+    headers: errorHeaders(input),
+  })
+}
+
 export async function GET() {
+  const requestId = randomUUID()
+  const generatedAt = nowIso()
+
   if (_cache && Date.now() - _cache.ts < INSTANCE_TTL && _cache.v === CACHE_VERSION) {
-    return NextResponse.json(_cache.items, {
-      headers: { "Cache-Control": "public, s-maxage=900, stale-while-revalidate=900" },
-    })
+    const asOf = newestPubDate(_cache.items)
+    const freshness = asOf ? freshnessFor(asOf, NEWS_SOURCE.freshness, new Date(Date.now())) : "expired"
+    if (!asOf || freshness === "expired") {
+      _cache = null
+    } else {
+      return NextResponse.json(_cache.items, {
+        headers: successHeaders({
+          asOf,
+          freshness,
+          retrievedAt: _cache.retrievedAt,
+          feedsSucceeded: _cache.feedsSucceeded,
+          feedsFailed: _cache.feedsFailed,
+          mode: freshness === "stale" ? "cache_stale" : "cache_fresh",
+        }),
+      })
+    }
   }
 
   const allItems: RSSItem[] = []
+  let feedsSucceeded = 0
+  let feedsFailed = 0
 
   await Promise.allSettled(
     RSS_FEEDS.map(async (feed) => {
       try {
         const res = await fetchRegistered(feed.url, {
+          cache: "no-store",
           signal:  AbortSignal.timeout(8000),
           headers: { "User-Agent": "LaPizarra/1.0" },
         })
-        if (!res.ok) return
-        const xml   = await res.text()
+        if (!res.ok) {
+          feedsFailed += 1
+          return
+        }
+        feedsSucceeded += 1
+        const xml = await res.text()
         const items = extractItems(xml, feed)
         allItems.push(...items.slice(0, 15))
       } catch {
-        // feed fallido — se ignora silenciosamente
+        feedsFailed += 1
       }
-    })
+    }),
   )
+
+  const retrievedAt = nowIso()
+  if (feedsFailed > 0) {
+    console.warn("[/api/rss-news] RSS aggregation had failed feeds", { feedsSucceeded, feedsFailed })
+  }
+  if (feedsSucceeded === 0) {
+    return errorResponse({
+      status: 502,
+      code: "SOURCE_UNAVAILABLE",
+      requestId,
+      generatedAt,
+      freshness: "unavailable",
+      retrievedAt,
+      feedsSucceeded,
+      feedsFailed,
+    })
+  }
 
   allItems.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime())
   const uniqueItems = dedupeNewsItems(allItems)
-  _cache = { items: uniqueItems, ts: Date.now(), v: CACHE_VERSION }
+  if (uniqueItems.length === 0) {
+    return errorResponse({
+      status: 502,
+      code: "SOURCE_BAD_RESPONSE",
+      requestId,
+      generatedAt,
+      freshness: "unavailable",
+      retrievedAt,
+      feedsSucceeded,
+      feedsFailed,
+    })
+  }
 
+  const asOf = newestPubDate(uniqueItems)
+  const freshness = asOf ? freshnessFor(asOf, NEWS_SOURCE.freshness, new Date(Date.now())) : "expired"
+  if (!asOf || freshness === "expired") {
+    return errorResponse({
+      status: 503,
+      code: "DATA_EXPIRED",
+      requestId,
+      generatedAt,
+      freshness: "expired",
+      asOf: asOf ?? undefined,
+      retrievedAt,
+      feedsSucceeded,
+      feedsFailed,
+    })
+  }
+
+  _cache = {
+    items: uniqueItems,
+    ts: Date.now(),
+    v: CACHE_VERSION,
+    retrievedAt,
+    feedsSucceeded,
+    feedsFailed,
+  }
   return NextResponse.json(uniqueItems, {
-    headers: { "Cache-Control": "public, s-maxage=900, stale-while-revalidate=900" },
+    headers: successHeaders({
+      asOf,
+      freshness,
+      retrievedAt,
+      feedsSucceeded,
+      feedsFailed,
+      mode: "live",
+    }),
   })
 }

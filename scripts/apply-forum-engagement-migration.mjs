@@ -3,11 +3,12 @@ import { PrismaClient } from "@prisma/client"
 import path from "node:path"
 
 const databaseUrl = process.env.DATABASE_URL
-const migrationEnabled = process.env.VERCEL_ENV === "production"
-  || process.env.APPLY_FORUM_MIGRATION === "1"
+// Production deploys must remain read-only unless an operator explicitly opts
+// into this migration. Users/Community are outside the MVP release scope.
+const migrationEnabled = process.env.APPLY_FORUM_MIGRATION === "1"
 
 if (!databaseUrl || !migrationEnabled) {
-  const reason = !databaseUrl ? "DATABASE_URL absent" : "non-production build"
+  const reason = !databaseUrl ? "DATABASE_URL absent" : "explicit opt-in absent"
   console.log(`forum-engagement migration: ${reason}; skipping database step`)
   process.exit(0)
 }

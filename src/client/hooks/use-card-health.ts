@@ -6,7 +6,7 @@ import { probeCardEndpoint, selectCardHealthProbes } from "@/client/lib/card-hea
 export interface CardHealthState {
   state: "checking" | "healthy" | "degraded" | "unknown"
   checkedAt: string | null
-  endpoints: Array<{ label: string; path: string; ok: boolean; status: number | null; latencyMs: number }>
+  endpoints: Array<{ label: string; path: string; ok: boolean; status: number | null; latencyMs: number; quality: "estimated" | "unavailable" }>
   refresh: () => void
 }
 

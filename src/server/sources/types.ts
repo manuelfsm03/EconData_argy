@@ -10,6 +10,8 @@ export type SourceDefinition<Id extends string = string> = {
   dataClass: DataClass
   baseUrl?: string
   allowedHosts: readonly string[]
+  allowedRedirectSourceIds: readonly string[]
+  cookieForwardSourceIds: readonly string[]
   timeoutMs: number
   maxResponseBytes: number
   retry: { attempts: 0 | 1; retryOn: readonly RetryReason[] }
@@ -21,5 +23,9 @@ export type SourceDefinition<Id extends string = string> = {
   freshness: { warnAfterSeconds: number | null; rejectAfterSeconds: number | null }
   credentialEnv?: string
   fallbackSourceIds: readonly string[]
-  healthcheck?: { path: string; expectedStatuses: readonly number[] }
+  healthcheck?: {
+    path: string
+    expectedStatuses: readonly number[]
+    credentialQueryParam?: string
+  }
 }

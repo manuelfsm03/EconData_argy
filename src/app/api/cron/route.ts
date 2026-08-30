@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { runAllScrapers } from "@/server/scrapers"
-import { ejecutarResolucion } from "@/app/api/predictions/resolve/route"
 
 // This endpoint is designed to be called by Vercel Cron
 // Configure in vercel.json to run at 17:00 Argentina time (20:00 UTC)
@@ -23,20 +22,10 @@ export async function POST(request: NextRequest) {
 
     console.log("Scrape completed:", results)
 
-    // Resolver predicciones vencidas contra las fuentes de precios
-    let predicciones = null
-    try {
-      predicciones = await ejecutarResolucion(new URL(request.url).origin)
-      console.log("Predicciones resueltas:", predicciones.resueltas)
-    } catch (e) {
-      console.error("Resolución de predicciones falló:", e)
-    }
-
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
       results,
-      predicciones,
     })
   } catch (error) {
     console.error("Cron job failed:", error)

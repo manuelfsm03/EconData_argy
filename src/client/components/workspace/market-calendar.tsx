@@ -6,7 +6,7 @@ import { deriveMarketCalendarEvents, type CountryCode, type MarketCalendarEvent,
 import { downloadICS, googleCalendarUrl } from "@/lib/ics-export"
 import { TickerLink } from "@/client/components/ui/ticker-link"
 import { cn } from "@/lib/utils"
-
+import { PENDING_CALENDAR_SOURCES } from "@/lib/calendar-coverage"
 type EventKind = MarketCalendarEvent["kind"]
 
 const KIND_META: Record<EventKind, { label: string; short: string; colorClass: string; dotClass: string }> = {
@@ -38,11 +38,7 @@ const DIAS_ALARMA = [1, 3, 7] as const
 
 /** Categorías con capacidad ya visible en la UI pero sin fuente oficial conectada todavía
  *  (sin fechas simuladas — mismo criterio de honestidad que el resto del proyecto). */
-interface PendingSource { label: string; fuente: string; items: string[] }
-const PENDING_SOURCES: PendingSource[] = [
-  { label: "Licitaciones del Tesoro", fuente: "Secretaría de Finanzas / Tesoro", items: ["Colocación de deuda en pesos: instrumentos, montos y tasas adjudicadas"] },
-  { label: "Earnings — S&P500 (resto)", fuente: "las 7 empresas argentinas de BYMA y la Magnificent 7 ya tienen fecha estimada — el resto del S&P500 (493 empresas) no es viable a mano", items: ["S&P500 (493 empresas restantes)"] },
-]
+const PENDING_SOURCES = PENDING_CALENDAR_SOURCES
 
 const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
@@ -300,8 +296,8 @@ export function MarketCalendar({ initialTicker = null }: { initialTicker?: strin
                       )
                     })}
                     {PENDING_SOURCES.map((source) => (
-                      <span key={source.label} title={`${source.fuente} — sin conectar`} className="flex items-center gap-1.5 rounded-full border border-dashed border-[var(--border-hi)] bg-[var(--bg)] px-2.5 py-1 text-[10px] font-medium text-[var(--text-mute)]">
-                        {source.label} <span className="rounded border border-[var(--border-hi)] px-1 text-[8px]">NC</span>
+                      <span key={source.id} title={`${source.source} — sin conectar`} className="flex items-center gap-1.5 rounded-full border border-dashed border-[var(--border-hi)] bg-[var(--bg)] px-2.5 py-1 text-[10px] font-medium text-[var(--text-mute)]">
+                        {source.name} <span className="rounded border border-[var(--border-hi)] px-1 text-[8px]">{source.statusLabel}</span>
                       </span>
                     ))}
                   </div>
@@ -395,14 +391,14 @@ export function MarketCalendar({ initialTicker = null }: { initialTicker?: strin
           </div>
           <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3">
             {PENDING_SOURCES.map((source) => (
-              <div key={source.label} className="rounded-md border border-dashed border-[var(--border-hi)] bg-[var(--bg)] p-3">
+              <div key={source.id} className="rounded-md border border-dashed border-[var(--border-hi)] bg-[var(--bg)] p-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold text-[var(--text)]">{source.label}</span>
+                  <span className="text-xs font-semibold text-[var(--text)]">{source.name}</span>
                   <span className="rounded-full border border-[var(--border-hi)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-[var(--text-mute)]">no conectada</span>
                 </div>
-                <p className="mb-2 text-[10px] text-[var(--text-mute)]">{source.fuente}</p>
+                <p className="mb-2 text-[10px] text-[var(--text-mute)]">{source.source} — {source.limitation}</p>
                 <div className="flex flex-wrap gap-1">
-                  {source.items.map((item) => <span key={item} className="rounded border border-[var(--border)] bg-[var(--bg-elev-2)] px-1.5 py-0.5 font-mono text-[9px] text-[var(--text-dim)]">{item}</span>)}
+                  {(source.items ?? []).map((item) => <span key={item} className="rounded border border-[var(--border)] bg-[var(--bg-elev-2)] px-1.5 py-0.5 font-mono text-[9px] text-[var(--text-dim)]">{item}</span>)}
                 </div>
               </div>
             ))}
@@ -491,6 +487,16 @@ export function MarketCalendar({ initialTicker = null }: { initialTicker?: strin
               {selected.kind === "earnings" && (
                 <div className="rounded-md border border-dashed border-[var(--amber)]/50 bg-[var(--amber-soft)] p-3 text-[10px] leading-4 text-[var(--text)]">
                   ⚠️ <b>Estimado, no confirmado</b> — a diferencia del resto del calendario, esta fecha no viene de un calendario oficial publicado por la empresa. Se proyecta a partir del patrón de balances anteriores y puede moverse.
+                </div>
+              )}
+              {selected.coverage && (
+                <div className="rounded-md border border-[var(--border)] bg-[var(--bg)] p-3 text-[10px] leading-4 text-[var(--text-dim)]">
+                  <div className="mb-1 flex items-center gap-2"><b className="text-[var(--text)]">Cobertura:</b> <span className={selected.coverage.status === "official" ? "text-[var(--positive)]" : selected.coverage.status === "estimated" ? "text-[var(--amber)]" : "text-[var(--text-mute)]"}>{selected.coverage.label}</span></div>
+                  <div><b className="text-[var(--text)]">País:</b> {COUNTRY_META[selected.country].label} · <b className="text-[var(--text)]">Tipo:</b> {KIND_META[selected.kind].label}</div>
+                  <div><b className="text-[var(--text)]">Alcance:</b> {selected.coverage.scope}</div>
+                  <div><b className="text-[var(--text)]">Fuente:</b> {selected.coverage.source}</div>
+                  {selected.coverage.verifiedAt && <div><b className="text-[var(--text)]">Verificado al:</b> {selected.coverage.verifiedAt}</div>}
+                  {selected.coverage.limitation && <div><b className="text-[var(--text)]">Limitación:</b> {selected.coverage.limitation}</div>}
                 </div>
               )}
               <div className="rounded-md border border-[var(--border)] bg-[var(--bg)] p-3 text-[10px] leading-4 text-[var(--text-dim)]"><b className="text-[var(--text)]">Fuente:</b> {selected.source}</div>

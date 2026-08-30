@@ -91,26 +91,35 @@ test("local equity and sovereign bond routes use BYMA Data instead of API Merval
 })
 
 test("bond routes derive provenance from effective quote rows", () => {
+  const asOfNow = new Date("2026-08-16T12:00:00.000Z")
   assert.deepEqual(marketMetaForRows([
     { fuente: "byma_data_open", asOf: "2026-08-14T03:00:00.000Z" },
     { fuente: "rava", asOf: "2026-08-16T12:00:00.000Z" },
-  ]), {
+  ], asOfNow), {
     source: "byma_data_open + rava",
     price_as_of: "2026-08-14T03:00:00.000Z",
     source_name: "BYMA Data abierto",
     delayed_minutes: 20,
   })
+  // Friday's daily candle remains valid over the non-trading weekend. More
+  // than one missed BYMA session must still fail closed on Wednesday.
+  assert.deepEqual(marketMetaForRows([
+    { fuente: "byma_data_open", asOf: "2026-08-14T03:00:00.000Z" },
+  ], new Date("2026-08-19T12:00:00.000Z")), {
+    source: "byma_data_open",
+    price_as_of: null,
+  })
   assert.deepEqual(marketMetaForRows([
     { fuente: "rava", asOf: "2026-08-16T12:00:00.000Z" },
     { fuente: "db_local", asOf: null },
-  ]), {
+  ], asOfNow), {
     source: "rava + db_local",
     price_as_of: null,
   })
 
   assert.deepEqual(marketMetaForRows([
     { fuente: "rava", asOf: "2026-08-16T12:00:00.000Z" },
-  ]), {
+  ], asOfNow), {
     source: "rava",
     price_as_of: null,
   })
@@ -123,5 +132,5 @@ test("bond routes derive provenance from effective quote rows", () => {
   const bondRoute = readFileSync("src/app/api/bonos/route.ts", "utf8")
   assert.match(equityRoute, /marketMetaForRows\(quotes\.map/)
   assert.match(bondRoute, /\.\.\.marketMetaForRows\(screener\)/)
-  assert.match(bondRoute, /\.\.\.marketMetaForRows\(cached\)/)
+  assert.match(bondRoute, /marketMetaForRows\(freshCached\)/)
 })

@@ -1,3 +1,4 @@
+import { fetchRegistered } from "@/server/http/fetch-source"
 import { NextResponse } from "next/server"
 import { guardarExito, leerFresco, leerUltimoBueno } from "@/server/http/stale-cache"
 
@@ -72,7 +73,7 @@ async function fetchFredCsv(serie: FredSerie): Promise<DatoSerie> {
   }
 
   try {
-    const res = await fetch(`${FRED_BASE}${serie.id}`, {
+    const res = await fetchRegistered(`${FRED_BASE}${serie.id}`, {
       headers: { Accept: "text/csv" },
       signal: AbortSignal.timeout(12_000),
     })
@@ -119,7 +120,7 @@ export async function GET() {
   let inflacion_yoy: number | null = null
   if (cpiRow?.valor != null) {
     try {
-      const res = await fetch(`${FRED_BASE}CPIAUCSL`, {
+      const res = await fetchRegistered(`${FRED_BASE}CPIAUCSL`, {
         headers: { Accept: "text/csv" },
         signal: AbortSignal.timeout(12_000),
       })

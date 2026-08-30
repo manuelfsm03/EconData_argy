@@ -12,13 +12,16 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { MOCK_PROFILES } from "@/client/components/profiles/mock-profiles"
-import type { UserProfile, PerfilRiesgo } from "@/client/components/profiles/mock-profiles"
+import type { UserProfile } from "@/client/components/profiles/mock-profiles"
+import { USERS_ENABLED } from "@/lib/feature-flags"
 // TODO (DB real): importar prisma cuando Profile esté migrado con Supabase Auth
 // import { prisma } from "@/server/db/prisma"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(req: NextRequest) {
+  if (!USERS_ENABLED) return new NextResponse(null, { status: 404 })
+
   const { searchParams } = req.nextUrl
   const currentUserId = searchParams.get("currentUserId")
 

@@ -139,7 +139,7 @@ export const GD30: EsquemaBono = {
   ley: "NY",
   emision: "2020-09-04",
   vencimiento: "2030-07-09",
-  fuente: "Copia de Calculadoras de bonos.xlsx, hoja GD30 (planilla de referencia del equipo)",
+  fuente: "Decreto 676/2020, Anexo II/III Condiciones de Emisión de los Nuevos Títulos, InfoLEG IF-2020-53778419-APN-UGSDPE#MEC; cronograma cotejado contra la planilla de referencia del equipo, verificado 2026-08-25",
   filas: [
     { fecha: "2021-07-09", tasa: 0.00125, amortizacion: 0 },
     { fecha: "2022-01-09", tasa: 0.005, amortizacion: 0 },
@@ -513,4 +513,17 @@ export const AE38: EsquemaBono = {
   ],
 }
 
-export const ESQUEMAS: EsquemaBono[] = [GD30, AL30, GD29, AL29, GD35, AL35, GD41, AL41, AE38]
+/**
+ * GD38 comparte términos económicos con AE38; cambia solamente la ley
+ * aplicable y el identificador de mercado. Se mantiene como alias explícito
+ * para que el catálogo no mezcle los tickers oficiales.
+ */
+export const GD38: EsquemaBono = {
+  ...AE38,
+  ticker: "GD38",
+  nombre: "Bono Global USD Ley NY 2038",
+  ley: "NY",
+  fuente: "Decreto 2020, Anexo III/IV Terminos y condiciones de los nuevos titulos (Bonos Globales), InfoLEG IF-2020-53778419-APN-UGSDPE#MEC, verificado 2026-08-25",
+}
+
+export const ESQUEMAS: EsquemaBono[] = [GD30, AL30, GD29, AL29, GD35, AL35, GD41, AL41, AE38, GD38]

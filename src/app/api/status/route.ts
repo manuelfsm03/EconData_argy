@@ -37,12 +37,19 @@ type StatusRow = {
   }
 }
 
-const healthchecks = (): HealthCheck[] => registeredHealthchecks().map((definition) => ({
-  source: definition.id,
-  name: definition.displayName,
-  url: new URL(definition.healthcheck!.path, definition.baseUrl).toString(),
-  expectedStatuses: definition.healthcheck!.expectedStatuses,
-}))
+const healthchecks = (): HealthCheck[] => registeredHealthchecks().map((definition) => {
+  const url = new URL(definition.healthcheck!.path, definition.baseUrl)
+  const credential = definition.credentialEnv ? process.env[definition.credentialEnv] : undefined
+  if (definition.healthcheck!.credentialQueryParam && credential) {
+    url.searchParams.set(definition.healthcheck!.credentialQueryParam, credential)
+  }
+  return {
+    source: definition.id,
+    name: definition.displayName,
+    url: url.toString(),
+    expectedStatuses: definition.healthcheck!.expectedStatuses,
+  }
+})
 
 async function runHealthcheck(check: HealthCheck) {
   const checkedAt = new Date().toISOString()

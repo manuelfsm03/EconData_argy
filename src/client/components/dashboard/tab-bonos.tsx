@@ -17,6 +17,7 @@ import {
   ResponsiveContainer, LineChart, Line, ReferenceLine, Legend,
   BarChart, Bar, Cell,
 } from "recharts"
+import type { TooltipContentProps } from "recharts"
 import { InfoTooltip } from "@/client/components/ui/info-tooltip"
 import { GLOSSARY } from "@/lib/glossary"
 import { buildSovereignCurve, type SovereignCurveInput } from "@/lib/sovereign-curve"
@@ -846,15 +847,15 @@ function RegionalTooltip({ active, payload }: any) {
   )
 }
 
-function RpTooltip({ active, payload, label }: any) {
+function RpTooltip({ active, payload, label }: Partial<TooltipContentProps<number, string>>) {
   if (!active || !payload?.length) return null
   return (
     <div style={{ background: "var(--bg-elev-2)", border: "1px solid var(--border-hi)", padding: "8px 12px", fontSize: 11 }}>
       <div style={{ color: "var(--text-dim)", fontSize: 9, marginBottom: 4 }}>{label}</div>
-      {payload.map((p: { name: string; value: number; color: string }) => (
-        <div key={p.name} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+      {payload.map((p) => (
+        <div key={String(p.name ?? "")} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
           <span style={{ color: p.color }}>{p.name}</span>
-          <span style={{ fontFamily: "var(--font-data)", color: "var(--text)" }}>{p.value?.toFixed(0)}</span>
+          <span style={{ fontFamily: "var(--font-data)", color: "var(--text)" }}>{typeof p.value === "number" ? p.value.toFixed(0) : p.value}</span>
         </div>
       ))}
     </div>

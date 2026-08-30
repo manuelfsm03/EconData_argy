@@ -18,7 +18,7 @@ export interface BcraPublicacion {
   descripcion: string
 }
 
-const FUENTE_BCRA = "BCRA — Calendario de informes 2026 (bcra.gob.ar/en/reporting-calendar/)"
+const FUENTE_BCRA = "BCRA — Calendario de informes 2026 (bcra.gob.ar/en/reporting-calendar/), verificado 2026-08-17"
 
 export const BCRA_REM_IPOM_2026: BcraPublicacion[] = [
   { fecha: "2026-01-07", indicador: "REM", descripcion: "Relevamiento de Expectativas de Mercado — diciembre 2025" },

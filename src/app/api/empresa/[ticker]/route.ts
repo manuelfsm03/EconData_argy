@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getFundamentals, fetchYFMarketData } from "@/server/external/fundamentals"
+import { fetchRegistered } from "@/server/http/fetch-source"
 
 const YF_HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -22,7 +23,7 @@ async function fetchYF(url: string): Promise<unknown> {
   for (const host of ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]) {
     const finalUrl = url.replace(/query\d\.finance\.yahoo\.com/, host)
     try {
-      const res = await fetch(finalUrl, {
+      const res = await fetchRegistered(finalUrl, {
         headers: YF_HEADERS,
         signal: AbortSignal.timeout(10000),
       })

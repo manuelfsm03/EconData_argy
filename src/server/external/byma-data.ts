@@ -1,4 +1,5 @@
 import { fetchRegistered } from "@/server/http/fetch-source"
+import { gateMarketPrice } from "@/server/domain/market-freshness"
 
 const BYMA_HISTORY_URL = "https://open.bymadata.com.ar/vanoms-be-core/rest/api/bymadata/free/chart/historical-series/history"
 const BYMA_LEBACS_URL = "https://open.bymadata.com.ar/vanoms-be-core/rest/api/bymadata/free/lebacs"
@@ -34,6 +35,7 @@ export interface BymaQuote {
   asOf: string
   delayedMinutes: 20
   source: "byma_data_open"
+  sourceMode: "live" | "cache_fresh" | "cache_stale"
 }
 
 type CacheEntry = {
@@ -109,6 +111,7 @@ export function parseBymaHistory(payload: unknown, ticker: string, symbol: strin
     asOf: new Date(timestamp * 1000).toISOString(),
     delayedMinutes: DELAYED_MINUTES,
     source: "byma_data_open",
+    sourceMode: "live",
   }
 }
 
@@ -207,7 +210,7 @@ async function fetchQuote(ticker: string, symbol: string): Promise<BymaQuote | n
   const cacheKey = symbol.toUpperCase()
   const now = Date.now()
   const cached = quoteCache.get(cacheKey)
-  if (cached && cached.freshUntil > now) return cached.quote
+  if (cached && cached.freshUntil > now) return { ...cached.quote, sourceMode: "cache_fresh" as const }
 
   const pending = inFlight.get(cacheKey)
   if (pending) return pending
@@ -218,7 +221,7 @@ async function fetchQuote(ticker: string, symbol: string): Promise<BymaQuote | n
         const quote = await fetchQuoteOnce(ticker, symbol)
         if (quote) {
           quoteCache.set(cacheKey, {
-            quote,
+            quote: { ...quote, sourceMode: "live" as const },
             freshUntil: Date.now() + FRESH_CACHE_MS,
             staleUntil: Date.now() + STALE_IF_ERROR_MS,
           })
@@ -230,7 +233,7 @@ async function fetchQuote(ticker: string, symbol: string): Promise<BymaQuote | n
       // El último cierre válido es preferible a publicar cero/null por un fallo transitorio.
     }
     const stale = quoteCache.get(cacheKey)
-    return stale && stale.staleUntil > Date.now() ? stale.quote : null
+    return stale && stale.staleUntil > Date.now() ? { ...stale.quote, sourceMode: "cache_stale" as const } : null
   })().finally(() => inFlight.delete(cacheKey))
 
   inFlight.set(cacheKey, request)
@@ -276,12 +279,12 @@ export const BYMA_DATA_METADATA = {
   access: "open_no_registration",
 } as const
 
-type MarketRow = { fuente?: string; asOf?: string | null }
+type MarketRow = { fuente?: string; asOf?: string | null; priceStatus?: string }
 
-export function marketMetaForRows(value: unknown) {
+export function marketMetaForRows(value: unknown, now = new Date()) {
   const rows = (Array.isArray(value) ? value : [value]) as MarketRow[]
   const sources = [...new Set(rows.map((row) => row?.fuente).filter((source): source is string => Boolean(source)))]
-  const bymaRows = rows.filter((row) => row?.fuente === BYMA_DATA_METADATA.sourceId)
+  const bymaRows = rows.filter((row) => row?.fuente === BYMA_DATA_METADATA.sourceId && gateMarketPrice(BYMA_DATA_METADATA.sourceId, row?.asOf, now).accepted)
   const priceAsOf = bymaRows
     .map((row) => row?.asOf)
     .filter((asOf): asOf is string => Boolean(asOf))

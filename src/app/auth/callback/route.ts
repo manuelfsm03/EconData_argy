@@ -1,9 +1,12 @@
 import { createClient } from "@/lib/supabase/server"
 import { getOrCreateProfile } from "@/server/auth/get-or-create-profile"
 import { NextResponse } from "next/server"
+import { USERS_ENABLED } from "@/lib/feature-flags"
 
 // Callback de OAuth o Magic Link — intercambia el code por sesión y crea el perfil
 export async function GET(request: Request) {
+  if (!USERS_ENABLED) return new NextResponse(null, { status: 404 })
+
   const { searchParams, origin } = new URL(request.url)
   const code  = searchParams.get("code")
   const next  = searchParams.get("next") ?? "/"

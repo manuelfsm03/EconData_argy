@@ -71,7 +71,7 @@ async function getPIBdesdeIMF(): Promise<Record<PaisPIB, DatoPIB> | null> {
   try {
     const paises = PAISES_PIB.join("/")
     const url = `https://www.imf.org/external/datamapper/api/v1/NGDP_RPCH/${paises}`
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(12_000),
     })
@@ -160,7 +160,7 @@ async function getInflacionEurostat(): Promise<DatoInflacion | null> {
   try {
     const url =
       "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/PRC_HICP_MIDX/M.I05.CP00.EA20?format=JSON&lastTimePeriod=1"
-    const res = await fetch(url, {
+    const res = await fetchRegistered(url, {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(12_000),
     })

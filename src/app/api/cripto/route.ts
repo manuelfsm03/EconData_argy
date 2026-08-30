@@ -88,7 +88,7 @@ export async function GET() {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(8000),
     }),
-    fetch("https://api.alternative.me/fng/?limit=1&format=json", {
+    fetchRegistered("https://api.alternative.me/fng/?limit=1&format=json", {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(6000),
     }),
@@ -100,7 +100,7 @@ export async function GET() {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(8000),
     }),
-    fetch("https://api.blockchain.info/stats", {
+    fetchRegistered("https://api.blockchain.info/stats", {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(8000),
     }),

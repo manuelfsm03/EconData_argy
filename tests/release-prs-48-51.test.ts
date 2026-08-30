@@ -88,6 +88,19 @@ test("bond calculator enforces the verified bond life and first-period accrual",
   assert.equal(firstPeriod.status, 200)
   const payload = await firstPeriod.json()
   assert.ok(payload.metricas.interesesCorridos > 0)
+  assert.equal(payload.dayCount, "30/360 US")
+  assert.equal(payload.frecuencia, "semestral")
+  assert.equal(payload.dataQuality, "prospectus_schedule_verified")
+})
+
+test("bond calculator reports the explicit PR76 exclusion for S30S6", async () => {
+  const response = await calculateBond(new NextRequest(
+    "http://localhost/api/bonos/calculadora?ticker=S30S6&modo=tir&valor=12.5&liquidacion=2026-08-25",
+  ))
+  assert.equal(response.status, 422)
+  const payload = await response.json()
+  assert.equal(payload.estado, "excluido")
+  assert.match(payload.error, /TEA|cashflow|verific/i)
 })
 
 test("bond calculator accepts zero and negative yields above -100 percent", async () => {

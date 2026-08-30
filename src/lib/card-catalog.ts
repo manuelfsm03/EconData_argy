@@ -41,6 +41,12 @@ const card = (
   ...definition,
 })
 
+// Agro remains implemented for a later scope, but is not part of the approved
+// 35-card RC inventory yet. Keep the definition behind an explicit flag so it
+// cannot silently enter the Library, Canvas, or their coverage contracts.
+const AGRO_CARD_ENABLED = false
+const AGRO_CARD = card({ id: "agro", title: "Agro", category: "macro", tab: "macro", subtab: "agro", description: "Pizarra Rosario en vivo, futuros CBOT y producción mundial de soja.", keywords: ["soja", "maíz", "trigo", "agro", "cbot", "rosario", "fob", "girasol", "cereales", "granos"], endpoints: [{ path: "/api/agro-local", label: "Pizarra Rosario" }, { path: "/api/commodities?categoria=agro", label: "CBOT futuros" }, { path: "/api/agro-soja", label: "Producción soja" }] })
+
 /**
  * Inventario único de módulos visibles en La Pizarra.
  * Alimenta la Biblioteca, el buscador, el Canvas y el monitor de endpoints.
@@ -68,7 +74,7 @@ export const DATA_CARD_CATALOG: DataCardDefinition[] = [
   card({ id: "ipc", title: "Inflación · IPC", category: "macro", tab: "macro", subtab: "ipc", description: "IPC mensual, histórico, expectativas y composición.", keywords: ["inflación", "ipc", "precios", "indec"], endpoints: [{ path: "/api/macro?endpoint=ipc", label: "IPC" }, { path: "/api/macro?endpoint=ipc_divisiones", label: "IPC por divisiones" }, { path: "/api/ipc-historico", label: "IPC histórico" }, { path: "/api/rem", label: "Expectativas REM" }] }),
   card({ id: "balanza", title: "Balanza comercial", category: "macro", tab: "macro", subtab: "balanza", description: "Exportaciones, importaciones, saldo y principales socios.", keywords: ["comercio", "exportaciones", "importaciones", "saldo"], endpoints: [{ path: "/api/macro?endpoint=balanza", label: "Balanza" }, { path: "/api/macro?endpoint=argendata_comext", label: "Composición ICA (USD M)" }, { path: "/api/macro?endpoint=comext_sitc", label: "SITC histórico (%)" }, { path: "/api/balanza-socios", label: "Socios comerciales" }] }),
   card({ id: "fiscal", title: "Resultado fiscal", category: "macro", tab: "macro", subtab: "fiscal", description: "Ingresos, gastos y resultado primario y financiero.", keywords: ["déficit", "superávit", "gasto", "ingresos"], endpoints: [{ path: "/api/macro?endpoint=fiscal", label: "Fiscal" }] }),
-  card({ id: "agro", title: "Agro", category: "macro", tab: "macro", subtab: "agro", description: "Pizarra Rosario en vivo, futuros CBOT y producción mundial de soja.", keywords: ["soja", "maíz", "trigo", "agro", "cbot", "rosario", "fob", "girasol", "cereales", "granos"], endpoints: [{ path: "/api/agro-local", label: "Pizarra Rosario" }, { path: "/api/commodities?categoria=agro", label: "CBOT futuros" }, { path: "/api/agro-soja", label: "Producción soja" }] }),
+
   card({ id: "desigualdad", title: "Desigualdad", category: "macro", tab: "macro", subtab: "desigualdad", description: "Coeficiente de Gini y distribución del ingreso.", keywords: ["gini", "ingreso", "distribución", "pobreza"], endpoints: [{ path: "/api/macro?endpoint=argendata_desigualdad", label: "Desigualdad" }] }),
   card({ id: "piramides", title: "Pirámides poblacionales", category: "macro", tab: "macro", subtab: "piramides", description: "Estructura demográfica histórica y proyectada.", keywords: ["población", "demografía", "edad", "proyección"], endpoints: [{ path: "/api/macro?endpoint=piramide&year=2025&country=32", label: "Demografía" }] }),
   card({ id: "fx", title: "Tipo de cambio", category: "macro", tab: "macro", subtab: "fx", description: "Dólares, bandas cambiarias e índice de tipo de cambio real.", keywords: ["dólar", "blue", "mep", "ccl", "itcrm", "fx"], endpoints: [{ path: "/api/tc-historico?period=max", label: "Dólares" }, { path: "/api/tcr", label: "ITCRM" }, { path: "/api/bcra-bands", label: "Bandas" }] }),
@@ -86,6 +92,7 @@ export const DATA_CARD_CATALOG: DataCardDefinition[] = [
   card({ id: "rem", title: "Relevamiento de Expectativas", category: "bcra", tab: "bcra", subtab: "rem", description: "Expectativas de mercado relevadas por el BCRA.", keywords: ["rem", "expectativas", "inflación", "dólar"], endpoints: [{ path: "/api/rem", label: "REM" }] }),
 
   card({ id: "noticias", title: "Noticias económicas", category: "noticias", tab: "noticias", subtab: null, description: "Noticias locales e internacionales y señales en vivo.", keywords: ["rss", "medios", "actualidad", "economía"], endpoints: [{ path: "/api/rss-news", label: "RSS" }], defaultW: 12, minW: 6 }),
+  ...(AGRO_CARD_ENABLED ? [AGRO_CARD] : []),
 ]
 
 export const DATA_CARD_BY_ID = new Map(DATA_CARD_CATALOG.map((item) => [item.id, item]))

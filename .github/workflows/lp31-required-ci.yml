@@ -1,0 +1,207 @@
+name: LP31 required CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lp31-required-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  NODE_ENV: test
+  DATABASE_URL: ""
+  APPLY_FORUM_MIGRATION: "0"
+
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Prepare evidence directory
+        run: mkdir -p artifacts/ci
+      - name: Assert isolated database policy
+        run: test -z "${DATABASE_URL:-}" && test "${APPLY_FORUM_MIGRATION:-0}" != "1"
+      - name: npm ci
+        run: set -o pipefail; npm ci --include=dev --no-audit --no-fund 2>&1 | tee artifacts/ci/npm-ci.log
+      - name: Test CI
+        run: |
+          set -o pipefail
+          npm run test:ci 2>&1 | tee artifacts/ci/test-ci.log
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs"
+          import { parseTestOutput } from "./scripts/ci-test-parser.mjs"
+          const parsed = parseTestOutput(readFileSync("artifacts/ci/test-ci.log", "utf8"))
+          if (parsed.totalTests === 0) {
+            console.error("test:ci produced no executed tests")
+            process.exit(1)
+          }
+          if (parsed.totalSkipped > 0) {
+            console.error(`test:ci contains skipped tests: ${parsed.totalSkipped}`)
+            process.exit(1)
+          }
+          console.log(`test:ci executed ${parsed.totalTests} tests with no skips`)
+          NODE
+      - name: Parser unit test
+        run: npm run test:ci-parser
+      - name: Required focused gates
+        run: npm run test:required-gates
+      - name: TypeScript
+        run: set -o pipefail; npx tsc --noEmit 2>&1 | tee artifacts/ci/tsc.log
+      - name: Lint
+        run: set -o pipefail; npm run lint 2>&1 | tee artifacts/ci/lint.log
+      - name: Build without database
+        run: set -o pipefail; npm run build 2>&1 | tee artifacts/ci/build.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lp31-ci-${{ github.run_id }}
+          path: artifacts/ci
+          retention-days: 14
+
+  fuentes:
+    name: fuentes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: mkdir -p artifacts/fuentes
+      - name: npm ci
+        run: set -o pipefail; npm ci --include=dev --no-audit --no-fund 2>&1 | tee artifacts/fuentes/npm-ci.log
+      - name: Fuente contracts and runtime
+        run: set -o pipefail; npm run test:fuentes 2>&1 | tee artifacts/fuentes/tests.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lp31-fuentes-${{ github.run_id }}
+          path: artifacts/fuentes
+          retention-days: 14
+
+  bond-math:
+    name: bond-math
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: mkdir -p artifacts/bond-math
+      - name: npm ci
+        run: set -o pipefail; npm ci --include=dev --no-audit --no-fund 2>&1 | tee artifacts/bond-math/npm-ci.log
+      - name: Bond math
+        run: set -o pipefail; npm run test:bond-math 2>&1 | tee artifacts/bond-math/tests.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lp31-bond-math-${{ github.run_id }}
+          path: artifacts/bond-math
+          retention-days: 14
+
+  escenarios:
+    name: escenarios
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: mkdir -p artifacts/escenarios
+      - name: npm ci
+        run: set -o pipefail; npm ci --include=dev --no-audit --no-fund 2>&1 | tee artifacts/escenarios/npm-ci.log
+      - name: Scenarios
+        run: set -o pipefail; npm run test:escenarios 2>&1 | tee artifacts/escenarios/tests.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lp31-escenarios-${{ github.run_id }}
+          path: artifacts/escenarios
+          retention-days: 14
+
+  calendar:
+    name: calendar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: mkdir -p artifacts/calendar
+      - name: npm ci
+        run: set -o pipefail; npm ci --include=dev --no-audit --no-fund 2>&1 | tee artifacts/calendar/npm-ci.log
+      - name: Calendar
+        run: set -o pipefail; npm run test:calendar 2>&1 | tee artifacts/calendar/tests.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lp31-calendar-${{ github.run_id }}
+          path: artifacts/calendar
+          retention-days: 14
+
+  canvas:
+    name: canvas
+    runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/ms-playwright
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: mkdir -p artifacts/canvas
+      - name: npm ci
+        run: set -o pipefail; npm ci --include=dev --no-audit --no-fund 2>&1 | tee artifacts/canvas/npm-ci.log
+      - name: Canvas contract tests
+        run: set -o pipefail; npm run test:canvas 2>&1 | tee artifacts/canvas/tests.log
+      - name: Biblioteca contract tests
+        run: |
+          set -o pipefail
+          npx tsx --test tests/data-library.test.ts 2>&1 | tee artifacts/canvas/library-tests.log
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs"
+          import { parseTestOutput } from "./scripts/ci-test-parser.mjs"
+          const parsed = parseTestOutput(readFileSync("artifacts/canvas/library-tests.log", "utf8"))
+          if (parsed.totalTests === 0 || parsed.totalSkipped > 0) {
+            console.error(`Biblioteca gate invalid: ${JSON.stringify(parsed)}`)
+            process.exit(1)
+          }
+          console.log(`Biblioteca executed ${parsed.totalTests} tests with no skips`)
+          NODE
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium 2>&1 | tee artifacts/canvas/chromium-install.log
+      - name: Build app without database
+        run: set -o pipefail; npm run build 2>&1 | tee artifacts/canvas/build.log
+      - name: Browser smoke desktop and mobile
+        run: |
+          set -o pipefail
+          npm run start -- --hostname 127.0.0.1 --port 3000 > artifacts/canvas/server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:3000/ >/dev/null
+          node scripts/smoke-browser.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lp31-canvas-${{ github.run_id }}
+          path: artifacts/canvas
+          retention-days: 14

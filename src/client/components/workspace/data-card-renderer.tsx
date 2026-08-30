@@ -1,5 +1,7 @@
 "use client"
 
+import React from "react"
+
 import {
   HeadlinesBlock,
   IPCBlock,
@@ -44,6 +46,10 @@ import { AssetScreener } from "@/client/components/dashboard/screener-activos"
 import { RateScreener } from "@/client/components/dashboard/screener-tasas"
 import { TabBonos } from "@/client/components/dashboard/tab-bonos"
 import { TabMundo } from "@/client/components/dashboard/tab-mundo"
+import { NumericBoundary } from "./numeric-boundary"
+import { NumericEnergyCard } from "./numeric-energy-card"
+import { NUMERIC_SURFACE_BY_ID } from "@/server/numeric/manifest"
+import type { TickerFocus } from "@/lib/ticker-nav"
 
 const noopNavigate = () => {}
 
@@ -85,12 +91,34 @@ const CARD_COMPONENTS: Record<string, React.ComponentType> = {
   noticias: NewsFeed,
 }
 
-export function DataCardRenderer({ cardId }: { cardId: string }) {
+export function DataCardRenderer({ cardId, focusTicker = null }: { cardId: string; focusTicker?: TickerFocus | null }) {
   const definition = DATA_CARD_BY_ID.get(cardId)
   if (!definition) return <div className="p-4 text-sm text-[var(--negative)]">Tarjeta no disponible.</div>
 
-  const Component = CARD_COMPONENTS[cardId]
-  if (Component) return <Component />
+  const surface = NUMERIC_SURFACE_BY_ID.get(cardId)
+  if (!surface || surface.rendererId !== cardId) {
+    return <div className="p-4 text-sm text-[var(--text-dim)]">Dato no disponible.</div>
+  }
 
-  return <div className="p-4 text-sm text-[var(--text-dim)]">Sin visualización.</div>
+  // This is the one R2 vertical with a runtime provenance-producing route.
+  // Do not unlock the legacy multi-source TabMundo renderer with EIA metadata:
+  // its other tabs still lack numeric provenance.
+  if (cardId === "mundo-avanzado") {
+    return (
+      <NumericBoundary cardId={cardId}>
+        {(payload) => <NumericEnergyCard payload={payload} />}
+      </NumericBoundary>
+    )
+  }
+
+  const Component = CARD_COMPONENTS[cardId]
+  if (Component) {
+    return (
+      <NumericBoundary cardId={cardId}>
+        {cardId === "acciones" ? <AccionesView initialTicker={focusTicker?.ticker ?? null} /> : <Component />}
+      </NumericBoundary>
+    )
+  }
+
+  return <div className="p-4 text-sm text-[var(--text-dim)]">Dato no disponible.</div>
 }
