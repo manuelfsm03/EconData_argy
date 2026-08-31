@@ -58,8 +58,10 @@ const RSS_FEEDS: RSSFeed[] = [
   { url: "https://www.ft.com/rss/home",                             source: "Financial Times",region: "internacional", category: "economía",  country: "uk",           lang: "en" },
   // ── Internacional — Francia (español) ──
   { url: "https://www.france24.com/es/rss",                         source: "France 24",      region: "internacional", category: "política",  country: "francia",      lang: "es" },
-  // ── Internacional — Alemania (español) ──
-  { url: "https://rss.dw.com/rdf/rss-es-eco",                      source: "DW Español",     region: "internacional", category: "economía",  country: "alemania",     lang: "es" },
+  // ── Internacional — Alemania ──
+  // El RSS anterior de DW responde HTTP 200 con "no feed by that name".
+  { url: "https://www.spiegel.de/international/index.rss",         source: "Der Spiegel Intl.", region: "internacional", category: "política",  country: "alemania",     lang: "en" },
+  { url: "https://feeds.thelocal.com/rss/de/business",             source: "The Local DE Biz", region: "internacional", category: "economía",  country: "alemania",     lang: "en" },
   // ── Internacional — Medio Oriente (inglés) ──
   { url: "https://www.aljazeera.com/xml/rss/all.xml",              source: "Al Jazeera",     region: "internacional", category: "conflicto", country: "medio-oriente", lang: "en" },
   { url: "https://www.al-monitor.com/rss.xml",                     source: "Al Monitor",     region: "internacional", category: "política",  country: "medio-oriente", lang: "en" },
@@ -89,6 +91,8 @@ const RELEVANT_TERMS: string[] = [
   "reservas", "reservas internacionales", "oro", "divisas",
   "producción", "industria", "industrial", "manufactura",
   "construcción", "construccion", "actividad económica",
+  "ganancia", "ganancias", "utilidad", "utilidades", "balance financiero",
+  "facturación", "facturacion", "resultados trimestrales", "despido", "despidos",
   "emae", "indec", "bcra", "anses", "afip", "arca", "tesoro", "hacienda",
   // ── Finanzas / mercados (ES) ──
   "mercado", "mercados", "bolsa", "bolsas", "bursátil", "bursatil",
@@ -108,7 +112,7 @@ const RELEVANT_TERMS: string[] = [
   "soja", "maíz", "maiz", "trigo", "girasol", "agro", "campo", "granos",
   "litio", "minería", "mineria", "ypf", "vaca muerta", "shale",
   "energía", "energia", "electricidad", "nafta", "combustible",
-  "fmi", "banco mundial", "bid", "caf", "g20", "g7", "ocde", "omc",
+  "fmi", "banco mundial", "caf", "g20", "g7", "ocde", "omc",
   "arancel", "aranceles", "comercio exterior", "aduana", "sanción", "sanciones",
   // ── Política (ES) ──
   "gobierno", "gobernador", "presidente", "presidenta", "ministro", "ministra",
@@ -118,6 +122,14 @@ const RELEVANT_TERMS: string[] = [
   "milei", "kicillof", "massa", "macri", "kirchner", "caputo",
   "oposición", "oposicion", "coalición", "bloque", "partido político",
   "reforma", "ajuste", "plan económico", "medida económica",
+  // ── Social (ES) ──
+  "huelga", "paro general", "paro docente", "protesta", "manifestación", "manifestacion",
+  "educación", "educacion", "universidad", "universidades", "docentes", "paritaria docente",
+  "salud pública", "salud publica", "sistema de salud", "hospital público", "hospital publico",
+  "obra social", "pami", "vivienda", "déficit habitacional", "deficit habitacional", "alquileres", "alquiler",
+  "jubilación", "jubilacion", "jubilados", "pensión", "pension", "seguridad social",
+  "desigualdad", "sindicato", "sindicatos", "gremio", "gremios", "paritarias", "trabajo informal",
+  "informalidad laboral", "migrantes", "migración", "migracion",
   // ── Geopolítica (ES + EN) ──
   "guerra", "conflicto", "invasión", "invasion", "ataque", "bombardeo",
   "ucrania", "rusia", "gaza", "israel", "irán", "iran", "china", "eeuu",
@@ -130,6 +142,7 @@ const RELEVANT_TERMS: string[] = [
   "inflation", "deflation", "price", "prices", "wage", "wages",
   "employment", "unemployment", "jobless", "payroll",
   "budget", "deficit", "surplus", "debt", "spending", "revenue", "tax",
+  "profit", "profits", "earnings", "layoff", "layoffs", "job cuts",
   "trade", "tariff", "tariffs", "export", "import", "current account",
   "monetary", "fiscal", "treasury", "central bank", "interest rate",
   "federal reserve", "imf", "world bank", "ecb",
@@ -153,10 +166,11 @@ const RELEVANT_SET = RELEVANT_TERMS.map((t) => t.toLowerCase())
 // Detección de categoría por keywords en el título
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   finanzas:    ["bolsa", "acciones", "bonos", "bursátil", "merval", "cedear", "dólar", "dolar", "tasas", "bcra", "rofex", "letras", "inflación", "inflacion", "tasa"],
-  comercio:    ["exportaciones", "importaciones", "balanza", "arancel", "comercio exterior", "aduana", "trump", "aranceles", "tarifa"],
+  comercio:    ["exportaciones", "importaciones", "balanza", "arancel", "comercio exterior", "aduana", "aranceles", "tarifa"],
   energía:     ["petróleo", "petroleo", "gas", "energía", "energia", "litio", "ypf", "combustible", "nafta", "vaca muerta"],
   commodities: ["soja", "maíz", "maiz", "trigo", "girasol", "agro", "cereales", "oleaginosas", "granos", "campo"],
   política:    ["gobierno", "congreso", "senado", "milei", "decreto", "fmi", "elecciones", "legislativo", "ministerio"],
+  social:      ["huelga", "paro general", "paro docente", "protesta", "manifestación", "manifestacion", "educación", "educacion", "universidad", "docentes", "salud pública", "salud publica", "hospital", "vivienda", "alquileres", "alquiler", "jubilación", "jubilacion", "jubilados", "pensión", "pension", "seguridad social", "desigualdad", "sindicato", "sindicatos", "gremio", "gremios", "paritarias", "trabajo informal", "migrantes", "migración", "migracion"],
 }
 
 // Descarta cualquier título con caracteres cirílicos, árabes o CJK
@@ -226,7 +240,7 @@ let _cache: {
   feedsFailed: number
 } | null = null
 // Versión del cache — cambiar para forzar invalidación
-const CACHE_VERSION = 7
+const CACHE_VERSION = 8
 const INSTANCE_TTL = 5 * 60 * 1000
 
 function nowIso(): string {

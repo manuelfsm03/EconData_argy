@@ -137,21 +137,21 @@ try {
     // Resolve the catalog only after any drawer navigation. A locator created
     // before the route/state transition can observe the old hidden aside.
     const resolveCatalog = async () => {
-      let current = page.locator("aside").filter({ has: page.getByText(/^35 tarjetas programables$/) }).first()
+      let current = page.locator("aside").filter({ has: page.getByText(/^32 tarjetas programables$/) }).first()
       if (!(await current.isVisible())) {
         const freshCatalogButton = page.getByRole("button", { name: "Tarjetas", exact: true }).last()
         await freshCatalogButton.click()
-        current = page.locator("aside").filter({ has: page.getByText(/^35 tarjetas programables$/) }).first()
+        current = page.locator("aside").filter({ has: page.getByText(/^32 tarjetas programables$/) }).first()
       }
-      await current.getByText(/^35 tarjetas programables$/).waitFor({ state: "visible" })
+      await current.getByText(/^32 tarjetas programables$/).waitFor({ state: "visible" })
       return current
     }
     const catalog = await resolveCatalog()
     await waitForStableLayout(page, [catalog], `${viewport.name} catalog readiness`)
     const catalogGeometry = await assertVisibleAndUnobscured(page, catalog, `${viewport.name} catalog`)
-    const catalogCount = catalog.getByText(/^35 tarjetas programables$/)
+    const catalogCount = catalog.getByText(/^32 tarjetas programables$/)
     await catalogCount.waitFor({ state: "visible" })
-    assert.equal(await catalogCount.textContent(), "35 tarjetas programables", `${viewport.name} catalog count`)
+    assert.equal(await catalogCount.textContent(), "32 tarjetas programables", `${viewport.name} catalog count`)
     const canvasOverflow = await assertNoHorizontalOverflow(page, `${viewport.name} canvas catalog`)
     await page.screenshot({ path: join(artifactDir, `${viewport.name}-canvas.png`) })
 
@@ -206,7 +206,7 @@ try {
     results.push({
       viewport,
       routes: {
-        canvas: { catalogCount: 35, catalogGeometry, overflow: canvasOverflow },
+        canvas: { catalogCount: 32, catalogGeometry, overflow: canvasOverflow },
         library: { heading: "Biblioteca de datos", headerGeometry: libraryHeaderGeometry, dashboardGeometry: libraryDashboardGeometry, overflow: libraryOverflow },
         drawer: { openGeometry: drawerOpenGeometry, libraryHeading: Boolean(drawerLibraryHeading), canvasHeading: Boolean(drawerCanvasHeading) },
         libraryFocus: { ticker: "YPFD", cardId: "acciones", overflow: focusedLibraryOverflow },

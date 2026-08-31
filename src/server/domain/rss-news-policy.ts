@@ -47,6 +47,8 @@ const EXCLUDE_PATTERNS = EXCLUDE_TERMS.map((term) =>
 // only reason a headline matched. This prevents source-specific lifestyle and
 // culture stories from leaking in through a generic geography keyword.
 const GENERIC_GEOGRAPHY_TERMS = ["china"]
+const GENERIC_NAME_TERMS = ["trump"]
+const GENERIC_ALONE_TERMS = [...GENERIC_GEOGRAPHY_TERMS, ...GENERIC_NAME_TERMS]
 
 const RELEVANT_PATTERN_CACHE = new WeakMap<object, RegExp[]>()
 
@@ -73,12 +75,12 @@ export function isRelevantHeadline(title: string, relevantTerms: readonly string
   if (isExcludedHeadline(title)) return false
   if (!matchesAnyWholeTerm(title, relevantTerms)) return false
 
-  if (!matchesAnyWholeTerm(title, GENERIC_GEOGRAPHY_TERMS)) return true
+  if (!matchesAnyWholeTerm(title, GENERIC_ALONE_TERMS)) return true
 
-  const nonGeographicTerms = relevantTerms.filter((term) =>
-    !GENERIC_GEOGRAPHY_TERMS.includes(term.trim().toLocaleLowerCase()),
+  const substantiveTerms = relevantTerms.filter((term) =>
+    !GENERIC_ALONE_TERMS.includes(term.trim().toLocaleLowerCase()),
   )
-  return matchesAnyWholeTerm(title, nonGeographicTerms)
+  return matchesAnyWholeTerm(title, substantiveTerms)
 }
 
 export function matchesAnyWholeTerm(text: string, terms: readonly string[]): boolean {

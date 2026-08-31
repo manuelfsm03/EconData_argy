@@ -38,6 +38,7 @@ const CATEGORIES = [
   { key: "economía",    label: "Economía",    color: "var(--sky)" },
   { key: "finanzas",    label: "Finanzas",    color: "var(--yellow)" },
   { key: "política",    label: "Política",    color: "#ce93d8" },
+  { key: "social",      label: "Social",      color: "#ef9a9a" },
   { key: "comercio",    label: "Comercio",    color: "#4488ff" },
   { key: "energía",     label: "Energía",     color: "#ffaa00" },
   { key: "commodities", label: "Commodities", color: "#81c784" },
@@ -73,7 +74,7 @@ function getDayKey(pubDate: string): string {
 
 // Prioridad de categorías para seleccionar las más importantes del día
 const CAT_PRIORITY: Record<string, number> = {
-  economía: 1, finanzas: 2, comercio: 3, energía: 4, commodities: 5, política: 6,
+  economía: 1, finanzas: 2, comercio: 3, energía: 4, commodities: 5, política: 6, social: 7,
 }
 
 function pickTopItems(items: RSSItem[], n: number): RSSItem[] {

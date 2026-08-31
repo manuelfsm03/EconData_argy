@@ -12,10 +12,9 @@
 
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
 import { BBGAreaChart } from "../charts/bbg-area-chart"
 import { BBGLineChart } from "../charts/bbg-line-chart"
-import { FiscalSankeyView } from "./fiscal-sankey"
 import { DownloadCSV } from "../ui/download-csv"
 import { ChartDownload } from "../ui/chart-download"
 import { SectionMeta } from "../ui/help-tooltip"
@@ -178,72 +177,6 @@ function usePonderaciones(): { rows: PonderRow[]; tipos: Record<string, string>;
       .finally(() => setLoading(false))
   }, [])
   return { rows, tipos, loading }
-}
-
-export function PonderacionesTable() {
-  const { rows, loading } = usePonderaciones()
-  if (loading) return <div style={{ padding: 24, color: "var(--text-dim)", fontSize: 11 }}>Cargando ponderaciones…</div>
-
-  const chartData = rows.map(p => ({ nombre: p.cat, "2004": p.actual, "2022": p.propuesto }))
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-      {/* Gráfico de barras */}
-      <div style={{ background: "var(--bg-elev)", border: "1px solid var(--border-hi)", borderRadius: "2px", padding: "12px" }}>
-        <div style={{ color: "var(--text)", fontSize: "11px", fontWeight: "bold", marginBottom: "12px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-          Ponderaciones Canasta 2004 vs 2022
-        </div>
-        <div style={{ height: "400px" }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 16, left: 140, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" />
-              <XAxis type="number" stroke="var(--text-mute)" fontSize={9} axisLine={{ stroke: "var(--border-hi)" }} />
-              <YAxis dataKey="nombre" type="category" stroke="var(--text-mute)" fontSize={9} width={135} axisLine={{ stroke: "var(--border-hi)" }} tick={{ fill: "#999999", fontSize: 9 }} />
-              <Tooltip
-                contentStyle={{ backgroundColor: "var(--bg-elev)", border: "1px solid var(--border-hi)", borderRadius: "0", fontSize: "10px", fontFamily: "var(--font-data)" }}
-                labelStyle={{ color: "var(--amber)" }}
-              />
-              <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }} />
-              <Bar dataKey="2004" fill="var(--sky)" name="Base 2016 (vigente)" />
-              <Bar dataKey="2022" fill="var(--yellow)" name="Base 2022 (propuesto)" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Tabla detallada */}
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: "left", padding: "4px 8px", fontSize: 9, color: "var(--text-dim)", borderBottom: "1px solid var(--border)" }}>División COICOP</th>
-              <th style={{ textAlign: "right", padding: "4px 8px", fontSize: 9, color: "var(--sky)", borderBottom: "1px solid var(--border)" }}>Base 2004</th>
-              <th style={{ textAlign: "right", padding: "4px 8px", fontSize: 9, color: "var(--yellow)", borderBottom: "1px solid var(--border)" }}>Base 2022</th>
-              <th style={{ textAlign: "right", padding: "4px 8px", fontSize: 9, color: "var(--text-dim)", borderBottom: "1px solid var(--border)" }}>Δ p.p.</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((p, i) => {
-              const delta = p.propuesto - p.actual
-              return (
-                <tr key={p.cat} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg-row-alt)" }}>
-                  <td style={{ padding: "4px 8px", fontSize: 11, color: "var(--text-dim)" }}>{p.cat}</td>
-                  <td style={{ padding: "4px 8px", fontSize: 11, color: "var(--sky)", textAlign: "right", fontFamily: "var(--font-data)" }}>{p.actual.toFixed(1)}%</td>
-                  <td style={{ padding: "4px 8px", fontSize: 11, color: "var(--yellow)", textAlign: "right", fontFamily: "var(--font-data)" }}>{p.propuesto.toFixed(1)}%</td>
-                  <td style={{ padding: "4px 8px", fontSize: 11, textAlign: "right", fontFamily: "var(--font-data)", color: delta > 0 ? "var(--positive)" : delta < 0 ? "var(--negative)" : "var(--text-dim)" }}>
-                    {delta > 0 ? "+" : ""}{delta.toFixed(1)}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-        <div style={{ padding: "6px 8px", fontSize: 9, color: "var(--text-dim)", borderTop: "1px solid var(--bg-elev-2)" }}>
-          Fuente: INDEC · /api/macro?endpoint=ponderaciones — ENGHo 2004/05 (base vigente) · ENGHo 2017/18 (actualización 2022)
-        </div>
-      </div>
-    </div>
-  )
 }
 
 // ── Tipos estructurales ───────────────────────────────────────────────────────
@@ -2064,258 +1997,6 @@ function IpcHistoricaView() {
 
 // ── IPC Tab ────────────────────────────────────────────────────────────────────
 
-// ── Breakeven Section ─────────────────────────────────────────────────────────
-
-interface BreakevenData {
-  tasas: {
-    reference_name: string
-    reference_tna: number | null
-    reference_tea: number | null
-    reference_fecha: string | null
-    tamar_tna: number | null
-    tamar_tea: number | null
-    tamar_fecha: string | null
-    badlar_tna: number | null
-    badlar_tea: number | null
-    tpm_tna: number | null
-    tpm_tea: number | null
-    fecha: string | null
-    badlar_fecha: string | null
-  }
-  cer:   { inflacion_anual_trailing: number | null; inflacion_mensual_trailing: number | null; fecha: string | null }
-  lecaps: { ticker: string; vencimiento: string; dias_vto: number; tem: number | null; tea: number | null }[]
-  rem:   { inflacion_12m: number | null; dolar_12m: number | null; tasa_12m: number | null; fecha: string | null }
-  breakeven: { lecap_corto_tea: number | null; real_vs_rem: number | null; inflac_vs_cer: number | null; interpretation: string | null }
-}
-
-interface RemParticipante {
-  institucion: string
-  inflacion_12m: number | null
-  dolar_12m: number | null
-  tasa_12m: number | null
-}
-
-function BreakEvenSection() {
-  const [bkData, setBkData] = useState<BreakevenData | null>(null)
-  const [participantes, setParticipantes] = useState<RemParticipante[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    Promise.all([
-      fetch("/api/breakeven").then(r => r.json()).catch(() => null),
-      fetch("/api/rem").then(r => r.json()).catch(() => null),
-    ]).then(([bk, rem]) => {
-      setBkData(bk?.data ?? null)
-      setParticipantes(rem?.data?.participantes ?? [])
-      setLoading(false)
-    })
-  }, [])
-
-  if (loading) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 10, fontFamily: "var(--font-data)" }}>Cargando expectativas de mercado...</div>
-
-  const bk = bkData?.breakeven
-  const rem = bkData?.rem
-  const tasas = bkData?.tasas
-  const cer = bkData?.cer
-
-  // Color semáforo para tasa real
-  const realColor = bk?.real_vs_rem == null ? "var(--text-mute)" : bk.real_vs_rem > 5 ? "var(--positive)" : bk.real_vs_rem > 0 ? "var(--amber)" : "var(--negative)"
-
-  return (
-    <div style={{ borderTop: "1px solid var(--bg-elev-2)", marginTop: 4 }}>
-      {/* Header */}
-      <div style={{ padding: "8px 12px 6px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
-        <div style={{ fontSize: 9, color: "var(--amber)", fontFamily: "var(--font-data)", letterSpacing: 1.5, fontWeight: 700 }}>
-          EXPECTATIVAS DE MERCADO — BREAKEVEN INFLACIÓN
-        </div>
-        <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", marginTop: 2 }}>
-          Breakeven = TEA LECAP (tasa fija) − inflación esperada REM · Mide la tasa real implícita que descuenta el mercado
-        </div>
-      </div>
-
-      {/* KPIs breakeven */}
-      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
-        {/* Tasa fija: LECAP TEA */}
-        <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)" }}>
-          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>LECAP más corta · TEA</div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#FFD700", fontFamily: "var(--font-data)" }}>
-            {bk?.lecap_corto_tea != null ? `${bk.lecap_corto_tea.toFixed(1)}%` : "—"}
-          </div>
-          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>tasa fija de mercado · anual</div>
-        </div>
-
-        {/* REM inflación 12M */}
-        <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)" }}>
-          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>REM inflación 12M</div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "var(--negative)", fontFamily: "var(--font-data)" }}>
-            {rem?.inflacion_12m != null ? `${rem.inflacion_12m.toFixed(1)}%` : "—"}
-          </div>
-          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>mediana analistas · BCRA {rem?.fecha ?? ""}</div>
-        </div>
-
-        {/* Breakeven real implícito */}
-        <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "var(--bg-row-alt)", border: `1px solid ${realColor}33` }}>
-          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>Tasa real implícita</div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: realColor, fontFamily: "var(--font-data)" }}>
-            {bk?.real_vs_rem != null ? `${bk.real_vs_rem >= 0 ? "+" : ""}${bk.real_vs_rem.toFixed(1)}%` : "—"}
-          </div>
-          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>LECAP TEA − inflac. REM</div>
-        </div>
-
-        {/* CER trailing */}
-        <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)" }}>
-          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>CER trailing 30d</div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#CE93D8", fontFamily: "var(--font-data)" }}>
-            {cer?.inflacion_anual_trailing != null ? `${cer.inflacion_anual_trailing.toFixed(1)}%` : "—"}
-          </div>
-          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>inflación anualizada observada · BCRA</div>
-        </div>
-
-        {/* TAMAR vigente */}
-        <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)" }}>
-          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>TAMAR privados · vigente</div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "var(--sky)", fontFamily: "var(--font-data)" }}>
-            {tasas?.tamar_tna != null ? `${tasas.tamar_tna.toFixed(1)}%` : "—"}
-          </div>
-          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>TNA · BCRA var. 44 · {tasas?.tamar_fecha ?? tasas?.reference_fecha ?? ""}</div>
-        </div>
-
-        {/* BADLAR histórica */}
-        <div style={{ flex: "1 1 150px", padding: "8px 12px", background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)" }}>
-          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>BADLAR histórica</div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-mute)", fontFamily: "var(--font-data)" }}>
-            {tasas?.badlar_tna != null ? `${tasas.badlar_tna.toFixed(1)}%` : "—"}
-          </div>
-          <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>TNA · referencia secundaria · {tasas?.badlar_fecha ?? ""}</div>
-        </div>
-      </div>
-
-      {/* Gráfico forward — inflación mensual proyectada 12 meses */}
-      {(bk?.lecap_corto_tea != null || rem?.inflacion_12m != null) && (() => {
-        const lecapMensual = bk?.lecap_corto_tea != null
-          ? (Math.pow(1 + bk.lecap_corto_tea / 100, 1 / 12) - 1) * 100 : null
-        const remMensual = rem?.inflacion_12m != null
-          ? (Math.pow(1 + rem.inflacion_12m / 100, 1 / 12) - 1) * 100 : null
-        const cerMensual = cer?.inflacion_anual_trailing != null
-          ? (Math.pow(1 + cer.inflacion_anual_trailing / 100, 1 / 12) - 1) * 100 : null
-        const hoy = new Date()
-        const forwardData = Array.from({ length: 12 }, (_, i) => {
-          const d = new Date(hoy.getFullYear(), hoy.getMonth() + i + 1, 1)
-          const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-          const label = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getFullYear()).slice(2)}`
-          return { mes, label, lecap: lecapMensual, rem: remMensual, cer: cerMensual }
-        })
-        return (
-          <div style={{ padding: "8px 12px 4px" }}>
-            <div style={{ fontSize: 9, color: "var(--text-dim)", fontFamily: "var(--font-data)", letterSpacing: 1, marginBottom: 6 }}>
-              INFLACIÓN MENSUAL ESPERADA — PRÓXIMOS 12 MESES (proyección flat desde valores actuales)
-            </div>
-            <ResponsiveContainer width="100%" height={160}>
-              <LineChart data={forwardData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="var(--bg-elev-2)" strokeDasharray="3 3" />
-                <XAxis dataKey="label" tick={{ fill: "var(--text-mute)", fontSize: 8 }} axisLine={{ stroke: "var(--border)" }} tickLine={false} />
-                <YAxis
-                  tick={{ fill: "var(--text-mute)", fontSize: 8 }} axisLine={{ stroke: "var(--border)" }} tickLine={false}
-                  tickFormatter={(v: number) => `${v.toFixed(1)}%`}
-                  domain={["auto", "auto"]}
-                />
-                <Tooltip
-                  contentStyle={{ background: "var(--bg-elev)", border: "1px solid var(--border)", fontSize: 9, fontFamily: "var(--font-data)" }}
-                  formatter={(v: unknown, name: unknown) => [`${Number(v).toFixed(2)}% mensual`, String(name)]}
-                />
-                <Legend wrapperStyle={{ fontSize: 8, color: "var(--text-dim)" }} />
-                {lecapMensual != null && <Line type="monotone" dataKey="lecap" name="LECAP Breakeven" stroke="#FFD700" strokeWidth={2} dot={false} />}
-                {remMensual   != null && <Line type="monotone" dataKey="rem"   name="REM Analistas"   stroke="var(--amber)" strokeWidth={2} dot={false} />}
-                {cerMensual   != null && <Line type="monotone" dataKey="cer"   name="CER Trailing"    stroke="#CE93D8" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />}
-              </LineChart>
-            </ResponsiveContainer>
-            <div style={{ fontSize: 8, color: "var(--text-mute)", marginTop: 2, fontFamily: "var(--font-data)" }}>
-              Proyección lineal — LECAP TEA → mensual | REM 12M → mensual | CER anualizado 30d → mensual
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* Interpretación */}
-      {bk?.interpretation && (
-        <div style={{
-          margin: "1px 0", padding: "8px 14px",
-          background: realColor + "0d", borderLeft: `4px solid ${realColor}`,
-          fontSize: 9, color: realColor, fontFamily: "var(--font-data)",
-        }}>
-          {bk.interpretation}
-        </div>
-      )}
-
-      {/* Curva LECAP */}
-      {(bkData?.lecaps?.length ?? 0) > 0 && (
-        <div style={{ padding: "8px 12px 4px" }}>
-          <div style={{ fontSize: 9, color: "var(--text-dim)", fontFamily: "var(--font-data)", letterSpacing: 1, marginBottom: 6 }}>CURVA LECAP/BONCAP — TASA FIJA DE MERCADO</div>
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-            {(bkData?.lecaps ?? []).map(l => (
-              <div key={l.ticker} style={{
-                padding: "6px 10px", background: "var(--bg-row-alt)",
-                border: "1px solid var(--border)", borderRadius: 3, minWidth: 90, textAlign: "center",
-              }}>
-                <div style={{ fontSize: 8, color: "#FFD700", fontFamily: "var(--font-data)", fontWeight: 700 }}>{l.ticker}</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-data)" }}>
-                  {l.tem != null ? `${l.tem.toFixed(2)}%` : "—"}
-                </div>
-                <div style={{ fontSize: 7, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>TEM · {l.dias_vto}d</div>
-                <div style={{ fontSize: 7, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>
-                  {l.tea != null ? `TEA ${l.tea.toFixed(1)}%` : ""}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Top-10 participantes REM */}
-      {participantes.length > 0 && (
-        <div style={{ padding: "8px 12px 12px" }}>
-          <div style={{ fontSize: 9, color: "var(--text-dim)", fontFamily: "var(--font-data)", letterSpacing: 1, marginBottom: 6 }}>
-            REM — PRONÓSTICOS INDIVIDUALES · INFLACIÓN 12M (últimos {participantes.length} participantes)
-          </div>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 9 }}>
-              <thead>
-                <tr>
-                  {["Institución", "Inflac. 12M", "USD 12M", "Tasa 12M"].map(h => (
-                    <th key={h} style={{ padding: "4px 8px", fontSize: 8, color: "var(--text-dim)", textAlign: h === "Institución" ? "left" : "right", borderBottom: "1px solid var(--border)" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {participantes.map((p, i) => (
-                  <tr key={i} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg-row-alt)" }}>
-                    <td style={{ padding: "3px 8px", color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 9, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {p.institucion}
-                    </td>
-                    <td style={{ padding: "3px 8px", textAlign: "right", fontFamily: "var(--font-data)", fontWeight: 700,
-                      color: p.inflacion_12m != null ? (p.inflacion_12m > 50 ? "var(--negative)" : p.inflacion_12m > 25 ? "var(--amber)" : "var(--positive)") : "var(--text-mute)" }}>
-                      {p.inflacion_12m != null ? `${p.inflacion_12m.toFixed(1)}%` : "—"}
-                    </td>
-                    <td style={{ padding: "3px 8px", textAlign: "right", fontFamily: "var(--font-data)", color: "var(--sky)" }}>
-                      {p.dolar_12m != null ? `$${Math.round(p.dolar_12m).toLocaleString("es-AR")}` : "—"}
-                    </td>
-                    <td style={{ padding: "3px 8px", textAlign: "right", fontFamily: "var(--font-data)", color: "#FFD700" }}>
-                      {p.tasa_12m != null ? `${p.tasa_12m.toFixed(1)}%` : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div style={{ fontSize: 8, color: "var(--text-mute)", fontFamily: "var(--font-data)", marginTop: 4 }}>
-            Fuente: BCRA · REM · Último relevamiento disponible · Ordenado por inflación esperada ascendente
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 export function IpcView() {
   const [data, setData] = useState<MacroData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -2391,9 +2072,7 @@ export function IpcView() {
         tabs={[
           { key: "serie",     label: "Serie Mensual" },
           { key: "historica", label: "Histórica 1943–" },
-          { key: "canasta",   label: "Canasta 2016 vs 2022" },
           { key: "personal",  label: "Mi Inflación" },
-          { key: "mundo",     label: "Inflación Mundial" },
         ]}
         active={ipcTab}
         onChange={setIpcTab}
@@ -2446,44 +2125,12 @@ export function IpcView() {
             <div style={{ fontSize: 8, color: "var(--text-mute)", marginTop: 4 }}>Fuente: INDEC · IPC Nacional · datos.gob.ar</div>
           </div>
 
-          {/* Sección breakeven + REM + top-10 */}
-          <BreakEvenSection />
         </div>
       )}
 
       {ipcTab === "historica" && <IpcHistoricaView />}
 
-      {ipcTab === "canasta" && <PonderacionesTable />}
-
       {ipcTab === "personal" && <MiInflacionView />}
-
-      {ipcTab === "mundo" && <InflationMapFrame />}
-    </div>
-  )
-}
-
-// Mapa de inflación mundial (iframe con Plotly server-side) + estado de carga
-function InflationMapFrame() {
-  const [loaded, setLoaded] = useState(false)
-  return (
-    <div style={{ padding: "0 0 4px" }}>
-      <div style={{ position: "relative", width: "100%", height: 480 }}>
-        {!loaded && (
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontFamily: "var(--font-data)", fontSize: 11, background: "var(--bg)" }}>
-            Cargando mapa de inflación mundial…
-          </div>
-        )}
-        <iframe
-          src="/api/inflation-map?type=global"
-          onLoad={() => setLoaded(true)}
-          style={{ width: "100%", height: 480, border: "none", background: "var(--bg)", display: "block" }}
-          title="Mapa de inflación mundial"
-          loading="lazy"
-        />
-      </div>
-      <div style={{ padding: "4px 12px", fontSize: 8, color: "var(--text-mute)", fontFamily: "var(--font-data)", borderTop: "1px solid #0e0e0e" }}>
-        Mapa generado con datos de inflación global · lapizarra.ar
-      </div>
     </div>
   )
 }
@@ -2747,72 +2394,6 @@ function BalanzaSociosView() {
         </div>
       ))}
       {meta.note && <div style={{ marginTop: 10, fontSize: 8, color: "var(--text-mute)", lineHeight: 1.5 }}>{meta.note}</div>}
-    </div>
-  )
-}
-
-// ── Fiscal Tab ─────────────────────────────────────────────────────────────────
-
-function FiscalView() {
-  const [data, setData] = useState<MacroData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [serie, setSerie] = useState("resultado_primario")
-
-  useEffect(() => {
-    fetch("/api/macro?endpoint=fiscal")
-      .then((r) => r.json())
-      .then((j) => { setData(j.data); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
-
-  if (loading) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Cargando fiscal...</div>
-
-  const serieOpts = [
-    { key: "resultado_primario", label: "Resultado Primario" },
-    { key: "resultado_financiero", label: "Resultado Financiero" },
-    { key: "recaudacion", label: "Recaudación" },
-  ]
-
-  const lastPrimario = data?.resultado_primario?.[0]?.[1]
-  const lastFinanciero = data?.resultado_financiero?.[0]?.[1]
-  const lastRecaudacion = data?.recaudacion?.[0]?.[1]
-
-  const selectedRows = (data?.[serie] ?? []).slice(0, 24)
-
-  return (
-    <div>
-      <SectionMeta title="Resultado Fiscal" help="Resultado financiero del Sector Público Nacional: ingresos menos gastos totales. Déficit primario excluye intereses de deuda. Superávit primario = ingresos > gastos primarios." source="Ministerio de Economía · datos.gob.ar" />
-      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
-        <KPI
-          label="Resultado Primario"
-          value={lastPrimario != null ? lastPrimario.toLocaleString("es-AR") : null}
-          unit="$ millones"
-          valueColor={lastPrimario == null ? "var(--text-dim)" : lastPrimario >= 0 ? "var(--positive)" : "var(--negative)"}
-        />
-        <KPI
-          label="Resultado Financiero"
-          value={lastFinanciero != null ? lastFinanciero.toLocaleString("es-AR") : null}
-          unit="$ millones"
-          valueColor={lastFinanciero == null ? "var(--text-dim)" : lastFinanciero >= 0 ? "var(--positive)" : "var(--negative)"}
-        />
-        <KPI
-          label="Recaudación"
-          value={lastRecaudacion != null ? lastRecaudacion.toLocaleString("es-AR") : null}
-          unit="$ millones"
-          valueColor="var(--amber)"
-        />
-      </div>
-
-      <SubTabs tabs={serieOpts} active={serie} onChange={setSerie} />
-
-      <MiniTable
-        title={`${serieOpts.find((s) => s.key === serie)?.label} — Últimos 24 períodos`}
-        rows={selectedRows.map(([d, v]) => ({
-          label: d,
-          value: v.toLocaleString("es-AR"),
-          color: v >= 0 ? "var(--positive)" : "var(--negative)",
-        }))}
-      />
     </div>
   )
 }
@@ -4850,7 +4431,6 @@ const MACRO_TABS = [
   { key: "emae",        label: "EMAE"             },
   { key: "ipc",         label: "IPC"              },
   { key: "balanza",     label: "Balanza Comercial" },
-  { key: "fiscal",      label: "Fiscal"           },
   { key: "agro",        label: "Agro"             },
   { key: "desigualdad", label: "Desigualdad"      },
   { key: "piramides",   label: "Pirámides"        },
@@ -4872,7 +4452,6 @@ export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
       {activeTab === "emae"        && <EmaeView />}
       {activeTab === "ipc"         && <IpcView />}
       {activeTab === "balanza"     && <BalanzaView />}
-      {activeTab === "fiscal"      && <FiscalSankeyView />}
       {activeTab === "agro"        && <AgroView />}
       {activeTab === "desigualdad" && <DesigualdadView />}
       {activeTab === "piramides"   && <PiramidesView />}

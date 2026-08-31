@@ -42,9 +42,9 @@ const widget = (instanceId = "w-1"): CanvasWidget => ({
   autoFit: true,
 })
 
-test("Canvas catalog has 35 unique cards and every card is searchable by its id", () => {
-  assert.equal(DATA_CARD_CATALOG.length, 35)
-  assert.equal(new Set(DATA_CARD_CATALOG.map((card) => card.id)).size, 35)
+test("Canvas catalog has 32 unique cards and every card is searchable by its id", () => {
+  assert.equal(DATA_CARD_CATALOG.length, 32)
+  assert.equal(new Set(DATA_CARD_CATALOG.map((card) => card.id)).size, 32)
   assert.ok(DATA_CARD_CATALOG.every((card) => DATA_CARD_BY_ID.get(card.id) === card))
   assert.ok(DATA_CARD_CATALOG.every((card) => searchDataCards(card.title).some((result) => result.id === card.id)))
 })

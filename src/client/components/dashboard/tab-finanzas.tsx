@@ -8,10 +8,8 @@ import {
 } from "recharts"
 import { ForoActivo } from "./foro-activo"
 import { AssetScreener } from "./screener-activos"
-import { RateScreener } from "./screener-tasas"
 import { TabBonos } from "./tab-bonos"
 import { ajustarPolinomio, gradoSugerido, muestrearCurva, residuos } from "@/lib/curve-fit"
-import { TabMundo } from "./tab-mundo"
 import { StockHeatmap } from "./stock-heatmap"
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -46,10 +44,8 @@ const FIN_TABS = [
   { key: "plazofijo",  label: "Plazo Fijo",   icon: "%" },
   { key: "commodities", label: "Commodities",    icon: "◈" },
   { key: "mundo",      label: "Mercados Mundo", icon: "⬡" },
-  { key: "mundo-avanzado", label: "Economía Mundial +", icon: "⬡" },
   { key: "crypto",     label: "Cripto",         icon: "₿" },
   { key: "screener",   label: "Screener",       icon: "⌕" },
-  { key: "screener-tasas", label: "Screener Tasas", icon: "%" },
 ]
 
 function SubTabs({ active, onChange }: { active: string; onChange: (k: string) => void }) {
@@ -1067,238 +1063,77 @@ export function RofexView() {
 
 // ── PLAZO FIJO ────────────────────────────────────────────────────────────────
 
-interface PlazoFijoData {
-  tna_promedio?: number
-  tea_promedio?: number
+interface BcraRatePoint { fecha: string; valor: number }
+interface PlazoFijoOficialData {
+  tamar?: BcraRatePoint[]
+  badlar?: BcraRatePoint[]
+  tm20?: BcraRatePoint[]
+  pf30?: BcraRatePoint[]
 }
 
-// Bancos tradicionales — tasas orientativas ARS · abril 2026
-const BANCOS_ARS = [
-  { nombre: "Banco Nación",        tna: 29.0 },
-  { nombre: "Banco Provincia",     tna: 30.0 },
-  { nombre: "Banco Galicia",       tna: 31.0 },
-  { nombre: "Banco BBVA",          tna: 30.5 },
-  { nombre: "Banco Santander",     tna: 30.5 },
-  { nombre: "Banco Macro",         tna: 31.5 },
-  { nombre: "Banco HSBC",          tna: 30.0 },
-  { nombre: "Banco ICBC",          tna: 31.0 },
-  { nombre: "Banco Patagonia",     tna: 31.0 },
-  { nombre: "Naranja X / Brubank", tna: 36.0 },
-  { nombre: "Ualá",                tna: 37.0 },
-  { nombre: "Mercado Pago",        tna: 38.0 },
-]
-
-// Plazo fijo UVA — referencia: rendimiento CER + spread orientativo
-const INFO_UVA = {
-  cerMensual: 2.4,      // IPC mensual estimado abril 2026 (orientativo)
-  spreadBancos: 1.0,    // spread adicional sobre CER (ptos pct)
-  plazo: 90,            // días mínimos por ley
-}
-
-// Plazo fijo USD — tasas orientativas (muy bajas, depósitos en USD)
-const BANCOS_USD = [
-  { nombre: "Banco Nación",    tna: 0.50 },
-  { nombre: "Banco Galicia",   tna: 0.75 },
-  { nombre: "Banco Macro",     tna: 0.75 },
-  { nombre: "Banco BBVA",      tna: 0.50 },
-  { nombre: "Banco Santander", tna: 0.60 },
-  { nombre: "Banco ICBC",      tna: 1.00 },
-  { nombre: "Banco Patagonia", tna: 0.80 },
-]
-
-type PFMode = "ars" | "uva" | "usd"
-
-export function PlazoFijoView() {
-  const [data, setData] = useState<PlazoFijoData | null>(null)
+/** Vista pública del MVP: sólo series observadas de la API oficial del BCRA. */
+export function PlazoFijoOficialView() {
+  const [data, setData] = useState<PlazoFijoOficialData | null>(null)
+  const [source, setSource] = useState("")
   const [loading, setLoading] = useState(true)
-  const [mode, setMode] = useState<PFMode>("ars")
 
   useEffect(() => {
-    fetch("/api/bcra?variable=35")
-      .then(r => r.json())
-      .then(j => {
-        const rows = j?.data ?? j ?? []
-        const last = Array.isArray(rows) ? rows[rows.length - 1] : null
-        if (last?.valor) {
-          const tna = last.valor
-          const tea = (Math.pow(1 + tna / 100 / 365, 365) - 1) * 100
-          setData({ tna_promedio: tna, tea_promedio: parseFloat(tea.toFixed(2)) })
-        }
+    fetch("/api/bcra?endpoint=plazofijo")
+      .then(async response => {
+        if (!response.ok) throw new Error(`BCRA ${response.status}`)
+        return response.json()
       })
-      .catch(() => {})
+      .then(payload => {
+        setData(payload?.data ?? null)
+        setSource(payload?.source ?? "BCRA API v4.0")
+      })
+      .catch(() => setData(null))
       .finally(() => setLoading(false))
   }, [])
 
-  const tna = data?.tna_promedio ?? 30.0
-  const tea = data?.tea_promedio ?? parseFloat(((Math.pow(1 + tna / 100 / 365, 365) - 1) * 100).toFixed(2))
-  const tem = parseFloat(((Math.pow(1 + tna / 100 / 365, 30) - 1) * 100).toFixed(2))
-
-  const chartDataARS = BANCOS_ARS.map(b => ({
-    nombre: b.nombre.replace("Banco ", ""),
-    tna: b.tna,
-    tea: parseFloat(((Math.pow(1 + b.tna / 100 / 365, 365) - 1) * 100).toFixed(2)),
-  }))
-
-  const chartDataUSD = BANCOS_USD.map(b => ({
-    nombre: b.nombre.replace("Banco ", ""),
-    tna: b.tna,
-    tea: parseFloat(((Math.pow(1 + b.tna / 100 / 365, 365) - 1) * 100).toFixed(4)),
-  }))
-
-  // UVA: rendimiento real estimado = CER + spread
-  const uvaRendMensual = INFO_UVA.cerMensual + INFO_UVA.spreadBancos
-  const uvaTEA = (Math.pow(1 + uvaRendMensual / 100, 12) - 1) * 100
-  // Comparación: TF tasa fija vs UVA
-  const convieneTasaFija = tem >= uvaRendMensual
-
   if (loading) return <Loading />
+
+  const series = [
+    { key: "tamar", label: "TAMAR privados", color: "var(--amber)", points: data?.tamar ?? [] },
+    { key: "badlar", label: "BADLAR privados", color: "var(--positive)", points: data?.badlar ?? [] },
+    { key: "tm20", label: "TM20 privados", color: "var(--sky)", points: data?.tm20 ?? [] },
+    { key: "pf30", label: "Depósitos 30 días", color: "#CE93D8", points: data?.pf30 ?? [] },
+  ].filter(item => item.points.length > 0)
+
+  if (series.length === 0) {
+    return <div style={{ padding: 24, color: "var(--text-dim)", fontSize: 11 }}>Las tasas oficiales del BCRA no están disponibles en este momento.</div>
+  }
+
+  const dates = Array.from(new Set(series.flatMap(item => item.points.map(point => point.fecha)))).sort()
+  const valueBySeries = new Map(series.map(item => [item.key, new Map(item.points.map(point => [point.fecha, point.valor]))]))
+  const chartData = dates.map(fecha => ({
+    fecha,
+    ...Object.fromEntries(series.map(item => [item.key, valueBySeries.get(item.key)?.get(fecha) ?? null])),
+  }))
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-      {/* Toggle modo */}
-      <div style={{ padding: "8px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)", display: "flex", gap: 4, alignItems: "center" }}>
-        <span style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", marginRight: 8 }}>TIPO:</span>
-        {([["ars", "Pesos (TNA)"], ["uva", "UVA (CER)"], ["usd", "Dólares (TNA)"]] as [PFMode, string][]).map(([k, label]) => (
-          <button key={k} onClick={() => setMode(k)} style={{
-            fontSize: 9, fontFamily: "var(--font-data)", padding: "3px 12px", borderRadius: 20, cursor: "pointer",
-            background: mode === k ? "rgba(255,160,40,0.12)" : "transparent",
-            border: mode === k ? "1px solid rgba(255,160,40,0.4)" : "1px solid var(--border)",
-            color: mode === k ? "var(--amber)" : "#666",
-          }}>{label}</button>
-        ))}
-        <div style={{ marginLeft: "auto", padding: "4px 10px", background: convieneTasaFija ? "#0d1f14" : "#1f0d0d", border: `1px solid ${convieneTasaFija ? "var(--positive)" : "var(--negative)"}22`, borderRadius: 6 }}>
-          <span style={{ fontSize: 8, color: convieneTasaFija ? "var(--positive)" : "var(--negative)", fontFamily: "var(--font-data)" }}>
-            {convieneTasaFija ? "▲ Conviene Tasa Fija hoy" : "▲ Conviene UVA hoy"}
-          </span>
-        </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
+        {series.map(item => {
+          const latest = item.points.at(-1)
+          return <KPI key={item.key} label={item.label} value={latest ? `${fmtNum(latest.valor)}%` : null} valueColor={item.color} unit={latest ? `TNA · ${latest.fecha}` : "TNA"} />
+        })}
       </div>
-
-      {/* KPIs */}
-      {mode === "ars" && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
-          <KPI label="TNA promedio (BCRA)" value={`${fmtNum(tna)}%`} valueColor="var(--amber)" unit="30 días · var 35" />
-          <KPI label="TEA equivalente"     value={`${fmtNum(tea)}%`} valueColor="var(--positive)" unit="tasa efectiva anual" />
-          <KPI label="TEM equivalente"     value={`${fmtNum(tem)}%`} valueColor="#FFD700" unit="tasa efectiva mensual" />
-          <KPI label="Mayor tasa digital"  value="Mercado Pago / Ualá" valueColor="#CE93D8" unit="~37–38% TNA orientativo" />
-        </div>
-      )}
-
-      {mode === "uva" && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
-          <KPI label="CER mensual estimado" value={`${fmtNum(INFO_UVA.cerMensual)}%`} valueColor="var(--amber)" unit="inflación mensual orientativa" />
-          <KPI label="Spread bancario"       value={`+${fmtNum(INFO_UVA.spreadBancos)} ptos`} valueColor="var(--text-dim)" unit="sobre CER (promedio)" />
-          <KPI label="Rendimiento UVA total" value={`${fmtNum(uvaRendMensual)}% mensual`} valueColor="var(--positive)" unit="CER + spread estimado" />
-          <KPI label="TEA equivalente UVA"   value={`${fmtNum(uvaTEA)}%`} valueColor="#CE93D8" unit="si la inflación se mantiene constante" />
-        </div>
-      )}
-
-      {mode === "usd" && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
-          <KPI label="Mayor TNA USD"  value="ICBC 1.0% TNA" valueColor="var(--amber)" unit="depósito a 30 días en USD" />
-          <KPI label="Promedio USD"   value="~0.7% TNA" valueColor="var(--text-dim)" unit="sistema bancario AR" />
-          <KPI label="Nota"           value="Muy baja rentabilidad" valueColor="var(--negative)" unit="tasas en USD casi nulas en AR" />
-        </div>
-      )}
-
-      {/* Gráficos */}
-      {mode === "ars" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "var(--bg-elev-2)" }}>
-          <div style={{ background: "var(--bg)", padding: 16 }}>
-            <SectionTitle title="TNA por entidad (30 días) — orientativo" />
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={chartDataARS} layout="vertical" margin={{ left: 10, right: 40 }}>
-                <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" horizontal={false} />
-                <XAxis type="number" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}%`} domain={[25, 42]} />
-                <YAxis type="category" dataKey="nombre" stroke="var(--border-hi)" fontSize={8} tick={{ fill: "var(--text-dim)" }} width={100} />
-                <Tooltip {...tooltipStyle} formatter={(v: unknown) => [`${fmtNum(v as number, 1)}%`, "TNA"]} />
-                <ReferenceLine x={tna} stroke="var(--amber)" strokeDasharray="4 4" label={{ value: "BCRA", fill: "var(--amber)", fontSize: 8 }} />
-                <Bar dataKey="tna" radius={[0, 2, 2, 0]}>
-                  {chartDataARS.map((d, i) => (
-                    <Cell key={i} fill={d.tna >= tna ? "var(--positive)" : "#FF6B6B"} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div style={{ background: "var(--bg)", padding: 16 }}>
-            <SectionTitle title="TNA vs TEA por entidad — orientativo" />
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={chartDataARS} margin={{ top: 8, right: 12, left: 0, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
-                <XAxis dataKey="nombre" stroke="var(--border-hi)" fontSize={7} tick={{ fill: "var(--text-dim)" }} angle={-35} textAnchor="end" interval={0} />
-                <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}%`} domain={[25, 42]} />
-                <Tooltip {...tooltipStyle} formatter={(v: unknown, name: unknown) => [`${fmtNum(v as number, 2)}%`, name === "tna" ? "TNA" : "TEA"]} />
-                <Legend wrapperStyle={{ fontSize: 9, color: "var(--text-dim)" }} />
-                <Bar dataKey="tna" name="TNA" fill="var(--amber)" opacity={0.8} />
-                <Bar dataKey="tea" name="TEA" fill="var(--positive)" opacity={0.8} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
-      {mode === "uva" && (
-        <div style={{ padding: 16, background: "var(--bg)" }}>
-          <SectionTitle title="Plazo Fijo UVA — Dinámica" />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            {/* Info panel */}
-            <div style={{ background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)", padding: 16, fontFamily: "var(--font-data)" }}>
-              <div style={{ fontSize: 9, color: "var(--text-dim)", marginBottom: 12 }}>¿Cuándo conviene el PF UVA?</div>
-              <div style={{ fontSize: 8, color: "var(--text-dim)", lineHeight: 1.8 }}>
-                <div>• <span style={{ color: "var(--text)" }}>El PF UVA ajusta por CER (inflación)</span></div>
-                <div>• Si inflación mensual &gt; {fmtNum(tem)}% (TEM tasa fija) → <span style={{ color: "var(--positive)" }}>conviene UVA</span></div>
-                <div>• Si inflación mensual &lt; {fmtNum(tem)}% → <span style={{ color: "var(--negative)" }}>conviene tasa fija</span></div>
-                <div style={{ marginTop: 8 }}>• Plazo mínimo legal: <span style={{ color: "var(--amber)" }}>90 días</span></div>
-                <div>• Los bancos pagan CER + spread (~1%) mensual</div>
-                <div>• TEA proyectada si CER={fmtNum(INFO_UVA.cerMensual)}%: <span style={{ color: "#CE93D8" }}>{fmtNum(uvaTEA)}%</span></div>
-              </div>
-            </div>
-            {/* Comparación visual */}
-            <div style={{ background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)", padding: 16 }}>
-              <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)", marginBottom: 8 }}>Rendimiento mensual comparado</div>
-              <div style={{ display: "flex", gap: 12, alignItems: "flex-end", height: 140 }}>
-                {[
-                  { label: "Tasa Fija (TEM)", value: tem, color: "var(--amber)" },
-                  { label: "UVA estimado", value: uvaRendMensual, color: "var(--positive)" },
-                ].map(item => {
-                  const maxVal = Math.max(tem, uvaRendMensual) * 1.2
-                  const h = Math.round((item.value / maxVal) * 120)
-                  return (
-                    <div key={item.label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: item.color, fontFamily: "var(--font-data)" }}>{fmtNum(item.value)}%</div>
-                      <div style={{ width: "100%", height: h, background: item.color, opacity: 0.7, borderRadius: "2px 2px 0 0" }} />
-                      <div style={{ fontSize: 7, color: "var(--text-dim)", fontFamily: "var(--font-data)", textAlign: "center" }}>{item.label}</div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {mode === "usd" && (
-        <div style={{ padding: 16, background: "var(--bg)" }}>
-          <SectionTitle title="PF en dólares por entidad — TNA orientativa" />
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={chartDataUSD} layout="vertical" margin={{ left: 10, right: 50 }}>
-              <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" horizontal={false} />
-              <XAxis type="number" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}%`} />
-              <YAxis type="category" dataKey="nombre" stroke="var(--border-hi)" fontSize={8} tick={{ fill: "var(--text-dim)" }} width={100} />
-              <Tooltip {...tooltipStyle} formatter={(v: unknown) => [`${fmtNum(v as number, 2)}%`, "TNA USD"]} />
-              <Bar dataKey="tna" fill="var(--sky)" radius={[0, 2, 2, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-          <div style={{ marginTop: 12, padding: 10, background: "var(--bg-row-alt)", border: "1px solid var(--border)", fontFamily: "var(--font-data)", fontSize: 8, color: "var(--text-dim)" }}>
-            ⚠️ Las tasas de PF en USD en Argentina son históricamente muy bajas. Alternativas: ON en USD (BYMA), bonos soberanos o FCI Money Market USD.
-          </div>
-        </div>
-      )}
-
-      <div style={{ padding: "6px 14px", fontSize: 8, color: "var(--text-dim)", borderTop: "1px solid var(--bg-elev-2)", fontFamily: "var(--font-data)" }}>
-        {mode === "ars" && "TNA promedio: BCRA API var 35 · Tasas por entidad: orientativas abril 2026 — verificar en cada banco · Reg. A 7095"}
-        {mode === "uva" && "CER: BCRA vía datos.gob.ar · PF UVA: Reg. A 7297 (mínimo 90 días) · Proyección asume inflación constante"}
-        {mode === "usd" && "Tasas USD: orientativas abril 2026 — extremadamente bajas. Verificar en cada banco"}
+      <div style={{ padding: 16, background: "var(--bg)" }}>
+        <SectionTitle title="Tasas de depósitos y referencias bancarias — BCRA" />
+        <ResponsiveContainer width="100%" height={320}>
+          <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+            <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
+            <XAxis dataKey="fecha" stroke="var(--border-hi)" fontSize={8} tick={{ fill: "var(--text-dim)" }} minTickGap={48} />
+            <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={value => `${value}%`} />
+            <Tooltip {...tooltipStyle} formatter={(value: unknown, name: unknown) => [`${fmtNum(value as number, 2)}%`, String(name)]} />
+            <Legend wrapperStyle={{ fontSize: 9, color: "var(--text-dim)" }} />
+            {series.map(item => <Line key={item.key} type="monotone" dataKey={item.key} name={item.label} stroke={item.color} strokeWidth={1.8} dot={false} connectNulls />)}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <div style={{ padding: "7px 14px", fontSize: 8, color: "var(--text-dim)", borderTop: "1px solid var(--bg-elev-2)", fontFamily: "var(--font-data)" }}>
+        Fuente: {source}. No se muestran tasas por entidad, PF UVA/USD ni recomendaciones cuando no existe una fuente oficial conectada.
       </div>
     </div>
   )
@@ -2099,13 +1934,11 @@ export function TabFinanzas({ initialSubtab, initialTicker = null }: { initialSu
       {activeTab === "acciones"  && <AccionesView key={initialTicker ?? "acciones"} initialTicker={activeTab === "acciones" ? initialTicker : null} />}
       {activeTab === "bonos"     && <BonosView key={initialTicker ?? "bonos"} initialTicker={activeTab === "bonos" ? initialTicker : null} />}
       {activeTab === "rofex"     && <RofexView />}
-      {activeTab === "plazofijo" && <PlazoFijoView />}
+      {activeTab === "plazofijo" && <PlazoFijoOficialView />}
       {activeTab === "commodities" && <CommoditiesView />}
       {activeTab === "mundo"      && <MundoView />}
-      {activeTab === "mundo-avanzado" && <TabMundo />}
       {activeTab === "crypto"    && <CryptoView />}
       {activeTab === "screener" && <AssetScreener />}
-      {activeTab === "screener-tasas" && <RateScreener />}
     </div>
   )
 }

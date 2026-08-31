@@ -171,6 +171,11 @@ test("REM monthly parser selects the latest survey, orders periods, and reads th
   assert.equal(annual.serie.at(-1)?.inflacion_12m, 18.5)
 })
 
+test("REM annual parser does not fabricate a per-institution breakdown", () => {
+  const annual = parseRemExcel(remWorkbook())
+  assert.equal("participantes" in annual, false)
+})
+
 test("REM monthly parser leaves missing TOP-10 evidence empty instead of synthesizing values", () => {
   const parsed = parseRemMensual(remWorkbook(false))
   assert.deepEqual(parsed?.mediana, [1.8, 1.7])
