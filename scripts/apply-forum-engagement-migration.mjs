@@ -20,22 +20,23 @@ const prismaBin = path.join(
   ".bin",
   process.platform === "win32" ? "prisma.cmd" : "prisma",
 )
-const migrationFile = path.join(
-  root,
-  "prisma",
-  "postgresql",
+const migrationFiles = [
+  "20260809_harden_asset_forum.sql",
   "20260810_add_forum_engagement.sql",
-)
+]
 
-const migration = spawnSync(
-  prismaBin,
-  ["db", "execute", "--schema", "prisma/schema.prisma", "--file", migrationFile],
-  { cwd: root, env: process.env, stdio: "inherit" },
-)
+for (const migrationName of migrationFiles) {
+  const migrationFile = path.join(root, "prisma", "postgresql", migrationName)
+  const migration = spawnSync(
+    prismaBin,
+    ["db", "execute", "--schema", "prisma/schema.prisma", "--file", migrationFile],
+    { cwd: root, env: process.env, stdio: "inherit" },
+  )
 
-if (migration.error) throw migration.error
-if (migration.status !== 0) {
-  throw new Error(`forum-engagement migration failed with exit ${migration.status}`)
+  if (migration.error) throw migration.error
+  if (migration.status !== 0) {
+    throw new Error(`${migrationName} failed with exit ${migration.status}`)
+  }
 }
 
 const prisma = new PrismaClient()
@@ -49,10 +50,11 @@ try {
           AND table_name = 'asset_forum_posts'
           AND column_name = 'delete_token_hash'
       ) AS delete_token_hash,
-      to_regclass(current_schema() || '.asset_forum_reactions') IS NOT NULL AS reactions_table
+      to_regclass(current_schema() || '.asset_forum_reactions') IS NOT NULL AS reactions_table,
+      to_regclass(current_schema() || '.asset_forum_rate_limits') IS NOT NULL AS rate_limits_table
   `)
   const verified = Array.isArray(rows) ? rows[0] : null
-  if (!verified?.delete_token_hash || !verified?.reactions_table) {
+  if (!verified?.delete_token_hash || !verified?.reactions_table || !verified?.rate_limits_table) {
     throw new Error("forum-engagement migration verification failed")
   }
   console.log("forum-engagement migration: schema verified")

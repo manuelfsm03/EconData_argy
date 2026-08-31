@@ -90,7 +90,6 @@ try {
     const header = page.locator("header").first()
     const canvasControls = page.locator("div.sticky.top-12").first()
     const catalogButton = page.getByRole("button", { name: "Tarjetas", exact: true })
-    const sidebar = page.locator('aside[data-open]').first()
     const sidebarTrigger = page.getByRole("button", { name: "Mostrar u ocultar menú", exact: true })
     await catalogButton.waitFor()
     await waitForStableLayout(page, [header, canvasControls, catalogButton], `${viewport.name} canvas readiness`)
@@ -114,7 +113,7 @@ try {
       await libraryNav.click()
       await page.locator('aside[data-open="false"]').first().waitFor()
       await page.waitForTimeout(250)
-      drawerLibraryHeading = page.getByRole("heading", { name: "Biblioteca de datos", exact: true })
+      drawerLibraryHeading = page.locator("header").first().getByText("Biblioteca de datos", { exact: true })
       await drawerLibraryHeading.waitFor()
       await waitForStableLayout(page, [drawerLibraryHeading], `${viewport.name} drawer Biblioteca destination readiness`)
       await assertVisibleAndUnobscured(page, drawerLibraryHeading, `${viewport.name} drawer Biblioteca destination`)
@@ -163,23 +162,27 @@ try {
     await libraryHeading.waitFor()
     const libraryHeaderGeometry = await assertVisibleAndUnobscured(page, libraryHeader, `${viewport.name} library header`)
     await assertVisibleAndUnobscured(page, libraryHeading, `${viewport.name} library heading`)
-    const libraryCard = page.locator(".bbg-panel").first()
-    await libraryCard.evaluate((element) => element.scrollIntoView({ block: "center", inline: "nearest" }))
-    await waitForStableLayout(page, [libraryHeader, libraryHeading, libraryCard], `${viewport.name} library readiness`)
-    const libraryCardGeometry = await assertVisibleAndUnobscured(page, libraryCard, `${viewport.name} library card`)
+    const libraryResumenTab = page.getByRole("button", { name: "Resumen", exact: true })
+    const libraryMacroTab = page.getByRole("button", { name: "Macro", exact: true })
+    await libraryResumenTab.waitFor()
+    await libraryMacroTab.waitFor()
+    await page.getByText(/EMAE — Actividad Económica/i).first().waitFor()
+    await waitForStableLayout(page, [libraryHeader, libraryHeading, libraryResumenTab, libraryMacroTab], `${viewport.name} library readiness`)
+    const libraryDashboardGeometry = await assertVisibleAndUnobscured(page, libraryMacroTab, `${viewport.name} library dashboard`)
     const libraryOverflow = await assertNoHorizontalOverflow(page, `${viewport.name} library`)
     await page.screenshot({ path: join(artifactDir, `${viewport.name}-library.png`) })
 
     const focusLibraryUrl = `${baseUrl}/?section=library&ticker=YPFD&kind=accion`
+    const focusRequest = page.waitForRequest((request) => request.url().includes("/api/acciones/YPFD"))
     await page.goto(focusLibraryUrl, { waitUntil: "domcontentloaded" })
     const focusLibraryHeading = page.locator("header").first().getByText("Biblioteca de datos", { exact: true })
     await focusLibraryHeading.waitFor()
-    const focusLibraryCard = page.locator('[data-library-card-id="acciones"]')
-    await focusLibraryCard.waitFor({ state: "visible" })
-    await waitForStableLayout(page, [focusLibraryHeading, focusLibraryCard], `${viewport.name} focused library readiness`)
-    await assertVisibleAndUnobscured(page, focusLibraryCard, `${viewport.name} focused ticker card`)
-    assert.equal(await page.locator('[data-library-focus-ticker="YPFD"]').count(), 1, `${viewport.name} ticker focus marker`)
-    assert.equal(await page.locator('[data-library-card-id="emae"]').count(), 0, `${viewport.name} ticker focus did not fall back to EMAE`)
+    await focusRequest
+    const focusFinanzasTab = page.getByRole("button", { name: "Finanzas", exact: true })
+    const focusAccionesTab = page.getByRole("button", { name: /Acciones$/ }).first()
+    await focusAccionesTab.waitFor()
+    await waitForStableLayout(page, [focusLibraryHeading, focusFinanzasTab, focusAccionesTab], `${viewport.name} focused library readiness`)
+    await assertVisibleAndUnobscured(page, focusAccionesTab, `${viewport.name} focused ticker section`)
     const focusedLibraryOverflow = await assertNoHorizontalOverflow(page, `${viewport.name} focused library`)
     await page.screenshot({ path: join(artifactDir, `${viewport.name}-library-focus.png`) })
 
@@ -187,11 +190,14 @@ try {
     await page.goto(connectUrl, { waitUntil: "domcontentloaded" })
     const connectHeader = page.locator("header").first()
     const connectHeading = page.getByRole("heading", { name: "Conectar La Pizarra", exact: true })
+    const claudeHeading = page.getByRole("heading", { name: "Conectar en Claude", exact: true })
     const mcpUrl = page.getByText("https://www.lapizarra.ar/api/mcp", { exact: true }).first()
     await connectHeading.waitFor()
-    await waitForStableLayout(page, [connectHeader, connectHeading, mcpUrl], `${viewport.name} connect readiness`)
+    await claudeHeading.waitFor()
+    await waitForStableLayout(page, [connectHeader, connectHeading, claudeHeading, mcpUrl], `${viewport.name} connect readiness`)
     await assertVisibleAndUnobscured(page, connectHeader, `${viewport.name} connect header`)
     await assertVisibleAndUnobscured(page, connectHeading, `${viewport.name} connect heading`)
+    await assertVisibleAndUnobscured(page, claudeHeading, `${viewport.name} Claude heading`)
     await assertVisibleAndUnobscured(page, mcpUrl, `${viewport.name} MCP URL`)
     const connectOverflow = await assertNoHorizontalOverflow(page, `${viewport.name} connect`)
     await page.screenshot({ path: join(artifactDir, `${viewport.name}-connect.png`), fullPage: true })
@@ -201,10 +207,10 @@ try {
       viewport,
       routes: {
         canvas: { catalogCount: 35, catalogGeometry, overflow: canvasOverflow },
-        library: { heading: "Biblioteca de datos", headerGeometry: libraryHeaderGeometry, cardGeometry: libraryCardGeometry, overflow: libraryOverflow },
+        library: { heading: "Biblioteca de datos", headerGeometry: libraryHeaderGeometry, dashboardGeometry: libraryDashboardGeometry, overflow: libraryOverflow },
         drawer: { openGeometry: drawerOpenGeometry, libraryHeading: Boolean(drawerLibraryHeading), canvasHeading: Boolean(drawerCanvasHeading) },
         libraryFocus: { ticker: "YPFD", cardId: "acciones", overflow: focusedLibraryOverflow },
-        connect: { heading: "Conectar La Pizarra", mcpUrl: true, overflow: connectOverflow },
+        connect: { heading: "Conectar La Pizarra", claude: true, mcpUrl: true, overflow: connectOverflow },
       },
       pageErrors,
     })

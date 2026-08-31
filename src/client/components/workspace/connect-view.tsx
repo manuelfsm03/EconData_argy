@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Cable, Check, Clipboard, Database, ShieldCheck, Sparkles, Terminal } from "lucide-react"
+import { Cable, Check, Clipboard, Database, ExternalLink, MessageCircle, ShieldCheck, Sparkles, Terminal } from "lucide-react"
 import { Button } from "@/client/components/ui/button"
 import { DATA_CARD_CATALOG } from "@/lib/card-catalog"
 
@@ -43,7 +43,7 @@ export function ConnectView() {
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--amber-soft)] text-[var(--amber)]"><Cable size={20} /></div>
           <div>
             <h1 className="text-lg font-semibold text-[var(--text)]">Conectar La Pizarra</h1>
-            <p className="mt-1 max-w-2xl text-xs leading-5 text-[var(--text-dim)]">Usá los datos económicos de La Pizarra directamente desde cualquier cliente compatible con MCP. El acceso es público, de solo lectura y no requiere una API key.</p>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-[var(--text-dim)]">Usá los datos económicos de La Pizarra directamente desde Claude, Codex o cualquier cliente compatible con MCP. El acceso es público, de solo lectura y no requiere una API key.</p>
           </div>
         </div>
 
@@ -54,6 +54,33 @@ export function ConnectView() {
           <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
             <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-xs text-[var(--text)]">{MCP_URL}</code>
             <CopyButton value={MCP_URL} label="Copiar URL" />
+          </div>
+        </section>
+
+        <section className="mb-4 overflow-hidden rounded-lg border border-[var(--amber)]/50 bg-[var(--bg-elev)]">
+          <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] bg-[var(--amber-soft)] px-4 py-3">
+            <MessageCircle size={17} className="text-[var(--amber)]" />
+            <h2 className="text-sm font-semibold text-[var(--text)]">Conectar en Claude</h2>
+            <span className="rounded-full border border-[var(--amber)]/40 bg-[var(--bg-elev)] px-2 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-[var(--amber)]">Principal</span>
+          </div>
+          <div className="grid gap-5 p-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(240px,0.75fr)]">
+            <div>
+              <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-mute)]">Claude Free, Pro o Max</div>
+              <ol className="space-y-3 text-xs leading-5 text-[var(--text-dim)]">
+                <li><span className="mr-2 font-mono text-[var(--amber)]">1.</span>En Claude, abrí <strong className="text-[var(--text)]">Customize → Connectors</strong>.</li>
+                <li><span className="mr-2 font-mono text-[var(--amber)]">2.</span>Presioná <strong className="text-[var(--text)]">+</strong> y elegí <strong className="text-[var(--text)]">Add custom connector</strong>.</li>
+                <li><span className="mr-2 font-mono text-[var(--amber)]">3.</span>Escribí <code className="font-mono text-[var(--text)]">La Pizarra</code> como nombre y pegá la URL MCP de arriba.</li>
+                <li><span className="mr-2 font-mono text-[var(--amber)]">4.</span>Confirmá con <strong className="text-[var(--text)]">Add</strong>. No hace falta configurar OAuth, token ni cabeceras.</li>
+                <li><span className="mr-2 font-mono text-[var(--amber)]">5.</span>En una conversación, abrí <strong className="text-[var(--text)]">+ → Connectors</strong> y activá <strong className="text-[var(--text)]">La Pizarra</strong>.</li>
+              </ol>
+            </div>
+            <div className="rounded-md border border-[var(--border)] bg-[var(--bg)] p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-mute)]">Team y Enterprise</div>
+              <p className="mt-2 text-[10px] leading-4 text-[var(--text-dim)]">Un owner debe agregarlo desde <strong className="text-[var(--text)]">Organization settings → Connectors → Add → Custom → Web</strong>. Después, cada miembro lo habilita desde <strong className="text-[var(--text)]">Customize → Connectors</strong>.</p>
+              <a href="https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-[10px] font-medium text-[var(--amber)] hover:underline">
+                Ver guía oficial de Claude <ExternalLink size={11} />
+              </a>
+            </div>
           </div>
         </section>
 
