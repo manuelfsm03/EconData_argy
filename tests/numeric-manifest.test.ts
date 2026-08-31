@@ -212,9 +212,9 @@ test("only the EIA mundo-avanzado vertical may become available in R2B", () => {
   }, now), "unavailable")
 })
 
-test("the real card renderer consumes the numeric boundary", () => {
+test("numeric auditing does not replace established card renderers", () => {
   const renderer = readFileSync("src/client/components/workspace/data-card-renderer.tsx", "utf8")
-  assert.match(renderer, /NUMERIC_SURFACE_BY_ID/)
-  assert.match(renderer, /NumericBoundary/)
-  assert.match(renderer, /cardId=\{cardId\}/)
+  assert.match(renderer, /CARD_COMPONENTS/)
+  assert.match(renderer, /if \(Component\) return <Component \/>/)
+  assert.doesNotMatch(renderer, /NumericBoundary|NUMERIC_SURFACE_BY_ID/)
 })

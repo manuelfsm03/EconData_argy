@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
@@ -77,4 +78,16 @@ test("delete tokens are stored as one-way hashes and checked exactly", () => {
   assert.equal(verifyForumDeleteToken(token, hash), true)
   assert.equal(verifyForumDeleteToken(`${token}-wrong`, hash), false)
   assert.equal(verifyForumDeleteToken(token, "not-a-hash"), false)
+})
+
+test("guarded production migration installs and verifies the complete forum schema", () => {
+  const migration = readFileSync("scripts/apply-forum-engagement-migration.mjs", "utf8")
+  const hardeningIndex = migration.indexOf("20260809_harden_asset_forum.sql")
+  const engagementIndex = migration.indexOf("20260810_add_forum_engagement.sql")
+  assert.ok(hardeningIndex >= 0)
+  assert.ok(engagementIndex > hardeningIndex)
+  assert.match(migration, /APPLY_FORUM_MIGRATION === "1"/)
+  assert.match(migration, /rate_limits_table/)
+  assert.match(migration, /reactions_table/)
+  assert.match(migration, /delete_token_hash/)
 })
