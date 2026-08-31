@@ -7,8 +7,10 @@ import { fetchRegistered } from "@/server/http/fetch-source"
  * Si LECAP_TEA > CER_real, el mercado "precia" esa diferencia como inflación implícita.
  *
  * Fuentes:
- *  - BCRA API v4.0: TAMAR (referencia vigente)
- *  - BCRA datos.gob.ar: BADLAR histórica, TPM
+ *  - BCRA API v4.0: TAMAR (referencia vigente), BADLAR (var 7 -- la serie de
+ *    datos.gob.ar que se usaba antes dejó de actualizarse el 18/6/2026),
+ *    pases entre terceros 1D (var 150, reemplaza a la tasa de política
+ *    monetaria -- var 6, dada de baja)
  *  - datos.gob.ar: CER diario (coeficiente de estabilización de referencia)
  *  - /api/bonos?tipo=lecap: TEM/TIR de LECAPs/BONCAPs (desde DB local)
  *  - /api/rem: mediana REM analistas (benchmark)
@@ -24,8 +26,6 @@ function setCache(k: string, d: unknown, ttl: number) { cache.set(k, { data: d, 
 
 // IDs de series datos.gob.ar
 const SERIES = {
-  badlar:      "89.2_TS_INTELAR_0_D_20",   // BADLAR privados TNA
-  tpm:         "168.1_T_CAMBIA_0_0_22",     // Tasa política monetaria
   cer_diario:  "98.1_CER_0_D_36",           // CER diario (coeficiente)
 }
 
@@ -42,13 +42,13 @@ async function fetchSerie(id: string, limit = 60): Promise<{ fecha: string; valo
   } catch { return [] }
 }
 
-async function fetchTamar(limit = 60): Promise<{ fecha: string; valor: number }[]> {
+async function fetchVarBcra(varId: number, limit = 60): Promise<{ fecha: string; valor: number }[]> {
   try {
     const today = new Date()
     const from = new Date(today)
     from.setDate(from.getDate() - Math.max(limit * 2, 120))
     const data = await bcraOfficialApi.getSeriesData(
-      44,
+      varId,
       from.toISOString().slice(0, 10),
       today.toISOString().slice(0, 10),
       limit,
@@ -58,6 +58,19 @@ async function fetchTamar(limit = 60): Promise<{ fecha: string; valor: number }[
       .sort((a, b) => a.fecha.localeCompare(b.fecha))
   } catch { return [] }
 }
+
+const fetchTamar = (limit = 60) => fetchVarBcra(44, limit)
+// La serie de BADLAR en datos.gob.ar ("Principales tasas de interés",
+// dataset de Programación Macroeconómica) dejó de actualizarse el
+// 2026-06-18 -- confirmado con curl, sigue devolviendo esa misma fecha
+// como la más reciente. La API oficial del BCRA (var 7) sí está al día.
+const fetchBadlar = (limit = 60) => fetchVarBcra(7, limit)
+// Var 6 ("Tasa de política monetaria") fue dada de baja -- 404 en la API
+// oficial del BCRA. La serie de datos.gob.ar que se usaba acá también dejó
+// de existir ("Serie inexistente"). Reemplazo con la 150 (pases entre
+// terceros a 1 día), la referencia de corto plazo que sigue publicándose
+// bajo el régimen de bandas actual -- verificado con curl 2026-08-30.
+const fetchTpm = (limit = 60) => fetchVarBcra(150, limit)
 
 async function fetchLecaps(): Promise<{ ticker: string; vencimiento: string; tem: number | null; tir: number | null; diasVto: number }[]> {
   try {
@@ -100,8 +113,8 @@ export async function GET() {
   try {
     const [tamarSerie, badlarSerie, tpmSerie, cerSerie, lecaps, rem] = await Promise.all([
       fetchTamar(30),
-      fetchSerie(SERIES.badlar, 30),
-      fetchSerie(SERIES.tpm, 30),
+      fetchBadlar(30),
+      fetchTpm(30),
       fetchSerie(SERIES.cer_diario, 30),
       fetchLecaps(),
       fetchRem(),

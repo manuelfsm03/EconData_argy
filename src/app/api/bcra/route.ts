@@ -45,14 +45,19 @@ async function getPlazoFijo() {
     fetchVar(44, from),  // TAMAR bancos privados (TNA) — referencia vigente
     fetchVar(7, from),   // BADLAR bancos privados (TNA) — serie histórica
     fetchVar(8, from),   // TM20 bancos privados (TNA)
-    fetchVar(6, from),   // Tasa de política monetaria
+    // Var 6 ("Tasa de política monetaria") fue dada de baja por el BCRA --
+    // devuelve 404 "IdVariable invalida" en la API oficial. Bajo el régimen
+    // de bandas actual el BCRA no fija una tasa de política tradicional; el
+    // reemplazo con dato real y vigente es la 150 (pases entre terceros a
+    // 1 día), verificado con curl contra la API oficial 2026-08-30.
+    fetchVar(150, from), // Tasa de pases entre terceros a 1 día
     fetchVar(12, from),  // Tasa depósitos 30d sector privado
   ])
 
   const result = {
     data: { tamar, badlar, tm20, tpm, pf30 },
     updated_at: new Date().toISOString(),
-    source: "BCRA API v4.0 · Variables 44 (TAMAR), 7 (BADLAR histórica), 8, 6 y 12",
+    source: "BCRA API v4.0 · Variables 44 (TAMAR), 7 (BADLAR histórica), 8, 150 (pases 1 día) y 12",
   }
   setCache(cacheKey, result, 3600)
   return result
