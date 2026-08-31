@@ -61,6 +61,12 @@ test("generic geography needs an economic, political, or geopolitical co-signal"
   assert.equal(isRelevantHeadline("Trump meets Xi Jinping in China", chinaTerms), true)
 })
 
+test("Trump alone is not enough to admit unrelated personal or judicial news", () => {
+  const nameTerms = [...terms, "policy", "tariff"]
+  assert.equal(isRelevantHeadline("Trump loses second Supreme Court bid over a personal case", nameTerms), false)
+  assert.equal(isRelevantHeadline("Trump's new tariff policy shakes markets", nameTerms), true)
+})
+
 test("source paths reject unrelated verticals before keyword scoring", () => {
   assert.equal(isExcludedNewsUrl("https://www.infobae.com/mexico/deportes/nota"), true)
   assert.equal(isExcludedNewsUrl("https://example.com/sport/football/nota"), true)

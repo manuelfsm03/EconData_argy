@@ -12,7 +12,7 @@ const breakevenRoute = source("src/app/api/breakeven/route.ts")
 const economiaRoute = source("src/app/api/economia/route.ts")
 const bcraUi = source("src/client/components/dashboard/tab-bcra.tsx")
 const resumenUi = source("src/client/components/dashboard/tab-resumen.tsx")
-const macroUi = source("src/client/components/dashboard/tab-macro.tsx")
+const finanzasUi = source("src/client/components/dashboard/tab-finanzas.tsx")
 
 test("TAMAR uses official BCRA variable 44 everywhere", () => {
   assert.equal(BCRA_VARIABLE_MAPPING.TAMAR_TNA.idVariable, 44)
@@ -47,8 +47,9 @@ test("current dashboard reference is TAMAR and BADLAR remains historical", () =>
   assert.match(plazoFijoUi, /TAMAR Bancos Privados/)
   assert.match(plazoFijoUi, /BADLAR histórica/)
 
-  assert.match(macroUi, /TAMAR privados/)
-  assert.match(macroUi, /tasas\.tamar_tna/)
+  assert.match(finanzasUi, /TAMAR privados/)
+  assert.match(finanzasUi, /\/api\/bcra\?endpoint=plazofijo/)
+  assert.doesNotMatch(finanzasUi, /orientativas abril|Conviene Tasa|BANCOS_ARS/)
 })
 
 test("workspace summary card requests TAMAR first and retains BADLAR", () => {

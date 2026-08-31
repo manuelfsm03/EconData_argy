@@ -13,7 +13,7 @@ import {
   CommoditiesView,
   CryptoView,
   MundoView,
-  PlazoFijoView as FinanzasPlazoFijoView,
+  PlazoFijoOficialView as FinanzasPlazoFijoView,
   RofexView,
 } from "@/client/components/dashboard/tab-finanzas"
 import {
@@ -28,7 +28,6 @@ import {
   RiesgoPaisView,
   SenorejaView,
 } from "@/client/components/dashboard/tab-macro"
-import { FiscalSankeyView } from "@/client/components/dashboard/fiscal-sankey"
 import {
   AgregadosView,
   BancosView,
@@ -41,9 +40,7 @@ import {
 import { NewsFeed } from "@/client/components/dashboard/news-feed"
 import { DATA_CARD_BY_ID } from "@/lib/card-catalog"
 import { AssetScreener } from "@/client/components/dashboard/screener-activos"
-import { RateScreener } from "@/client/components/dashboard/screener-tasas"
 import { TabBonos } from "@/client/components/dashboard/tab-bonos"
-import { TabMundo } from "@/client/components/dashboard/tab-mundo"
 
 const noopNavigate = () => {}
 
@@ -60,14 +57,11 @@ const CARD_COMPONENTS: Record<string, React.ComponentType> = {
   "plazo-fijo-mercado": FinanzasPlazoFijoView,
   commodities: CommoditiesView,
   "mercados-mundo": MundoView,
-  "mundo-avanzado": TabMundo,
   cripto: CryptoView,
   "screener-activos": AssetScreener,
-  "screener-tasas": RateScreener,
   emae: EmaeView,
   ipc: IpcView,
   balanza: BalanzaView,
-  fiscal: FiscalSankeyView,
   desigualdad: DesigualdadView,
   piramides: PiramidesView,
   fx: FXView,

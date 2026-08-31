@@ -69,14 +69,11 @@ export const NUMERIC_SURFACE_MANIFEST: readonly NumericSurfaceManifestEntry[] = 
   unavailable("plazo-fijo-mercado", "plazo-fijo-mercado", "/api/bcra?endpoint=plazofijo", "data[*].tasa", "BCRA plazo fijo"),
   unavailable("commodities", "commodities", "/api/mundo", "data[*].precio", "Mercados globales"),
   unavailable("mercados-mundo", "mercados-mundo", "/api/mundo", "data[*].precio", "Mercados globales"),
-  unavailable("mundo-avanzado", "mundo-avanzado", "/api/energia-global?endpoint=production", "data[*][*][1]", "Producción mundial de petróleo"),
   unavailable("cripto", "cripto", "/api/cripto", "data.market_cap_usd", "Cripto"),
   unavailable("screener-activos", "screener-activos", "/api/acciones?category=all", "data.byCategory[*][*].lastPrice", "Acciones"),
-  unavailable("screener-tasas", "screener-tasas", "/api/bcra?endpoint=tasas", "data[*].tasa", "Tasas BCRA"),
   unavailable("emae", "emae", "/api/macro?endpoint=emae", "data[*].valor", "EMAE"),
   unavailable("ipc", "ipc", "/api/macro?endpoint=ipc", "data[*].valor", "IPC"),
   unavailable("balanza", "balanza", "/api/macro?endpoint=balanza", "data[*].saldo", "Balanza"),
-  unavailable("fiscal", "fiscal", "/api/macro?endpoint=fiscal", "data[*].resultado", "Fiscal"),
   unavailable("desigualdad", "desigualdad", "/api/macro?endpoint=argendata_desigualdad", "data.gini_arg[*][1]", "Desigualdad"),
   unavailable("piramides", "piramides", "/api/macro?endpoint=piramide&year=2025&country=32", "data.total", "Demografía"),
   unavailable("fx", "fx", "/api/tc-historico?period=max", "data.series[*].value", "Dólares"),
@@ -183,9 +180,7 @@ export const NUMERIC_RUNTIME_BINDINGS: readonly NumericRuntimeBinding[] = NUMERI
  * remain unavailable even if an unrelated endpoint happens to return a number
  * with provenance; they are not allowed to mount a legacy renderer yet.
  */
-export const NUMERIC_RUNTIME_VERIFIED_SOURCES: Readonly<Partial<Record<string, SourceId>>> = {
-  "mundo-avanzado": "eia",
-}
+export const NUMERIC_RUNTIME_VERIFIED_SOURCES: Readonly<Partial<Record<string, SourceId>>> = {}
 
 export type NumericRuntimeStatus = "available" | "unavailable"
 

@@ -140,7 +140,7 @@ export const SOURCE_REGISTRY = {
       "www.baenegocios.com", "www.lanacion.com.ar", "www.perfil.com", "www.eleconomista.com.ar",
       "rss.politico.com", "feeds.a.dj.com", "feeds.bbci.co.uk", "www.theguardian.com", "www.ft.com",
       "www.france24.com", "rss.dw.com", "www.aljazeera.com", "www.al-monitor.com", "www.themoscowtimes.com",
-      "thewirechina.com", "brazilreport.com", "riotimesonline.com",
+      "thewirechina.com", "brazilreport.com", "riotimesonline.com", "www.spiegel.de", "feeds.thelocal.com",
     ],
     kind: "rss",
     dataClass: "news",

@@ -15,7 +15,6 @@ interface AssetRow {
   currency: "ARS" | "USD" | "Índice"
   price: number | null
   change: number | null
-  yield: number | null
 }
 
 interface StockQuote {
@@ -29,15 +28,12 @@ interface BondQuote {
   ticker: string
   nombre: string
   precio: number | null
-  tir: number | null
 }
 
 interface LecapQuote {
   ticker: string
   tipo: string
   precio: number | null
-  tea: number | null
-  tir: number | null
 }
 
 interface WorldQuote {
@@ -59,7 +55,7 @@ function number(value: number | null, suffix = "") {
 }
 
 // Columnas ordenables del screener. `key` null = columna sin sort (checkbox).
-type SortKey = "ticker" | "market" | "currency" | "price" | "change" | "yield"
+type SortKey = "ticker" | "market" | "currency" | "price" | "change"
 const HEADERS: { label: string; key: SortKey | null; align: "left" | "right" | "center" }[] = [
   { label: "", key: null, align: "center" },
   { label: "Ticker", key: "ticker", align: "left" },
@@ -67,7 +63,6 @@ const HEADERS: { label: string; key: SortKey | null; align: "left" | "right" | "
   { label: "Moneda", key: "currency", align: "right" },
   { label: "Último", key: "price", align: "right" },
   { label: "Var. 1D", key: "change", align: "right" },
-  { label: "Tasa/TIR", key: "yield", align: "right" },
 ]
 
 export function AssetScreener() {
@@ -106,18 +101,18 @@ export function AssetScreener() {
       const next: AssetRow[] = []
       if (stocksResult.status === "fulfilled") {
         const byCategory = stocksResult.value?.data?.byCategory as Record<string, StockQuote[]> | undefined
-        Object.values(byCategory ?? {}).flat().forEach((item) => next.push({ id: `accion:${item.ticker}`, ticker: item.ticker, name: item.category, market: "Acciones ARG", currency: "ARS", price: item.lastPrice, change: item.change1D, yield: null }))
+        Object.values(byCategory ?? {}).flat().forEach((item) => next.push({ id: `accion:${item.ticker}`, ticker: item.ticker, name: item.category, market: "Acciones ARG", currency: "ARS", price: item.lastPrice, change: item.change1D }))
       }
       if (bondsResult.status === "fulfilled" && Array.isArray(bondsResult.value?.data)) {
-        ;(bondsResult.value.data as BondQuote[]).forEach((item) => next.push({ id: `bono:${item.ticker}`, ticker: item.ticker, name: item.nombre, market: "Bonos USD", currency: "USD", price: item.precio, change: null, yield: item.tir }))
+        ;(bondsResult.value.data as BondQuote[]).forEach((item) => next.push({ id: `bono:${item.ticker}`, ticker: item.ticker, name: item.nombre, market: "Bonos USD", currency: "USD", price: item.precio, change: null }))
       }
       if (lecapsResult.status === "fulfilled" && Array.isArray(lecapsResult.value?.data)) {
-        ;(lecapsResult.value.data as LecapQuote[]).forEach((item) => next.push({ id: `lecap:${item.ticker}`, ticker: item.ticker, name: item.tipo, market: "Letras", currency: "ARS", price: item.precio, change: null, yield: item.tea ?? item.tir }))
+        ;(lecapsResult.value.data as LecapQuote[]).forEach((item) => next.push({ id: `lecap:${item.ticker}`, ticker: item.ticker, name: item.tipo, market: "Letras", currency: "ARS", price: item.precio, change: null }))
       }
       if (worldResult.status === "fulfilled" && worldResult.value?.data) {
         Object.entries(worldResult.value.data as Record<string, WorldQuote | null>).forEach(([key, item]) => {
           if (!item) return
-          next.push({ id: `mundo:${key.toUpperCase()}`, ticker: key.toUpperCase(), name: item.ticker, market: "Global", currency: "Índice", price: item.precio, change: item.variacion_pct, yield: null })
+          next.push({ id: `mundo:${key.toUpperCase()}`, ticker: key.toUpperCase(), name: item.ticker, market: "Global", currency: "Índice", price: item.precio, change: item.variacion_pct })
         })
       }
       if (usaResult.status === "fulfilled" && Array.isArray(usaResult.value?.data)) {
@@ -129,7 +124,6 @@ export function AssetScreener() {
           currency: "USD",
           price: item.lastPrice,
           change: item.change1DPct,
-          yield: null,
         }))
       }
       setRows(Array.from(new Map(next.map((item) => [item.id, item])).values()))
@@ -233,7 +227,7 @@ export function AssetScreener() {
                 </td>
                 <td className="px-2 py-2 text-left font-bold text-[var(--amber)]"><div>{row.ticker}</div><div className="max-w-44 truncate font-sans text-[8px] font-normal text-[var(--text-mute)]">{row.name}</div></td>
                 <td className="px-2 py-2 text-left text-[var(--text-dim)]">{row.market}</td><td className="px-2 py-2 text-right text-[var(--text-dim)]">{row.currency}</td><td className="px-2 py-2 text-right">{number(row.price)}</td>
-                <td className={cn("px-2 py-2 text-right font-semibold", row.change == null ? "text-[var(--text-mute)]" : row.change >= 0 ? "text-[var(--positive)]" : "text-[var(--negative)]")}>{number(row.change, "%")}</td><td className="px-2 py-2 text-right">{number(row.yield, "%")}</td>
+                <td className={cn("px-2 py-2 text-right font-semibold", row.change == null ? "text-[var(--text-mute)]" : row.change >= 0 ? "text-[var(--positive)]" : "text-[var(--negative)]")}>{number(row.change, "%")}</td>
               </tr>
             })}</tbody>
           </table>

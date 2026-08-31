@@ -28,8 +28,21 @@ test("every category is represented and search covers titles plus keywords", () 
   assert.ok(searchDataCards("reservas", "bcra").every((card) => card.category === "bcra"))
   assert.ok(searchDataCards("titulares").some((card) => card.id === "resumen-noticias"))
   assert.ok(searchDataCards("watchlist").some((card) => card.id === "screener-activos"))
-  assert.ok(searchDataCards("treasury").some((card) => card.id === "screener-tasas"))
+  assert.ok(searchDataCards("treasury").some((card) => card.id === "mercados-mundo"))
   assert.equal(DATA_CARD_CATALOG.find((card) => card.id === "resumen-reservas")?.endpoints[0].method, "POST")
+})
+
+test("unverified MVP surfaces are not exposed in the catalog", () => {
+  for (const id of ["mundo-avanzado", "screener-tasas", "fiscal"]) {
+    assert.equal(DATA_CARD_CATALOG.some((card) => card.id === id), false)
+  }
+})
+
+test("IPC catalog omits retired REM and proposed-basket dependencies", () => {
+  const ipc = DATA_CARD_CATALOG.find((card) => card.id === "ipc")
+  assert.ok(ipc)
+  assert.equal(ipc.endpoints.some((endpoint) => endpoint.path === "/api/rem"), false)
+  assert.doesNotMatch(macroUi, /Canasta 2016 vs 2022|Inflación Mundial|BreakEvenSection/)
 })
 
 test("expone bancos como tarjeta BCRA con rango explícito", () => {

@@ -25,10 +25,10 @@ const NOW = new Date("2026-08-26T00:00:00.000Z")
 
 test("numeric manifest covers every catalog card with a non-empty surface", () => {
   const coverage = manifestCoverage()
-  assert.equal(coverage.catalogCards, 35)
+  assert.equal(coverage.catalogCards, 32)
   assert.equal(coverage.coveredCards, coverage.catalogCards)
   assert.deepEqual(coverage.uncoveredCardIds, [])
-  assert.equal(NUMERIC_SURFACE_MANIFEST.length, 35)
+  assert.equal(NUMERIC_SURFACE_MANIFEST.length, 32)
   for (const entry of NUMERIC_SURFACE_MANIFEST) {
     for (const key of ["source", "unit", "transform", "asOf", "retrievedAt", "freshness", "estimate"]) {
       assert.ok(Object.hasOwn(entry, key), `${entry.id} missing ${key}`)
@@ -121,29 +121,22 @@ test("runtime bindings connect every catalog id to its endpoint, renderer and co
     assert.notEqual(entry.field, "data[*].numeric")
     assert.ok(entry.rendererId.length > 0)
   }
-  const eia = NUMERIC_RUNTIME_BINDINGS.find((entry) => entry.cardId === "mundo-avanzado")
-  assert.deepEqual(eia && {
-    endpoint: eia.endpoint,
-    rendererId: eia.rendererId,
-    field: eia.field,
-  }, {
-    endpoint: "/api/energia-global?endpoint=production",
-    rendererId: "mundo-avanzado",
-    field: "data[*][*][1]",
-  })
+  for (const id of ["mundo-avanzado", "screener-tasas", "fiscal"]) {
+    assert.equal(NUMERIC_RUNTIME_BINDINGS.some((entry) => entry.cardId === id), false)
+  }
 })
 
 test("catalog coverage is distinct from runtime verification coverage", () => {
   assert.deepEqual(runtimeCoverage(), {
-    catalogCards: 35,
-    manifestEntries: 35,
-    runtimeBoundCards: 35,
+    catalogCards: 32,
+    manifestEntries: 32,
+    runtimeBoundCards: 32,
     runtimeVerifiedCards: 0,
     unverifiedCardIds: NUMERIC_SURFACE_MANIFEST.map((entry) => entry.cardId),
   })
-  const verified = runtimeCoverage(["mundo-avanzado"])
-  assert.equal(verified.runtimeVerifiedCards, 1)
-  assert.equal(verified.unverifiedCardIds.length, 34)
+  const verified = runtimeCoverage([])
+  assert.equal(verified.runtimeVerifiedCards, 0)
+  assert.equal(verified.unverifiedCardIds.length, 32)
 })
 
 test("runtime response gate accepts only finite data with valid provenance", () => {
@@ -181,7 +174,7 @@ test("runtime response gate accepts only finite data with valid provenance", () 
   }, new Date("2026-09-01T00:00:00.000Z")), "unavailable")
 })
 
-test("only the EIA mundo-avanzado vertical may become available in R2B", () => {
+test("retired mundo-avanzado never becomes available through the runtime gate", () => {
   const eiaPayload = {
     data: { ARG: [["2026-08", 321.5]] },
     numericManifest: [{
@@ -196,7 +189,7 @@ test("only the EIA mundo-avanzado vertical may become available in R2B", () => {
     }],
   }
   const now = new Date("2026-09-01T00:00:00.000Z")
-  assert.equal(assessNumericResponseForCard("mundo-avanzado", eiaPayload, now), "available")
+  assert.equal(assessNumericResponseForCard("mundo-avanzado", eiaPayload, now), "unavailable")
   assert.equal(assessNumericResponseForCard("resumen-ipc", eiaPayload, now), "unavailable")
   assert.equal(assessNumericResponseForCard("mundo-avanzado", {
     ...eiaPayload,

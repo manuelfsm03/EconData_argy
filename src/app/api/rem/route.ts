@@ -1,6 +1,6 @@
 /**
  * REM — Relevamiento de Expectativas de Mercado (BCRA)
- * Excel mensual BCRA. Extrae: medianas + top-10 instituciones para inflación 12M.
+ * Excel mensual BCRA. Extrae estadísticas anonimizadas publicadas por el BCRA.
  */
 import { NextResponse } from "next/server"
 import { fetchRemExcel, parseRemExcel } from "@/server/domain/rem-data"
@@ -11,19 +11,18 @@ function setCache(k: string, d: unknown, ttl: number) { cache.set(k, { data: d, 
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 export async function GET() {
-  const cacheKey = "rem_v5"
+  const cacheKey = "rem_v6"
   const cached = getCache(cacheKey)
   if (cached) return NextResponse.json(cached)
 
   try {
     const buf = await fetchRemExcel()
-    const { serie, participantes } = parseRemExcel(buf)
+    const { serie } = parseRemExcel(buf)
     const ultimo = serie.at(-1)
 
     const result = {
       data: {
         serie,
-        participantes,
         ultimo: ultimo ?? null,
         kpis: {
           inflacion_12m:  ultimo?.inflacion_12m  ?? null,

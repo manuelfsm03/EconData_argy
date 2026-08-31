@@ -30,13 +30,6 @@ export interface RemRow {
   tasa_real_12m: number | null
 }
 
-export interface RemParticipante {
-  institucion: string
-  inflacion_12m: number | null
-  dolar_12m: number | null
-  tasa_12m: number | null
-}
-
 type RemLongRow = {
   fechaPronostico: Date
   variable: string
@@ -69,7 +62,7 @@ function leerFilasLargo(workbook: XLSX.WorkBook, hoja: string, columnaMediana: n
   return rows
 }
 
-export function parseRemExcel(buf: Buffer): { serie: RemRow[]; participantes: RemParticipante[] } {
+export function parseRemExcel(buf: Buffer): { serie: RemRow[] } {
   const workbook = XLSX.read(buf, { type: "buffer", cellDates: true })
   const rows = leerFilasLargo(workbook, "Base de Datos Completa", 4)
 
@@ -113,7 +106,6 @@ export function parseRemExcel(buf: Buffer): { serie: RemRow[]; participantes: Re
   return {
     serie: serie.filter((row) => row.inflacion_12m != null || row.dolar_12m != null)
       .sort((left, right) => left.fecha.localeCompare(right.fecha)),
-    participantes: [],
   }
 }
 

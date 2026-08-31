@@ -476,13 +476,13 @@ test('RSS news route fails total outage honestly and surfaces stale max pubDate'
     assert.equal(stale.headers.get("X-Data-Source"), "news_rss")
     assert.equal(stale.headers.get("X-Data-Completeness"), "complete")
     assert.equal(stale.headers.get("X-Data-Mode"), "live")
-    assert.equal(stale.headers.get("X-Feeds-Succeeded"), "23")
+    assert.equal(stale.headers.get("X-Feeds-Succeeded"), "24")
     assert.equal(stale.headers.get("X-Feeds-Failed"), "0")
     assert.equal(stale.headers.get("X-Deployment-Commit"), process.env.VERCEL_GIT_COMMIT_SHA ?? "unknown")
     const stalePayload = await stale.json() as Array<{ title: string }>
     assert.equal(stalePayload.length, 1)
     assert.equal(stalePayload[0]?.title, fixtureTitle)
-    assert.equal(transportCalls.length, 23)
+    assert.equal(transportCalls.length, 24)
     for (const call of transportCalls) {
       assert.equal(call.init?.cache, "no-store")
       assert.equal(findSourceForUrl(call.url).id, "news_rss")
