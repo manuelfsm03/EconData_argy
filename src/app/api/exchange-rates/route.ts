@@ -4,6 +4,8 @@ import { prisma } from "@/server/db/prisma"
 import { toMidnightUTC } from "@/lib/dates"
 import { requireAdminAuthorization } from "@/server/api/admin-auth"
 
+export const dynamic = "force-dynamic"
+
 type DollarRow = {
   casa: string
   compra: number
@@ -50,6 +52,25 @@ async function fetchFallbackExchangeRates(limit: number, offset: number) {
   return buildFallbackRows(rows, limit, offset)
 }
 
+function latestDate(rows: Array<{ date: string | Date }>): string | null {
+  const value = rows[0]?.date
+  if (!value) return null
+  const parsed = value instanceof Date ? value : new Date(value)
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : String(value)
+}
+
+function rowsResponse<T extends { date: string | Date }>(rows: T[], source: string) {
+  const timestamp = latestDate(rows)
+  return NextResponse.json(rows, {
+    headers: {
+      "Cache-Control": "public, max-age=0, s-maxage=300, stale-while-revalidate=600",
+      "X-Data-Source": source,
+      ...(timestamp ? { "X-Data-As-Of": timestamp } : {}),
+      "X-Data-Freshness": timestamp ? "fresh" : "unknown",
+    },
+  })
+}
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const limit = parseInt(searchParams.get("limit") || "30")
@@ -61,17 +82,26 @@ export async function GET(request: NextRequest) {
       take: limit,
       skip: offset,
     })
+    try {
+      const fallbackRates = await fetchFallbackExchangeRates(limit, offset)
+      const databaseAsOf = latestDate(rates)
+      const fallbackAsOf = latestDate(fallbackRates)
+      if (fallbackRates.length > 0 && (!databaseAsOf || (fallbackAsOf && Date.parse(fallbackAsOf) > Date.parse(databaseAsOf)))) {
+        return rowsResponse(fallbackRates, "ArgentinaDatos")
+      }
+    } catch (fallbackError) {
+      console.error("Fallback exchange rates freshness check failed:", fallbackError)
+    }
 
-    if (rates.length > 0) return NextResponse.json(rates)
-
+    if (rates.length > 0) return rowsResponse(rates, "PostgreSQL exchangeRate")
     const fallbackRates = await fetchFallbackExchangeRates(limit, offset)
-    return NextResponse.json(fallbackRates)
+    return rowsResponse(fallbackRates, "ArgentinaDatos")
   } catch (error) {
     console.error("Error fetching exchange rates:", error)
 
     try {
       const fallbackRates = await fetchFallbackExchangeRates(limit, offset)
-      return NextResponse.json(fallbackRates)
+      return rowsResponse(fallbackRates, "ArgentinaDatos")
     } catch (fallbackError) {
       console.error("Fallback exchange rates failed:", fallbackError)
       return NextResponse.json(

@@ -17,6 +17,8 @@ import { fetchRegistered } from "@/server/http/fetch-source"
 import { NextRequest, NextResponse } from "next/server"
 import { leerFresco, guardarExito, leerUltimoBueno } from "@/server/http/stale-cache"
 
+export const dynamic = "force-dynamic"
+
 const BASE = "https://api.argentinadatos.com/v1/cotizaciones/dolares"
 
 interface RawEntry {
@@ -41,7 +43,26 @@ type TcHistoricoResult = {
   count: number
   period: string
   updated_at: string
+  asOf: string
   source: string
+}
+
+function responseFor(result: TcHistoricoResult, options: { cached?: boolean; stale?: boolean; staleSince?: string } = {}) {
+  const effectiveSource = options.stale ? "stale-cache" : result.source
+  return NextResponse.json({
+    ...result,
+    timestamp: result.asOf,
+    checked_at: new Date().toISOString(),
+    ...(options.cached ? { cached: true } : {}),
+    ...(options.stale ? { stale: true, stale_since: options.staleSince } : {}),
+  }, {
+    headers: {
+      "Cache-Control": "public, max-age=0, s-maxage=300, stale-while-revalidate=600",
+      "X-Data-Source": effectiveSource,
+      "X-Data-As-Of": result.asOf,
+      "X-Data-Freshness": options.stale ? "stale" : "fresh",
+    },
+  })
 }
 
 async function fetchTipo(tipo: string): Promise<RawEntry[]> {
@@ -81,7 +102,7 @@ export async function GET(request: NextRequest) {
   // Nivel 1 — fresco: dentro del TTL, no volver a la fuente
   const fresco = leerFresco<TcHistoricoResult>(cacheKey)
   if (fresco) {
-    return NextResponse.json({ ...fresco, cached: true })
+    return responseFor(fresco, { cached: true })
   }
 
   // Fetch all in parallel
@@ -99,10 +120,7 @@ export async function GET(request: NextRequest) {
   if (todoVacio) {
     const stale = leerUltimoBueno<TcHistoricoResult>(cacheKey)
     if (stale) {
-      return NextResponse.json(
-        { ...stale.data, stale: true, stale_since: stale.staleSince },
-        { headers: { "X-Data-Source": "stale-cache" } },
-      )
+      return responseFor(stale.data, { stale: true, staleSince: stale.staleSince })
     }
     return NextResponse.json({ error: "fuente no disponible" }, { status: 503 })
   }
@@ -128,17 +146,23 @@ export async function GET(request: NextRequest) {
   addRows(criptoRaw,    "cripto")
 
   const merged = Object.values(mapa).sort((a, b) => (a.date > b.date ? 1 : -1))
+  const asOf = merged.at(-1)?.date ?? ""
+
+  if (!asOf) {
+    return NextResponse.json({ error: "fuente sin observaciones válidas" }, { status: 503 })
+  }
 
   const result: TcHistoricoResult = {
     data: merged,
     count: merged.length,
     period,
-    updated_at: new Date().toISOString(),
-    source: "argentinadatos.com",
+    updated_at: asOf,
+    asOf,
+    source: "ArgentinaDatos",
   }
 
   // TTL: 2h para datos históricos (cambian 1x/día)
   guardarExito(cacheKey, result, 7200)
 
-  return NextResponse.json(result)
+  return responseFor(result)
 }

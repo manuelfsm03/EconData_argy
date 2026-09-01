@@ -1,5 +1,7 @@
 import { fetchRegistered } from "@/server/http/fetch-source"
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
+
+export const dynamic = "force-dynamic"
 
 
 interface DolarAPIResponse {
@@ -20,7 +22,7 @@ interface BluelyticsEvolution {
 
 
 // Real-time dollar rates from DolarAPI + historical variation
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Fetch current rates and historical data in parallel
     const [dolarApiRes, bluelyticsRes] = await Promise.all([
@@ -116,11 +118,28 @@ export async function GET(request: NextRequest) {
     }
 
 
+    const asOf = Object.values(rates)
+      .map((rate) => rate.actualizacion)
+      .filter(Boolean)
+      .sort()
+      .at(-1) ?? null
+    const source = "DolarAPI"
+
     return NextResponse.json({
       success: true,
-      timestamp: new Date().toISOString(),
+      source,
+      timestamp: asOf,
+      as_of: asOf,
+      checked_at: new Date().toISOString(),
       rates,
       spreads,
+    }, {
+      headers: {
+        "Cache-Control": "public, max-age=0, s-maxage=60, stale-while-revalidate=120",
+        "X-Data-Source": source,
+        ...(asOf ? { "X-Data-As-Of": asOf } : {}),
+        "X-Data-Freshness": "fresh",
+      },
     })
   } catch (error) {
     console.error("Error fetching dollar rates:", error)
@@ -130,16 +149,27 @@ export async function GET(request: NextRequest) {
       const fallback = await fetchRegistered("https://api.bluelytics.com.ar/v2/latest")
       if (fallback.ok) {
         const data = await fallback.json()
+        const asOf = typeof data.last_update === "string" ? data.last_update : null
+        const source = "Bluelytics"
         return NextResponse.json({
           success: true,
-          timestamp: new Date().toISOString(),
-          source: "bluelytics",
+          source,
+          timestamp: asOf,
+          as_of: asOf,
+          checked_at: new Date().toISOString(),
           rates: {
-            blue: { compra: data.blue.value_buy, venta: data.blue.value_sell, nombre: "Blue", variacion: null },
-            oficial: { compra: data.oficial.value_buy, venta: data.oficial.value_sell, nombre: "Oficial", variacion: null },
+            blue: { compra: data.blue.value_buy, venta: data.blue.value_sell, nombre: "Blue", actualizacion: asOf, variacion: null },
+            oficial: { compra: data.oficial.value_buy, venta: data.oficial.value_sell, nombre: "Oficial", actualizacion: asOf, variacion: null },
           },
           spreads: {
             brechaBlueOficial: ((data.blue.value_sell - data.oficial.value_sell) / data.oficial.value_sell) * 100,
+          },
+        }, {
+          headers: {
+            "Cache-Control": "public, max-age=0, s-maxage=60, stale-while-revalidate=120",
+            "X-Data-Source": source,
+            ...(asOf ? { "X-Data-As-Of": asOf } : {}),
+            "X-Data-Freshness": asOf ? "fresh" : "unknown",
           },
         })
       }

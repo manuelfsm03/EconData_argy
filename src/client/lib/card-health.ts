@@ -1,5 +1,6 @@
 import type { CardEndpoint } from "@/lib/card-catalog"
 import { DATA_CARD_BY_ID } from "@/lib/card-catalog"
+import { inspectRuntimeData } from "@/lib/runtime-data-health"
 
 export const MAX_CARD_HEALTH_PROBES = 5
 
@@ -19,6 +20,11 @@ export interface CardHealthProbeResult {
   status: number | null
   latencyMs: number
   quality: "estimated" | "unavailable"
+  checkedAt: string
+  hasData: boolean
+  source: string | null
+  timestamp: string | null
+  error: string | null
 }
 
 const MAX_FRESH_AGE_MS = 24 * 60 * 60 * 1000
@@ -66,11 +72,11 @@ function hasProvenance(record: Record<string, unknown>, meta: Record<string, unk
 export function assessCardHealthPayload(payload: unknown, now = Date.now(), maxAgeMs = MAX_FRESH_AGE_MS, headers?: Headers): "available" | "unavailable" {
   if (!payload || typeof payload !== "object") return "unavailable"
   const record = Array.isArray(payload) ? {} : payload as Record<string, unknown>
-  if (record.ok === false || "error" in record) return "unavailable"
+  if (record.ok === false || record.success === false || record.stale === true || Boolean(record.error)) return "unavailable"
   const meta = record.meta && typeof record.meta === "object" && !Array.isArray(record.meta)
     ? record.meta as Record<string, unknown>
     : null
-  const asOf = record.asOf ?? meta?.asOf ?? record.updated_at ?? record.updatedAt ?? headers?.get("X-Data-As-Of")
+  const asOf = inspectRuntimeData(payload, headers).timestamp
   const asOfMs = typeof asOf === "string" ? Date.parse(asOf) : Number.NaN
   const freshness = record.freshness ?? meta?.freshness ?? headers?.get("X-Data-Freshness")
   if (!Number.isFinite(asOfMs) || asOfMs > now) return "unavailable"
@@ -123,15 +129,17 @@ export async function probeCardEndpoint(
   const startedAt = performance.now()
 
   try {
+    const timeout = AbortSignal.timeout(12_000)
     const response = await transport(probe.path, {
       method: probe.method,
       headers: probe.body ? { "Content-Type": "application/json" } : undefined,
       body: probe.body ? JSON.stringify(probe.body) : undefined,
-      signal,
+      signal: AbortSignal.any([signal, timeout]),
       cache: "no-store",
     })
     const payload = response.ok ? await response.json().catch(() => null) : null
     const assessment = response.ok ? assessCardHealthPayload(payload, Date.now(), MAX_FRESH_AGE_MS, response.headers) : "unavailable"
+    const metadata = inspectRuntimeData(payload, response.headers)
     await response.body?.cancel().catch(() => undefined)
     return {
       label: probe.label,
@@ -140,6 +148,13 @@ export async function probeCardEndpoint(
       status: response.status,
       latencyMs: Math.round(performance.now() - startedAt),
       quality: assessment === "available" ? "estimated" : "unavailable",
+      checkedAt: new Date().toISOString(),
+      hasData: metadata.hasData,
+      source: metadata.source,
+      timestamp: metadata.timestamp,
+      error: !response.ok
+        ? `HTTP ${response.status}`
+        : metadata.semanticError ?? (assessment === "available" ? null : "Faltan datos, provenance o freshness verificable"),
     }
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") throw error
@@ -150,6 +165,11 @@ export async function probeCardEndpoint(
       status: null,
       latencyMs: Math.round(performance.now() - startedAt),
       quality: "unavailable",
+      checkedAt: new Date().toISOString(),
+      hasData: false,
+      source: null,
+      timestamp: null,
+      error: error instanceof Error ? error.message : "No se pudo consultar el endpoint",
     }
   }
 }
