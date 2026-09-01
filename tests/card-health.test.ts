@@ -73,6 +73,8 @@ test("card health accepts only non-empty finite fresh payloads with an asOf", ()
   assert.equal(assessCardHealthPayload({ ...provenance, asOf: "2026-08-24T11:59:00.000Z", data: { value: 42 } }, now), "unavailable")
   assert.equal(assessCardHealthPayload({ ...provenance, asOf: "2026-08-26T11:59:00.000Z", data: { value: 42 }, freshness: "stale" }, now), "unavailable")
   assert.equal(assessCardHealthPayload({ ...provenance, asOf: "2026-08-26T11:59:00.000Z", error: "upstream failed", data: { value: 42 } }, now), "unavailable")
+  assert.equal(assessCardHealthPayload({ ...provenance, updated_at: "2026-08-26T11:59:00.000Z", data: [{ date: "2026-08-20", value: 42 }] }, now), "unavailable")
+  assert.equal(assessCardHealthPayload({ ...provenance, asOf: "2026-08-26T11:59:00.000Z", stale: true, data: { value: 42 } }, now), "unavailable")
 })
 
 test("card health consumes truthful response provenance headers for array feeds", () => {
@@ -97,4 +99,14 @@ test("a 200 response with an empty payload is still unavailable", async () => {
   assert.equal(result.status, 200)
   assert.equal(result.ok, false)
   assert.equal(result.quality, "unavailable")
+})
+
+test("a nullable error field does not make an otherwise healthy payload unavailable", () => {
+  const now = Date.parse("2026-09-01T18:00:00.000Z")
+  assert.equal(assessCardHealthPayload({
+    data: [{ value: 1545 }],
+    source: "DolarAPI",
+    as_of: "2026-09-01T17:55:00.000Z",
+    error: null,
+  }, now), "available")
 })

@@ -1,6 +1,7 @@
 import { fetchRegistered } from "@/server/http/fetch-source"
 import { NextResponse } from "next/server"
 import { guardarExito, leerFresco, leerUltimoBueno } from "@/server/http/stale-cache"
+import { parseEcbRatesCsv, type EcbFxRate } from "@/server/domain/ecb-fx-rates"
 
 /**
  * /api/fx-rates — Tipos de cambio diarios (EUR como base).
@@ -19,6 +20,7 @@ import { guardarExito, leerFresco, leerUltimoBueno } from "@/server/http/stale-c
  */
 
 export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 
 const CACHE_KEY = "fx-rates:ecb"
 const TTL_SEG  = 4 * 3600
@@ -26,28 +28,29 @@ const TTL_SEG  = 4 * 3600
 // Pares: monedas cotizadas por 1 EUR
 const PAIRS = "USD+GBP+JPY+CAD+AUD+CHF+CNY+SEK+NOK+MXN+BRL"
 
-const PAIR_META: Record<string, { nombre: string; simbolo: string }> = {
-  USD: { nombre: "Dólar estadounidense", simbolo: "USD" },
-  GBP: { nombre: "Libra esterlina",      simbolo: "GBP" },
-  JPY: { nombre: "Yen japonés",          simbolo: "JPY" },
-  CAD: { nombre: "Dólar canadiense",     simbolo: "CAD" },
-  AUD: { nombre: "Dólar australiano",    simbolo: "AUD" },
-  CHF: { nombre: "Franco suizo",         simbolo: "CHF" },
-  CNY: { nombre: "Yuan chino",           simbolo: "CNY" },
-  SEK: { nombre: "Corona sueca",         simbolo: "SEK" },
-  NOK: { nombre: "Corona noruega",       simbolo: "NOK" },
-  MXN: { nombre: "Peso mexicano",        simbolo: "MXN" },
-  BRL: { nombre: "Real brasileño",       simbolo: "BRL" },
+function ratesResponse(rates: EcbFxRate[], options: { cached?: boolean; stale?: boolean; staleSince?: string } = {}) {
+  const timestamp = rates.map((rate) => rate.fecha).filter((value): value is string => Boolean(value)).sort().at(-1) ?? null
+  const source = options.stale ? "stale-cache" : "ECB Statistical Data Warehouse"
+  return NextResponse.json({
+    data: rates,
+    cached: options.cached ?? false,
+    stale: options.stale ?? false,
+    ...(options.staleSince ? { stale_since: options.staleSince } : {}),
+    source,
+    timestamp,
+    asOf: timestamp,
+    checked_at: new Date().toISOString(),
+  }, {
+    headers: {
+      "Cache-Control": "public, max-age=0, s-maxage=300, stale-while-revalidate=600",
+      "X-Data-Source": source,
+      ...(timestamp ? { "X-Data-As-Of": timestamp } : {}),
+      "X-Data-Freshness": options.stale ? "stale" : "fresh",
+    },
+  })
 }
 
-interface TipoCambio {
-  par: string        // ej. "EUR/USD"
-  nombre: string
-  valor: number      // unidades de moneda extranjera por 1 EUR
-  fecha: string | null
-}
-
-async function fetchEcbRates(): Promise<TipoCambio[] | null> {
+async function fetchEcbRates(): Promise<EcbFxRate[] | null> {
   const url = `https://data-api.ecb.europa.eu/service/data/EXR/D.${PAIRS}.EUR.SP00.A?format=csvdata&lastNObservations=1`
   try {
     const res = await fetchRegistered(url, {
@@ -56,40 +59,7 @@ async function fetchEcbRates(): Promise<TipoCambio[] | null> {
     })
     if (!res.ok) return null
 
-    const text = await res.text()
-    const lines = text.trim().split("\n")
-
-    // Detectar columnas KEY y OBS_VALUE desde el header
-    const header = lines[0]?.split(",").map((h) => h.trim().replace(/"/g, ""))
-    if (!header) return null
-
-    const keyIdx   = header.indexOf("KEY")
-    const dateIdx  = header.indexOf("TIME_PERIOD")
-    const valueIdx = header.indexOf("OBS_VALUE")
-    if (keyIdx < 0 || valueIdx < 0) return null
-
-    const rates: TipoCambio[] = []
-
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(",").map((c) => c.trim().replace(/"/g, ""))
-      if (!cols[keyIdx]) continue
-
-      // KEY ejemplo: "D.USD.EUR.SP00.A"
-      const keyParts = cols[keyIdx].split(".")
-      const currency = keyParts[1]
-      if (!currency || !PAIR_META[currency]) continue
-
-      const valor = parseFloat(cols[valueIdx] ?? "")
-      if (!Number.isFinite(valor)) continue
-
-      rates.push({
-        par:    `EUR/${currency}`,
-        nombre: PAIR_META[currency].nombre,
-        valor:  parseFloat(valor.toFixed(5)),
-        fecha:  dateIdx >= 0 ? (cols[dateIdx] ?? null) : null,
-      })
-    }
-
+    const rates = parseEcbRatesCsv(await res.text())
     return rates.length > 0 ? rates : null
   } catch {
     return null
@@ -97,33 +67,22 @@ async function fetchEcbRates(): Promise<TipoCambio[] | null> {
 }
 
 export async function GET() {
-  const cached = leerFresco<TipoCambio[]>(CACHE_KEY)
+  const cached = leerFresco<EcbFxRate[]>(CACHE_KEY)
   if (cached) {
-    return NextResponse.json({
-      data: cached, cached: true, updated_at: new Date().toISOString(),
-      fuente: "ECB Statistical Data Warehouse (sin key)",
-    })
+    return ratesResponse(cached, { cached: true })
   }
 
   const rates = await fetchEcbRates()
 
   if (!rates) {
-    const stale = leerUltimoBueno<TipoCambio[]>(CACHE_KEY)
+    const stale = leerUltimoBueno<EcbFxRate[]>(CACHE_KEY)
     if (stale) {
-      return NextResponse.json({
-        data: stale.data, stale: true, stale_since: stale.staleSince,
-        updated_at: new Date().toISOString(),
-      })
+      return ratesResponse(stale.data, { stale: true, staleSince: stale.staleSince })
     }
     return NextResponse.json({ error: "ECB no disponible" }, { status: 503 })
   }
 
   guardarExito(CACHE_KEY, rates, TTL_SEG)
 
-  return NextResponse.json({
-    data: rates,
-    cached: false,
-    updated_at: new Date().toISOString(),
-    fuente: "ECB Statistical Data Warehouse — EXR diario (sin key, monedas por 1 EUR)",
-  })
+  return ratesResponse(rates)
 }

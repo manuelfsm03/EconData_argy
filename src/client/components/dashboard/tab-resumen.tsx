@@ -91,6 +91,26 @@ interface TCEntry {
   mayorista?: number
 }
 
+interface LiveDollarRate {
+  venta: number
+  actualizacion?: string | null
+}
+
+interface LiveDollarPayload {
+  success?: boolean
+  source?: string
+  as_of?: string | null
+  timestamp?: string | null
+  rates?: Record<string, LiveDollarRate>
+}
+
+interface HistoricalDollarPayload {
+  data?: TCEntry[]
+  source?: string
+  asOf?: string | null
+  timestamp?: string | null
+}
+
 const TC_LINES = [
   { key: "blue"      as keyof Omit<TCEntry,"date">, label: "Blue",      color: "var(--positive)" },
   { key: "ccl"       as keyof Omit<TCEntry,"date">, label: "CCL",       color: "var(--amber)" },
@@ -103,13 +123,38 @@ type NavigateFn = (tab: string, subtab?: string | null, bcra?: string | null) =>
 
 export function TCStrip({ onNavigate }: { onNavigate: NavigateFn }) {
   const [data, setData] = useState<TCEntry[]>([])
+  const [runtime, setRuntime] = useState<{ source: string | null; timestamp: string | null }>({ source: null, timestamp: null })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/tc-historico?period=1m")
-      .then((r) => r.json())
-      .then((j) => { setData(j.data ?? []); setLoading(false) })
-      .catch(() => setLoading(false))
+    Promise.allSettled([
+      fetch("/api/tc-historico?period=1m", { cache: "no-store" }).then((response) => response.json() as Promise<HistoricalDollarPayload>),
+      fetch("/api/dolares", { cache: "no-store" }).then((response) => response.json() as Promise<LiveDollarPayload>),
+    ]).then(([historyResult, liveResult]) => {
+      const history = historyResult.status === "fulfilled" ? historyResult.value : null
+      const live = liveResult.status === "fulfilled" ? liveResult.value : null
+      const rows = [...(history?.data ?? [])]
+      const rates = live?.rates ?? {}
+      const timestamp = live?.as_of ?? live?.timestamp ?? history?.asOf ?? history?.timestamp ?? null
+      const date = timestamp?.slice(0, 10) ?? new Date().toISOString().slice(0, 10)
+      const current: TCEntry = {
+        date,
+        blue: rates.blue?.venta,
+        mep: rates.bolsa?.venta,
+        ccl: rates.contadoconliqui?.venta,
+        mayorista: rates.mayorista?.venta,
+        oficial: rates.oficial?.venta,
+      }
+      const hasLiveRates = Object.entries(current).some(([key, value]) => key !== "date" && typeof value === "number")
+      if (live?.success !== false && hasLiveRates) {
+        const existing = rows.findIndex((row) => row.date === date)
+        if (existing >= 0) rows[existing] = { ...rows[existing], ...current }
+        else rows.push(current)
+      }
+      setData(rows.sort((a, b) => a.date.localeCompare(b.date)))
+      setRuntime({ source: live?.source ?? history?.source ?? null, timestamp })
+      setLoading(false)
+    })
   }, [])
 
   if (loading) return (
@@ -130,6 +175,10 @@ export function TCStrip({ onNavigate }: { onNavigate: NavigateFn }) {
 
   return (
     <div>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginBottom: 6, fontFamily: "var(--font-data)", fontSize: 9, color: "var(--text-mute)" }}>
+        <span>Source: {runtime.source ?? "no reportada"}</span>
+        <span>Timestamp: {runtime.timestamp ? new Date(runtime.timestamp).toLocaleString("es-AR") : "no reportado"}</span>
+      </div>
       {/* TC KPIs */}
       <div style={{ display: "flex", gap: 1, background: "var(--bg-elev-2)", padding: 1 }}>
         {TC_LINES.map((l) => {

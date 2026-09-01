@@ -1,12 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { probeCardEndpoint, selectCardHealthProbes } from "@/client/lib/card-health"
+import { probeCardEndpoint, selectCardHealthProbes, type CardHealthProbeResult } from "@/client/lib/card-health"
 
 export interface CardHealthState {
   state: "checking" | "healthy" | "degraded" | "unknown"
   checkedAt: string | null
-  endpoints: Array<{ label: string; path: string; ok: boolean; status: number | null; latencyMs: number; quality: "estimated" | "unavailable" }>
+  endpoints: CardHealthProbeResult[]
   refresh: () => void
 }
 

@@ -7,11 +7,15 @@ import { cn } from "@/lib/utils"
 export function CardHealthBadge({ cardId, compact = false, auto = true }: { cardId: string; compact?: boolean; auto?: boolean }) {
   const health = useCardHealth(cardId, auto)
   const title = health.endpoints.length
-    ? health.endpoints.map((endpoint) => `${endpoint.label}: ${endpoint.ok ? `${endpoint.quality} · ${endpoint.latencyMs} ms` : `${endpoint.quality} · error ${endpoint.status ?? "timeout"}`}`).join("\n")
+    ? health.endpoints.map((endpoint) => [
+        `${endpoint.label}: ${endpoint.ok ? `datos disponibles · ${endpoint.latencyMs} ms` : endpoint.error ?? `error ${endpoint.status ?? "timeout"}`}`,
+        `Source: ${endpoint.source ?? "no reportada"}`,
+        `Timestamp: ${endpoint.timestamp ?? "no reportado"}`,
+      ].join("\n")).join("\n\n")
     : "Comprobando endpoints"
 
   const Icon = health.state === "checking" ? LoaderCircle : health.state === "healthy" ? Activity : health.state === "degraded" ? CircleAlert : RefreshCw
-  const label = health.state === "checking" ? "Chequeando" : health.state === "healthy" ? "Datos online" : health.state === "degraded" ? "Datos degradados" : auto ? "Sin estado" : "Chequear"
+  const label = health.state === "checking" ? "Chequeando" : health.state === "healthy" ? "Datos disponibles" : health.state === "degraded" ? "Datos degradados" : auto ? "Sin estado" : "Chequear"
 
   return (
     <button

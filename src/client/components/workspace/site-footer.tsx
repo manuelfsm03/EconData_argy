@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import Link from "next/link"
 import { ShieldAlert } from "lucide-react"
 
 export function SiteFooter() {
@@ -26,7 +27,7 @@ export function SiteFooter() {
       </div>
 
       <div className="border-t border-[var(--border-light)] px-6 py-3 text-center text-[10px] text-[var(--text-mute)]">
-        © {new Date().getFullYear()} La Pizarra · hecho por el equipo
+        © {new Date().getFullYear()} La Pizarra · hecho por el equipo · <Link href="/health" className="text-[var(--sky)] hover:underline">Health de datos</Link>
       </div>
     </footer>
   )

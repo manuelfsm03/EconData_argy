@@ -2716,6 +2716,21 @@ interface FXEntry {
   cripto?:    number
 }
 
+interface FXLivePayload {
+  success?: boolean
+  source?: string
+  as_of?: string | null
+  timestamp?: string | null
+  rates?: Record<string, { venta: number }>
+}
+
+interface FXHistoricalPayload {
+  data?: FXEntry[]
+  source?: string
+  asOf?: string | null
+  timestamp?: string | null
+}
+
 const PERIOD_OPTS = [
   { label: "1M",  value: "1m"  },
   { label: "3M",  value: "3m"  },
@@ -2992,6 +3007,7 @@ function TCRSubView() {
 
 export function FXView() {
   const [raw, setRaw]         = useState<FXEntry[]>([])
+  const [runtime, setRuntime] = useState<{ source: string | null; timestamp: string | null }>({ source: null, timestamp: null })
   const [loading, setLoading] = useState(true)
   const [fxTab, setFxTab]     = useState<"cotizaciones" | "tcr">("cotizaciones")
   const [visible, setVisible] = useState<Record<string, boolean>>({
@@ -3003,10 +3019,35 @@ export function FXView() {
   // Siempre traemos el máximo histórico — BBGLineChart filtra por rango en el cliente
   useEffect(() => {
     setLoading(true)
-    fetch("/api/tc-historico?period=max")
-      .then(r => r.json())
-      .then(j => { setRaw(j.data ?? []); setLoading(false) })
-      .catch(() => setLoading(false))
+    Promise.allSettled([
+      fetch("/api/tc-historico?period=max", { cache: "no-store" }).then(response => response.json() as Promise<FXHistoricalPayload>),
+      fetch("/api/dolares", { cache: "no-store" }).then(response => response.json() as Promise<FXLivePayload>),
+    ]).then(([historyResult, liveResult]) => {
+      const history = historyResult.status === "fulfilled" ? historyResult.value : null
+      const live = liveResult.status === "fulfilled" ? liveResult.value : null
+      const rows = [...(history?.data ?? [])]
+      const rates = live?.rates ?? {}
+      const timestamp = live?.as_of ?? live?.timestamp ?? history?.asOf ?? history?.timestamp ?? null
+      const date = timestamp?.slice(0, 10) ?? new Date().toISOString().slice(0, 10)
+      const current: FXEntry = {
+        date,
+        blue: rates.blue?.venta,
+        mep: rates.bolsa?.venta,
+        ccl: rates.contadoconliqui?.venta,
+        mayorista: rates.mayorista?.venta,
+        oficial: rates.oficial?.venta,
+        cripto: rates.cripto?.venta,
+      }
+      const hasLiveRates = Object.entries(current).some(([key, value]) => key !== "date" && typeof value === "number")
+      if (live?.success !== false && hasLiveRates) {
+        const existing = rows.findIndex(row => row.date === date)
+        if (existing >= 0) rows[existing] = { ...rows[existing], ...current }
+        else rows.push(current)
+      }
+      setRaw(rows.sort((a, b) => a.date.localeCompare(b.date)))
+      setRuntime({ source: live?.source ?? history?.source ?? null, timestamp })
+      setLoading(false)
+    })
   }, [])
 
   // Bandas cambiarias — máxima precisión con IPC T-2 real (datos.gob.ar)
@@ -3074,7 +3115,10 @@ export function FXView() {
 
   return (
     <div>
-      <SectionMeta title="FX — Tipo de Cambio" help="Cotizaciones del dólar en los distintos mercados. Las bandas cambiarias son pisos/techos fijados por el BCRA desde abril 2025. Oficial = mercado regulado. Blue = mercado informal. MEP y CCL = operaciones bursátiles." source="argentinadatos.com · BCRA" />
+      <SectionMeta title="FX — Tipo de Cambio" help="Cotizaciones del dólar en los distintos mercados. Las bandas cambiarias son pisos/techos fijados por el BCRA desde abril 2025. Oficial = mercado regulado. Blue = mercado informal. MEP y CCL = operaciones bursátiles." source={`${runtime.source ?? "Fuente no reportada"} · BCRA`} />
+      <div style={{ padding: "4px 12px", textAlign: "right", fontFamily: "var(--font-data)", fontSize: 8, color: "var(--text-mute)" }}>
+        Source: {runtime.source ?? "no reportada"} · Timestamp: {runtime.timestamp ? new Date(runtime.timestamp).toLocaleString("es-AR") : "no reportado"}
+      </div>
       {/* Sub-tabs */}
       <div style={{ display: "flex", gap: 2, padding: "6px 12px", borderBottom: "1px solid var(--border)", background: "var(--bg-row-alt)" }}>
         {([
