@@ -4329,6 +4329,7 @@ interface CbotPayload {
   status: "ok"
   data: CbotQuote[]
   updated_at: string
+  source: string
   fuente: string
 }
 
@@ -4373,7 +4374,7 @@ async function fetchAgroSource<T>(url: string, validate: (value: unknown) => val
   }
 }
 
-function AgroView() {
+export function AgroView() {
   const [localState, setLocalState] = useState<AgroSourceState<AgroLocalPayload>>({ status: "loading", data: null, error: null })
   const [cbotState, setCbotState] = useState<AgroSourceState<CbotPayload>>({ status: "loading", data: null, error: null })
   const [productionState, setProductionState] = useState<AgroSourceState<ProductionPayload>>({ status: "loading", data: null, error: null })
@@ -4426,7 +4427,7 @@ function AgroView() {
       </div>}
 
       {/* ── CBOT Futuros ── */}
-      <SectionHeader title="CBOT — Futuros internacionales" source={cbotState.data?.fuente ?? "Yahoo Finance v8/chart · cierre diario"} />
+      <SectionHeader title="CBOT — Futuros internacionales" source={cbotState.data?.fuente ?? cbotState.data?.source ?? "Yahoo Finance v8/chart · cierre diario"} />
       <div style={{ padding: "0 14px 6px", fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>
         Unidad original: USc/bu · conversión explícita a USD/tn · Fecha de consulta: {cbotState.data?.updated_at ?? "no disponible"}
       </div>

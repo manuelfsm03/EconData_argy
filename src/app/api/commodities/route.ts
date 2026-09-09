@@ -119,7 +119,7 @@ export async function GET(req: Request) {
     const data = _cacheStore.data
     const filtered = catParam === "todos" ? data : data.filter((q) => q.categoria === catParam)
     const hasQuote = filtered.some((quote) => quote.precio != null)
-    return NextResponse.json({ status: hasQuote ? "ok" : "degraded", data: filtered, cached: true, updated_at: _cacheStore.updatedAt, fuente: "Yahoo Finance v8/chart · cierre diario" }, { status: hasQuote ? 200 : 503 })
+    return NextResponse.json({ status: hasQuote ? "ok" : "degraded", data: filtered, cached: true, updated_at: _cacheStore.updatedAt, source: "yahoo_finance_chart", fuente: "Yahoo Finance v8/chart · cierre diario" }, { status: hasQuote ? 200 : 503 })
   }
 
   try {
@@ -149,6 +149,7 @@ export async function GET(req: Request) {
       data: filtered,
       cached: false,
       updated_at: updatedAt,
+      source: "yahoo_finance_chart",
       fuente: "Yahoo Finance v8/chart · cierre diario",
     }, { status: hasQuote ? 200 : 503 })
   } catch (err) {
