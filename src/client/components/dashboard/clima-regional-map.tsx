@@ -13,11 +13,12 @@
  * usuario, no las escondemos.
  */
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import mercosurOutline from "@/client/data/mercosur-outline.json"
 import { SectionHeader } from "../ui/section-header"
 import { fmtNum } from "@/lib/utils"
+import { aplicarRuedaZoom } from "@/lib/mapa-vista"
 
 type Anillo = [number, number][]
 type GeometriaPais = { tipo: "Polygon" | "MultiPolygon"; anillos: Anillo[][] }
@@ -91,12 +92,70 @@ const PAISES: { nombre: string; geo: GeometriaPais }[] = (mercosurOutline as { f
       : { tipo: "MultiPolygon", anillos: f.geometry.coordinates as Anillo[][] },
   }))
 
+// Zoom mínimo y máximo del mapa. Con 1x se ve la región entera; con VISTA_ZOOM_MAX
+// se puede acercar a un país sin perder nitidez, porque todo sigue siendo SVG.
+const VISTA_ZOOM_MIN = 1
+const VISTA_ZOOM_MAX = 6
+
 export function ClimaRegionalMap() {
   const [payload, setPayload] = useState<Payload | null>(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [avisos, setAvisos] = useState<string[]>([])
   const [paisFiltro, setPaisFiltro] = useState<string | null>(null)
+
+  // Vista del mapa: pan (desplazamiento) y zoom, en coordenadas del viewBox.
+  // No es zoom de navegador ni de imagen: es un transform sobre el propio SVG,
+  // así que agrandar nunca pixela.
+  const [vista, setVista] = useState({ x: 0, y: 0, zoom: 1 })
+  const arrastreRef = useRef<{ activo: boolean; xInicial: number; yInicial: number; vistaInicial: { x: number; y: number } }>({
+    activo: false, xInicial: 0, yInicial: 0, vistaInicial: { x: 0, y: 0 },
+  })
+  const svgRef = useRef<SVGSVGElement | null>(null)
+
+  const reiniciarVista = useCallback(() => setVista({ x: 0, y: 0, zoom: 1 }), [])
+
+  // Factor para pasar de píxeles de pantalla a unidades del viewBox: el SVG se
+  // renderiza más chico que sus 560 unidades de ancho, así que un movimiento
+  // de mouse de 10px tiene que mover el mapa más de 10 unidades de viewBox.
+  const factorEscala = useCallback(() => {
+    const rect = svgRef.current?.getBoundingClientRect()
+    return rect && rect.width > 0 ? ANCHO / rect.width : 1
+  }, [])
+
+  const onWheel = useCallback((evento: React.WheelEvent<SVGSVGElement>) => {
+    evento.preventDefault()
+    setVista((previa) => aplicarRuedaZoom(
+      previa, evento.deltaY, { x: ANCHO / 2, y: ALTO / 2 },
+      { zoomMin: VISTA_ZOOM_MIN, zoomMax: VISTA_ZOOM_MAX },
+    ))
+  }, [])
+
+  const [arrastrando, setArrastrando] = useState(false)
+
+  const onPointerDown = useCallback((evento: React.PointerEvent<SVGSVGElement>) => {
+    arrastreRef.current = { activo: true, xInicial: evento.clientX, yInicial: evento.clientY, vistaInicial: { x: vista.x, y: vista.y } }
+    svgRef.current?.setPointerCapture(evento.pointerId)
+    setArrastrando(true)
+  }, [vista.x, vista.y])
+
+  const onPointerMove = useCallback((evento: React.PointerEvent<SVGSVGElement>) => {
+    if (!arrastreRef.current.activo) return
+    const escala = factorEscala()
+    const dx = (evento.clientX - arrastreRef.current.xInicial) * escala
+    const dy = (evento.clientY - arrastreRef.current.yInicial) * escala
+    setVista((previa) => ({
+      ...previa,
+      x: arrastreRef.current.vistaInicial.x + dx,
+      y: arrastreRef.current.vistaInicial.y + dy,
+    }))
+  }, [factorEscala])
+
+  const onPointerUp = useCallback((evento: React.PointerEvent<SVGSVGElement>) => {
+    arrastreRef.current.activo = false
+    svgRef.current?.releasePointerCapture(evento.pointerId)
+    setArrastrando(false)
+  }, [])
 
   useEffect(() => {
     fetch("/api/clima-regional?dias=14")
@@ -111,6 +170,10 @@ export function ClimaRegionalMap() {
   }, [])
 
   const contornos = useMemo(() => PAISES.map((p) => ({ nombre: p.nombre, d: paisASvgPath(p.geo) })), [])
+
+  // Cambiar de país filtrado con el mapa acercado a otra zona dejaría la
+  // vista mirando a un lugar que ya no tiene sentido para el filtro nuevo.
+  useEffect(() => { setVista({ x: 0, y: 0, zoom: 1 }) }, [paisFiltro])
 
   const grillaVisible = useMemo(() => {
     if (!payload) return []
@@ -154,8 +217,19 @@ export function ClimaRegionalMap() {
             ))}
           </div>
 
-          <div style={{ display: "flex", justifyContent: "center", padding: "4px 14px 8px" }}>
-            <svg viewBox={`0 0 ${ANCHO} ${ALTO}`} width="100%" style={{ maxWidth: 720 }}>
+          <div style={{ display: "flex", justifyContent: "center", padding: "4px 14px 8px", position: "relative" }}>
+            <svg
+              ref={svgRef}
+              viewBox={`0 0 ${ANCHO} ${ALTO}`}
+              width="100%"
+              style={{ maxWidth: 720, touchAction: "none", cursor: arrastrando ? "grabbing" : "grab" }}
+              onWheel={onWheel}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerLeave={onPointerUp}
+              onDoubleClick={reiniciarVista}
+            >
               <defs>
                 {/* Cada punto se dibuja dos veces: una versión grande y difuminada
                     detrás (glow) que funde con sus vecinos y da lectura de "mancha
@@ -165,25 +239,45 @@ export function ClimaRegionalMap() {
                   <feGaussianBlur stdDeviation="9" />
                 </filter>
               </defs>
-              {contornos.map((c) => (
-                <path key={c.nombre} d={c.d} fill="var(--bg-elev-2)" stroke="var(--text-dim)" strokeWidth={1.5} />
-              ))}
-              <g filter="url(#difuminado-lluvia)" opacity={0.55}>
+              {/* El pan (x,y) es el transform externo y el zoom el interno: así
+                  arrastrar mueve en unidades de viewBox sin importar cuánto esté
+                  acercado, y hacer zoom no descentra el punto donde estabas. */}
+              <g transform={`translate(${vista.x},${vista.y}) scale(${vista.zoom})`}>
+                {contornos.map((c) => (
+                  <path key={c.nombre} d={c.d} fill="var(--bg-elev-2)" stroke="var(--text-dim)" strokeWidth={1.5 / vista.zoom} />
+                ))}
+                <g filter="url(#difuminado-lluvia)" opacity={0.55}>
+                  {grillaVisible.map((punto) => {
+                    const [x, y] = proyectar(punto.lat, punto.lon)
+                    return <circle key={`glow-${punto.lat},${punto.lon}`} cx={x} cy={y} r={11} fill={colorDeLluvia(punto.mm)} />
+                  })}
+                </g>
                 {grillaVisible.map((punto) => {
                   const [x, y] = proyectar(punto.lat, punto.lon)
-                  return <circle key={`glow-${punto.lat},${punto.lon}`} cx={x} cy={y} r={11} fill={colorDeLluvia(punto.mm)} />
+                  return (
+                    <circle key={`${punto.lat},${punto.lon}`} cx={x} cy={y} r={5.5}
+                      fill={colorDeLluvia(punto.mm)} fillOpacity={0.95} stroke="#00000066" strokeWidth={0.5 / vista.zoom}>
+                      <title>{`${punto.pais} · ${fmtNum(punto.mm, 0)} mm en ${payload.ventanaDias} días`}</title>
+                    </circle>
+                  )
                 })}
               </g>
-              {grillaVisible.map((punto) => {
-                const [x, y] = proyectar(punto.lat, punto.lon)
-                return (
-                  <circle key={`${punto.lat},${punto.lon}`} cx={x} cy={y} r={5.5}
-                    fill={colorDeLluvia(punto.mm)} fillOpacity={0.95} stroke="#00000066" strokeWidth={0.5}>
-                    <title>{`${punto.pais} · ${fmtNum(punto.mm, 0)} mm en ${payload.ventanaDias} días`}</title>
-                  </circle>
-                )
-              })}
             </svg>
+            {vista.zoom > 1 && (
+              <button
+                onClick={reiniciarVista}
+                style={{
+                  position: "absolute", top: 4, right: 14, fontSize: 9, color: "var(--text-dim)",
+                  background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "3px 8px",
+                  cursor: "pointer", fontFamily: "inherit",
+                }}
+              >
+                Reiniciar vista ({fmtNum(vista.zoom, 1)}×)
+              </button>
+            )}
+          </div>
+          <div style={{ fontSize: 8, color: "var(--text-mute)", textAlign: "center", marginTop: -4 }}>
+            Rueda del mouse para acercar · arrastrar para mover · doble clic para reiniciar
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", padding: "0 14px 10px", justifyContent: "center" }}>
