@@ -18,51 +18,18 @@ import { randomUUID } from "node:crypto"
 import { NextRequest, NextResponse } from "next/server"
 
 import { buildErrorEnvelope, buildSuccessEnvelope } from "@/server/api/envelope"
-import { fetchRegistered } from "@/server/http/fetch-source"
 import { SOURCE_REGISTRY } from "@/server/sources/registry"
 import {
   claveSerie,
-  construirIndice,
   discontinuidadesDe,
-  parseSiiaCsv,
   SIIA_CULTIVOS_NO_CUBIERTOS,
-  type SiiaIndice,
   type SiiaPuntoSerie,
 } from "@/server/external/siia-estimaciones"
+import { obtenerIndiceSiia } from "@/server/external/siia-fuente"
 
 export const runtime = "nodejs"
 
 const SIIA = SOURCE_REGISTRY.magyp_siia
-const CSV_URL =
-  "https://datos.magyp.gob.ar/dataset/9e1e77ba-267e-4eaa-a59f-3296e86b5f36/resource/95d066e6-8a0f-4a80-b59d-6f28f88eacd5/download/estimaciones-agricolas-2026-03.csv"
-
-/**
- * El CSV pesa ~15 MB y la serie se actualiza una vez por campaña, así que se
- * parsea una sola vez y se guarda ya indexado. Las filas crudas se descartan.
- */
-type IndiceCacheado = { indice: SiiaIndice; retrievedAt: string; expiry: number }
-let cache: IndiceCacheado | null = null
-
-async function obtenerIndice(): Promise<IndiceCacheado> {
-  if (cache && cache.expiry > Date.now()) return cache
-
-  const response = await fetchRegistered(CSV_URL, {
-    headers: { "User-Agent": "PanelDeControl/2.0", Accept: "text/csv" },
-    signal: AbortSignal.timeout(SIIA.timeoutMs),
-    next: { revalidate: SIIA.cache.freshSeconds },
-  })
-  if (!response.ok) throw new Error(`SOURCE_BAD_RESPONSE:${response.status}`)
-
-  const rows = parseSiiaCsv(await response.text())
-  if (rows.length === 0) throw new Error("SOURCE_BAD_RESPONSE:EMPTY")
-
-  cache = {
-    indice: construirIndice(rows),
-    retrievedAt: new Date().toISOString(),
-    expiry: Date.now() + SIIA.cache.freshSeconds * 1000,
-  }
-  return cache
-}
 
 function recortar(serie: SiiaPuntoSerie[], desde: number | null, hasta: number | null): SiiaPuntoSerie[] {
   return serie.filter((punto) =>
@@ -81,7 +48,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
 
   try {
-    const { indice, retrievedAt } = await obtenerIndice()
+    const { indice, retrievedAt } = await obtenerIndiceSiia()
 
     const fuente = {
       id: SIIA.id,

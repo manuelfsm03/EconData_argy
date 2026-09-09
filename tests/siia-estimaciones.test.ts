@@ -16,6 +16,7 @@ import {
 import { SOURCE_REGISTRY } from "../src/server/sources/registry"
 
 const route = readFileSync("src/app/api/agro-produccion/route.ts", "utf8")
+const fuente = readFileSync("src/server/external/siia-fuente.ts", "utf8")
 
 // Muestra con la forma exacta del CSV del SIIA: encabezado entrecomillado,
 // texto entre comillas y numéricos sin comillas.
@@ -158,10 +159,19 @@ test("la fuente del SIIA está registrada con ventana anual y límite acorde al 
   assert.ok(fuente.timeoutMs >= 30_000)
 })
 
-test("el endpoint pide el CSV por el host registrado y devuelve las discontinuidades", () => {
-  assert.match(route, /fetchRegistered/)
-  assert.match(route, /datos\.magyp\.gob\.ar/)
+test("el CSV se pide por el host registrado desde la fuente compartida", () => {
+  // La descarga vive en siia-fuente.ts porque la consumen dos endpoints
+  // (producción y el cruce clima-rinde) y no tiene sentido bajarla dos veces.
+  assert.match(fuente, /fetchRegistered/)
+  assert.match(fuente, /datos\.magyp\.gob\.ar/)
+  assert.match(fuente, /magyp_siia/)
+})
+
+test("el endpoint de producción reusa la fuente y devuelve las discontinuidades", () => {
+  assert.match(route, /obtenerIndiceSiia/)
   assert.match(route, /discontinuidades/)
   // El detalle del error no viaja al cliente: el envelope usa mensajes seguros.
   assert.doesNotMatch(route, /detail:/)
+  // Y el route ya no debe tener su propia copia de la descarga.
+  assert.doesNotMatch(route, /fetchRegistered/)
 })

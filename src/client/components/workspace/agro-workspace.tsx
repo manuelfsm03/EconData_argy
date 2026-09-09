@@ -10,6 +10,7 @@
  * (clima y agua, riesgo y seguros, impacto macro) se enchufan acá abajo.
  */
 
+import { AgroClima } from "@/client/components/dashboard/agro-clima"
 import { AgroProduccion } from "@/client/components/dashboard/agro-produccion"
 
 export function AgroWorkspace() {
@@ -27,6 +28,10 @@ export function AgroWorkspace() {
 
       <div style={{ border: "1px solid var(--border)", background: "var(--bg-elev)" }}>
         <AgroProduccion />
+      </div>
+
+      <div style={{ border: "1px solid var(--border)", background: "var(--bg-elev)", marginTop: 16 }}>
+        <AgroClima />
       </div>
     </div>
   )
