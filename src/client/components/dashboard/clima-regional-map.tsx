@@ -155,15 +155,30 @@ export function ClimaRegionalMap() {
           </div>
 
           <div style={{ display: "flex", justifyContent: "center", padding: "4px 14px 8px" }}>
-            <svg viewBox={`0 0 ${ANCHO} ${ALTO}`} width="100%" style={{ maxWidth: 420 }}>
+            <svg viewBox={`0 0 ${ANCHO} ${ALTO}`} width="100%" style={{ maxWidth: 720 }}>
+              <defs>
+                {/* Cada punto se dibuja dos veces: una versión grande y difuminada
+                    detrás (glow) que funde con sus vecinos y da lectura de "mancha
+                    de lluvia", y encima el punto nítido real. Sin esto, 182 puntos
+                    sueltos sobre fondo oscuro se leen como ruido, no como mapa. */}
+                <filter id="difuminado-lluvia" x="-60%" y="-60%" width="220%" height="220%">
+                  <feGaussianBlur stdDeviation="9" />
+                </filter>
+              </defs>
               {contornos.map((c) => (
-                <path key={c.nombre} d={c.d} fill="var(--bg-elev-2)" stroke="var(--text-dim)" strokeWidth={1.3} />
+                <path key={c.nombre} d={c.d} fill="var(--bg-elev-2)" stroke="var(--text-dim)" strokeWidth={1.5} />
               ))}
+              <g filter="url(#difuminado-lluvia)" opacity={0.55}>
+                {grillaVisible.map((punto) => {
+                  const [x, y] = proyectar(punto.lat, punto.lon)
+                  return <circle key={`glow-${punto.lat},${punto.lon}`} cx={x} cy={y} r={11} fill={colorDeLluvia(punto.mm)} />
+                })}
+              </g>
               {grillaVisible.map((punto) => {
                 const [x, y] = proyectar(punto.lat, punto.lon)
                 return (
-                  <circle key={`${punto.lat},${punto.lon}`} cx={x} cy={y} r={4.5}
-                    fill={colorDeLluvia(punto.mm)} fillOpacity={0.88} stroke="#00000055" strokeWidth={0.4}>
+                  <circle key={`${punto.lat},${punto.lon}`} cx={x} cy={y} r={5.5}
+                    fill={colorDeLluvia(punto.mm)} fillOpacity={0.95} stroke="#00000066" strokeWidth={0.5}>
                     <title>{`${punto.pais} · ${fmtNum(punto.mm, 0)} mm en ${payload.ventanaDias} días`}</title>
                   </circle>
                 )
