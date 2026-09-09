@@ -68,6 +68,7 @@ export const NUMERIC_SURFACE_MANIFEST: readonly NumericSurfaceManifestEntry[] = 
   unavailable("rofex", "rofex", "/api/rofex", "data[*].precio", "ROFEX"),
   unavailable("plazo-fijo-mercado", "plazo-fijo-mercado", "/api/bcra?endpoint=plazofijo", "data[*].tasa", "BCRA plazo fijo"),
   unavailable("commodities", "commodities", "/api/mundo", "data[*].precio", "Mercados globales"),
+  unavailable("agro", "agro", "/api/agro-local", "soja.disponible", "Agro"),
   unavailable("mercados-mundo", "mercados-mundo", "/api/mundo", "data[*].precio", "Mercados globales"),
   unavailable("cripto", "cripto", "/api/cripto", "data.market_cap_usd", "Cripto"),
   unavailable("screener-activos", "screener-activos", "/api/acciones?category=all", "data.byCategory[*][*].lastPrice", "Acciones"),

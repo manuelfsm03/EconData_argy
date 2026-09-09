@@ -41,11 +41,10 @@ const card = (
   ...definition,
 })
 
-// Agro remains implemented for a later scope, but is not part of the approved
-// MVP inventory yet. Keep the definition behind an explicit flag so it
-// cannot silently enter the Library, Canvas, or their coverage contracts.
-const AGRO_CARD_ENABLED = false
-const AGRO_CARD = card({ id: "agro", title: "Agro", category: "macro", tab: "macro", subtab: "agro", description: "Pizarra Rosario en vivo, futuros CBOT y producción mundial de soja.", keywords: ["soja", "maíz", "trigo", "agro", "cbot", "rosario", "fob", "girasol", "cereales", "granos"], endpoints: [{ path: "/api/agro-local", label: "Pizarra Rosario" }, { path: "/api/commodities?categoria=agro", label: "CBOT futuros" }, { path: "/api/agro-soja", label: "Producción soja" }] })
+// Agro is implemented and intentionally part of the canonical Library/Canvas
+// inventory. Keep the flag explicit so availability remains auditable.
+const AGRO_CARD_ENABLED = true
+const AGRO_CARD = card({ id: "agro", title: "Agro", category: "macro", tab: "macro", subtab: "agro", description: "Precios disponibles Rosario, futuros CBOT y producción mundial de soja.", keywords: ["soja", "maíz", "trigo", "agro", "cbot", "rosario", "fob", "girasol", "cereales", "granos"], endpoints: [{ path: "/api/agro-local", label: "Pizarra Rosario" }, { path: "/api/commodities?categoria=agro", label: "CBOT futuros" }, { path: "/api/agro-soja", label: "Producción soja" }] })
 
 /**
  * Inventario único de módulos visibles en La Pizarra.
