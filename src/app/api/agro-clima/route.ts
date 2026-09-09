@@ -64,6 +64,7 @@ async function lluviaDeZona(zona: ZonaAgricola): Promise<{ serie: PuntoLluvia[];
     start_date: `${ANIO_INICIO}-01-01`,
     end_date: hasta.toISOString().slice(0, 10),
     daily: "precipitation_sum",
+    models: "era5",
     timezone: "America/Argentina/Buenos_Aires",
   })
 
