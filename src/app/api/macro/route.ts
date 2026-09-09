@@ -12,6 +12,8 @@ import { fetchRegistered } from "@/server/http/fetch-source"
  *   GET /api/macro?endpoint=ipi       — IPI manufacturero + ISAC
  *   GET /api/macro?endpoint=balanza   — Balanza comercial
  *   GET /api/macro?endpoint=fiscal    — Resultado fiscal + recaudación
+ *   GET /api/macro?endpoint=fiscal_imig — Flujo ingresos → gastos del SPN (IMIG)
+ *       &modo=mes|ytd|anio  &periodo=YYYY-MM|YYYY
  *
  * Portado desde EconData_argy/api/services/indec_scraper.py + routers/macro_ar.py
  */
@@ -25,6 +27,12 @@ import {
   buildIpcDivisionSnapshot,
   chunkIpcDivisionKeys,
 } from "@/server/domain/ipc-divisions"
+import {
+  agregarPeriodos,
+  construirSankey,
+  parseImig,
+  type ImigPeriodo,
+} from "@/server/domain/fiscal-imig"
 
 const BASE_URL = "https://apis.datos.gob.ar/series/api/series/"
 
@@ -34,6 +42,8 @@ const CSV_URLS = {
   supermercados:  "https://infra.datos.gob.ar/catalog/sspm/dataset/455/distribution/455.1/download/ventas-totales-supermercados-2.csv",
   icc_mensual:    "https://infra.datos.gob.ar/catalog/sspm/dataset/380/distribution/380.3/download/indice-confianza-consumidor-valores-mensuales.csv",
   icg_mensual:    "https://infra.datos.gob.ar/catalog/sspm/dataset/370/distribution/370.3/download/indice-confianza-gobierno-valores-mensuales.csv",
+  // IMIG — ingresos y gastos del SPN, 53 columnas, mensual desde 2016
+  imig_mensual:   "https://infra.datos.gob.ar/catalog/sspm/dataset/452/distribution/452.3/download/imig-mensual.csv",
 }
 
 const WB_BASE = "https://api.worldbank.org/v2/country/AR/indicator"
@@ -63,13 +73,18 @@ const SERIES_IDS: Record<string, string> = {
   ipc_estacionales: "193.2_ESTACIONALLES_2021_0_12_84",
   ipc_regulados: "148.3_IREGULANAL_DICI_M_22",
   ipc_alimentos: "146.3_IALIMENNAL_DICI_M_45",
-  // FISCAL
-  resultado_primario: "379.9_RESULTADO_017__31_73",
-  resultado_financiero: "378.9_RESULTADO_017_0_M_18_90",
+  // FISCAL — IMIG (Informe Mensual de Ingresos y Gastos del SPN No Financiero),
+  // dataset 452 de la Secretaría de Hacienda. Los tres resultados salen de la
+  // misma distribución 452.3, así que la identidad
+  //   resultado_financiero = resultado_primario - intereses_netos
+  // cierra exacta. Ver tests/fiscal-imig.test.ts.
+  resultado_primario: "452.3_RESULTADO_RIO_0_M_18_54",
+  intereses_netos: "452.3_INTERESES_TOS_0_M_15_62",
+  resultado_financiero: "452.3_RESULTADO_ERO_0_M_20_25",
   recaudacion: "172.3_TL_RECAION_M_0_0_17",
   rec_dgi:           "172.3_SOTAL_DDGI_M_0_0_12",       // Recaudación DGI total (mensual, hasta hoy)
   rec_dga:           "172.3_SOTAL_DDGA_M_0_0_12",       // Recaudación DGA total (Aduana, mensual)
-  // RECAUDACIÓN DESAGREGADA — Informe Mensual SPN, dataset 452 (rezago ~1 mes vs ARCA)
+  // RECAUDACIÓN DESAGREGADA — IMIG, dataset 452 (rezago ~1 mes vs recaudación 172)
   rec_iva:           "452.2_IVA_NETO_RROS_0_T_19_67",  // IVA neto (excl. reintegros)
   rec_ganancias:     "452.2_GANANCIASIAS_0_T_9_51",     // Impuesto a las Ganancias
   rec_seg_social:    "172.3_SRIDAD_IAL_M_0_0_16",       // Seg. Social (aportes + contrib.)
@@ -295,8 +310,15 @@ export async function GET(request: NextRequest) {
     }
 
     if (endpoint === "fiscal") {
-      const data = await getMultiserie(["resultado_primario", "resultado_financiero", "recaudacion"], 36)
-      return NextResponse.json({ data, updated_at: new Date().toISOString(), source: "apis.datos.gob.ar" })
+      const data = await getMultiserie(
+        ["resultado_primario", "intereses_netos", "resultado_financiero", "recaudacion"],
+        36,
+      )
+      return NextResponse.json({
+        data,
+        updated_at: new Date().toISOString(),
+        source: "apis.datos.gob.ar — IMIG (dataset 452) · recaudación (dataset 172)",
+      })
     }
 
     if (endpoint === "laboral") {
@@ -527,7 +549,62 @@ export async function GET(request: NextRequest) {
         "rec_der_impo",
         "rec_bs_personales",
       ], 36)
-      return NextResponse.json({ data, updated_at: new Date().toISOString(), source: "apis.datos.gob.ar · ARCA · dataset 452" })
+      return NextResponse.json({
+        data,
+        updated_at: new Date().toISOString(),
+        source: "apis.datos.gob.ar — IMIG, Secretaría de Hacienda (dataset 452)",
+      })
+    }
+
+    // ── FISCAL IMIG — flujo completo ingresos → gastos ────────────────────────
+    // 16 columnas de ingreso + 31 de gasto primario, todas publicadas. Nada se
+    // estima ni se prorratea: el cierre contable se verifica y se expone.
+    if (endpoint === "fiscal_imig") {
+      const rows = await fetchCSVData(CSV_URLS.imig_mensual, 86_400)
+      const mensual = parseImig(rows)
+      if (mensual.length === 0) {
+        return NextResponse.json(
+          { error: { code: "SOURCE_UNAVAILABLE", message: "IMIG no disponible", retryable: true } },
+          { status: 502 },
+        )
+      }
+
+      const modo = searchParams.get("modo") ?? "mes"
+      const ultimo = mensual[mensual.length - 1]
+      const anio = (searchParams.get("periodo") ?? ultimo.periodo).slice(0, 4)
+
+      let periodo: ImigPeriodo | null = ultimo
+      if (modo === "anio") {
+        periodo = agregarPeriodos(mensual.filter(p => p.periodo.startsWith(anio)), anio)
+      } else if (modo === "ytd") {
+        const delAnio = mensual.filter(p => p.periodo.startsWith(anio))
+        periodo = agregarPeriodos(delAnio, `${anio} (ene-${ultimo.periodo.slice(5)})`)
+      } else if (modo === "mes") {
+        periodo = mensual.find(p => p.periodo === searchParams.get("periodo")) ?? ultimo
+      }
+      if (!periodo) {
+        return NextResponse.json(
+          { error: { code: "SOURCE_BAD_RESPONSE", message: "Período sin datos", retryable: false } },
+          { status: 404 },
+        )
+      }
+
+      return NextResponse.json({
+        data: {
+          periodo,
+          sankey: construirSankey(periodo),
+          serie_resultados: mensual.map(p => ({
+            periodo: p.periodo,
+            resultado_primario: p.resultadoPrimario,
+            intereses_netos: p.interesesNetos,
+            resultado_financiero: p.resultadoFinanciero,
+          })),
+          periodos_disponibles: mensual.map(p => p.periodo),
+          cierra: periodo.desvioCierre === 0,
+        },
+        updated_at: new Date().toISOString(),
+        source: "IMIG — Secretaría de Hacienda vía datos.gob.ar (dataset 452.3) · base caja, millones de $ corrientes",
+      })
     }
 
     // ── ARGENDATA — PIB PER CÁPITA HISTÓRICO ────────────────────────────────
@@ -773,7 +850,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: "endpoint no válido. Usar ?endpoint=emae|ipc|ipi|balanza|fiscal|fiscal_sankey|automotriz|patentamientos|ponderaciones" },
+      { error: "endpoint no válido. Usar ?endpoint=emae|ipc|ipi|balanza|fiscal|fiscal_sankey|fiscal_imig|automotriz|patentamientos|ponderaciones" },
       { status: 400 },
     )
   } catch (error) {
