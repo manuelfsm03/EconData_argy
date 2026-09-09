@@ -157,7 +157,7 @@ export function ClimaRegionalMap() {
           <div style={{ display: "flex", justifyContent: "center", padding: "4px 14px 8px" }}>
             <svg viewBox={`0 0 ${ANCHO} ${ALTO}`} width="100%" style={{ maxWidth: 420 }}>
               {contornos.map((c) => (
-                <path key={c.nombre} d={c.d} fill="var(--bg-elev)" stroke="var(--border-hi)" strokeWidth={1} />
+                <path key={c.nombre} d={c.d} fill="var(--bg-elev-2)" stroke="var(--text-dim)" strokeWidth={1.3} />
               ))}
               {grillaVisible.map((punto) => {
                 const [x, y] = proyectar(punto.lat, punto.lon)
