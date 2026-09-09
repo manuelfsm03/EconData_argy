@@ -1,3 +1,5 @@
+import mercosurOutline from "@/client/data/mercosur-outline.json"
+
 /**
  * Clima regional — lluvia reciente sobre el cinturón agrícola del Mercosur.
  *
@@ -14,24 +16,89 @@
 
 export type PuntoGrilla = { lat: number; lon: number; pais: string }
 
+type Anillo = [number, number][]
+type FeatureCruda = {
+  properties: { nombre: string }
+  geometry: { type: "Polygon" | "MultiPolygon"; coordinates: unknown }
+}
+
+// Mismo nombre en español que usa el mapa (client/components/dashboard/
+// clima-regional-map.tsx), que dibuja el contorno con este mismo archivo.
+// Una sola fuente de verdad geográfica para dibujar y para clasificar.
+const NOMBRE_ES: Record<string, string> = {
+  Argentina: "Argentina",
+  Brazil: "Brasil",
+  Uruguay: "Uruguay",
+  Paraguay: "Paraguay",
+}
+
+// Anillos [lon, lat] de los cuatro países que cubre la grilla (el asset trae
+// Chile y Bolivia de más, se descartan acá igual que en el mapa).
+const POLIGONOS: { pais: string; anillos: Anillo[] }[] = (mercosurOutline as { features: FeatureCruda[] })
+  .features
+  .filter((f) => f.properties.nombre in NOMBRE_ES)
+  .map((f) => ({
+    pais: NOMBRE_ES[f.properties.nombre],
+    anillos: f.geometry.type === "Polygon"
+      ? (f.geometry.coordinates as Anillo[])
+      : (f.geometry.coordinates as Anillo[][]).flat(),
+  }))
+
+/** Ray casting estándar: ¿(lat, lon) cae dentro de este anillo ([lon, lat])? */
+function dentroDeAnillo(lat: number, lon: number, anillo: Anillo): boolean {
+  let dentro = false
+  for (let i = 0, j = anillo.length - 1; i < anillo.length; j = i++) {
+    const [loni, lati] = anillo[i]
+    const [lonj, latj] = anillo[j]
+    const cruza = lati > lat !== latj > lat &&
+      lon < ((lonj - loni) * (lat - lati)) / (latj - lati) + loni
+    if (cruza) dentro = !dentro
+  }
+  return dentro
+}
+
+/**
+ * A qué país pertenece realmente un punto, según el contorno geográfico. Null
+ * si no cae dentro de ninguno de los cuatro (punto de mar o de río, en el
+ * borde de la grilla): ahí no hay verdad geométrica que consultar.
+ */
+function paisDePunto(lat: number, lon: number): string | null {
+  for (const { pais, anillos } of POLIGONOS) {
+    if (anillos.some((anillo) => dentroDeAnillo(lat, lon, anillo))) return pais
+  }
+  return null
+}
+
 /**
  * Grilla de referencia sobre la región agrícola del Mercosur. No es una
  * grilla regular sobre todo el continente —eso desperdicia pedidos sobre
  * selva, mar y cordillera— sino puntos concentrados en la zona productiva.
+ *
+ * Los rangos de lat/lon por país de abajo son sólo para concentrar los
+ * puntos en la zona de cada uno: como el cinturón sojero brasileño baja
+ * hasta los -33° de latitud, se solapa con el rango de Uruguay, y un punto
+ * generado en esa franja puede caer geográficamente en cualquiera de los
+ * dos. El país real de cada punto se decide siempre contra el contorno
+ * geográfico (paisDePunto), nunca por qué bucle lo generó primero; el país
+ * "asumido" del bucle sólo se usa como último recurso si el punto no cae
+ * dentro de ningún polígono (mar, río).
  */
 export function grillaMercosur(pasoGrados = 2): PuntoGrilla[] {
   const puntos: PuntoGrilla[] = []
+  const agregar = (lat: number, lon: number, asumido: string) => {
+    puntos.push({ lat, lon, pais: paisDePunto(lat, lon) ?? asumido })
+  }
 
   // Argentina: NOA a Patagonia norte, cubriendo la pampa húmeda.
   for (let lat = -22; lat >= -42; lat -= pasoGrados) {
     for (let lon = -68; lon <= -57; lon += pasoGrados) {
-      puntos.push({ lat, lon, pais: "Argentina" })
+      agregar(lat, lon, "Argentina")
     }
   }
   // Sur de Brasil: el cinturón sojero (RS, PR, SC, MS, sur de GO/MT).
   for (let lat = -8; lat >= -33; lat -= pasoGrados) {
     for (let lon = -58; lon <= -47; lon += pasoGrados) {
-      puntos.push({ lat, lon, pais: "Brasil" })
+      agregar(lat, lon, "Brasil")
     }
   }
   // Uruguay: paso más fino porque el país es chico y con paso 2° casi no
@@ -39,13 +106,13 @@ export function grillaMercosur(pasoGrados = 2): PuntoGrilla[] {
   const pasoUruguay = Math.min(pasoGrados, 1)
   for (let lat = -30; lat >= -35; lat -= pasoUruguay) {
     for (let lon = -58; lon <= -53; lon += pasoUruguay) {
-      puntos.push({ lat, lon, pais: "Uruguay" })
+      agregar(lat, lon, "Uruguay")
     }
   }
   // Paraguay: la mitad oriental, la productiva.
   for (let lat = -19; lat >= -27; lat -= pasoGrados) {
     for (let lon = -58; lon <= -54; lon += pasoGrados) {
-      puntos.push({ lat, lon, pais: "Paraguay" })
+      agregar(lat, lon, "Paraguay")
     }
   }
 

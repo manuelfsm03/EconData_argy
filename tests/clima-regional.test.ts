@@ -29,6 +29,24 @@ test("un paso más fino da más puntos, uno más grueso da menos", () => {
   assert.ok(fina.length > gruesa.length)
 })
 
+test("el país de cada punto es el real, no el del bucle que lo generó primero", () => {
+  /**
+   * El bucle de "sur de Brasil" baja hasta -33° de latitud para cubrir el
+   * cinturón sojero, y eso se solapa con el rango de Uruguay. Antes, el
+   * dedupe por lat/lon se quedaba con el país del primer bucle que pasaba
+   * por ese punto —Brasil, porque corre antes que Uruguay— aunque el punto
+   * cayera geográficamente adentro de Uruguay. Ahora el país sale de
+   * clasificar contra el contorno real (mercosur-outline.json), así que no
+   * importa qué bucle lo generó.
+   */
+  const grilla = grillaMercosur(2)
+  const buscar = (lat: number, lon: number) => grilla.find((p) => p.lat === lat && p.lon === lon)
+
+  assert.equal(buscar(-34, -58)?.pais, "Uruguay", "Carmelo/Colonia es Uruguay, no Brasil ni Argentina")
+  assert.equal(buscar(-32, -56)?.pais, "Uruguay")
+  assert.equal(buscar(-32, -54)?.pais, "Uruguay")
+})
+
 test("Uruguay tiene más de dos puntos aunque el paso general sea grueso", () => {
   // Con paso 2° el país casi no entra en la grilla general: se le fuerza un
   // paso más fino para que el mapa no lo muestre vacío.
