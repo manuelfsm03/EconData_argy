@@ -156,7 +156,9 @@ test("la fuente del SIIA está registrada con ventana anual y límite acorde al 
   assert.equal(fuente.dataClass, "annual")
   // El CSV ronda los 15 MB: con el límite por defecto de 25 MB queda al filo.
   assert.ok(fuente.maxResponseBytes >= 30 * 1024 * 1024)
-  assert.ok(fuente.timeoutMs >= 30_000)
+  // El registry topea los timeouts en 15 s y esta fuente no es la excepción:
+  // medido en vivo, el CSV baja en menos de un segundo.
+  assert.ok(fuente.timeoutMs >= 3_000 && fuente.timeoutMs <= 15_000)
 })
 
 test("el CSV se pide por el host registrado desde la fuente compartida", () => {

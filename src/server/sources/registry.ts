@@ -120,7 +120,10 @@ export const SOURCE_REGISTRY = {
     publisher: "Open-Meteo / ECMWF ERA5",
     host: "archive-api.open-meteo.com",
     dataClass: "annual",
-    timeoutMs: 45_000,
+    // El contrato del registry topea en 15 s. El pedido de 57 campañas para
+    // los puntos de una zona tarda ~14 s en frío, así que va al máximo
+    // permitido y se apoya en la caché diaria: si un día se pasa, reintenta.
+    timeoutMs: 15_000,
     maxResponseBytes: 12 * MB,
     healthcheckPath: "/v1/archive?latitude=-33.89&longitude=-60.57&start_date=2026-01-01&end_date=2026-01-02&daily=precipitation_sum",
   }),
@@ -131,7 +134,7 @@ export const SOURCE_REGISTRY = {
     kind: "csv",
     dataClass: "annual",
     maxResponseBytes: 30 * MB,
-    timeoutMs: 30_000,
+    timeoutMs: 15_000,
     healthcheckPath: "/api/3/action/package_show?id=estimaciones-agricolas",
   }),
   // International monthly petroleum observations are published with a material

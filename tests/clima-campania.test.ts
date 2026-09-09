@@ -160,5 +160,16 @@ test("la fuente ERA5 está registrada con su ventana anual", () => {
   const fuente = SOURCE_REGISTRY.open_meteo_archive
   assert.equal(fuente.dataClass, "annual")
   assert.ok(fuente.allowedHosts.includes("archive-api.open-meteo.com"))
-  assert.ok(fuente.timeoutMs >= 45_000)
+  // El registry no admite timeouts mayores a 15 s. El pedido de 57 campañas
+  // tarda ~14 s en frío, así que va al tope y se apoya en la caché diaria.
+  assert.ok(fuente.timeoutMs >= 3_000 && fuente.timeoutMs <= 15_000)
+})
+
+test("un error declarado por Open-Meteo no se confunde con falta de datos", () => {
+  // La API responde HTTP 200 con `error: true` cuando se pasa el límite de
+  // pedidos por minuto. Si eso se leyera como serie vacía, el diagnóstico
+  // mandaría a buscar el problema en el parseo y no en la fuente.
+  assert.match(route, /error\?: boolean/)
+  assert.match(route, /fallaDeclarada/)
+  assert.match(route, /SOURCE_UNAVAILABLE:UPSTREAM_ERROR/)
 })
