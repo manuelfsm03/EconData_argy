@@ -12,6 +12,7 @@
 
 import { AgroClima } from "@/client/components/dashboard/agro-clima"
 import { AgroProduccion } from "@/client/components/dashboard/agro-produccion"
+import { ClimaRegionalMap } from "@/client/components/dashboard/clima-regional-map"
 
 export function AgroWorkspace() {
   return (
@@ -32,6 +33,10 @@ export function AgroWorkspace() {
 
       <div style={{ border: "1px solid var(--border)", background: "var(--bg-elev)", marginTop: 16 }}>
         <AgroClima />
+      </div>
+
+      <div style={{ border: "1px solid var(--border)", background: "var(--bg-elev)", marginTop: 16 }}>
+        <ClimaRegionalMap />
       </div>
     </div>
   )

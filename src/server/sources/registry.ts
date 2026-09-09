@@ -134,6 +134,19 @@ export const SOURCE_REGISTRY = {
     timeoutMs: 30_000,
     healthcheckPath: "/api/3/action/package_show?id=estimaciones-agricolas",
   }),
+  // NASA POWER: precipitación diaria global por reanálisis satelital, sin
+  // credencial. A diferencia de ERA5/Open-Meteo (~5 días de demora), POWER
+  // tiene un delay de reporte de 2 a 3 SEMANAS — verificado en vivo: pedidos
+  // de los últimos 10 días devuelven -999 (fill value, sin dato). Por eso NO
+  // sirve para "qué llovió esta semana" y sí para validar/completar series
+  // históricas más viejas, siempre con esa demora rotulada en el dato.
+  nasa_power: source("nasa_power", {
+    displayName: "NASA POWER (satelital)",
+    publisher: "NASA Langley Research Center",
+    host: "power.larc.nasa.gov",
+    dataClass: "annual",
+    healthcheckPath: "/api/temporal/daily/point?parameters=PRECTOTCORR&community=AG&longitude=-58.4&latitude=-34.6&start=20260801&end=20260802&format=JSON",
+  }),
   // International monthly petroleum observations are published with a material
   // reporting lag. This source-specific window judges freshness against that
   // cadence instead of the tighter default used by Argentine monthly series.
