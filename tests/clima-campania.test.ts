@@ -162,3 +162,14 @@ test("la fuente ERA5 está registrada con su ventana anual", () => {
   assert.ok(fuente.allowedHosts.includes("archive-api.open-meteo.com"))
   assert.ok(fuente.timeoutMs >= 45_000)
 })
+
+test("un error declarado por Open-Meteo no se confunde con falta de datos", () => {
+  // La API responde HTTP 200 con `error: true` cuando se pasa el límite de
+  // pedidos por minuto. Sin este chequeo, ese caso caía en
+  // SOURCE_BAD_RESPONSE:INCOMPLETE_ZONE — el mismo código que "falta un punto
+  // de la zona" — y el diagnóstico mandaba a revisar cobertura geográfica en
+  // vez de a reintentar la fuente.
+  assert.match(route, /error\?: boolean/)
+  assert.match(route, /fallaDeclarada/)
+  assert.match(route, /SOURCE_UNAVAILABLE:UPSTREAM_ERROR/)
+})
