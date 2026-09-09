@@ -112,6 +112,18 @@ export const SOURCE_REGISTRY = {
   // cultivo, campaña y departamento desde 1969. Se publica una vez por campaña,
   // así que la ventana de frescura anual es la correcta: exigirle actualización
   // mensual marcaría la fuente como vencida cuando en realidad está al día.
+  // Reanálisis ERA5 del ECMWF servido por Open-Meteo: precipitación diaria
+  // desde 1940, sin credencial. Es reanálisis, NO observación de estación:
+  // quien lo consuma tiene que rotularlo como tal.
+  open_meteo_archive: source("open_meteo_archive", {
+    displayName: "Open-Meteo Archive (ERA5)",
+    publisher: "Open-Meteo / ECMWF ERA5",
+    host: "archive-api.open-meteo.com",
+    dataClass: "annual",
+    timeoutMs: 45_000,
+    maxResponseBytes: 12 * MB,
+    healthcheckPath: "/v1/archive?latitude=-33.89&longitude=-60.57&start_date=2026-01-01&end_date=2026-01-02&daily=precipitation_sum",
+  }),
   magyp_siia: source("magyp_siia", {
     displayName: "SIIA — Estimaciones Agrícolas",
     publisher: "Ministerio de Agricultura, Ganadería y Pesca",
