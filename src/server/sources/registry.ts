@@ -108,6 +108,20 @@ export const SOURCE_REGISTRY = {
   rava_market: source("rava_market", { displayName: "Rava Mercado", publisher: "Rava Bursátil", host: "mercado.rava.com", dataClass: "intraday_market", maxResponseBytes: 15 * MB }),
   owid: source("owid", { displayName: "Our World in Data", publisher: "Our World in Data", host: "ourworldindata.org", kind: "csv", dataClass: "annual", healthcheckPath: "/grapher/soybean-production.csv" }),
   owid_github: source("owid_github", { displayName: "OWID datasets", publisher: "Our World in Data", host: "raw.githubusercontent.com", kind: "csv", dataClass: "annual" }),
+  // Estimaciones Agrícolas del SIIA: un único CSV de ~15 MB con la serie por
+  // cultivo, campaña y departamento desde 1969. Se publica una vez por campaña,
+  // así que la ventana de frescura anual es la correcta: exigirle actualización
+  // mensual marcaría la fuente como vencida cuando en realidad está al día.
+  magyp_siia: source("magyp_siia", {
+    displayName: "SIIA — Estimaciones Agrícolas",
+    publisher: "Ministerio de Agricultura, Ganadería y Pesca",
+    host: "datos.magyp.gob.ar",
+    kind: "csv",
+    dataClass: "annual",
+    maxResponseBytes: 30 * MB,
+    timeoutMs: 30_000,
+    healthcheckPath: "/api/3/action/package_show?id=estimaciones-agricolas",
+  }),
   // International monthly petroleum observations are published with a material
   // reporting lag. This source-specific window judges freshness against that
   // cadence instead of the tighter default used by Argentine monthly series.
