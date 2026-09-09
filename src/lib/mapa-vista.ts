@@ -41,3 +41,53 @@ export function aplicarRuedaZoom(
   const zoomNuevo = Math.min(opciones.zoomMax, Math.max(opciones.zoomMin, vista.zoom * (deltaY < 0 ? paso : 1 / paso)))
   return recentrarZoom(vista, zoomNuevo, centro)
 }
+
+/** Un paso de zoom fijo (para los botones +/−, que no dependen de la rueda del mouse). */
+export function pasoZoomBoton(
+  vista: VistaMapa,
+  direccion: "acercar" | "alejar",
+  centro: { x: number; y: number },
+  opciones: { zoomMin: number; zoomMax: number },
+): VistaMapa {
+  return aplicarRuedaZoom(vista, direccion === "acercar" ? -1 : 1, centro, opciones)
+}
+
+/**
+ * Encuadra un conjunto de puntos (en coordenadas de datos, mismas unidades
+ * que el viewBox) centrado en el viewport, con margen.
+ *
+ * Es lo que pide "navegar a Brasil": en vez de sólo filtrar qué puntos se
+ * muestran y dejar la vista general (donde Uruguay ocupa 40 píxeles), esto
+ * mueve y acerca la cámara para que ese país llene la pantalla.
+ *
+ * Un solo punto (o puntos muy juntos) no debe disparar el zoom al máximo:
+ * `anchoMinimo`/`altoMinimo` ponen un piso al tamaño del área a encuadrar.
+ */
+export function encuadrarPuntos(
+  puntos: readonly { x: number; y: number }[],
+  viewport: { ancho: number; alto: number },
+  opciones: { zoomMin: number; zoomMax: number; margen?: number; anchoMinimo?: number; altoMinimo?: number },
+): VistaMapa {
+  if (puntos.length === 0) return { x: 0, y: 0, zoom: opciones.zoomMin }
+
+  const xs = puntos.map((p) => p.x)
+  const ys = puntos.map((p) => p.y)
+  const minX = Math.min(...xs), maxX = Math.max(...xs)
+  const minY = Math.min(...ys), maxY = Math.max(...ys)
+
+  const margen = opciones.margen ?? 1.35
+  const ancho = Math.max(maxX - minX, opciones.anchoMinimo ?? 40) * margen
+  const alto = Math.max(maxY - minY, opciones.altoMinimo ?? 40) * margen
+
+  const zoomCrudo = Math.min(viewport.ancho / ancho, viewport.alto / alto)
+  const zoom = Math.min(opciones.zoomMax, Math.max(opciones.zoomMin, zoomCrudo))
+
+  const centroDatos = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 }
+  const centroViewport = { x: viewport.ancho / 2, y: viewport.alto / 2 }
+
+  return {
+    zoom,
+    x: centroViewport.x - zoom * centroDatos.x,
+    y: centroViewport.y - zoom * centroDatos.y,
+  }
+}

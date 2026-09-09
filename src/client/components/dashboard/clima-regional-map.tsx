@@ -18,7 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import mercosurOutline from "@/client/data/mercosur-outline.json"
 import { SectionHeader } from "../ui/section-header"
 import { fmtNum } from "@/lib/utils"
-import { aplicarRuedaZoom } from "@/lib/mapa-vista"
+import { aplicarRuedaZoom, encuadrarPuntos, pasoZoomBoton } from "@/lib/mapa-vista"
 
 type Anillo = [number, number][]
 type GeometriaPais = { tipo: "Polygon" | "MultiPolygon"; anillos: Anillo[][] }
@@ -47,6 +47,15 @@ const NIVELES = [
 
 function colorDeLluvia(mm: number): string {
   return (NIVELES.find((n) => mm <= n.hasta) ?? NIVELES[NIVELES.length - 1]).color
+}
+
+function botonMapaEstilo(deshabilitado: boolean): React.CSSProperties {
+  return {
+    fontSize: 11, color: deshabilitado ? "var(--text-mute)" : "var(--text-dim)",
+    background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "3px 9px",
+    cursor: deshabilitado ? "default" : "pointer", fontFamily: "inherit", lineHeight: 1.3,
+    opacity: deshabilitado ? 0.5 : 1,
+  }
 }
 
 // Cuadrante de la grilla del backend (server/external/clima-regional.ts).
@@ -123,10 +132,30 @@ export function ClimaRegionalMap() {
     return rect && rect.width > 0 ? ANCHO / rect.width : 1
   }, [])
 
-  const onWheel = useCallback((evento: React.WheelEvent<SVGSVGElement>) => {
-    evento.preventDefault()
-    setVista((previa) => aplicarRuedaZoom(
-      previa, evento.deltaY, { x: ANCHO / 2, y: ALTO / 2 },
+  // React adjunta onWheel como listener PASIVO por default: evento.preventDefault()
+  // ahí adentro no bloquea el scroll real de la página en navegadores modernos
+  // (a lo sumo tira un warning en consola y sigue de largo). El síntoma en
+  // pantalla es exactamente "no puedo navegar": la rueda scrollea la página
+  // entera en vez de acercar el mapa. Por eso el listener se agrega a mano
+  // sobre el DOM con { passive: false }, la única forma de que preventDefault
+  // realmente frene el scroll del documento.
+  useEffect(() => {
+    const nodo = svgRef.current
+    if (!nodo) return
+    const manejar = (evento: WheelEvent) => {
+      evento.preventDefault()
+      setVista((previa) => aplicarRuedaZoom(
+        previa, evento.deltaY, { x: ANCHO / 2, y: ALTO / 2 },
+        { zoomMin: VISTA_ZOOM_MIN, zoomMax: VISTA_ZOOM_MAX },
+      ))
+    }
+    nodo.addEventListener("wheel", manejar, { passive: false })
+    return () => nodo.removeEventListener("wheel", manejar)
+  }, [])
+
+  const zoomBoton = useCallback((direccion: "acercar" | "alejar") => {
+    setVista((previa) => pasoZoomBoton(
+      previa, direccion, { x: ANCHO / 2, y: ALTO / 2 },
       { zoomMin: VISTA_ZOOM_MIN, zoomMax: VISTA_ZOOM_MAX },
     ))
   }, [])
@@ -171,14 +200,29 @@ export function ClimaRegionalMap() {
 
   const contornos = useMemo(() => PAISES.map((p) => ({ nombre: p.nombre, d: paisASvgPath(p.geo) })), [])
 
-  // Cambiar de país filtrado con el mapa acercado a otra zona dejaría la
-  // vista mirando a un lugar que ya no tiene sentido para el filtro nuevo.
-  useEffect(() => { setVista({ x: 0, y: 0, zoom: 1 }) }, [paisFiltro])
-
   const grillaVisible = useMemo(() => {
     if (!payload) return []
     return paisFiltro ? payload.grilla.filter((p) => p.pais === paisFiltro) : payload.grilla
   }, [payload, paisFiltro])
+
+  // Elegir un país no es solo filtrar qué puntos se muestran: mueve y acerca
+  // la cámara para que ese país llene la pantalla ("navegar a Brasil", no
+  // dejarlo del tamaño de una moneda en el mapa general). Sin país elegido,
+  // vuelve a la vista de toda la región.
+  useEffect(() => {
+    if (!paisFiltro) { setVista({ x: 0, y: 0, zoom: 1 }); return }
+    const puntos = grillaVisible.map((p) => {
+      const [x, y] = proyectar(p.lat, p.lon)
+      return { x, y }
+    })
+    setVista(encuadrarPuntos(puntos, { ancho: ANCHO, alto: ALTO }, {
+      zoomMin: VISTA_ZOOM_MIN, zoomMax: VISTA_ZOOM_MAX, anchoMinimo: 70, altoMinimo: 70,
+    }))
+    // grillaVisible ya depende de [payload, paisFiltro]: no hace falta
+    // repetir esas dependencias acá, alcanza con paisFiltro para disparar
+    // el encuadre cada vez que cambia la selección.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paisFiltro])
 
   return (
     <div>
@@ -223,7 +267,6 @@ export function ClimaRegionalMap() {
               viewBox={`0 0 ${ANCHO} ${ALTO}`}
               width="100%"
               style={{ maxWidth: 720, touchAction: "none", cursor: arrastrando ? "grabbing" : "grab" }}
-              onWheel={onWheel}
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
@@ -263,21 +306,21 @@ export function ClimaRegionalMap() {
                 })}
               </g>
             </svg>
-            {vista.zoom > 1 && (
-              <button
-                onClick={reiniciarVista}
-                style={{
-                  position: "absolute", top: 4, right: 14, fontSize: 9, color: "var(--text-dim)",
-                  background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "3px 8px",
-                  cursor: "pointer", fontFamily: "inherit",
-                }}
-              >
-                Reiniciar vista ({fmtNum(vista.zoom, 1)}×)
-              </button>
-            )}
+            {/* Botones siempre visibles: no dependen de que la rueda del mouse
+                funcione (trackpads, navegadores raros, mobile) y son la forma
+                confiable de navegar cuando arrastrar+rueda no alcanza. */}
+            <div style={{ position: "absolute", top: 4, right: 14, display: "flex", gap: 4 }}>
+              <button onClick={() => zoomBoton("alejar")} disabled={vista.zoom <= VISTA_ZOOM_MIN} aria-label="Alejar" style={botonMapaEstilo(vista.zoom <= VISTA_ZOOM_MIN)}>−</button>
+              <button onClick={() => zoomBoton("acercar")} disabled={vista.zoom >= VISTA_ZOOM_MAX} aria-label="Acercar" style={botonMapaEstilo(vista.zoom >= VISTA_ZOOM_MAX)}>+</button>
+              {(vista.zoom > 1.02 || Math.abs(vista.x) > 0.5 || Math.abs(vista.y) > 0.5) && (
+                <button onClick={reiniciarVista} style={botonMapaEstilo(false)}>
+                  Reiniciar ({fmtNum(vista.zoom, 1)}×)
+                </button>
+              )}
+            </div>
           </div>
           <div style={{ fontSize: 8, color: "var(--text-mute)", textAlign: "center", marginTop: -4 }}>
-            Rueda del mouse para acercar · arrastrar para mover · doble clic para reiniciar
+            Clic en un país para acercarte · botones +/− o rueda del mouse para zoom · arrastrar para mover
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", padding: "0 14px 10px", justifyContent: "center" }}>

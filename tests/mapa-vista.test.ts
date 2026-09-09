@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { aplicarRuedaZoom, recentrarZoom } from "../src/lib/mapa-vista"
+import { aplicarRuedaZoom, encuadrarPuntos, pasoZoomBoton, recentrarZoom } from "../src/lib/mapa-vista"
 
 const CENTRO = { x: 280, y: 310 }
 
@@ -70,4 +70,56 @@ test("un paso de zoom más agresivo agranda más rápido", () => {
   const suave = aplicarRuedaZoom(vista, -120, CENTRO, { ...opciones, pasoZoom: 1.1 })
   const agresivo = aplicarRuedaZoom(vista, -120, CENTRO, { ...opciones, pasoZoom: 1.5 })
   assert.ok(agresivo.zoom > suave.zoom)
+})
+
+test("el botón de acercar sube el zoom y el de alejar lo baja", () => {
+  const vista = { x: 0, y: 0, zoom: 2 }
+  const opciones = { zoomMin: 1, zoomMax: 6 }
+  assert.ok(pasoZoomBoton(vista, "acercar", CENTRO, opciones).zoom > vista.zoom)
+  assert.ok(pasoZoomBoton(vista, "alejar", CENTRO, opciones).zoom < vista.zoom)
+})
+
+test("encuadrar puntos deja el centro de esos puntos en el centro del viewport", () => {
+  const puntos = [{ x: 100, y: 100 }, { x: 200, y: 100 }, { x: 100, y: 200 }, { x: 200, y: 200 }]
+  const viewport = { ancho: 560, alto: 620 }
+  const vista = encuadrarPuntos(puntos, viewport, { zoomMin: 1, zoomMax: 6 })
+
+  // El centro de datos es (150,150); tiene que proyectar al centro del viewport.
+  const proyectado = { x: vista.zoom * 150 + vista.x, y: vista.zoom * 150 + vista.y }
+  assert.ok(Math.abs(proyectado.x - viewport.ancho / 2) < 1e-6)
+  assert.ok(Math.abs(proyectado.y - viewport.alto / 2) < 1e-6)
+})
+
+test("encuadrar puntos deja todo el bounding box dentro del viewport", () => {
+  const puntos = [{ x: 50, y: 300 }, { x: 480, y: 300 }, { x: 260, y: 40 }, { x: 260, y: 580 }]
+  const viewport = { ancho: 560, alto: 620 }
+  const vista = encuadrarPuntos(puntos, viewport, { zoomMin: 1, zoomMax: 6 })
+
+  for (const p of puntos) {
+    const proyectado = { x: vista.zoom * p.x + vista.x, y: vista.zoom * p.y + vista.y }
+    assert.ok(proyectado.x >= -1 && proyectado.x <= viewport.ancho + 1, `x=${proyectado.x} fuera de rango`)
+    assert.ok(proyectado.y >= -1 && proyectado.y <= viewport.alto + 1, `y=${proyectado.y} fuera de rango`)
+  }
+})
+
+test("un solo punto (o un país chiquito como Uruguay) respeta el piso de tamaño, no el zoom máximo del techo global", () => {
+  // zoomMax bien alto para aislar el efecto del piso: si el piso no
+  // existiera, un solo punto (ancho/alto real = 0) daría zoom infinito.
+  const vista = encuadrarPuntos([{ x: 300, y: 300 }], { ancho: 560, alto: 620 }, { zoomMin: 1, zoomMax: 50, anchoMinimo: 60, altoMinimo: 60 })
+  // Con piso 60×60 y margen 1.35, el zoom queda ~6.9 (560/81): lejos del
+  // techo de 50, así que lo que lo frena es el piso, no el límite global.
+  assert.ok(vista.zoom > 5 && vista.zoom < 8, `zoom ${vista.zoom} debería salir del piso de tamaño (~6.9), no del techo`)
+})
+
+test("encuadrar sin puntos no rompe: devuelve la vista general", () => {
+  const vista = encuadrarPuntos([], { ancho: 560, alto: 620 }, { zoomMin: 1, zoomMax: 6 })
+  assert.equal(vista.zoom, 1)
+})
+
+test("un país más chico (menos extensión) termina con más zoom que uno grande", () => {
+  const viewport = { ancho: 560, alto: 620 }
+  const opciones = { zoomMin: 1, zoomMax: 6 }
+  const paisChico = encuadrarPuntos([{ x: 280, y: 280 }, { x: 300, y: 300 }], viewport, opciones)
+  const paisGrande = encuadrarPuntos([{ x: 20, y: 20 }, { x: 500, y: 550 }], viewport, opciones)
+  assert.ok(paisChico.zoom > paisGrande.zoom)
 })
