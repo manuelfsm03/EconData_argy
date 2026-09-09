@@ -13,6 +13,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { AgroProduccion } from "./agro-produccion"
 import { BBGAreaChart } from "../charts/bbg-area-chart"
 import { BBGLineChart } from "../charts/bbg-line-chart"
 import { DownloadCSV } from "../ui/download-csv"
@@ -4465,6 +4466,10 @@ function AgroView() {
           </div>
         </>
       )}
+
+      {/* Producción local por cultivo y campaña. Vive en su propio módulo:
+          tiene su ciclo de datos y sus advertencias de serie. */}
+      <AgroProduccion />
     </div>
   )
 }
