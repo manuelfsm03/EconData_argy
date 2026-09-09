@@ -78,10 +78,10 @@ async function lluviaDeZona(zona: ZonaAgricola): Promise<{ serie: PuntoLluvia[];
   const payload = await response.json() as RespuestaArchive | RespuestaArchive[]
   const porPunto = Array.isArray(payload) ? payload : [payload]
 
-  const series = porPunto
-    .map((punto) => acumularPorCampania(punto.daily?.time ?? [], punto.daily?.precipitation_sum ?? []))
-    .filter((serie) => serie.length > 0)
-  if (series.length === 0) throw new Error("SOURCE_BAD_RESPONSE:EMPTY")
+  const series = porPunto.map((punto) => acumularPorCampania(punto.daily?.time ?? [], punto.daily?.precipitation_sum ?? []))
+  if (series.length !== zona.puntos.length || series.some((serie) => serie.length === 0)) {
+    throw new Error("SOURCE_BAD_RESPONSE:INCOMPLETE_ZONE")
+  }
 
   const serie = promediarZona(series)
   const retrievedAt = new Date().toISOString()

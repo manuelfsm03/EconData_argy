@@ -68,25 +68,29 @@ export function AgroProduccion() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch("/api/agro-produccion?catalogo=1")
+    const controller = new AbortController()
+    fetch("/api/agro-produccion?catalogo=1", { signal: controller.signal })
       .then((response) => response.json())
       .then((body) => {
-        if (!body?.ok) return
+        if (!body?.ok || controller.signal.aborted) return
         setCatalogo(body.data.cultivos ?? [])
         setNoCubiertos(body.data.noCubiertos ?? [])
       })
-      .catch(() => undefined)
+      .catch((error) => { if (!controller.signal.aborted) void error })
+    return () => controller.abort()
   }, [])
 
   useEffect(() => {
+    const controller = new AbortController()
     setCargando(true)
     setError(null)
     const query = new URLSearchParams({ cultivo })
     if (provincia) query.set("provincia", provincia)
 
-    fetch(`/api/agro-produccion?${query}`)
+    fetch(`/api/agro-produccion?${query}`, { signal: controller.signal })
       .then((response) => response.json())
       .then((body) => {
+        if (controller.signal.aborted) return
         if (!body?.ok) {
           setPayload(null)
           setError("No hay serie disponible para esa combinación.")
@@ -94,8 +98,9 @@ export function AgroProduccion() {
         }
         setPayload(body.data as SeriePayload)
       })
-      .catch(() => setError("No se pudo consultar la serie."))
-      .finally(() => setCargando(false))
+      .catch(() => { if (!controller.signal.aborted) setError("No se pudo consultar la serie.") })
+      .finally(() => { if (!controller.signal.aborted) setCargando(false) })
+    return () => controller.abort()
   }, [cultivo, provincia])
 
   // La producción se grafica en millones de toneladas: en toneladas el eje

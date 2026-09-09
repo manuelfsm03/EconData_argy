@@ -218,7 +218,8 @@ export function validateSourceRegistry(): string[] {
     if (ids.has(definition.id)) errors.push(`${key}: duplicate id`)
     ids.add(definition.id)
     if (definition.baseUrl && new URL(definition.baseUrl).protocol !== "https:") errors.push(`${key}: baseUrl must be HTTPS`)
-    if (definition.timeoutMs < 3_000 || definition.timeoutMs > 15_000) errors.push(`${key}: invalid timeout`)
+    const extendedTimeoutSource = key === "open_meteo_archive" || key === "magyp_siia"
+    if (definition.timeoutMs < 3_000 || definition.timeoutMs > (extendedTimeoutSource ? 45_000 : 15_000)) errors.push(`${key}: invalid timeout`)
     if (definition.retry.attempts > 1) errors.push(`${key}: too many retries`)
     if (definition.healthcheck?.credentialQueryParam && !definition.credentialEnv) {
       errors.push(`${key}: healthcheck credential query requires credentialEnv`)

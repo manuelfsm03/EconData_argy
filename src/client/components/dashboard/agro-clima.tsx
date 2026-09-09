@@ -59,24 +59,29 @@ export function AgroClima() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch("/api/agro-clima?zonas=1")
+    const controller = new AbortController()
+    fetch("/api/agro-clima?zonas=1", { signal: controller.signal })
       .then((r) => r.json())
-      .then((b) => { if (b?.ok) setZonas(b.data.zonas ?? []) })
+      .then((b) => { if (b?.ok && !controller.signal.aborted) setZonas(b.data.zonas ?? []) })
       .catch(() => undefined)
+    return () => controller.abort()
   }, [])
 
   useEffect(() => {
+    const controller = new AbortController()
     setCargando(true)
     setError(null)
-    fetch(`/api/agro-clima?zona=${encodeURIComponent(zonaId)}&cultivo=soja%20total`)
+    fetch(`/api/agro-clima?zona=${encodeURIComponent(zonaId)}&cultivo=soja%20total`, { signal: controller.signal })
       .then((r) => r.json())
       .then((b) => {
+        if (controller.signal.aborted) return
         if (!b?.ok) { setPayload(null); setError("No se pudo construir la serie de esta zona."); return }
         setPayload(b.data as Payload)
         setAvisos(b.meta?.warnings ?? [])
       })
-      .catch(() => setError("No se pudo consultar el clima."))
-      .finally(() => setCargando(false))
+      .catch((error) => { if (!controller.signal.aborted && error instanceof Error && error.name !== "AbortError") setError("No se pudo consultar el clima.") })
+      .finally(() => { if (!controller.signal.aborted) setCargando(false) })
+    return () => controller.abort()
   }, [zonaId])
 
   const resumen = payload?.resumen
