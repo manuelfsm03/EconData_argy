@@ -83,35 +83,6 @@ try {
     const page = await context.newPage()
     const pageErrors = []
     page.on("pageerror", (error) => pageErrors.push(error.message))
-    await page.route("**/api/agro-local**", (route) => route.fulfill({
-      status: 503,
-      contentType: "application/json",
-      body: JSON.stringify({ status: "degraded", error: "fixture: Rosario unavailable", source: "fixture", updated_at: "2026-09-09T00:00:00.000Z" }),
-    }))
-    await page.route("**/api/commodities**", (route) => route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        status: "ok",
-        source: "yahoo_finance_chart",
-        fuente: "Yahoo Finance v8/chart · cierre diario",
-        updated_at: "2026-09-09T00:00:00.000Z",
-        data: [
-          { ticker: "ZS=F", nombre: "Soja", categoria: "agro", unidad: "USc/bu", precio: 1000, cambio: 2, cambioPct: 0.2, fechaActualizacion: "2026-09-08T00:00:00.000Z" },
-          { ticker: "ZC=F", nombre: "Maíz", categoria: "agro", unidad: "USc/bu", precio: 900, cambio: -1, cambioPct: -0.1, fechaActualizacion: "2026-09-08T00:00:00.000Z" },
-          { ticker: "ZW=F", nombre: "Trigo", categoria: "agro", unidad: "USc/bu", precio: 800, cambio: 0, cambioPct: 0, fechaActualizacion: "2026-09-08T00:00:00.000Z" },
-        ],
-      }),
-    }))
-    await page.route("**/api/agro-soja**", (route) => route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        source: "Our World in Data / FAO",
-        unit: "millones de toneladas",
-        data: [{ date: "2024-01-01", Brazil: 150, Argentina: 48, "United States": 120 }],
-      }),
-    }))
 
     const canvasUrl = `${baseUrl}/?section=canvas`
     await page.goto(canvasUrl, { waitUntil: "domcontentloaded" })
@@ -166,37 +137,22 @@ try {
     // Resolve the catalog only after any drawer navigation. A locator created
     // before the route/state transition can observe the old hidden aside.
     const resolveCatalog = async () => {
-      let current = page.locator("aside").filter({ has: page.getByText(/^33 tarjetas programables$/) }).first()
+      let current = page.locator("aside").filter({ has: page.getByText(/^32 tarjetas programables$/) }).first()
       if (!(await current.isVisible())) {
         const freshCatalogButton = page.getByRole("button", { name: "Tarjetas", exact: true }).last()
         await freshCatalogButton.click()
-        current = page.locator("aside").filter({ has: page.getByText(/^33 tarjetas programables$/) }).first()
+        current = page.locator("aside").filter({ has: page.getByText(/^32 tarjetas programables$/) }).first()
       }
-      await current.getByText(/^33 tarjetas programables$/).waitFor({ state: "visible" })
+      await current.getByText(/^32 tarjetas programables$/).waitFor({ state: "visible" })
       return current
     }
     const catalog = await resolveCatalog()
     await waitForStableLayout(page, [catalog], `${viewport.name} catalog readiness`)
     const catalogGeometry = await assertVisibleAndUnobscured(page, catalog, `${viewport.name} catalog`)
-    const catalogCount = catalog.getByText(/^33 tarjetas programables$/)
+    const catalogCount = catalog.getByText(/^32 tarjetas programables$/)
     await catalogCount.waitFor({ state: "visible" })
-    assert.equal(await catalogCount.textContent(), "33 tarjetas programables", `${viewport.name} catalog count`)
+    assert.equal(await catalogCount.textContent(), "32 tarjetas programables", `${viewport.name} catalog count`)
     const canvasOverflow = await assertNoHorizontalOverflow(page, `${viewport.name} canvas catalog`)
-
-    await catalog.getByTitle("Agregar Agro").click()
-    const agroCard = page.locator("div.canvas-card-handle").filter({ hasText: "Agro" }).first()
-    await agroCard.waitFor({ state: "visible" })
-    await agroCard.scrollIntoViewIfNeeded()
-    await page.getByText("Error: fixture: Rosario unavailable", { exact: true }).waitFor({ state: "visible" })
-    await page.getByText("CBOT — Futuros internacionales", { exact: true }).waitFor({ state: "visible" })
-    await page.getByText("Producción mundial de soja", { exact: true }).waitFor({ state: "visible" })
-    await page.reload({ waitUntil: "domcontentloaded" })
-    const persistedAgroCard = page.locator("div.canvas-card-handle").filter({ hasText: "Agro" }).first()
-    await persistedAgroCard.waitFor({ state: "visible" })
-    await page.getByText("Error: fixture: Rosario unavailable", { exact: true }).waitFor({ state: "visible" })
-    await page.getByText("CBOT — Futuros internacionales", { exact: true }).waitFor({ state: "visible" })
-    await page.getByText("Producción mundial de soja", { exact: true }).waitFor({ state: "visible" })
-    const agroOverflow = await assertNoHorizontalOverflow(page, `${viewport.name} Agro partial failure`)
     await page.screenshot({ path: join(artifactDir, `${viewport.name}-canvas.png`) })
 
     const libraryUrl = `${baseUrl}/?section=library`
@@ -250,8 +206,7 @@ try {
     results.push({
       viewport,
       routes: {
-        canvas: { catalogCount: 33, catalogGeometry, overflow: canvasOverflow },
-        agro: { local: "error", cbot: "ok", production: "ok", persisted: true, overflow: agroOverflow },
+        canvas: { catalogCount: 32, catalogGeometry, overflow: canvasOverflow },
         library: { heading: "Biblioteca de datos", headerGeometry: libraryHeaderGeometry, dashboardGeometry: libraryDashboardGeometry, overflow: libraryOverflow },
         drawer: { openGeometry: drawerOpenGeometry, libraryHeading: Boolean(drawerLibraryHeading), canvasHeading: Boolean(drawerCanvasHeading) },
         libraryFocus: { ticker: "YPFD", cardId: "acciones", overflow: focusedLibraryOverflow },
@@ -269,4 +224,4 @@ try {
 }
 
 if (smokeError) throw smokeError
-console.log(`browser smoke passed: ${results.length} viewports, ${results.length * 6} checks`)
+console.log(`browser smoke passed: ${results.length} viewports, ${results.length * 5} routes`)
