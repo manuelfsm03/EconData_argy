@@ -43,34 +43,36 @@
  * Regla 6 del ROADMAP: cada cálculo con su fórmula.
  */
 
+import { cuponDe } from "@/server/domain/peso-bonds"
+
 /** Días de un año para anualizar. Act/365, igual que el resto del módulo. */
 const DIAS_ANIO = 365
-
-/**
- * Series del Tesoro que son cero cupón por condición de emisión, aunque el
- * nombre corto que publica la fuente de precios no lo diga.
- *
- * Los TZX26/27/28 se llaman oficialmente "BONO DEL TESORO NACIONAL EN PESOS
- * CERO CUPÓN CON AJUSTE POR CER", confirmado contra el llamado a licitación de
- * BONCERES CERO CUPÓN del Ministerio de Economía. La fuente de precios los
- * abrevia como "Boncer $ Ajustado por CER", sin el 0%, y por eso hace falta
- * esta lista: sin ella se caerían del cálculo por una cuestión de nomenclatura.
- */
-const CERO_CUPON_POR_EMISION = new Set(["TZX26", "TZX27", "TZX28"])
 
 /**
  * Si el instrumento paga o no cupones, decidido de la forma más conservadora
  * posible: se calcula sólo cuando hay evidencia POSITIVA de que es cero cupón.
  *
- * La evidencia puede venir del nombre oficial, que en estos papeles declara la
- * tasa ("BONCER 2028 $ 0%", "LECER $ 0% Vto. 30.11.2026"), o de la lista de
- * arriba para las series cuyo nombre corto omite el dato.
+ * ── Por qué el catálogo manda sobre el nombre ────────────────────────────────
  *
- * Un BONCER con cupón (TX26 al 2%, DICP a CER+5,83%) devuelve false y queda
- * afuera, que es lo correcto: para esos hace falta el cronograma del prospecto.
+ * Antes esto se resolvía leyendo el nombre que publica la fuente de precios,
+ * que en estos papeles declara la tasa ("BONCER 2028 $ 0%", "LECER $ 0% Vto.
+ * 30.11.2026"). El 9/9/2026 Rava empezó a mandar `nombre` con sólo el ticker
+ * ("TX26") en 382 de 887 filas, y la detección se cayó de 28 instrumentos a 2:
+ * la calculadora pasó a contestar "paga cupones, falta el prospecto" a papeles
+ * que son cero cupón por emisión (TZXD6/D7/D8, TZXA7, TZXM7/M8/M9, TZXO6/O7,
+ * TZXS7/S8, TZXY7, LECER X30N6/X30S6). Nadie se enteró: el endpoint seguía
+ * respondiendo 200 y el 501 se leía como una limitación conocida.
+ *
+ * Por eso la estructura del instrumento sale de `peso-bonds.ts`, que es
+ * condición de emisión y no cambia, y el nombre queda sólo como último recurso
+ * para tickers que no estén en el catálogo.
  */
 export function esCeroCupon(ticker: string, nombre: string | null | undefined): boolean {
-  if (CERO_CUPON_POR_EMISION.has(ticker.toUpperCase())) return true
+  const porEmision = cuponDe(ticker)
+  if (porEmision !== null) return porEmision === "cero"
+
+  // Fuera del catálogo: se cae al nombre publicado. Es peor evidencia, pero
+  // para un ticker que no conocemos es lo único que hay.
   const texto = (nombre ?? "").toLowerCase()
   if (texto.includes("cero cupón") || texto.includes("cero cupon")) return true
   // "0%" con el porcentaje pegado o separado: "$ 0%", "0 %".

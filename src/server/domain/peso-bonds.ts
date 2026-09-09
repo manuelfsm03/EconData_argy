@@ -23,47 +23,65 @@ export interface PesoBond {
   ticker: string
   /** Vencimiento en ISO, de la condición de emisión. */
   vencimiento: string
+  /**
+   * Si paga cupones o no, también de la condición de emisión.
+   *
+   * Está acá y no se deduce del nombre que manda la fuente de precios por un
+   * motivo concreto: el 9/9/2026 Rava empezó a publicar `nombre` con sólo el
+   * ticker ("TX26") en vez de la descripción completa ("BONCER (canje 2020)
+   * 2026 $ ajustado por CER 2%") — 382 de 887 filas medidas ese día. Como la
+   * detección de cero cupón buscaba "0%" DENTRO de ese nombre, de 28 bonos en
+   * pesos pasó a reconocer 2, y la calculadora empezó a contestar "paga
+   * cupones, falta el prospecto" a papeles que son cero cupón por emisión.
+   *
+   * Un feed de precios describe el PRECIO. La estructura del instrumento es
+   * nuestra y no puede depender de que un tercero mantenga un string.
+   */
+  cupon: "cero" | "con_cupon"
 }
 
 const UNIVERSO = [
-  // BONCER Ley Argentina (canje 2020)
-  { ticker: "TX26", vencimiento: "2026-11-09" },
-  { ticker: "TX28", vencimiento: "2028-11-09" },
-  { ticker: "TX31", vencimiento: "2031-11-30" },
-  // Bono DUAL, CER/TAMAR + margen
-  { ticker: "TXMD8", vencimiento: "2028-12-15" },
-  { ticker: "TXMD9", vencimiento: "2029-12-14" },
-  { ticker: "TXMJ0", vencimiento: "2030-06-28" },
-  { ticker: "TXMJ8", vencimiento: "2028-06-30" },
-  { ticker: "TXMJ9", vencimiento: "2029-06-29" },
-  // BONCER cero cupón (Bono del Tesoro Nacional ajustado por CER)
-  { ticker: "TZX26", vencimiento: "2026-06-30" },
-  { ticker: "TZX27", vencimiento: "2027-06-30" },
-  { ticker: "TZX28", vencimiento: "2028-06-30" },
-  { ticker: "TZXA7", vencimiento: "2027-04-30" },
-  { ticker: "TZXD6", vencimiento: "2026-12-15" },
-  { ticker: "TZXD7", vencimiento: "2027-12-15" },
-  { ticker: "TZXD8", vencimiento: "2028-12-15" },
-  { ticker: "TZXM6", vencimiento: "2026-03-31" },
-  { ticker: "TZXM7", vencimiento: "2027-03-31" },
-  { ticker: "TZXM8", vencimiento: "2028-03-31" },
-  { ticker: "TZXM9", vencimiento: "2029-03-28" },
-  { ticker: "TZXO6", vencimiento: "2026-10-30" },
-  { ticker: "TZXO7", vencimiento: "2027-10-29" },
-  { ticker: "TZXS7", vencimiento: "2027-09-30" },
-  { ticker: "TZXS8", vencimiento: "2028-09-29" },
-  { ticker: "TZXY7", vencimiento: "2027-05-31" },
-  // LECER, letras cero cupón ajustadas por CER
-  { ticker: "X15Y6", vencimiento: "2026-05-15" },
-  { ticker: "X29Y6", vencimiento: "2026-05-29" },
-  { ticker: "X30N6", vencimiento: "2026-11-30" },
-  { ticker: "X30S6", vencimiento: "2026-09-30" },
-  { ticker: "X31L6", vencimiento: "2026-07-31" },
-  // Discount/Par pesos CER, reestructuración 2005/2010
-  { ticker: "DICP", vencimiento: "2033-12-31" },
-  { ticker: "DIP0", vencimiento: "2033-12-31" },
-  { ticker: "PAP0", vencimiento: "2038-12-31" },
-  { ticker: "PARP", vencimiento: "2038-12-31" },
+  // BONCER Ley Argentina (canje 2020) — pagan cupón semestral.
+  { ticker: "TX26", vencimiento: "2026-11-09", cupon: "con_cupon" },   // CER 2%
+  { ticker: "TX28", vencimiento: "2028-11-09", cupon: "con_cupon" },   // CER 2,25%
+  { ticker: "TX31", vencimiento: "2031-11-30", cupon: "con_cupon" },   // CER 2,50%
+  // Bono DUAL, CER/TAMAR + margen. Pagan cupón Y llevan opcionalidad adentro.
+  { ticker: "TXMD8", vencimiento: "2028-12-15", cupon: "con_cupon" },  // CER/TAMAR + 3%
+  { ticker: "TXMD9", vencimiento: "2029-12-14", cupon: "con_cupon" },
+  { ticker: "TXMJ0", vencimiento: "2030-06-28", cupon: "con_cupon" },
+  { ticker: "TXMJ8", vencimiento: "2028-06-30", cupon: "con_cupon" },
+  { ticker: "TXMJ9", vencimiento: "2029-06-29", cupon: "con_cupon" },
+  // BONCER cero cupón (Bono del Tesoro Nacional ajustado por CER). Los TZX26/27/28
+  // se emiten como "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR
+  // CER"; el resto se publica directamente como "0%".
+  { ticker: "TZX26", vencimiento: "2026-06-30", cupon: "cero" },
+  { ticker: "TZX27", vencimiento: "2027-06-30", cupon: "cero" },
+  { ticker: "TZX28", vencimiento: "2028-06-30", cupon: "cero" },
+  { ticker: "TZXA7", vencimiento: "2027-04-30", cupon: "cero" },
+  { ticker: "TZXD6", vencimiento: "2026-12-15", cupon: "cero" },
+  { ticker: "TZXD7", vencimiento: "2027-12-15", cupon: "cero" },
+  { ticker: "TZXD8", vencimiento: "2028-12-15", cupon: "cero" },
+  { ticker: "TZXM6", vencimiento: "2026-03-31", cupon: "cero" },
+  { ticker: "TZXM7", vencimiento: "2027-03-31", cupon: "cero" },
+  { ticker: "TZXM8", vencimiento: "2028-03-31", cupon: "cero" },
+  { ticker: "TZXM9", vencimiento: "2029-03-28", cupon: "cero" },
+  { ticker: "TZXO6", vencimiento: "2026-10-30", cupon: "cero" },
+  { ticker: "TZXO7", vencimiento: "2027-10-29", cupon: "cero" },
+  { ticker: "TZXS7", vencimiento: "2027-09-30", cupon: "cero" },
+  { ticker: "TZXS8", vencimiento: "2028-09-29", cupon: "cero" },
+  { ticker: "TZXY7", vencimiento: "2027-05-31", cupon: "cero" },
+  // LECER, letras cero cupón ajustadas por CER.
+  { ticker: "X15Y6", vencimiento: "2026-05-15", cupon: "cero" },
+  { ticker: "X29Y6", vencimiento: "2026-05-29", cupon: "cero" },
+  { ticker: "X30N6", vencimiento: "2026-11-30", cupon: "cero" },
+  { ticker: "X30S6", vencimiento: "2026-09-30", cupon: "cero" },
+  { ticker: "X31L6", vencimiento: "2026-07-31", cupon: "cero" },
+  // Discount/Par pesos CER (reestructuración 2005/2010): pagan cupón, y el Par
+  // además es step-up. Quedan fuera del cálculo de tasa real por cero cupón.
+  { ticker: "DICP", vencimiento: "2033-12-31", cupon: "con_cupon" },   // CER + 5,83%
+  { ticker: "DIP0", vencimiento: "2033-12-31", cupon: "con_cupon" },   // CER + 5,83%
+  { ticker: "PAP0", vencimiento: "2038-12-31", cupon: "con_cupon" },   // step-up
+  { ticker: "PARP", vencimiento: "2038-12-31", cupon: "con_cupon" },   // CER + 1,77%
 ] as const satisfies readonly PesoBond[]
 
 /**
@@ -99,6 +117,18 @@ export function pesoBondsVencidos(hoy: Date = new Date()): readonly PesoBond[] {
 /** El vencimiento de un ticker, o null si no pertenece al universo. */
 export function vencimientoDe(ticker: string): string | null {
   return UNIVERSO.find((b) => b.ticker === ticker.toUpperCase())?.vencimiento ?? null
+}
+
+/**
+ * Si el ticker es cero cupón por condición de emisión.
+ *
+ * Devuelve `null` —y no `false`— cuando el papel no está en el catálogo: no es
+ * lo mismo "sé que paga cupones" que "no lo tengo cargado". Quien llame decide
+ * qué hacer con la diferencia; en la práctica se cae al nombre publicado, que
+ * es mejor que nada pero no es confiable (ver el comentario de `cupon`).
+ */
+export function cuponDe(ticker: string): "cero" | "con_cupon" | null {
+  return UNIVERSO.find((b) => b.ticker === ticker.toUpperCase())?.cupon ?? null
 }
 
 /**

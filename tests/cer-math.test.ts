@@ -47,6 +47,37 @@ test("sin nombre no inventa: no calcula", () => {
   assert.ok(!esCeroCupon("XXXXX", ""))
 })
 
+// ── Regresión: la fuente de precios dejó de mandar el nombre ─────────────────
+//
+// El 9/9/2026 Rava empezó a publicar `nombre` con sólo el ticker en 382 de 887
+// filas. Como la detección leía el "0%" de ese nombre, de 28 instrumentos en
+// pesos pasó a reconocer 2, y la calculadora empezó a rechazar por "paga
+// cupones" a papeles que son cero cupón por emisión. La estructura ahora sale
+// del catálogo, así que el nombre puede venir vacío sin romper nada.
+
+test("los cero cupón se reconocen aunque la fuente mande el nombre vacío", () => {
+  for (const ticker of ["TZXD6", "TZXD7", "TZXD8", "TZXA7", "TZXM7", "TZXM8", "TZXM9", "TZXO6", "TZXO7", "TZXS7", "TZXS8", "TZXY7", "X30N6", "X30S6"]) {
+    assert.ok(esCeroCupon(ticker, null), `${ticker} debería seguir siendo cero cupón sin nombre`)
+    // Y también con el ticker repetido como nombre, que es lo que manda hoy.
+    assert.ok(esCeroCupon(ticker, ticker), `${ticker} debería seguir siendo cero cupón con nombre = ticker`)
+  }
+})
+
+test("los que pagan cupón siguen afuera aunque la fuente mande el nombre vacío", () => {
+  // El riesgo simétrico: que al confiar en el catálogo se cuele uno con cupón.
+  for (const ticker of ["TX26", "TX28", "TX31", "DICP", "DIP0", "PAP0", "PARP", "TXMD8", "TXMD9", "TXMJ0", "TXMJ8", "TXMJ9"]) {
+    assert.ok(!esCeroCupon(ticker, null), `${ticker} paga cupón: no puede entrar al cálculo de cero cupón`)
+    assert.ok(!esCeroCupon(ticker, ticker), `${ticker} paga cupón: no puede entrar al cálculo de cero cupón`)
+  }
+})
+
+test("el catálogo manda sobre el nombre, aunque el nombre diga otra cosa", () => {
+  // Si la fuente algún día publica un nombre equivocado, la condición de
+  // emisión tiene que ganar en las dos direcciones.
+  assert.ok(!esCeroCupon("TX26", "BONCER 2026 $ 0%"), "TX26 paga 2%: un nombre con 0% no lo convierte en cero cupón")
+  assert.ok(esCeroCupon("TZXD8", "BONCER 2028 $ 5,83%"), "TZXD8 es cero cupón por emisión, no importa qué diga el nombre")
+})
+
 // ── La tasa real ─────────────────────────────────────────────────────────────
 
 test("reproduce la tasa real publicada para TZX27", () => {
