@@ -518,7 +518,10 @@ const FAMILIAS: { key: FamiliaRentaFija; label: string }[] = [
 ]
 
 interface PesoRow {
-  ticker: string; nombre: string; precio: number | null; tir: number | null
+  ticker: string; nombre: string; precio: number | null
+  /** Tasa REAL sobre CER ("CER + X%"), no una TIR nominal. Ver `tipoTasa`. */
+  tasaReal: number | null
+  tipoTasa: "real_cer" | "mixta_cer_tamar"
   dm: number | null; paridad: number | null; vencimiento: string | null
 }
 
@@ -760,8 +763,8 @@ export function BonosView({ initialTicker = null }: { initialTicker?: string | n
       {(tab === "cer" || tab === "dual") && (() => {
         const filas = pesos.filter(p => (tab === "dual" ? esDual(p.ticker) : !esDual(p.ticker)))
         const conCurva = filas
-          .filter(f => f.tir != null && f.dm != null)
-          .map(f => ({ ticker: f.ticker, y: f.tir as number, x: f.dm as number, extra: f.vencimiento?.slice(0, 7) ?? "—" }))
+          .filter(f => f.tasaReal != null && f.dm != null)
+          .map(f => ({ ticker: f.ticker, y: f.tasaReal as number, x: f.dm as number, extra: f.vencimiento?.slice(0, 7) ?? "—" }))
         const unidad = tab === "cer" ? "Tasa real" : "Tasa"
         return (
           <div>
@@ -792,7 +795,7 @@ export function BonosView({ initialTicker = null }: { initialTicker?: string | n
                           <td style={{ padding: "3px 6px", color: "var(--amber)", fontWeight: 700 }}>{f.ticker}</td>
                           <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{f.vencimiento?.slice(0, 7) ?? "—"}</td>
                           <td style={{ padding: "3px 6px", color: "var(--text)", textAlign: "right" }}>{f.precio != null ? fmtNum(f.precio, 2) : "—"}</td>
-                          <td style={{ padding: "3px 6px", color: "var(--amber)", textAlign: "right", fontWeight: 700 }}>{f.tir != null ? fmtPct(f.tir) : "—"}</td>
+                          <td style={{ padding: "3px 6px", color: "var(--amber)", textAlign: "right", fontWeight: 700 }}>{f.tasaReal != null ? fmtPct(f.tasaReal) : "—"}</td>
                           <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{f.dm != null ? fmtNum(f.dm, 2) : "—"}</td>
                         </tr>
                       ))}

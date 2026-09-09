@@ -46,6 +46,23 @@ test("?tipo=pesos reuses the existing Rava bonds endpoint, no new external sourc
   assert.doesNotMatch(pesosBranch, /https?:\/\//)
 })
 
+test("el rendimiento en pesos NO se publica como `tir`", () => {
+  // A un CER no se le puede calcular una TIR nominal: el flujo está en unidades
+  // CER y el CER futuro no lo sabe nadie. Lo que publica el mercado es la tasa
+  // REAL. Usar el mismo nombre de campo que el screener de soberanos —donde sí
+  // es TIR nominal en dólares— invita a comparar dos números que no se comparan.
+  const pesosBranch = bondRoute.slice(
+    bondRoute.indexOf('tipoParam === "pesos"'),
+    bondRoute.indexOf('tipoParam === "lecap"'),
+  )
+  assert.match(pesosBranch, /tasaReal:/)
+  assert.doesNotMatch(pesosBranch, /^\s*tir:/m)
+  // Y el significado tiene que viajar con el dato, no depender de saber de
+  // memoria qué familia es cada ticker.
+  assert.match(pesosBranch, /tipoTasa:/)
+  assert.match(pesosBranch, /mixta_cer_tamar/)
+})
+
 
 // ── Vigencia ─────────────────────────────────────────────────────────────────
 

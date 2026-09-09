@@ -16,7 +16,7 @@ import { construirCashflows, ESQUEMAS } from "@/lib/bond-schedule"
 import { INSTRUMENTOS_BONOS, getInstrumentoBono } from "@/lib/bond-instrument-catalog"
 import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
 import { fetchRavaBondPrices } from "@/server/external/rava-prices"
-import { pesoBondsVigentes } from "@/server/domain/peso-bonds"
+import { familiaDe, pesoBondsVigentes } from "@/server/domain/peso-bonds"
 import { fetchBymaCapInstruments, fetchBymaQuotes, marketMetaForRows } from "@/server/external/byma-data"
 import { chooseFreshPrice, gateMarketPrice, type SelectedMarketPrice } from "@/server/domain/market-freshness"
 
@@ -302,11 +302,20 @@ export async function GET(request: NextRequest) {
       ])
       const bymaGate = gateMarketPrice("byma_data_open", byma?.asOf)
       const ravaFresh = gateMarketPrice("rava_market", q?.fecha).accepted
+      // Un CER no tiene TIR nominal: su flujo está en unidades CER y el CER
+      // futuro no lo sabe nadie, así que lo que publica el mercado para estos
+      // papeles es la TASA REAL ("CER + X%"). Llamar "tir" a eso, con el mismo
+      // nombre de campo que usan GD30/AL30 —donde sí es una TIR nominal en
+      // dólares— es pedirle a quien consuma la API que compare dos números que
+      // no se comparan. `tipoTasa` viaja al lado para que el significado no
+      // dependa de saber de memoria qué familia es cada ticker.
+      const familia = familiaDe(ticker)
       return {
         ticker,
         nombre: q?.nombre ?? ticker,
         precio: selected.price,
-        tir: ravaFresh ? q?.tir ?? null : null,
+        tasaReal: ravaFresh ? q?.tir ?? null : null,
+        tipoTasa: familia === "dual" ? "mixta_cer_tamar" : "real_cer",
         dm: ravaFresh ? q?.dm ?? null : null,
         paridad: ravaFresh ? q?.paridad ?? null : null,
         valorTecnico: ravaFresh ? q?.valorTecnico ?? null : null,
@@ -335,7 +344,7 @@ export async function GET(request: NextRequest) {
       ...marketMetaForRows(screener),
       universo: { vigentes: vigentes.length, total: 33 },
       dataQuality: "market_freshness_gated",
-      nota: "Precio priorizado desde BYMA Data; las métricas Rava solo se muestran con asOf fresco. Precios stale, futuros o sin fecha quedan unavailable y todo fallback queda rotulado.",
+      nota: "Precio priorizado desde BYMA Data; las métricas Rava solo se muestran con asOf fresco. Precios stale, futuros o sin fecha quedan unavailable y todo fallback queda rotulado. El rendimiento se publica como `tasaReal` y NO como `tir`: en un CER es una tasa real sobre CER (\"CER + X%\"), no la TIR nominal en dólares que devuelve el screener de soberanos. `tipoTasa` dice cuál es.",
     })
   }
 
