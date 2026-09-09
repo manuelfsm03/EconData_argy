@@ -6,7 +6,8 @@ import { fetchRegistered } from "@/server/http/fetch-source"
  * La URL histórica de BCR responde 404. Girasol no está disponible en esta
  * fuente y se conserva como null.
  *
- * FOB teórico = precio disponible × (1 - retención) - gastos estimados.
+ * El FOB oficial y la retención no se derivan: permanecen explícitamente
+ * ausentes hasta contar con una fuente y vigencia verificables.
  */
 
 import { NextResponse } from "next/server"
@@ -15,24 +16,17 @@ import { parseRavaRosarioPrices } from "@/server/external/rava-prices"
 export const runtime = "nodejs"
 
 const RAVA_INDICES_URL = "https://mercado.rava.com/api/prices/indices"
-const RETENCIONES = {
-  soja: 0.33,
-  maiz: 0.12,
-  trigo: 0.12,
-  girasol: 0.07,
-} as const
-const GASTOS_PORTUARIOS = 15
-
 let _cache: { data: AgroLocalData; expiry: number } | null = null
 
 interface GranoData {
   disponible: number | null
   fobOficial: number | null
-  retencion: number
+  retencion: number | null
   unidad: string
 }
 
 interface AgroLocalData {
+  status: "ok"
   soja: GranoData
   maiz: GranoData
   trigo: GranoData
@@ -41,13 +35,11 @@ interface AgroLocalData {
   source: string
 }
 
-function grainData(precio: number | null, retencion: number): GranoData {
+function grainData(precio: number | null): GranoData {
   return {
     disponible: precio,
-    fobOficial: precio === null
-      ? null
-      : Number((precio * (1 - retencion) - GASTOS_PORTUARIOS).toFixed(2)),
-    retencion: retencion * 100,
+    fobOficial: null,
+    retencion: null,
     unidad: "USD/tn",
   }
 }
@@ -70,10 +62,11 @@ async function fetchRavaGranos(): Promise<AgroLocalData | null> {
     }
 
     return {
-      soja: grainData(prices.soja, RETENCIONES.soja),
-      maiz: grainData(prices.maiz, RETENCIONES.maiz),
-      trigo: grainData(prices.trigo, RETENCIONES.trigo),
-      girasol: grainData(null, RETENCIONES.girasol),
+      status: "ok",
+      soja: grainData(prices.soja),
+      maiz: grainData(prices.maiz),
+      trigo: grainData(prices.trigo),
+      girasol: grainData(null),
       updated_at: new Date().toISOString(),
       source: "mercado.rava.com (pizarra Rosario)",
     }
@@ -94,13 +87,11 @@ export async function GET() {
     return NextResponse.json(data)
   }
 
-  const empty: AgroLocalData = {
-    soja: grainData(null, RETENCIONES.soja),
-    maiz: grainData(null, RETENCIONES.maiz),
-    trigo: grainData(null, RETENCIONES.trigo),
-    girasol: grainData(null, RETENCIONES.girasol),
+  const degraded = {
+    status: "degraded" as const,
+    error: "La fuente Rosario no está disponible; no hay precios locales verificables.",
+    source: "mercado.rava.com (pizarra Rosario)",
     updated_at: new Date().toISOString(),
-    source: "fuente no disponible",
   }
-  return NextResponse.json(empty, { status: 206 })
+  return NextResponse.json(degraded, { status: 503 })
 }

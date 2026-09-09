@@ -49,7 +49,7 @@ const COMMODITIES: Array<{ ticker: string; nombre: string; categoria: Categoria;
 ]
 
 // Cache en memoria — 5 min para commodities
-let _cacheStore: { data: unknown; expiry: number } | null = null
+let _cacheStore: { data: Quote[]; expiry: number; updatedAt: string } | null = null
 
 interface Quote {
   ticker: string
@@ -116,9 +116,10 @@ export async function GET(req: Request) {
 
   // Cache fresco
   if (_cacheStore && _cacheStore.expiry > Date.now()) {
-    const data = _cacheStore.data as Quote[]
+    const data = _cacheStore.data
     const filtered = catParam === "todos" ? data : data.filter((q) => q.categoria === catParam)
-    return NextResponse.json({ data: filtered, cached: true, updated_at: new Date().toISOString() })
+    const hasQuote = filtered.some((quote) => quote.precio != null)
+    return NextResponse.json({ status: hasQuote ? "ok" : "degraded", data: filtered, cached: true, updated_at: _cacheStore.updatedAt, fuente: "Yahoo Finance v8/chart · cierre diario" }, { status: hasQuote ? 200 : 503 })
   }
 
   try {
@@ -139,18 +140,20 @@ export async function GET(req: Request) {
       }
     })
 
-    _cacheStore = { data, expiry: Date.now() + 5 * 60 * 1000 } // 5 min
-
     const filtered = catParam === "todos" ? data : data.filter((q) => q.categoria === catParam)
+    const updatedAt = new Date().toISOString()
+    const hasQuote = filtered.some((quote) => quote.precio != null)
+    if (data.some((quote) => quote.precio != null)) _cacheStore = { data, expiry: Date.now() + 5 * 60 * 1000, updatedAt }
     return NextResponse.json({
+      status: hasQuote ? "ok" : "degraded",
       data: filtered,
       cached: false,
-      updated_at: new Date().toISOString(),
-      fuente: "Yahoo Finance futures",
-    })
+      updated_at: updatedAt,
+      fuente: "Yahoo Finance v8/chart · cierre diario",
+    }, { status: hasQuote ? 200 : 503 })
   } catch (err) {
     return NextResponse.json(
-      { error: "No se pudo obtener precios de commodities", detail: String(err) },
+      { status: "degraded", error: "No se pudo obtener precios de commodities", source: "Yahoo Finance v8/chart", updated_at: new Date().toISOString() },
       { status: 503 },
     )
   }
