@@ -13,6 +13,18 @@ export function formatCurrency(value: number | null | undefined, decimals = 2): 
   }).format(value)
 }
 
+/**
+ * Formato numérico corto de los tableros: separador local y guion largo cuando
+ * el dato no está. Nunca devuelve "0" para un valor ausente.
+ */
+export function fmtNum(value: number | null | undefined, decimals = 1): string {
+  if (value == null) return "—"
+  return value.toLocaleString("es-AR", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })
+}
+
 export function formatPercent(value: number | null | undefined, decimals = 2): string {
   if (value == null) return '-'
   return `${(value * 100).toFixed(decimals)}%`

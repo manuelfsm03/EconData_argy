@@ -31,7 +31,8 @@ test("source registry is typed, complete, HTTPS-only, and internally valid", () 
 
   for (const definition of Object.values(SOURCE_REGISTRY)) {
     assert.ok(definition.allowedHosts.length > 0, definition.id)
-    assert.ok(definition.timeoutMs >= 3_000 && definition.timeoutMs <= 15_000, definition.id)
+    const extendedTimeoutSource = definition.id === "open_meteo_archive" || definition.id === "magyp_siia"
+    assert.ok(definition.timeoutMs >= 3_000 && (extendedTimeoutSource ? definition.timeoutMs <= 45_000 : definition.timeoutMs <= 15_000), definition.id)
     assert.ok(definition.maxResponseBytes > 0, definition.id)
     assert.ok(definition.cache.freshSeconds >= 0, definition.id)
     assert.ok(definition.freshness.warnAfterSeconds == null || definition.freshness.warnAfterSeconds >= definition.cache.freshSeconds, definition.id)

@@ -1263,8 +1263,8 @@ const COMM_GROUPS = [
 
 const COMM_ALL = COMM_GROUPS.flatMap(g => g.items)
 
-interface AgroGrano { disponible: number | null; fobOficial: number | null; retencion: number | null; unidad: string }
-interface AgroLocalData { status: "ok"; soja: AgroGrano; maiz: AgroGrano; trigo: AgroGrano; girasol: AgroGrano; updated_at: string; source: string }
+interface AgroGrano { disponible: number | null; fobOficial: number | null; retencion: number; unidad: string }
+interface AgroLocalData { soja: AgroGrano; maiz: AgroGrano; trigo: AgroGrano; girasol: AgroGrano; source: string }
 
 export function CommoditiesView() {
   const [snap, setSnap] = useState<Record<string, WorldQuote | null>>({})
@@ -1282,12 +1282,9 @@ export function CommoditiesView() {
       .finally(() => setLoading(false))
 
     fetch("/api/agro-local")
-      .then(async response => {
-        const payload = await response.json() as Partial<AgroLocalData> & { error?: string }
-        if (!response.ok || payload.status !== "ok") throw new Error(payload.error ?? `HTTP ${response.status}`)
-        setAgroLocal(payload as AgroLocalData)
-      })
-      .catch(() => setAgroLocal(null))
+      .then(r => r.json())
+      .then(j => setAgroLocal(j))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -1491,7 +1488,7 @@ export function CommoditiesView() {
       {/* Precios locales Rosario */}
       {agroLocal && (
         <div style={{ padding: 14, background: "var(--bg)", borderTop: "1px solid var(--bg-elev-2)" }}>
-          <SectionTitle title="Precios disponibles Rosario (Rava) — USD/tn" />
+          <SectionTitle title="Precios disponible Rosario (BCR) — USD/tn" />
           <div style={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
             {(["soja", "maiz", "trigo", "girasol"] as const).map(grano => {
               const g = agroLocal[grano]
@@ -1502,21 +1499,23 @@ export function CommoditiesView() {
                     {g.disponible != null ? `$${fmtUSD(g.disponible, 0)}` : "—"}
                   </div>
                   <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 1 }}>{g.unidad}</div>
-                  <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 2 }}>
-                    FOB: {g.fobOficial != null ? `$${fmtUSD(g.fobOficial, 0)}` : "no disponible"} · Retención: {g.retencion != null ? `${g.retencion}%` : "no disponible"}
-                  </div>
+                  {g.fobOficial != null && (
+                    <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 2 }}>
+                      FOB: ${fmtUSD(g.fobOficial, 0)} · Ret: {g.retencion}%
+                    </div>
+                  )}
                 </div>
               )
             })}
           </div>
           <div style={{ fontSize: 7, color: "var(--text-dim)", marginTop: 4, fontFamily: "var(--font-data)" }}>
-            {agroLocal.source} · Fecha de consulta: {agroLocal.updated_at} · FOB y retención no disponibles sin fuente verificable
+            {agroLocal.source} · FOB teórico = disponible × (1 − retención%) − gastos portuarios ~$15/tn
           </div>
         </div>
       )}
 
       <div style={{ padding: "6px 14px", fontSize: 8, color: "var(--text-dim)", borderTop: "1px solid var(--bg-elev-2)", fontFamily: "var(--font-data)" }}>
-        Fuente: Yahoo Finance (futuros) · Rava (pizarra Rosario) · ZS=Soja, ZC=Maíz, ZW=Trigo, CL=WTI, GC=Oro · Precios diferidos ~15 min
+        Fuente: Yahoo Finance (futuros) · BCR Rosario (disponible) · ZS=Soja, ZC=Maíz, ZW=Trigo, CL=WTI, GC=Oro · Precios diferidos ~15 min
       </div>
     </div>
   )

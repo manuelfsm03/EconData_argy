@@ -108,6 +108,32 @@ export const SOURCE_REGISTRY = {
   rava_market: source("rava_market", { displayName: "Rava Mercado", publisher: "Rava Bursátil", host: "mercado.rava.com", dataClass: "intraday_market", maxResponseBytes: 15 * MB }),
   owid: source("owid", { displayName: "Our World in Data", publisher: "Our World in Data", host: "ourworldindata.org", kind: "csv", dataClass: "annual", healthcheckPath: "/grapher/soybean-production.csv" }),
   owid_github: source("owid_github", { displayName: "OWID datasets", publisher: "Our World in Data", host: "raw.githubusercontent.com", kind: "csv", dataClass: "annual" }),
+  // Estimaciones Agrícolas del SIIA: un único CSV de ~15 MB con la serie por
+  // cultivo, campaña y departamento desde 1969. Se publica una vez por campaña,
+  // así que la ventana de frescura anual es la correcta: exigirle actualización
+  // mensual marcaría la fuente como vencida cuando en realidad está al día.
+  // Reanálisis ERA5 del ECMWF servido por Open-Meteo: precipitación diaria
+  // desde 1940, sin credencial. Es reanálisis, NO observación de estación:
+  // quien lo consuma tiene que rotularlo como tal.
+  open_meteo_archive: source("open_meteo_archive", {
+    displayName: "Open-Meteo Archive (ERA5)",
+    publisher: "Open-Meteo / ECMWF ERA5",
+    host: "archive-api.open-meteo.com",
+    dataClass: "annual",
+    timeoutMs: 45_000,
+    maxResponseBytes: 12 * MB,
+    healthcheckPath: "/v1/archive?latitude=-33.89&longitude=-60.57&start_date=2026-01-01&end_date=2026-01-02&daily=precipitation_sum",
+  }),
+  magyp_siia: source("magyp_siia", {
+    displayName: "SIIA — Estimaciones Agrícolas",
+    publisher: "Ministerio de Agricultura, Ganadería y Pesca",
+    host: "datos.magyp.gob.ar",
+    kind: "csv",
+    dataClass: "annual",
+    maxResponseBytes: 30 * MB,
+    timeoutMs: 30_000,
+    healthcheckPath: "/api/3/action/package_show?id=estimaciones-agricolas",
+  }),
   // International monthly petroleum observations are published with a material
   // reporting lag. This source-specific window judges freshness against that
   // cadence instead of the tighter default used by Argentine monthly series.
@@ -192,7 +218,8 @@ export function validateSourceRegistry(): string[] {
     if (ids.has(definition.id)) errors.push(`${key}: duplicate id`)
     ids.add(definition.id)
     if (definition.baseUrl && new URL(definition.baseUrl).protocol !== "https:") errors.push(`${key}: baseUrl must be HTTPS`)
-    if (definition.timeoutMs < 3_000 || definition.timeoutMs > 15_000) errors.push(`${key}: invalid timeout`)
+    const extendedTimeoutSource = key === "open_meteo_archive" || key === "magyp_siia"
+    if (definition.timeoutMs < 3_000 || definition.timeoutMs > (extendedTimeoutSource ? 45_000 : 15_000)) errors.push(`${key}: invalid timeout`)
     if (definition.retry.attempts > 1) errors.push(`${key}: too many retries`)
     if (definition.healthcheck?.credentialQueryParam && !definition.credentialEnv) {
       errors.push(`${key}: healthcheck credential query requires credentialEnv`)

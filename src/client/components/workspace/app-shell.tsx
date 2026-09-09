@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
-import { Cable, CalendarDays, Database, Landmark, LayoutDashboard, MessageSquareText, Users } from "lucide-react"
+import { Cable, CalendarDays, Database, Landmark, LayoutDashboard, MessageSquareText, Sprout, Users } from "lucide-react"
 import { ThemeToggle } from "@/client/components/ui/theme-toggle"
 import {
   Sidebar,
@@ -21,6 +21,7 @@ import { DataLibrary } from "./data-library"
 import { ForumHub } from "./forum-hub"
 import { MarketCalendar } from "./market-calendar"
 import { SiteFooter } from "./site-footer"
+import { AgroWorkspace } from "./agro-workspace"
 import { BondsWorkspace } from "./bonds-workspace"
 import { ConnectView } from "./connect-view"
 import { CommunityView } from "@/client/components/profiles/community-view"
@@ -29,7 +30,7 @@ import { DATA_CARD_CATALOG } from "@/lib/card-catalog"
 import { TickerNavContext, type TickerDestino, type TickerFocus, type TickerKind } from "@/lib/ticker-nav"
 import { USERS_ENABLED } from "@/lib/feature-flags"
 
-type WorkspaceSection = "canvas" | "library" | "calendar" | "bonds" | "forum" | "connect" | "community"
+type WorkspaceSection = "canvas" | "library" | "calendar" | "bonds" | "agro" | "forum" | "connect" | "community"
 
 function sectionForDestino(destino: TickerDestino): WorkspaceSection {
   if (destino === "foro") return "forum"
@@ -45,6 +46,7 @@ const SECTIONS = [
   { id: "library" as const, label: "Biblioteca de datos", description: `${DATA_CARD_CATALOG.length} tarjetas`, Icon: Database },
   { id: "calendar" as const, label: "Calendario", description: "Pagos y vencimientos", Icon: CalendarDays },
   { id: "bonds" as const, label: "Bonos", description: "Calculadora y herramientas", Icon: Landmark },
+  { id: "agro" as const, label: "Agro", description: "Producción y rendimientos", Icon: Sprout },
   { id: "forum" as const, label: "Foro", description: "Conversaciones", Icon: MessageSquareText },
   { id: "connect" as const, label: "Conectar", description: "MCP para tus agentes", Icon: Cable },
   { id: "community" as const, label: "Comunidad", description: "Perfiles y ranking", Icon: Users },
@@ -81,7 +83,7 @@ export function AppShell() {
     if (sectionParam === "community" && !USERS_ENABLED) {
       setSection("canvas")
       localStorage.removeItem(SECTION_KEY)
-    } else if (sectionParam === "canvas" || sectionParam === "library" || sectionParam === "calendar" || sectionParam === "bonds" || sectionParam === "forum" || sectionParam === "connect" || sectionParam === "community") {
+    } else if (sectionParam === "canvas" || sectionParam === "library" || sectionParam === "calendar" || sectionParam === "bonds" || sectionParam === "agro" || sectionParam === "forum" || sectionParam === "connect" || sectionParam === "community") {
       setSection(sectionParam)
     }
     if (tickerParam && kindParam) {
@@ -148,6 +150,7 @@ export function AppShell() {
         {section === "library" && <DataLibrary focusTicker={focusTicker && focusTicker.kind !== "variable" ? focusTicker : null} />}
         {section === "calendar" && <MarketCalendar initialTicker={focusTicker?.ticker ?? null} />}
         {section === "bonds" && <BondsWorkspace initialTicker={focusTicker?.kind === "bono" ? focusTicker.ticker : null} />}
+        {section === "agro" && <AgroWorkspace />}
         {section === "forum" && <ForumHub initialFocus={focusTicker} />}
         {section === "connect" && <ConnectView />}
         {USERS_ENABLED && section === "community" && <CommunityView />}

@@ -27,7 +27,6 @@ import {
   PiramidesView,
   RiesgoPaisView,
   SenorejaView,
-  AgroView,
 } from "@/client/components/dashboard/tab-macro"
 import {
   AgregadosView,
@@ -57,7 +56,6 @@ const CARD_COMPONENTS: Record<string, React.ComponentType> = {
   rofex: RofexView,
   "plazo-fijo-mercado": FinanzasPlazoFijoView,
   commodities: CommoditiesView,
-  agro: AgroView,
   "mercados-mundo": MundoView,
   cripto: CryptoView,
   "screener-activos": AssetScreener,

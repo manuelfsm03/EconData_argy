@@ -13,6 +13,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { AgroProduccion } from "./agro-produccion"
 import { BBGAreaChart } from "../charts/bbg-area-chart"
 import { BBGLineChart } from "../charts/bbg-line-chart"
 import { DownloadCSV } from "../ui/download-csv"
@@ -20,7 +21,6 @@ import { ChartDownload } from "../ui/chart-download"
 import { SectionMeta } from "../ui/help-tooltip"
 import { InfoTooltip } from "../ui/info-tooltip"
 import { GLOSSARY } from "@/lib/glossary"
-import { cbotUsdTon } from "@/lib/agro"
 import { toWeightedSectorShares } from "@/lib/macro-sector-shares"
 import {
   BarChart, Bar, Cell, LineChart, Line,
@@ -4301,12 +4301,11 @@ export function SenorejaView() {
 interface GranoLocalData {
   disponible: number | null
   fobOficial: number | null
-  retencion: number | null
+  retencion: number
   unidad: string
 }
 
 interface AgroLocalPayload {
-  status: "ok"
   soja: GranoLocalData
   maiz: GranoLocalData
   trigo: GranoLocalData
@@ -4322,151 +4321,138 @@ interface CbotQuote {
   precio: number | null
   cambio: number | null
   cambioPct: number | null
-  fechaActualizacion: string | null
 }
 
-interface CbotPayload {
-  status: "ok"
-  data: CbotQuote[]
-  updated_at: string
-  source: string
-  fuente: string
+// USc/bu → USD/tn: 1 tn soja/trigo = 36.744 bu; maíz = 39.368 bu
+const BU_TO_TON: Record<string, number | undefined> = {
+  "ZS=F": 36.744,
+  "ZC=F": 39.368,
+  "ZW=F": 36.744,
 }
 
-interface ProductionPayload {
-  data: Record<string, number | string>[]
-  source: string
-  unit: string
+function cbotUsdTon(precio: number | null, ticker: string): number | null {
+  const factor = BU_TO_TON[ticker]
+  if (precio == null || !factor) return null
+  return precio * factor / 100
 }
 
-type AgroSourceStatus = "loading" | "ok" | "error" | "unavailable"
-interface AgroSourceState<T> { status: AgroSourceStatus; data: T | null; error: string | null }
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
-function isLocalPayload(value: unknown): value is AgroLocalPayload {
-  return isRecord(value) && value.status === "ok" && ["soja", "maiz", "trigo", "girasol"].every((key) => isRecord(value[key]))
-}
-
-function isCbotPayload(value: unknown): value is CbotPayload {
-  if (!isRecord(value) || value.status !== "ok" || !Array.isArray(value.data)) return false
-  return value.data.some((quote) => isRecord(quote) && typeof quote.ticker === "string" && typeof quote.precio === "number")
-}
-
-function isProductionPayload(value: unknown): value is ProductionPayload {
-  return isRecord(value) && Array.isArray(value.data) && value.data.length > 0 && typeof value.source === "string" && typeof value.unit === "string"
-}
-
-async function fetchAgroSource<T>(url: string, validate: (value: unknown) => value is T): Promise<AgroSourceState<T>> {
-  try {
-    const response = await fetch(url)
-    const payload = await response.json().catch(() => null)
-    if (!response.ok) {
-      const message = isRecord(payload) && typeof payload.error === "string" ? payload.error : `HTTP ${response.status}`
-      return { status: "error", data: null, error: message }
-    }
-    if (!validate(payload)) return { status: "unavailable", data: null, error: "La fuente respondió sin datos utilizables" }
-    return { status: "ok", data: payload, error: null }
-  } catch (error) {
-    return { status: "error", data: null, error: error instanceof Error ? error.message : "No se pudo consultar la fuente" }
-  }
-}
-
-export function AgroView() {
-  const [localState, setLocalState] = useState<AgroSourceState<AgroLocalPayload>>({ status: "loading", data: null, error: null })
-  const [cbotState, setCbotState] = useState<AgroSourceState<CbotPayload>>({ status: "loading", data: null, error: null })
-  const [productionState, setProductionState] = useState<AgroSourceState<ProductionPayload>>({ status: "loading", data: null, error: null })
+function AgroView() {
+  const [local, setLocal] = useState<AgroLocalPayload | null>(null)
+  const [cbot, setCbot] = useState<CbotQuote[]>([])
+  const [produccion, setProduccion] = useState<Record<string, number | string>[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let cancelled = false
-    const load = <T,>(url: string, validate: (value: unknown) => value is T, setter: (state: AgroSourceState<T>) => void) => {
-      void fetchAgroSource(url, validate).then((state) => { if (!cancelled) setter(state) })
-    }
-    load("/api/agro-local", isLocalPayload, setLocalState)
-    load("/api/commodities?categoria=agro", isCbotPayload, setCbotState)
-    load("/api/agro-soja", isProductionPayload, setProductionState)
-    return () => { cancelled = true }
+    Promise.all([
+      fetch("/api/agro-local").then(r => r.json()),
+      fetch("/api/commodities?categoria=agro").then(r => r.json()),
+      fetch("/api/agro-soja").then(r => r.json()),
+    ])
+      .then(([l, c, s]) => {
+        setLocal(l as AgroLocalPayload)
+        setCbot((c.data ?? []) as CbotQuote[])
+        setProduccion((s.data ?? []) as Record<string, number | string>[])
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
+  if (loading) return (
+    <div style={{ padding: 24, color: "var(--text-dim)", fontSize: 11, fontFamily: "var(--font-data)" }}>
+      Cargando datos agro…
+    </div>
+  )
+
   const granos: { key: keyof Pick<AgroLocalPayload, "soja" | "maiz" | "trigo">; label: string }[] = [
-    { key: "soja", label: "Soja" },
-    { key: "maiz", label: "Maíz" },
+    { key: "soja",  label: "Soja"  },
+    { key: "maiz",  label: "Maíz"  },
     { key: "trigo", label: "Trigo" },
   ]
-  const mainCbot = (cbotState.data?.data ?? []).filter((q) => ["ZS=F", "ZC=F", "ZW=F"].includes(q.ticker))
-  const prodData = (productionState.data?.data ?? []).slice(-12)
-  const lastProductionDate = typeof prodData.at(-1)?.date === "string" ? String(prodData.at(-1)?.date).slice(0, 4) : "no disponible"
+  const mainCbot = cbot.filter(q => ["ZS=F", "ZC=F", "ZW=F"].includes(q.ticker))
+  const prodData = produccion.slice(-12)
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       {/* ── Pizarra Rosario ── */}
-      <SectionHeader title="Pizarra Rosario — Precios disponibles" source={localState.data?.source ?? "mercado.rava.com · pizarra Rosario"} />
-      <div style={{ padding: "0 14px 6px", fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>
-        Unidad: USD/tn · Fecha de consulta: {localState.data?.updated_at ?? "no disponible"}
-      </div>
-      {localState.status === "loading" && <div style={{ padding: "12px 14px", color: "var(--text-dim)", fontSize: 11 }}>Cargando precios locales…</div>}
-      {(localState.status === "error" || localState.status === "unavailable") && <div style={{ padding: "12px 14px", color: "var(--negative)", fontSize: 11 }}>{localState.status === "error" ? "Error" : "No disponible"}: {localState.error}</div>}
-      {localState.status === "ok" && localState.data && <div style={{ display: "flex", flexWrap: "wrap", gap: 12, padding: "12px 14px" }}>
+      <SectionHeader title="Pizarra Rosario — Precios disponibles" source={local?.source ?? "mercado.rava.com"} />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, padding: "12px 14px" }}>
         {granos.map(({ key, label }) => {
-          const d = localState.data?.[key]
+          const d = local?.[key]
           return (
-            <div key={key} style={{ flex: "1 1 200px", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 14px" }}>
-              <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: d?.disponible != null ? "var(--amber)" : "var(--text-mute)", fontFamily: "var(--font-data)" }}>
-                {d?.disponible != null ? `USD ${fmtNum(d.disponible, 0)}/tn` : "Sin cotización"}
+            <div key={key} style={{
+              flex: "1 1 200px", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 14px",
+            }}>
+              <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+                {label}
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "var(--amber)", fontFamily: "var(--font-data)" }}>
+                {d?.disponible != null ? `USD ${fmtNum(d.disponible, 0)}/tn` : "—"}
               </div>
               <div style={{ display: "flex", gap: 16, fontSize: 10, color: "var(--text-dim)", marginTop: 4 }}>
-                <span>FOB: <b style={{ color: "var(--text)" }}>{d?.fobOficial != null ? `USD ${fmtNum(d.fobOficial, 0)}/tn` : "no disponible"}</b></span>
-                <span>Retención: <b style={{ color: "var(--text)" }}>{d?.retencion != null ? `${d.retencion}%` : "no disponible"}</b></span>
+                <span>FOB teórico: <b style={{ color: "var(--text)" }}>{d?.fobOficial != null ? `USD ${fmtNum(d.fobOficial, 0)}/tn` : "—"}</b></span>
+                <span>Retención: <b style={{ color: "var(--text)" }}>{d?.retencion ?? "—"}%</b></span>
               </div>
             </div>
           )
         })}
-      </div>}
+      </div>
 
       {/* ── CBOT Futuros ── */}
-      <SectionHeader title="CBOT — Futuros internacionales" source={cbotState.data?.fuente ?? cbotState.data?.source ?? "Yahoo Finance v8/chart · cierre diario"} />
-      <div style={{ padding: "0 14px 6px", fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>
-        Unidad original: USc/bu · conversión explícita a USD/tn · Fecha de consulta: {cbotState.data?.updated_at ?? "no disponible"}
-      </div>
-      {cbotState.status === "loading" && <div style={{ padding: "12px 14px", color: "var(--text-dim)", fontSize: 11 }}>Cargando cierres diarios CBOT…</div>}
-      {(cbotState.status === "error" || cbotState.status === "unavailable") && <div style={{ padding: "12px 14px", color: "var(--negative)", fontSize: 11 }}>{cbotState.status === "error" ? "Error" : "No disponible"}: {cbotState.error}</div>}
-      {cbotState.status === "ok" && <div style={{ display: "flex", flexWrap: "wrap", gap: 12, padding: "12px 14px" }}>
+      <SectionHeader title="CBOT — Futuros internacionales" source="Yahoo Finance" />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, padding: "12px 14px" }}>
         {mainCbot.length === 0
-          ? <div style={{ fontSize: 11, color: "var(--text-mute)", padding: "4px 0" }}>Sin cotización CBOT disponible</div>
-          : mainCbot.map((q) => {
+          ? <div style={{ fontSize: 11, color: "var(--text-mute)", padding: "4px 0" }}>Sin datos CBOT disponibles</div>
+          : mainCbot.map(q => {
               const usdTon = cbotUsdTon(q.precio, q.ticker)
               return (
-                <div key={q.ticker} style={{ flex: "1 1 180px", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 14px" }}>
-                  <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{q.nombre} · {q.unidad}</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "var(--font-data)", color: "var(--text)" }}>{q.precio != null ? fmtNum(q.precio, 2) : "Sin cotización"}</div>
-                  {usdTon != null && <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 2 }}>≈ USD <b style={{ color: "var(--text)" }}>{fmtNum(usdTon, 0)}</b>/tn</div>}
-                  {q.cambioPct != null && <div style={{ fontSize: 10, color: q.cambioPct >= 0 ? "var(--positive)" : "var(--negative)", marginTop: 4 }}>{q.cambioPct >= 0 ? "+" : ""}{fmtNum(q.cambioPct, 2)}%</div>}
-                  <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 4 }}>{q.fechaActualizacion ? `Cierre diario: ${new Date(q.fechaActualizacion).toLocaleDateString("es-AR")}` : "Fecha de cotización no disponible"}</div>
+                <div key={q.ticker} style={{
+                  flex: "1 1 180px", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 14px",
+                }}>
+                  <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+                    {q.nombre} · {q.unidad}
+                  </div>
+                  <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "var(--font-data)", color: "var(--text)" }}>
+                    {q.precio != null ? fmtNum(q.precio, 2) : "—"}
+                  </div>
+                  {usdTon != null && (
+                    <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 2 }}>
+                      ≈ USD <b style={{ color: "var(--text)" }}>{fmtNum(usdTon, 0)}</b>/tn
+                    </div>
+                  )}
+                  {q.cambioPct != null && (
+                    <div style={{ fontSize: 10, color: q.cambioPct >= 0 ? "var(--positive)" : "var(--negative)", marginTop: 4 }}>
+                      {q.cambioPct >= 0 ? "+" : ""}{fmtNum(q.cambioPct, 2)}%
+                    </div>
+                  )}
                 </div>
               )
             })}
-      </div>}
+      </div>
 
       {/* ── Producción mundial soja ── */}
-      <SectionHeader title="Producción mundial de soja" source={productionState.data?.source ?? "Our World in Data / FAO"} />
-      <div style={{ padding: "0 14px 6px", fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>
-        Unidad: {productionState.data?.unit ?? "millones de toneladas"} · Último año disponible: {lastProductionDate}
-      </div>
-      {productionState.status === "loading" && <div style={{ padding: "12px 14px", color: "var(--text-dim)", fontSize: 11 }}>Cargando producción anual…</div>}
-      {(productionState.status === "error" || productionState.status === "unavailable") && <div style={{ padding: "12px 14px", color: "var(--negative)", fontSize: 11 }}>{productionState.status === "error" ? "Error" : "No disponible"}: {productionState.error}</div>}
-      {productionState.status === "ok" && prodData.length > 0 && (
+      {prodData.length > 0 && (
         <>
+          <SectionHeader title="Producción mundial de soja" source="Our World in Data / FAO" />
           <div style={{ padding: "12px 14px" }}>
             <div style={{ height: 260 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={prodData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
                   <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" />
-                  <XAxis dataKey="date" tickFormatter={(d: string) => d.slice(0, 4)} tick={{ fontSize: 9, fill: "var(--text-mute)" }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 9, fill: "var(--text-mute)" }} tickLine={false} axisLine={false} tickFormatter={(v: number) => `${v}M`} />
-                  <Tooltip contentStyle={{ background: "var(--bg-elev)", border: "1px solid var(--border)", fontSize: 10, color: "var(--text)" }} formatter={(v: unknown) => [`${v} M tn`, ""]} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(d: string) => d.slice(0, 4)}
+                    tick={{ fontSize: 9, fill: "var(--text-mute)" }}
+                    tickLine={false} axisLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 9, fill: "var(--text-mute)" }}
+                    tickLine={false} axisLine={false}
+                    tickFormatter={(v: number) => `${v}M`}
+                  />
+                  <Tooltip
+                    contentStyle={{ background: "var(--bg-elev)", border: "1px solid var(--border)", fontSize: 10, color: "var(--text)" }}
+                    formatter={(v: unknown) => [`${v} M tn`, ""]}
+                  />
                   <Legend wrapperStyle={{ fontSize: 9 }} />
                   <Area type="monotone" dataKey="Brazil" stackId="1" stroke="#4CAF50" fill="#4CAF50" fillOpacity={0.5} name="Brasil" />
                   <Area type="monotone" dataKey="United States" stackId="1" stroke="#2196F3" fill="#2196F3" fillOpacity={0.5} name="EE.UU." />
@@ -4474,10 +4460,16 @@ export function AgroView() {
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-            <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 4 }}>Millones de toneladas · datos anuales FAO · año visible en eje y tooltip</div>
+            <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 4 }}>
+              Millones de toneladas · datos anuales FAO
+            </div>
           </div>
         </>
       )}
+
+      {/* Producción local por cultivo y campaña. Vive en su propio módulo:
+          tiene su ciclo de datos y sus advertencias de serie. */}
+      <AgroProduccion />
     </div>
   )
 }
