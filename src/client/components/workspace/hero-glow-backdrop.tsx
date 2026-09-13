@@ -6,6 +6,9 @@
  * glow layers del mapa de lluvias regional (feGaussianBlur), aplicado acá
  * como ambientación estática de fondo. Decorativo: aria-hidden, no
  * interactivo, no compite con el contenido (z-index por debajo, opacidad baja).
+ *
+ * El keyframe "hero-drift" que usa vive en globals.css (regla compartida):
+ * HeroProductGrid lo reutiliza para los emojis flotantes de cada tarjeta.
  */
 const PUNTOS = [
   { top: "8%", left: "12%", size: 260, color: "var(--amber)", delay: "0s", duration: "22s" },
@@ -31,12 +34,6 @@ export function HeroGlowBackdrop() {
           }}
         />
       ))}
-      <style>{`
-        @keyframes hero-drift {
-          from { transform: translate(0, 0) scale(1); }
-          to { transform: translate(40px, -30px) scale(1.15); }
-        }
-      `}</style>
     </div>
   )
 }

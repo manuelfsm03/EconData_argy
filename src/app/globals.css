@@ -222,3 +222,16 @@ td.num, th.num { text-align: right; }
 @keyframes chalk-caret {
   50% { border-color: transparent; }
 }
+
+/* Movimiento compartido de "deriva lenta" — glow del hero (grande, puede salirse del blob). */
+@keyframes hero-drift {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(40px, -30px) scale(1.15); }
+}
+
+/* Misma idea pero con amplitud chica: emojis de HeroProductGrid, que viven
+   dentro de una tarjeta con overflow-hidden y no pueden irse tan lejos. */
+@keyframes hero-drift-soft {
+  from { transform: translate(0, 0) rotate(-2deg) scale(1); }
+  to { transform: translate(6px, -8px) rotate(3deg) scale(1.08); }
+}
