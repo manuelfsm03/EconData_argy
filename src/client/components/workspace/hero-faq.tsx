@@ -7,6 +7,9 @@
  * encabezado, preguntas ya expandidas debajo (sin acordeón/colapso), tono
  * informal en segunda persona. No es una copia literal del contenido —
  * las preguntas son las de La Pizarra — pero sí la estructura visual.
+ *
+ * Layout-agnóstico a propósito: no define su propio ancho ni margen exterior
+ * (eso lo decide quien la use — hoy vive dentro de HeroFaqDrawer).
  */
 
 const CATEGORIAS = [
@@ -61,7 +64,7 @@ const CATEGORIAS = [
 
 export function HeroFAQ() {
   return (
-    <div id="faq" className="mt-16 max-w-2xl scroll-mt-8">
+    <div>
       <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--text-dim)]">Preguntas frecuentes</h2>
 
       <div className="mt-4 space-y-8">

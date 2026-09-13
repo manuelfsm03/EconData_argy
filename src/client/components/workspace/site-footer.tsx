@@ -13,6 +13,8 @@ const LINKS = [
   { href: "/terminos", label: "Términos" },
 ]
 
+const CAFECITO_URL = "https://cafecito.app/lapizarra"
+
 export function SiteFooter() {
   return (
     <footer className="border-t border-[var(--border)] bg-[var(--bg-elev)]">
@@ -33,6 +35,9 @@ export function SiteFooter() {
               {link.label}
             </Link>
           ))}
+          <a href={CAFECITO_URL} target="_blank" rel="noopener noreferrer" className="text-[var(--text-dim)] hover:text-[var(--amber)]">
+            Invitanos un café
+          </a>
         </nav>
 
         <div className="flex max-w-md items-start gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3">

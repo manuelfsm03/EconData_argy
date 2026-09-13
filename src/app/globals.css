@@ -202,3 +202,23 @@ td.num, th.num { text-align: right; }
     padding-right: 8px !important;
   }
 }
+
+/* Título del hero: efecto tiza escribiéndose de a poco al entrar ("La Pizarra" = 10 caracteres). */
+.chalk-typewriter {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 10ch;
+  border-right: 3px solid var(--amber);
+  animation:
+    chalk-type 1s steps(10, end) 0.2s both,
+    chalk-caret 0.8s step-end 5;
+}
+
+@keyframes chalk-type {
+  from { width: 0; }
+}
+
+@keyframes chalk-caret {
+  50% { border-color: transparent; }
+}
