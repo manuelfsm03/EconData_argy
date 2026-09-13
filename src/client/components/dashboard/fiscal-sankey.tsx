@@ -217,7 +217,7 @@ function StrokeSankeyChart({ nodes, links }: { nodes: RawNode[]; links: RawLink[
       <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 16px 4px" }}>
         <div style={{ fontSize: 9, color: "var(--positive)", letterSpacing: 2, textTransform: "uppercase", fontWeight: 700 }}>← de dónde sale</div>
         <div style={{ fontSize: 9, color: "var(--amber)", letterSpacing: 2, textTransform: "uppercase", fontWeight: 700 }}>SPN</div>
-        <div style={{ fontSize: 9, color: "var(--negative)", letterSpacing: 2, textTransform: "uppercase", fontWeight: 700 }}>en qué se gasta →</div>
+        <div style={{ fontSize: 9, color: "var(--negative)", letterSpacing: 2, textTransform: "uppercase", fontWeight: 700 }}>gastos y resultado →</div>
       </div>
       <div ref={containerRef} style={{ overflow: "hidden" }}>
         <svg width={dim.width} height={dim.height} style={{ display: "block" }}>
@@ -486,7 +486,7 @@ export function FiscalSankeyView() {
       )}
       {deficit && (
         <div style={{ borderLeft: "3px solid var(--negative)", background: "var(--bg-elev)", padding: "8px 12px", marginBottom: 8, fontSize: 10, color: "var(--negative)" }}>
-          Déficit financiero: el Sankey muestra los flujos de ingresos y egresos publicados; el saldo negativo queda en la tabla y no se dibuja como ingreso.
+          Déficit financiero: el Sankey muestra los flujos de ingresos y egresos publicados; el saldo negativo queda en la tabla y no se dibuja como ingreso. Los recuperos negativos también quedan en el detalle y no se dibujan como flujos invertidos.
         </div>
       )}
 
