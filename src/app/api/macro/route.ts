@@ -561,7 +561,15 @@ export async function GET(request: NextRequest) {
     // estima ni se prorratea: el cierre contable se verifica y se expone.
     if (endpoint === "fiscal_imig") {
       const rows = await fetchCSVData(CSV_URLS.imig_mensual, 86_400)
-      const mensual = parseImig(rows)
+      let mensual: ImigPeriodo[]
+      try {
+        mensual = parseImig(rows)
+      } catch (error) {
+        if (String(error).includes("SOURCE_BAD_RESPONSE:IMIG")) {
+          return NextResponse.json({ error: { code: "SOURCE_BAD_RESPONSE", message: "IMIG con una fila parcialmente publicada", retryable: true } }, { status: 502 })
+        }
+        throw error
+      }
       if (mensual.length === 0) {
         return NextResponse.json(
           { error: { code: "SOURCE_UNAVAILABLE", message: "IMIG no disponible", retryable: true } },

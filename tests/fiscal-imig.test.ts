@@ -55,7 +55,8 @@ test("parseImig descarta campos faltantes o inválidos en vez de convertirlos a 
   incompleta.energia = "no publicado"
   const faltante = filaCuadrada("2026-08-01")
   delete faltante.salarios
-  assert.deepEqual(parseImig([incompleta, faltante]), [])
+  assert.throws(() => parseImig([incompleta]), /SOURCE_BAD_RESPONSE:IMIG/)
+  assert.throws(() => parseImig([faltante]), /SOURCE_BAD_RESPONSE:IMIG/)
 })
 
 test("parseImig valida también la identidad financiera publicada", () => {

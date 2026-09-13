@@ -512,6 +512,7 @@ export function FiscalSankeyView() {
         Base caja, millones de pesos corrientes (sin ajustar por inflación: no compares meses distantes en valor nominal).
         Las 16 líneas de ingreso y las 31 de gasto son las que publica la fuente — ninguna se estima ni se prorratea, y el
         cierre <em>ingresos − gasto = resultado primario</em> se verifica en cada período.
+        Los recuperos negativos se conservan en la tabla de detalle, pero no se dibujan como flujos invertidos.
         El IMIG clasifica el gasto por <strong>tipo de erogación</strong>, no por finalidad: por eso no vas a ver acá
         &quot;educación&quot; o &quot;salud&quot; como totales nacionales, sólo las transferencias a provincias y la inversión de capital
         que sí vienen abiertas por función. El último mes puede revisarse en publicaciones posteriores.

@@ -146,11 +146,13 @@ export function parseImig(rows: Record<string, string>[]): ImigPeriodo[] {
     const fecha = (row.indice_tiempo ?? "").trim()
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) continue
 
-    const valores = [...INGRESOS, ...GASTOS, { clave: "resultado_primario", etiqueta: "" }, { clave: "intereses_netos", etiqueta: "" }, { clave: "resultado_financiero", etiqueta: "" }]
-      .map(l => [l.clave, num(row[l.clave])] as const)
-    // Un campo faltante no es cero: omitir el período evita publicar un cierre
-    // artificial y permite que el endpoint lo trate como fuente incompleta.
-    if (valores.some(([, valor]) => valor == null)) continue
+    const campos = [...INGRESOS, ...GASTOS, { clave: "resultado_primario", etiqueta: "" }, { clave: "intereses_netos", etiqueta: "" }, { clave: "resultado_financiero", etiqueta: "" }]
+    const rawValores = campos.map(l => row[l.clave])
+    if (rawValores.every(valor => valor == null || valor.trim() === "")) continue
+    const valores = campos.map(l => [l.clave, num(row[l.clave])] as const)
+    // Un campo faltante no es cero: una fila parcialmente publicada debe
+    // detener el flujo para no ocultar el último período disponible.
+    if (valores.some(([, valor]) => valor == null)) throw new Error(`SOURCE_BAD_RESPONSE:IMIG incomplete row ${fecha}`)
     const valor = Object.fromEntries(valores) as Record<string, number>
     const ingresos = INGRESOS.map(l => ({ ...l, monto: valor[l.clave] }))
     const gastos = GASTOS.map(l => ({ ...l, monto: valor[l.clave] }))
