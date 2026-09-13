@@ -572,15 +572,31 @@ export async function GET(request: NextRequest) {
       const modo = searchParams.get("modo") ?? "mes"
       const ultimo = mensual[mensual.length - 1]
       const anio = (searchParams.get("periodo") ?? ultimo.periodo).slice(0, 4)
+      const mesesPorAnio = new Map<string, number>()
+      for (const p of mensual) mesesPorAnio.set(p.periodo.slice(0, 4), Math.max(mesesPorAnio.get(p.periodo.slice(0, 4)) ?? 0, Number(p.periodo.slice(5))))
+      const corteComun = Math.min(...mesesPorAnio.values())
+      const tieneTodosLosMeses = (periodos: ImigPeriodo[], hasta: number) => {
+        const presentes = new Set(periodos.map(p => Number(p.periodo.slice(5))))
+        return Array.from({ length: hasta }, (_, i) => i + 1).every(m => presentes.has(m))
+      }
 
       let periodo: ImigPeriodo | null = ultimo
       if (modo === "anio") {
-        periodo = agregarPeriodos(mensual.filter(p => p.periodo.startsWith(anio)), anio)
-      } else if (modo === "ytd") {
         const delAnio = mensual.filter(p => p.periodo.startsWith(anio))
-        periodo = agregarPeriodos(delAnio, `${anio} (ene-${ultimo.periodo.slice(5)})`)
+        const ultimoMes = delAnio.at(-1)?.periodo.slice(5)
+        if (ultimoMes && !tieneTodosLosMeses(delAnio, Number(ultimoMes))) {
+          return NextResponse.json({ error: { code: "SOURCE_BAD_RESPONSE", message: `IMIG con meses faltantes en ${anio}`, retryable: true } }, { status: 502 })
+        }
+        periodo = agregarPeriodos(delAnio, ultimoMes && ultimoMes !== "12" ? `${anio} (ene-${ultimoMes})` : anio)
+      } else if (modo === "ytd") {
+        const delAnio = mensual.filter(p => p.periodo.startsWith(anio) && Number(p.periodo.slice(5)) <= corteComun)
+        if (!tieneTodosLosMeses(delAnio, corteComun)) {
+          return NextResponse.json({ error: { code: "SOURCE_BAD_RESPONSE", message: `IMIG con meses faltantes en el acumulado ${anio}`, retryable: true } }, { status: 502 })
+        }
+        periodo = agregarPeriodos(delAnio, `${anio} (ene-${String(corteComun).padStart(2, "0")})`)
       } else if (modo === "mes") {
-        periodo = mensual.find(p => p.periodo === searchParams.get("periodo")) ?? ultimo
+        const solicitado = searchParams.get("periodo")
+        periodo = solicitado ? (mensual.find(p => p.periodo === solicitado) ?? null) : ultimo
       }
       if (!periodo) {
         return NextResponse.json(
@@ -601,6 +617,7 @@ export async function GET(request: NextRequest) {
           })),
           periodos_disponibles: mensual.map(p => p.periodo),
           cierra: periodo.desvioCierre === 0,
+          cierraFinanciero: periodo.desvioFinanciero === 0,
         },
         updated_at: new Date().toISOString(),
         source: "IMIG — Secretaría de Hacienda vía datos.gob.ar (dataset 452.3) · base caja, millones de $ corrientes",

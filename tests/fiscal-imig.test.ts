@@ -47,6 +47,23 @@ test("parseImig calcula totales y verifica el cierre contable", () => {
   assert.equal(p.resultadoPrimario, 300)
   assert.equal(p.resultadoFinanciero, 200)
   assert.equal(p.desvioCierre, 0)
+  assert.equal(p.desvioFinanciero, 0)
+})
+
+test("parseImig descarta campos faltantes o inválidos en vez de convertirlos a cero", () => {
+  const incompleta = filaCuadrada("2026-07-01")
+  incompleta.energia = "no publicado"
+  const faltante = filaCuadrada("2026-08-01")
+  delete faltante.salarios
+  assert.deepEqual(parseImig([incompleta, faltante]), [])
+})
+
+test("parseImig valida también la identidad financiera publicada", () => {
+  const rota = filaCuadrada("2026-07-01")
+  rota.resultado_financiero = "201"
+  const [p] = parseImig([rota])
+  assert.equal(p.desvioCierre, 0)
+  assert.equal(p.desvioFinanciero, -1)
 })
 
 test("desvioCierre denuncia una fuente que dejó de cuadrar en vez de ocultarlo", () => {
@@ -126,4 +143,7 @@ test("el endpoint fiscal_imig existe y declara la fuente real", () => {
   assert.match(macroRoute, /endpoint === "fiscal_imig"/)
   assert.match(macroRoute, /imig-mensual\.csv/)
   assert.match(macroRoute, /Secretar[ií]a de Hacienda/)
+  assert.match(macroRoute, /corteComun/)
+  assert.match(macroRoute, /const solicitado = searchParams\.get\("periodo"\)/)
+  assert.match(macroRoute, /solicitado \? \(mensual\.find\(p => p\.periodo === solicitado\) \?\? null\)/)
 })

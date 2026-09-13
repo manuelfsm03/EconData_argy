@@ -115,6 +115,8 @@ export type ImigPeriodo = {
   resultadoPrimario: number
   interesesNetos: number
   resultadoFinanciero: number
+  /** `resultadoPrimario - interesesNetos - resultadoFinanciero`. */
+  desvioFinanciero: number
   /**
    * `sum(ingresos) - sum(gastos) - resultadoPrimario`. Debe ser 0.
    * Se expone en vez de ocultarse: si la fuente deja de cuadrar, la UI lo avisa.
@@ -122,10 +124,10 @@ export type ImigPeriodo = {
   desvioCierre: number
 }
 
-function num(valor: string | undefined): number {
-  if (valor == null || valor === "") return 0
+function num(valor: string | undefined): number | null {
+  if (valor == null || valor.trim() === "") return null
   const n = Number(valor)
-  return Number.isFinite(n) ? n : 0
+  return Number.isFinite(n) ? n : null
 }
 
 /** Redondea a 2 decimales para no arrastrar ruido de punto flotante. */
@@ -144,17 +146,23 @@ export function parseImig(rows: Record<string, string>[]): ImigPeriodo[] {
     const fecha = (row.indice_tiempo ?? "").trim()
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) continue
 
-    const ingresos = INGRESOS.map(l => ({ ...l, monto: num(row[l.clave]) }))
-    const gastos = GASTOS.map(l => ({ ...l, monto: num(row[l.clave]) }))
+    const valores = [...INGRESOS, ...GASTOS, { clave: "resultado_primario", etiqueta: "" }, { clave: "intereses_netos", etiqueta: "" }, { clave: "resultado_financiero", etiqueta: "" }]
+      .map(l => [l.clave, num(row[l.clave])] as const)
+    // Un campo faltante no es cero: omitir el período evita publicar un cierre
+    // artificial y permite que el endpoint lo trate como fuente incompleta.
+    if (valores.some(([, valor]) => valor == null)) continue
+    const valor = Object.fromEntries(valores) as Record<string, number>
+    const ingresos = INGRESOS.map(l => ({ ...l, monto: valor[l.clave] }))
+    const gastos = GASTOS.map(l => ({ ...l, monto: valor[l.clave] }))
 
     const totalIngresos = ingresos.reduce((a, l) => a + l.monto, 0)
     const totalGastoPrimario = gastos.reduce((a, l) => a + l.monto, 0)
     // Un mes sin publicar viene con todas las columnas vacías.
     if (totalIngresos === 0 && totalGastoPrimario === 0) continue
 
-    const resultadoPrimario = num(row.resultado_primario)
-    const interesesNetos = num(row.intereses_netos)
-    const resultadoFinanciero = num(row.resultado_financiero)
+    const resultadoPrimario = valor.resultado_primario
+    const interesesNetos = valor.intereses_netos
+    const resultadoFinanciero = valor.resultado_financiero
 
     periodos.push({
       periodo: fecha.slice(0, 7),
@@ -167,6 +175,7 @@ export function parseImig(rows: Record<string, string>[]): ImigPeriodo[] {
       interesesNetos: r2(interesesNetos),
       resultadoFinanciero: r2(resultadoFinanciero),
       desvioCierre: r2(totalIngresos - totalGastoPrimario - resultadoPrimario),
+      desvioFinanciero: r2(resultadoPrimario - interesesNetos - resultadoFinanciero),
     })
   }
 
@@ -203,6 +212,7 @@ export function agregarPeriodos(periodos: ImigPeriodo[], etiqueta: string): Imig
     interesesNetos: r2(periodos.reduce((a, p) => a + p.interesesNetos, 0)),
     resultadoFinanciero: r2(periodos.reduce((a, p) => a + p.resultadoFinanciero, 0)),
     desvioCierre: r2(totalIngresos - totalGastoPrimario - resultadoPrimario),
+    desvioFinanciero: r2(resultadoPrimario - periodos.reduce((a, p) => a + p.interesesNetos, 0) - periodos.reduce((a, p) => a + p.resultadoFinanciero, 0)),
   }
 }
 

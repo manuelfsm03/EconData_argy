@@ -32,6 +32,7 @@ type Periodo = {
   interesesNetos: number
   resultadoFinanciero: number
   desvioCierre: number
+  desvioFinanciero: number
 }
 
 type SankeyLink = { source: string; target: string; value: number }
@@ -391,7 +392,7 @@ type Modo = "mes" | "ytd" | "anio"
 const MODOS: { key: Modo; label: string }[] = [
   { key: "mes", label: "Mes" },
   { key: "ytd", label: "Acumulado del año" },
-  { key: "anio", label: "Año completo" },
+  { key: "anio", label: "Año disponible" },
 ]
 
 export function FiscalSankeyView() {
@@ -401,23 +402,27 @@ export function FiscalSankeyView() {
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(true)
 
-  const cargar = useCallback(async (m: Modo, p: string) => {
+  const cargar = useCallback(async (m: Modo, p: string, signal: AbortSignal) => {
     setCargando(true)
     setError(null)
     try {
       const qs = new URLSearchParams({ endpoint: "fiscal_imig", modo: m })
       if (p) qs.set("periodo", p)
-      const r = await fetch(`/api/macro?${qs}`)
+      const r = await fetch(`/api/macro?${qs}`, { signal })
       if (!r.ok) throw new Error(`HTTP ${r.status}`)
-      setResp(await r.json())
-    } catch {
-      setError("No se pudo cargar el IMIG")
+      if (!signal.aborted) setResp(await r.json())
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === "AbortError")) setError("No se pudo cargar el IMIG")
     } finally {
-      setCargando(false)
+      if (!signal.aborted) setCargando(false)
     }
   }, [])
 
-  useEffect(() => { void cargar(modo, periodoSel) }, [cargar, modo, periodoSel])
+  useEffect(() => {
+    const controller = new AbortController()
+    void cargar(modo, periodoSel, controller.signal)
+    return () => controller.abort()
+  }, [cargar, modo, periodoSel])
 
   if (cargando && !resp) {
     return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Cargando flujo fiscal...</div>
@@ -472,15 +477,20 @@ export function FiscalSankeyView() {
         </div>
       </div>
 
-      {periodo.desvioCierre !== 0 && (
+      {(periodo.desvioCierre !== 0 || periodo.desvioFinanciero !== 0) && (
         <div style={{ borderLeft: "3px solid var(--negative)", background: "var(--bg-elev)", padding: "8px 12px", marginBottom: 8, fontSize: 10, color: "var(--negative)" }}>
-          La fuente dejó de cuadrar: ingresos − gastos difiere del resultado primario publicado en {fmtFull(periodo.desvioCierre)}.
+          La fuente dejó de cuadrar: {periodo.desvioCierre !== 0 ? `ingresos − gastos difiere del resultado primario publicado en ${fmtFull(periodo.desvioCierre)}` : `resultado primario − intereses difiere del resultado financiero publicado en ${fmtFull(periodo.desvioFinanciero)}`}.
           El gráfico se dibuja igual, pero el dato está en revisión.
+        </div>
+      )}
+      {deficit && (
+        <div style={{ borderLeft: "3px solid var(--negative)", background: "var(--bg-elev)", padding: "8px 12px", marginBottom: 8, fontSize: 10, color: "var(--negative)" }}>
+          Déficit financiero: el Sankey muestra los flujos de ingresos y egresos publicados; el saldo negativo queda en la tabla y no se dibuja como ingreso.
         </div>
       )}
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-        <KPI label="Ingresos totales" value={fmtM(periodo.totalIngresos)} unit="millones de $ corrientes" color="var(--positive)" />
+        <KPI label="Ingresos totales" value={fmtM(periodo.totalIngresos)} unit="pesos corrientes · importes abreviados" color="var(--positive)" />
         <KPI label="Gasto primario" value={fmtM(periodo.totalGastoPrimario)} unit="sin intereses de deuda" color="var(--negative)" />
         <KPI label="Resultado primario" value={fmtM(periodo.resultadoPrimario)} unit="ingresos − gasto primario"
           color={periodo.resultadoPrimario < 0 ? "var(--negative)" : "var(--positive)"} />
