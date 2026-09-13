@@ -143,6 +143,8 @@ test("el endpoint fiscal_imig existe y declara la fuente real", () => {
   assert.match(macroRoute, /endpoint === "fiscal_imig"/)
   assert.match(macroRoute, /imig-mensual\.csv/)
   assert.match(macroRoute, /Secretar[ií]a de Hacienda/)
+  assert.match(macroRoute, /freshness: "fresh"/)
+  assert.match(macroRoute, /unidad: "millones de pesos corrientes"/)
   assert.match(macroRoute, /corteComun/)
   assert.match(macroRoute, /const solicitado = searchParams\.get\("periodo"\)/)
   assert.match(macroRoute, /solicitado \? \(mensual\.find\(p => p\.periodo === solicitado\) \?\? null\)/)

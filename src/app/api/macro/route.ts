@@ -620,6 +620,10 @@ export async function GET(request: NextRequest) {
           cierraFinanciero: periodo.desvioFinanciero === 0,
         },
         updated_at: new Date().toISOString(),
+        asOf: `${ultimo.periodo}-01`,
+        freshness: "fresh",
+        dataset: "IMIG 452.3",
+        unidad: "millones de pesos corrientes",
         source: "IMIG — Secretaría de Hacienda vía datos.gob.ar (dataset 452.3) · base caja, millones de $ corrientes",
       })
     }

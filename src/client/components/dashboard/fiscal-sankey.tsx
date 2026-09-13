@@ -410,7 +410,8 @@ export function FiscalSankeyView() {
       if (p) qs.set("periodo", p)
       const r = await fetch(`/api/macro?${qs}`, { signal })
       if (!r.ok) throw new Error(`HTTP ${r.status}`)
-      if (!signal.aborted) setResp(await r.json())
+      const nextResp = await r.json()
+      if (!signal.aborted) setResp(nextResp)
     } catch (error) {
       if (!(error instanceof DOMException && error.name === "AbortError")) setError("No se pudo cargar el IMIG")
     } finally {
