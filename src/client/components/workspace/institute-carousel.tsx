@@ -48,9 +48,9 @@ export function InstituteCarousel() {
   const duracion = INSTITUCIONES.length * SEGUNDOS_POR_LOGO
 
   return (
-    <div className="group overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">
+    <div className="marquee-viewport group overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">
       <div
-        className="flex w-max gap-4 group-hover:[animation-play-state:paused]"
+        className="motion-safe-anim flex w-max gap-4 group-hover:[animation-play-state:paused]"
         style={{ animation: `marquee ${duracion}s linear infinite` }}
       >
         {tanda.map((inst, i) => (

@@ -223,6 +223,43 @@ td.num, th.num { text-align: right; }
   50% { border-color: transparent; }
 }
 
+/* Entrada escalonada del contenido del hero (mismo recurso que usa
+   H2HeroV2.js del proyecto MIT: fade-rise con delay por elemento). */
+@keyframes hero-fade-rise {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.hero-fade-rise {
+  opacity: 0;
+  animation: hero-fade-rise 0.8s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Accesibilidad: ninguno de los otros heroes de Juan (JUP FCE, MIT H2)
+   respeta esta preferencia — la agregamos acá. Apaga el movimiento
+   decorativo (tiza, glow, marquee, entrada escalonada) sin romper el
+   layout: todo queda visible en su estado final. */
+@media (prefers-reduced-motion: reduce) {
+  .chalk-typewriter {
+    width: auto;
+    border-right: none;
+    animation: none;
+  }
+  .hero-fade-rise {
+    opacity: 1;
+    animation: none;
+  }
+  .motion-safe-anim {
+    animation: none !important;
+  }
+  /* El carrousel de instituciones sin animación quedaría trabado mostrando
+     solo los primeros logos (el track es más ancho que el contenedor,
+     recortado con overflow-hidden) — se habilita el scroll manual. */
+  .marquee-viewport {
+    overflow-x: auto;
+  }
+}
+
 /* Movimiento compartido de "deriva lenta" — glow del hero (grande, puede salirse del blob). */
 @keyframes hero-drift {
   from { transform: translate(0, 0) scale(1); }

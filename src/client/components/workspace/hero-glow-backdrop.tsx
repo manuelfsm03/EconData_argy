@@ -7,8 +7,8 @@
  * como ambientación estática de fondo. Decorativo: aria-hidden, no
  * interactivo, no compite con el contenido (z-index por debajo, opacidad baja).
  *
- * El keyframe "hero-drift" que usa vive en globals.css (regla compartida):
- * HeroProductGrid lo reutiliza para los emojis flotantes de cada tarjeta.
+ * El keyframe "hero-drift" vive en globals.css. La clase motion-safe-anim
+ * lo apaga si el usuario prefiere menos movimiento (prefers-reduced-motion).
  */
 const PUNTOS = [
   { top: "8%", left: "12%", size: 260, color: "var(--amber)", delay: "0s", duration: "22s" },
@@ -23,7 +23,7 @@ export function HeroGlowBackdrop() {
       {PUNTOS.map((p, i) => (
         <span
           key={i}
-          className="absolute rounded-full opacity-[0.08] blur-3xl"
+          className="motion-safe-anim absolute rounded-full opacity-[0.08] blur-3xl"
           style={{
             top: p.top,
             left: p.left,

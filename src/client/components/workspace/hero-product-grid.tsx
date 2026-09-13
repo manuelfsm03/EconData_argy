@@ -18,6 +18,7 @@
  */
 
 import { DATA_CARD_CATALOG } from "@/lib/card-catalog"
+import { HeroSectionHeader } from "./hero-section-header"
 
 const FUNCIONES = [
   { categoria: "Panel", titulo: "Mi Pizarra", texto: "Un canvas personal: armás tu propio tablero con las tarjetas de datos que te importan, en el orden que quieras." },
@@ -32,8 +33,8 @@ const FUNCIONES = [
 export function HeroProductGrid() {
   return (
     <div id="producto" className="mt-16 scroll-mt-8">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--text-dim)]">Qué podés hacer en La Pizarra</h2>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <HeroSectionHeader tag="Producto" title="Qué podés hacer en La Pizarra" />
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {FUNCIONES.map(({ categoria, titulo, texto }, i) => (
           <div
             key={titulo}
