@@ -41,6 +41,7 @@ import { NewsFeed } from "@/client/components/dashboard/news-feed"
 import { DATA_CARD_BY_ID } from "@/lib/card-catalog"
 import { AssetScreener } from "@/client/components/dashboard/screener-activos"
 import { TabBonos } from "@/client/components/dashboard/tab-bonos"
+import { FiscalSankeyView } from "@/client/components/dashboard/fiscal-sankey"
 
 const noopNavigate = () => {}
 
@@ -69,6 +70,7 @@ const CARD_COMPONENTS: Record<string, React.ComponentType> = {
   "riesgo-pais": RiesgoPaisView,
   "deuda-publica": DeudaView,
   senoraje: SenorejaView,
+  fiscal: FiscalSankeyView,
   "bcra-plazo-fijo": BCRAPlazoFijoView,
   "bcra-tasas": TasasView,
   "bcra-agregados": AgregadosView,

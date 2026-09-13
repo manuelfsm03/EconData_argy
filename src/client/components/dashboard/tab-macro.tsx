@@ -14,6 +14,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { AgroProduccion } from "./agro-produccion"
+import { FiscalSankeyView } from "./fiscal-sankey"
 import { BBGAreaChart } from "../charts/bbg-area-chart"
 import { BBGLineChart } from "../charts/bbg-line-chart"
 import { DownloadCSV } from "../ui/download-csv"
@@ -4486,6 +4487,7 @@ const MACRO_TABS = [
   { key: "fx",          label: "FX"               },
   { key: "riesgo",      label: "Riesgo País"      },
   { key: "deuda",       label: "Deuda Pública"    },
+  { key: "fiscal",      label: "Fiscal"           },
 ]
 
 export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
@@ -4507,6 +4509,7 @@ export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
       {activeTab === "fx"          && <FXView />}
       {activeTab === "riesgo"      && <RiesgoPaisView />}
       {activeTab === "deuda"       && <DeudaView />}
+      {activeTab === "fiscal"      && <FiscalSankeyView />}
     </div>
   )
 }

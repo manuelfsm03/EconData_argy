@@ -122,6 +122,14 @@ Props principales:
 - Retorna últimas 25 observaciones mensuales con 16 sectores
 - Sectores: agro, pesca, minería, industria, energía, construcción, comercio, turismo, transporte, finanzas, inmobiliarias, adm. pública, enseñanza, salud, serv. comunitarios, imp. netos subsidios
 
+### `/api/macro?endpoint=fiscal_imig` — flujo fiscal completo
+- Fuente: **IMIG** (Informe Mensual de Ingresos y Gastos del SPN No Financiero), Secretaría de Hacienda, dataset `452.3` vía `infra.datos.gob.ar`. Base caja, millones de $ corrientes, mensual desde 2016-01
+- Params: `modo=mes|ytd|anio` · `periodo=YYYY-MM|YYYY` (default: último mes publicado)
+- Devuelve las **16 líneas de ingreso** (por impuesto) y las **31 líneas de gasto primario** agrupadas en 6 bloques (prestaciones sociales, subsidios económicos, funcionamiento, transferencias a provincias, otros corrientes, capital), más `resultado_primario`, `intereses_netos` y `resultado_financiero`
+- **Nada se estima ni se prorratea.** El cierre `ingresos − gasto = resultado primario` se verifica por período y se expone en `desvioCierre` (0 en toda la serie); la UI avisa si la fuente deja de cuadrar. Lógica pura en `src/server/domain/fiscal-imig.ts`, cubierta por `tests/fiscal-imig.test.ts`
+- Límite conocido: el IMIG es **clasificación económica** (por tipo de erogación). No publica gasto mensual por finalidad (educación/salud/defensa) ni por jurisdicción — eso vive en el dataset 451 (anual, con rezago) y en Presupuesto Abierto (requiere token)
+- UI: tab Macro → Fiscal (`fiscal-sankey.tsx`), Sankey en SVG sin dependencias externas
+
 ### `/api/macro?endpoint=fiscal_sankey`
 - Series INDEC vía `apis.datos.gob.ar/series/api/series/`
 - Incluye: `recaudacion`, `rec_dgi`, `rec_dga`, `rec_iva`, `rec_ganancias`, `rec_seg_social`, `rec_deb_cred`, `rec_der_expo`, `rec_der_impo`, `rec_bs_personales`, `resultado_primario`, `resultado_financiero`

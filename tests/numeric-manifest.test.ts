@@ -25,10 +25,10 @@ const NOW = new Date("2026-08-26T00:00:00.000Z")
 
 test("numeric manifest covers every catalog card with a non-empty surface", () => {
   const coverage = manifestCoverage()
-  assert.equal(coverage.catalogCards, 32)
+  assert.equal(coverage.catalogCards, 33)
   assert.equal(coverage.coveredCards, coverage.catalogCards)
   assert.deepEqual(coverage.uncoveredCardIds, [])
-  assert.equal(NUMERIC_SURFACE_MANIFEST.length, 32)
+  assert.equal(NUMERIC_SURFACE_MANIFEST.length, 33)
   for (const entry of NUMERIC_SURFACE_MANIFEST) {
     for (const key of ["source", "unit", "transform", "asOf", "retrievedAt", "freshness", "estimate"]) {
       assert.ok(Object.hasOwn(entry, key), `${entry.id} missing ${key}`)
@@ -121,22 +121,24 @@ test("runtime bindings connect every catalog id to its endpoint, renderer and co
     assert.notEqual(entry.field, "data[*].numeric")
     assert.ok(entry.rendererId.length > 0)
   }
-  for (const id of ["mundo-avanzado", "screener-tasas", "fiscal"]) {
+  // Siguen fuera del inventario por no tener fuente verificable.
+  // "fiscal" volvió al catálogo con el IMIG (dataset 452.3), que sí la tiene.
+  for (const id of ["mundo-avanzado", "screener-tasas"]) {
     assert.equal(NUMERIC_RUNTIME_BINDINGS.some((entry) => entry.cardId === id), false)
   }
 })
 
 test("catalog coverage is distinct from runtime verification coverage", () => {
   assert.deepEqual(runtimeCoverage(), {
-    catalogCards: 32,
-    manifestEntries: 32,
-    runtimeBoundCards: 32,
+    catalogCards: 33,
+    manifestEntries: 33,
+    runtimeBoundCards: 33,
     runtimeVerifiedCards: 0,
     unverifiedCardIds: NUMERIC_SURFACE_MANIFEST.map((entry) => entry.cardId),
   })
   const verified = runtimeCoverage([])
   assert.equal(verified.runtimeVerifiedCards, 0)
-  assert.equal(verified.unverifiedCardIds.length, 32)
+  assert.equal(verified.unverifiedCardIds.length, 33)
 })
 
 test("runtime response gate accepts only finite data with valid provenance", () => {

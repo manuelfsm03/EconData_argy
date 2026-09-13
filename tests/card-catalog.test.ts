@@ -33,9 +33,16 @@ test("every category is represented and search covers titles plus keywords", () 
 })
 
 test("unverified MVP surfaces are not exposed in the catalog", () => {
-  for (const id of ["mundo-avanzado", "screener-tasas", "fiscal"]) {
+  for (const id of ["mundo-avanzado", "screener-tasas"]) {
     assert.equal(DATA_CARD_CATALOG.some((card) => card.id === id), false)
   }
+})
+
+test("la tarjeta fiscal se apoya en el IMIG, no en el Sankey de porcentajes fijos", () => {
+  const fiscal = DATA_CARD_CATALOG.find((card) => card.id === "fiscal")
+  assert.ok(fiscal)
+  assert.equal(fiscal.subtab, "fiscal")
+  assert.ok(fiscal.endpoints.some((endpoint) => endpoint.path === "/api/macro?endpoint=fiscal_imig"))
 })
 
 test("IPC catalog omits retired REM and proposed-basket dependencies", () => {
