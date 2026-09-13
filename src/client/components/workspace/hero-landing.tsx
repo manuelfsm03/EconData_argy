@@ -15,14 +15,14 @@
 
 import Image from "next/image"
 import { ArrowRight, Database, Landmark, Sparkles } from "lucide-react"
+import { InstituteCarousel } from "./institute-carousel"
+import { HeroFAQ } from "./hero-faq"
 
 const PRINCIPIOS = [
   { icono: Landmark, titulo: "Centralizar", texto: "Un único punto de acceso a datos que hoy están dispersos en portales distintos, con formatos y lenguajes heterogéneos." },
   { icono: Database, titulo: "Abrir", texto: "Redistribuir con la mínima fricción posible, en vez de concentrar el acceso." },
   { icono: Sparkles, titulo: "Traducir con IA", texto: "No solo mostrar los datos: explicarlos en lenguaje accesible, con trazabilidad hasta la fuente oficial." },
 ]
-
-const INSTITUCIONES = ["BCRA", "INDEC", "Ministerio de Economía", "BYMA", "Rava Bursátil", "Organismos internacionales"]
 
 export function HeroLanding({ onEnter }: { onEnter: () => void }) {
   return (
@@ -58,14 +58,10 @@ export function HeroLanding({ onEnter }: { onEnter: () => void }) {
           ))}
         </div>
 
-        <div className="mt-8">
+        <div className="mt-8 max-w-2xl">
           <div className="text-xs uppercase tracking-wide text-[var(--text-dim)]">De dónde vienen los datos</div>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {INSTITUCIONES.map((nombre) => (
-              <span key={nombre} className="rounded-full border border-[var(--border)] bg-[var(--bg-elev)] px-3 py-1 text-xs text-[var(--text-dim)]">
-                {nombre}
-              </span>
-            ))}
+          <div className="mt-3">
+            <InstituteCarousel />
           </div>
         </div>
 
@@ -76,6 +72,8 @@ export function HeroLanding({ onEnter }: { onEnter: () => void }) {
           Entrar al panel
           <ArrowRight size={16} />
         </button>
+
+        <HeroFAQ />
       </div>
     </div>
   )

@@ -4,6 +4,15 @@ import Image from "next/image"
 import Link from "next/link"
 import { ShieldAlert } from "lucide-react"
 
+// Sin íconos de redes: La Pizarra todavía no tiene cuentas oficiales. Poner
+// links inventados sería peor que no poner nada — cuando existan, se agregan.
+const LINKS = [
+  { href: "/glosario", label: "Glosario" },
+  { href: "/#faq", label: "Preguntas frecuentes" },
+  { href: "/privacidad", label: "Privacidad" },
+  { href: "/terminos", label: "Términos" },
+]
+
 export function SiteFooter() {
   return (
     <footer className="border-t border-[var(--border)] bg-[var(--bg-elev)]">
@@ -17,6 +26,14 @@ export function SiteFooter() {
             </p>
           </div>
         </div>
+
+        <nav className="flex flex-wrap gap-x-6 gap-y-2 text-xs">
+          {LINKS.map((link) => (
+            <Link key={link.href} href={link.href} className="text-[var(--text-dim)] hover:text-[var(--amber)]">
+              {link.label}
+            </Link>
+          ))}
+        </nav>
 
         <div className="flex max-w-md items-start gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3">
           <ShieldAlert size={16} className="mt-0.5 shrink-0 text-[var(--amber)]" />
