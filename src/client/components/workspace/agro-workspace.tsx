@@ -11,6 +11,8 @@
  */
 
 import { AgroClima } from "@/client/components/dashboard/agro-clima"
+import { AgroClimaLive } from "@/client/components/dashboard/agro-clima-live"
+import { AgroPrecios } from "@/client/components/dashboard/agro-precios"
 import { AgroProduccion } from "@/client/components/dashboard/agro-produccion"
 
 export function AgroWorkspace() {
@@ -26,8 +28,16 @@ export function AgroWorkspace() {
         </p>
       </header>
 
+      <div style={{ border: "1px solid var(--border)", background: "var(--bg-elev)", marginBottom: 16 }}>
+        <AgroPrecios />
+      </div>
+
       <div style={{ border: "1px solid var(--border)", background: "var(--bg-elev)" }}>
         <AgroProduccion />
+      </div>
+
+      <div style={{ border: "1px solid var(--border)", background: "var(--bg-elev)", marginTop: 16 }}>
+        <AgroClimaLive />
       </div>
 
       <div style={{ border: "1px solid var(--border)", background: "var(--bg-elev)", marginTop: 16 }}>
