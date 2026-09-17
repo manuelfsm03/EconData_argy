@@ -1,0 +1,46 @@
+name: Actualizar datos provinciales
+
+on:
+  schedule:
+    # 1ro de cada mes a las 7am UTC (4am Argentina)
+    - cron: '0 7 1 * *'
+  workflow_dispatch: # también disparable manualmente desde GitHub
+
+permissions:
+  contents: write # necesita push del JSON generado
+
+jobs:
+  empleo-provincias:
+    name: Empleo por provincia (OEDE/SIPA)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Descargar y parsear CSV de empleo
+        run: node scripts/update-empleo-provincias.mjs
+
+      - name: Verificar que se generó el JSON
+        run: |
+          test -f public/data/empleo-provincias.json
+          python3 -c "
+          import json, sys
+          d = json.load(open('public/data/empleo-provincias.json'))
+          assert d['total_provincias'] >= 20, f\"Pocas provincias: {d['total_provincias']}\"
+          print(f\"OK: {d['total_provincias']} provincias, cobertura {d['cobertura']['desde']} -> {d['cobertura']['hasta']}\")
+          "
+
+      - name: Commitear si hay cambios
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/empleo-provincias.json
+          if git diff --cached --quiet; then
+            echo "Sin cambios en los datos — nada que commitear"
+          else
+            git commit -m "data: actualizar empleo por provincia ($(date +%Y-%m))"
+            git push
+          fi

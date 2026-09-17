@@ -167,6 +167,8 @@ export const SOURCE_REGISTRY = {
   estadisticas_bcra_legacy: source("estadisticas_bcra_legacy", { displayName: "Estadísticas BCRA legacy", publisher: "BCRA", host: "api.estadisticasbcra.com", dataClass: "official_daily" }),
   dolarsi: source("dolarsi", { displayName: "DolarSi", publisher: "DolarSi", host: "www.dolarsi.com", dataClass: "intraday_market" }),
   population_pyramid: source("population_pyramid", { displayName: "PopulationPyramid.net", publisher: "PopulationPyramid.net", host: "www.populationpyramid.net", kind: "csv", dataClass: "annual" }),
+  cdn_produccion: source("cdn_produccion", { displayName: "CDN Ministerio de Producción", publisher: "Ministerio de Economía / OEDE", host: "cdn.produccion.gob.ar", kind: "csv", dataClass: "official_monthly" }),
+  datos_produccion: source("datos_produccion", { displayName: "datos.produccion.gob.ar", publisher: "Ministerio de Economía", host: "datos.produccion.gob.ar", kind: "csv", dataClass: "official_monthly" }),
   news_rss: source("news_rss", {
     displayName: "Registered news feeds",
     publisher: "Registered publishers",
