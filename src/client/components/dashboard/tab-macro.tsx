@@ -13,6 +13,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { ProvinciasRanking } from "./provincias-ranking"
 import { AgroProduccion } from "./agro-produccion"
 import { BBGAreaChart } from "../charts/bbg-area-chart"
 import { BBGLineChart } from "../charts/bbg-line-chart"
@@ -4481,6 +4482,7 @@ const MACRO_TABS = [
   { key: "ipc",         label: "IPC"              },
   { key: "balanza",     label: "Balanza Comercial" },
   { key: "agro",        label: "Agro"             },
+  { key: "provincias",  label: "Provincias"       },
   { key: "desigualdad", label: "Desigualdad"      },
   { key: "piramides",   label: "Pirámides"        },
   { key: "fx",          label: "FX"               },
@@ -4502,6 +4504,11 @@ export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
       {activeTab === "ipc"         && <IpcView />}
       {activeTab === "balanza"     && <BalanzaView />}
       {activeTab === "agro"        && <AgroView />}
+      {activeTab === "provincias"  && (
+        <div style={{ padding: "16px 14px" }}>
+          <ProvinciasRanking />
+        </div>
+      )}
       {activeTab === "desigualdad" && <DesigualdadView />}
       {activeTab === "piramides"   && <PiramidesView />}
       {activeTab === "fx"          && <FXView />}

@@ -80,12 +80,25 @@ jobs:
           print(f'OK salarios: {d[\"total_provincias\"]} provincias | {d[\"cobertura\"][\"desde\"]} -> {d[\"cobertura\"][\"hasta\"]}')
           "
 
+      - name: Descargar CSV de establecimientos y generar establecimientos-provincias.json
+        run: node scripts/update-establecimientos-provincias.mjs
+
+      - name: Verificar JSON establecimientos
+        run: |
+          python3 -c "
+          import json
+          d = json.load(open('public/data/establecimientos-provincias.json'))
+          assert d['total_provincias'] >= 20, f'Pocas provincias: {d[\"total_provincias\"]}'
+          print(f'OK establecimientos: {d[\"total_provincias\"]} provincias | {d[\"cobertura\"][\"desde\"]} -> {d[\"cobertura\"][\"hasta\"]}')
+          "
+
       - name: Commitear si hay cambios
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add public/data/empleo-provincias.json public/data/fiscal-provincias.json \
-                  public/data/bancario-provincias.json public/data/salarios-provincias.json
+                  public/data/bancario-provincias.json public/data/salarios-provincias.json \
+                  public/data/establecimientos-provincias.json
           if git diff --cached --quiet; then
             echo "Sin cambios — nada que commitear"
           else

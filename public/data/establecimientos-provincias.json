@@ -1,0 +1,444 @@
+{
+  "generado_en": "2026-09-18T16:29:56.847Z",
+  "fuente": "OEDE — Ministerio de Trabajo / CEP XXI (Secretaría de Industria)",
+  "licencia": "Datos abiertos — datos.gob.ar",
+  "cobertura": {
+    "desde": 2021,
+    "hasta": 2022
+  },
+  "total_provincias": 24,
+  "provincias": [
+    {
+      "id": "06",
+      "nombre": "Buenos Aires",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 179977,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 171181,
+          "sucursales": 216284
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 179977,
+          "sucursales": 225650
+        }
+      ]
+    },
+    {
+      "id": "02",
+      "nombre": "CABA",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 132679,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 128955,
+          "sucursales": 152695
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 132679,
+          "sucursales": 156211
+        }
+      ]
+    },
+    {
+      "id": "14",
+      "nombre": "Córdoba",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 53332,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 51910,
+          "sucursales": 64934
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 53332,
+          "sucursales": 66394
+        }
+      ]
+    },
+    {
+      "id": "82",
+      "nombre": "Santa Fe",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 53010,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 51746,
+          "sucursales": 62944
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 53010,
+          "sucursales": 64083
+        }
+      ]
+    },
+    {
+      "id": "50",
+      "nombre": "Mendoza",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 23554,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 22827,
+          "sucursales": 28827
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 23554,
+          "sucursales": 29683
+        }
+      ]
+    },
+    {
+      "id": "30",
+      "nombre": "Entre Ríos",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 17141,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 16556,
+          "sucursales": 20031
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 17141,
+          "sucursales": 20602
+        }
+      ]
+    },
+    {
+      "id": "90",
+      "nombre": "Tucumán",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 11751,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 11643,
+          "sucursales": 14791
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 11751,
+          "sucursales": 14811
+        }
+      ]
+    },
+    {
+      "id": "62",
+      "nombre": "Río Negro",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 10704,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 10110,
+          "sucursales": 12694
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 10704,
+          "sucursales": 13293
+        }
+      ]
+    },
+    {
+      "id": "66",
+      "nombre": "Salta",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 9982,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 9642,
+          "sucursales": 12161
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 9982,
+          "sucursales": 12552
+        }
+      ]
+    },
+    {
+      "id": "54",
+      "nombre": "Misiones",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 9950,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 9574,
+          "sucursales": 11864
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 9950,
+          "sucursales": 12221
+        }
+      ]
+    },
+    {
+      "id": "58",
+      "nombre": "Neuquén",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 9563,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 9084,
+          "sucursales": 11646
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 9563,
+          "sucursales": 12074
+        }
+      ]
+    },
+    {
+      "id": "18",
+      "nombre": "Corrientes",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 8940,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 8599,
+          "sucursales": 10501
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 8940,
+          "sucursales": 10824
+        }
+      ]
+    },
+    {
+      "id": "22",
+      "nombre": "Chaco",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 8929,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 8567,
+          "sucursales": 10488
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 8929,
+          "sucursales": 10831
+        }
+      ]
+    },
+    {
+      "id": "26",
+      "nombre": "Chubut",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 8630,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 8289,
+          "sucursales": 10021
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 8630,
+          "sucursales": 10338
+        }
+      ]
+    },
+    {
+      "id": "70",
+      "nombre": "San Juan",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 7213,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 6972,
+          "sucursales": 8772
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 7213,
+          "sucursales": 9079
+        }
+      ]
+    },
+    {
+      "id": "42",
+      "nombre": "La Pampa",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 6719,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 6451,
+          "sucursales": 7627
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 6719,
+          "sucursales": 7903
+        }
+      ]
+    },
+    {
+      "id": "86",
+      "nombre": "Santiago del Estero",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 5916,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 5386,
+          "sucursales": 6647
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 5916,
+          "sucursales": 7196
+        }
+      ]
+    },
+    {
+      "id": "74",
+      "nombre": "San Luis",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 5394,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 5081,
+          "sucursales": 6167
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 5394,
+          "sucursales": 6482
+        }
+      ]
+    },
+    {
+      "id": "38",
+      "nombre": "Jujuy",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 5104,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 4913,
+          "sucursales": 6131
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 5104,
+          "sucursales": 6322
+        }
+      ]
+    },
+    {
+      "id": "78",
+      "nombre": "Santa Cruz",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 4070,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 3787,
+          "sucursales": 4801
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 4070,
+          "sucursales": 5073
+        }
+      ]
+    },
+    {
+      "id": "10",
+      "nombre": "Catamarca",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 3201,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 2947,
+          "sucursales": 3549
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 3201,
+          "sucursales": 3823
+        }
+      ]
+    },
+    {
+      "id": "34",
+      "nombre": "Formosa",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 2790,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 2678,
+          "sucursales": 3322
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 2790,
+          "sucursales": 3428
+        }
+      ]
+    },
+    {
+      "id": "94",
+      "nombre": "Tierra del Fuego",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 2638,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 2506,
+          "sucursales": 3155
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 2638,
+          "sucursales": 3295
+        }
+      ]
+    },
+    {
+      "id": "46",
+      "nombre": "La Rioja",
+      "ultimo_anio": 2022,
+      "ultimo_valor": 2611,
+      "series": [
+        {
+          "anio": 2021,
+          "establecimientos": 2457,
+          "sucursales": 3041
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 2611,
+          "sucursales": 3209
+        }
+      ]
+    }
+  ]
+}
