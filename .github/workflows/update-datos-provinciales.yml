@@ -56,11 +56,36 @@ jobs:
           print(f'OK fiscal: {d[\"total_provincias\"]} provincias | 2005-{d[\"cobertura\"][\"hasta\"]}')
           "
 
+      - name: Descargar locser.xls del BCRA y generar bancario-provincias.json
+        run: node scripts/update-bancario-provincias.mjs
+
+      - name: Verificar JSON bancario
+        run: |
+          python3 -c "
+          import json
+          d = json.load(open('public/data/bancario-provincias.json'))
+          assert d['total_provincias'] >= 20, f'Pocas provincias: {d[\"total_provincias\"]}'
+          print(f'OK bancario: {d[\"total_provincias\"]} provincias | {d[\"cobertura\"][\"desde\"]} -> {d[\"cobertura\"][\"hasta\"]}')
+          "
+
+      - name: Descargar CSV de salarios por provincia y generar salarios-provincias.json
+        run: node scripts/update-salarios-provincias.mjs
+
+      - name: Verificar JSON salarios
+        run: |
+          python3 -c "
+          import json
+          d = json.load(open('public/data/salarios-provincias.json'))
+          assert d['total_provincias'] >= 20, f'Pocas provincias: {d[\"total_provincias\"]}'
+          print(f'OK salarios: {d[\"total_provincias\"]} provincias | {d[\"cobertura\"][\"desde\"]} -> {d[\"cobertura\"][\"hasta\"]}')
+          "
+
       - name: Commitear si hay cambios
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/data/empleo-provincias.json public/data/fiscal-provincias.json
+          git add public/data/empleo-provincias.json public/data/fiscal-provincias.json \
+                  public/data/bancario-provincias.json public/data/salarios-provincias.json
           if git diff --cached --quiet; then
             echo "Sin cambios — nada que commitear"
           else
