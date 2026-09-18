@@ -160,6 +160,21 @@ async function intentarPlaywright() {
   return csvTexto
 }
 
+// ── Mapeo nombre → ID INDEC (el CSV usa nombres en mayúsculas, sin tildes) ───
+
+const NOMBRE_A_ID = {
+  "BUENOS AIRES": "06", "CAPITAL FEDERAL": "02", "CABA": "02",
+  "CATAMARCA": "10", "CORDOBA": "14", "CÓRDOBA": "14",
+  "CORRIENTES": "18", "CHACO": "22", "CHUBUT": "26",
+  "ENTRE RIOS": "30", "ENTRE RÍOS": "30", "FORMOSA": "34",
+  "JUJUY": "38", "LA PAMPA": "42", "LA RIOJA": "46",
+  "MENDOZA": "50", "MISIONES": "54", "NEUQUEN": "58", "NEUQUÉN": "58",
+  "RIO NEGRO": "62", "RÍO NEGRO": "62", "SALTA": "66",
+  "SAN JUAN": "70", "SAN LUIS": "74", "SANTA CRUZ": "78",
+  "SANTA FE": "82", "SANTIAGO DEL ESTERO": "86",
+  "TUCUMAN": "90", "TUCUMÁN": "90", "TIERRA DEL FUEGO": "94",
+}
+
 // ── Parseo del CSV ────────────────────────────────────────────────────────────
 
 function parsearCSV(texto) {
@@ -174,41 +189,67 @@ function parsearCSV(texto) {
     return -1
   }
 
-  const iProvId  = col("codigo_provincia", "provincia_id", "cod_prov", "id_provincia")
-  const iProvNom = col("nombre_provincia", "provincia", "provincia_nombre", "nom_prov")
+  // Soporte para dos formatos del OEDE:
+  //   Formato A (actual): fecha (YYYY-MM-DD), zona_prov, puestos
+  //   Formato B (alternativo): anio/año, mes, codigo_provincia/zona_prov, puestos
+  const iFecha   = col("fecha", "date")
+  const iProvNom = col("zona_prov", "provincia", "nombre_provincia", "provincia_nombre")
+  const iProvId  = col("codigo_provincia", "provincia_id", "cod_prov")
   const iAnio    = col("anio", "año", "year")
   const iMes     = col("mes", "month")
   const iPuestos = col("puestos", "puestos_de_trabajo", "cantidad_puestos", "total_puestos")
 
-  if (iAnio === -1 || iMes === -1 || iPuestos === -1) {
-    throw new Error(`Columnas no encontradas. Encabezado: ${encabezado.join(", ")}`)
-  }
+  if (iPuestos === -1) throw new Error(`Columna puestos no encontrada. Encabezado: ${encabezado.join(", ")}`)
+  if (iFecha === -1 && (iAnio === -1 || iMes === -1)) throw new Error(`Sin columnas de fecha. Encabezado: ${encabezado.join(", ")}`)
 
   const mapa = new Map()
-  const nombres = { ...PROVINCIAS_INDEC }
 
   for (let i = 1; i < lineas.length; i++) {
     const cols = lineas[i].split(",").map((c) => c.trim().replace(/"/g, ""))
-    if (cols.length < Math.max(iAnio, iMes, iPuestos) + 1) continue
+    if (cols.length < 2) continue
 
-    const provId  = iProvId !== -1 ? cols[iProvId].padStart(2, "0") : "00"
-    const anio    = parseInt(cols[iAnio], 10)
-    const mes     = parseInt(cols[iMes], 10)
+    let periodo
+    if (iFecha !== -1) {
+      // Formato A: "2007-01-01" → "2007-01"
+      const fecha = cols[iFecha]
+      const [anio, mes] = fecha.split("-")
+      if (!anio || !mes) continue
+      periodo = `${anio}-${mes}`
+    } else {
+      const anio = parseInt(cols[iAnio], 10)
+      const mes  = parseInt(cols[iMes], 10)
+      if (isNaN(anio) || isNaN(mes)) continue
+      periodo = `${anio}-${String(mes).padStart(2, "0")}`
+    }
+
+    const [anioNum] = periodo.split("-").map(Number)
+    if (anioNum < 2007 || anioNum > 2030) continue
+
     const puestos = parseInt(cols[iPuestos], 10)
+    if (isNaN(puestos) || puestos <= 0) continue
 
-    if (isNaN(anio) || isNaN(mes) || isNaN(puestos) || anio < 2007 || anio > 2030) continue
+    // Resolver ID de provincia
+    let provId, provNombre
+    if (iProvId !== -1 && cols[iProvId]) {
+      provId = cols[iProvId].padStart(2, "0")
+      provNombre = PROVINCIAS_INDEC[provId] ?? cols[iProvId]
+    } else if (iProvNom !== -1) {
+      const key = cols[iProvNom].trim().toUpperCase()
+      provId = NOMBRE_A_ID[key] ?? "00"
+      provNombre = PROVINCIAS_INDEC[provId] ?? cols[iProvNom]
+    } else {
+      continue
+    }
 
-    if (iProvNom !== -1 && !nombres[provId]) nombres[provId] = cols[iProvNom]
-
-    const periodo = `${anio}-${String(mes).padStart(2, "0")}`
     const clave = `${provId}|${periodo}`
-    mapa.set(clave, (mapa.get(clave) ?? 0) + puestos)
+    mapa.set(clave, { puestos: (mapa.get(clave)?.puestos ?? 0) + puestos, nombre: provNombre })
   }
 
   const porProvincia = new Map()
-  for (const [clave, puestos] of mapa) {
+  for (const [clave, { puestos, nombre }] of mapa) {
     const [provId, periodo] = clave.split("|")
-    if (!porProvincia.has(provId)) porProvincia.set(provId, { id: provId, nombre: nombres[provId] ?? provId, series: [] })
+    if (provId === "00") continue
+    if (!porProvincia.has(provId)) porProvincia.set(provId, { id: provId, nombre, series: [] })
     porProvincia.get(provId).series.push({ periodo, puestos })
   }
 
