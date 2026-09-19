@@ -24,7 +24,7 @@ export function SiteFooter() {
           <div>
             <div className="text-sm font-semibold text-[var(--text)]">La Pizarra</div>
             <p className="mt-1 text-xs leading-relaxed text-[var(--text-dim)]">
-              Canvas de datos económicos y financieros de Argentina: tipos de cambio, inflación, bonos, acciones y más, en un solo lugar.
+              Datos económicos y financieros de Argentina: tipos de cambio, inflación, bonos, acciones y más, en un solo lugar.
             </p>
           </div>
         </div>

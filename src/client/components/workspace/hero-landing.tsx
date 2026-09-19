@@ -47,6 +47,8 @@ import { HeroFaqDrawer } from "./hero-faq-drawer"
 import { HeroGlowBackdrop } from "./hero-glow-backdrop"
 import { HeroChalkboardTexture } from "./hero-chalkboard-texture"
 import { HeroSectionHeader } from "./hero-section-header"
+import { HeroPublico } from "./hero-publico"
+import { HeroPrimerosPasos } from "./hero-primeros-pasos"
 import { HeroFadeRise } from "./hero-fade-rise"
 import { Reveal } from "./hero-reveal"
 import { SiteFooter } from "./site-footer"
@@ -69,7 +71,10 @@ export function HeroLanding({ onEnter }: { onEnter: () => void }) {
       <div className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 py-16">
         <HeroFadeRise delay={0} className="flex items-center gap-3">
           <Image src="/logo.png" alt="" width={44} height={37} className="h-10 w-11 object-contain" />
-          <span className="text-xs uppercase tracking-[0.2em] text-[var(--text-dim)]">Canvas de datos</span>
+          {/* "Canvas de datos" quedó descartado en la reunión del 2026-09-19:
+              el término no se entiende fuera del ambiente. Este es el
+              reemplazo provisorio hasta que el diseñador cierre el eslogan. */}
+          <span className="text-xs uppercase tracking-[0.2em] text-[var(--text-dim)]">Datos para entender Argentina</span>
         </HeroFadeRise>
 
         <HeroFadeRise delay={0.1}>
@@ -127,6 +132,14 @@ export function HeroLanding({ onEnter }: { onEnter: () => void }) {
 
         <Reveal>
           <HeroProductGrid />
+        </Reveal>
+
+        <Reveal>
+          <HeroPublico />
+        </Reveal>
+
+        <Reveal>
+          <HeroPrimerosPasos />
         </Reveal>
 
         <Reveal className="mt-16">
