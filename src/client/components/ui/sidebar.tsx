@@ -32,7 +32,7 @@ export function SidebarProvider({ children, defaultOpen = true }: { children: Re
 
   return (
     <SidebarContext.Provider value={{ open, ready, setOpen, toggle }}>
-      <div className="flex min-h-screen w-full bg-[var(--bg)]">{children}</div>
+      <div className="flex min-h-[var(--app-vh)] w-full bg-[var(--bg)]">{children}</div>
     </SidebarContext.Provider>
   )
 }
@@ -43,7 +43,7 @@ export function Sidebar({ className, children }: React.HTMLAttributes<HTMLElemen
     <aside
       data-open={open}
       className={cn(
-        "sticky top-0 z-[80] h-screen shrink-0 overflow-hidden border-r border-[var(--border)] bg-[var(--bg-elev)] transition-[width] duration-200 max-md:fixed max-md:left-0 max-md:shadow-2xl",
+        "sticky top-0 z-[80] h-[var(--app-vh)] shrink-0 overflow-hidden border-r border-[var(--border)] bg-[var(--bg-elev)] transition-[width] duration-200 max-md:fixed max-md:left-0 max-md:shadow-2xl",
         open ? "w-60" : "w-0 border-r-0",
         !ready && "max-md:!w-0 max-md:!border-r-0",
         className

@@ -138,7 +138,7 @@ export function HealthDashboard() {
   ]
 
   return (
-    <main className="min-h-screen bg-[var(--bg)] px-4 py-6 text-[var(--text)] md:px-8">
+    <main className="min-h-[var(--app-vh)] bg-[var(--bg)] px-4 py-6 text-[var(--text)] md:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>

@@ -118,7 +118,7 @@ export function ForumHub({ initialFocus = null }: { initialFocus?: TickerFocus |
   }, [initialFocus?.kind, initialFocus?.ticker])
 
   return (
-    <div className="min-h-[calc(100vh-49px)] bg-[var(--bg)] p-4 md:p-6">
+    <div className="min-h-[calc(var(--app-vh)_-_49px)] bg-[var(--bg)] p-4 md:p-6">
       <div className="mx-auto max-w-7xl">
         <div className="mb-5 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--amber-soft)] text-[var(--amber)]"><MessageSquareText size={20} /></div>
@@ -197,7 +197,7 @@ export function ForumHub({ initialFocus = null }: { initialFocus?: TickerFocus |
           </section>
 
           {thread && (
-            <aside className="relative overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-elev)] lg:sticky lg:top-28 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+            <aside className="relative overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-elev)] lg:sticky lg:top-28 lg:max-h-[calc(var(--app-vh)_-_8rem)] lg:overflow-y-auto">
               <button onClick={() => setThread(null)} className="absolute right-3 top-3 z-10 text-[var(--text-mute)] hover:text-[var(--text)]" title="Cerrar conversación"><X size={15} /></button>
               <ForoActivo key={`${thread.assetType}-${thread.tag}`} assetType={thread.assetType} ticker={thread.tag} compact onPost={() => setReloadKey((value) => value + 1)} />
             </aside>

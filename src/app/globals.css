@@ -85,6 +85,19 @@
   --foreground:      var(--text);
 }
 
+/* Escala global de la interfaz: se ve como el navegador al 125%.
+   Hay más de 1.200 tamaños de letra en px fijos, así que agrandar el rem raíz
+   no movería casi nada; `zoom` escala todo parejo, igual que el zoom del
+   navegador. Ojo: un alto en vh dentro del documento también queda escalado
+   (100vh ocupa 125% de la ventana), así que los altos de pantalla completa usan
+   --app-vh / --app-dvh, que ya vienen divididos por el zoom. */
+:root {
+  --app-zoom: 1.25;
+  --app-vh: calc(100vh / var(--app-zoom));
+  --app-dvh: calc(100dvh / var(--app-zoom));
+}
+html { zoom: var(--app-zoom); }
+
 body {
   background: var(--bg);
   color: var(--text);
