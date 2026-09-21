@@ -10,14 +10,16 @@ import { fetchRegistered } from "@/server/http/fetch-source"
 
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/server/db/prisma"
-import { CAP_INSTRUMENT_DEFS, type BondDef } from "@/server/domain/bonds-data"
+import { type BondDef } from "@/server/domain/bonds-data"
+import { CAP_TERMINOS, terminosDe } from "@/server/domain/cap-terminos"
+import { diasEntre, liquidacion24hs, metricasCap } from "@/lib/cap-math"
 import { metricasDeMercado, metricasDevengadas } from "@/lib/bond-math"
 import { construirCashflows, ESQUEMAS } from "@/lib/bond-schedule"
 import { INSTRUMENTOS_BONOS, getInstrumentoBono } from "@/lib/bond-instrument-catalog"
-import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
+import { aISO, fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
 import { fetchRavaBondPrices } from "@/server/external/rava-prices"
 import { pesoBondsVigentes } from "@/server/domain/peso-bonds"
-import { fetchBymaCapInstruments, fetchBymaQuotes, marketMetaForRows } from "@/server/external/byma-data"
+import { fetchBymaCapQuotes, fetchBymaQuotes, marketMetaForRows } from "@/server/external/byma-data"
 import { chooseFreshPrice, gateMarketPrice, type SelectedMarketPrice } from "@/server/domain/market-freshness"
 
 type Cashflow = { fechaPago: Date; cupon: number; amortizacion: number; flujoTotal: number }
@@ -340,12 +342,14 @@ export async function GET(request: NextRequest) {
   }
 
   if (tipoParam === "lecap") {
-    const cacheKey = "lecaps_screener"
-    const cached = getCache<unknown[]>(cacheKey)
-    if (cached) {
-      const freshCached = cached.map((row) => invalidateMarketRow(row as Record<string, unknown>))
-      return NextResponse.json({ data: freshCached, updated_at: new Date().toISOString(), cached: true, ...marketMetaForRows(freshCached) })
-    }
+    // Screener LECAP / BONCAP. Precio de BYMA Data (paneles /lebacs y
+    // /public-bonds, 20 min de demora) y pago final de la condición de emisión
+    // (cap-terminos.ts). Todas las métricas se CALCULAN acá contra el precio
+    // elegido: antes se leían de la DB, que no existe en local y en producción
+    // podía mostrar una TEM vieja al lado de un precio fresco.
+    const cacheKey = "lecaps_screener_v2"
+    const cached = getCache<Record<string, unknown>>(cacheKey)
+    if (cached) return NextResponse.json({ ...cached, cached: true })
 
     let cclActual: number | null = null
     try {
@@ -363,116 +367,73 @@ export async function GET(request: NextRequest) {
       // noop
     }
 
-    const bymaCatalog = await fetchBymaCapInstruments()
-    let dbInstruments: Awaited<ReturnType<typeof prisma.capInstrument.findMany>> = []
-    try {
-      dbInstruments = await prisma.capInstrument.findMany({
-        where: { vencimiento: { gt: new Date() } },
-        orderBy: { vencimiento: "asc" },
-      })
-    } catch {
-      // BYMA abierto sigue siendo suficiente para catálogo y precios.
-    }
+    const { quotes, sourceMode } = await fetchBymaCapQuotes()
+    const liquidacion = liquidacion24hs()
+    const fechaLiquidacion = aISO(liquidacion)
+    const porTicker = new Map(quotes.map((quote) => [quote.ticker, quote]))
 
-    if (dbInstruments.length > 0 || bymaCatalog.length > 0) {
-      const dbByTicker = new Map(dbInstruments.map((instrumento) => [instrumento.ticker, instrumento]))
-      const instruments = bymaCatalog.length > 0
-        ? bymaCatalog
-        : dbInstruments.map((instrumento) => ({
-            ticker: instrumento.ticker,
-            tipo: instrumento.tipo as "LECAP" | "BONCAP",
-            vencimiento: instrumento.vencimiento.toISOString().slice(0, 10),
-          }))
-      const bymaQuotes = await fetchBymaQuotes(instruments.map((instrumento) => instrumento.ticker))
-      const screener = instruments.map((instrument) => {
-        const inst = dbByTicker.get(instrument.ticker)
-        const maturity = new Date(instrument.vencimiento)
-        const hoy = new Date()
-        const diasVto = Math.round((maturity.getTime() - hoy.getTime()) / (24 * 3600 * 1000))
-        const byma = bymaQuotes.get(instrument.ticker)
-        const dbAsOf = asOfFromDate(inst?.updatedAt)
-        const dbGate = gateMarketPrice("db_local", dbAsOf)
-        const selected = chooseFreshPrice([
-          ...(byma ? [{ source: "byma_data_open", price: byma.lastPrice, asOf: byma.asOf }] : []),
-          ...(inst?.precio != null ? [{ source: "db_local", price: inst.precio, asOf: dbAsOf }] : []),
-        ])
-        const tcImplicito =
-          cclActual != null && dbGate.accepted && inst?.tem != null && diasVto > 0
-            ? Number((cclActual * Math.pow(1 + inst.tem / 100, diasVto / 30)).toFixed(2))
-            : null
+    // Universo: lo que cotiza BYMA más lo que tiene condiciones de emisión
+    // cargadas. Si BYMA se cae, la fila queda con precio vacío y rotulada en
+    // vez de desaparecer de la curva sin aviso.
+    const tickers = new Set([
+      ...quotes.map((quote) => quote.ticker),
+      ...CAP_TERMINOS.filter((t) => t.vencimiento > fechaLiquidacion).map((t) => t.ticker),
+    ])
 
-        return {
-          ticker: instrument.ticker,
-          tipo: instrument.tipo,
-          vencimiento: instrument.vencimiento,
-          diasVencimiento: diasVto,
-          precio: selected.price,
-          tir: dbGate.accepted ? inst?.tir ?? null : null,
-          tea: dbGate.accepted ? inst?.tea ?? null : null,
-          tem: dbGate.accepted ? inst?.tem ?? null : null,
-          tcImplicito,
-          change1D: gateMarketPrice("byma_data_open", byma?.asOf).accepted ? byma?.change1D ?? null : null,
-          asOf: selected.asOf,
-          priceAsOf: selected.asOf,
-          priceStatus: selected.freshness,
-          priceSourceMode: selected.sourceMode,
-          priceFallbackFrom: selected.fallbackFrom,
-          retrievedAt: new Date().toISOString(),
-          fuente: sourceLabel(selected),
-        }
-      })
-      setCache(cacheKey, screener, 300)
-      return NextResponse.json({
-        data: screener,
-        updated_at: new Date().toISOString(),
-        ...marketMetaForRows(screener),
-        nota: "catálogo y precios priorizados desde BYMA Data; métricas complementarias desde DB local cuando existen",
-      })
-    }
+    const screener = [...tickers].map((ticker) => {
+      const quote = porTicker.get(ticker)
+      const terminos = terminosDe(ticker)
+      const vencimiento = terminos?.vencimiento ?? quote?.vencimiento ?? ""
+      const selected = chooseFreshPrice(
+        quote?.precio != null ? [{ source: "byma_data_open", price: quote.precio, asOf: quote.asOf }] : [],
+      )
+      const m = terminos ? metricasCap(selected.price, terminos, liquidacion) : null
+      const tcImplicito = cclActual != null && m != null
+        ? Number((cclActual * Math.pow(1 + m.tem / 100, m.dias / 30)).toFixed(2))
+        : null
 
-    const hoy = new Date()
-    const activeDefinitions = CAP_INSTRUMENT_DEFS
-      .filter((inst) => new Date(inst.vencimiento).getTime() >= hoy.getTime())
-    const bymaQuotes = await fetchBymaQuotes(activeDefinitions.map((instrumento) => instrumento.ticker))
-    const screener = activeDefinitions
-      .map((inst) => {
-        const vencimiento = new Date(inst.vencimiento)
-        const diasVto = Math.round((vencimiento.getTime() - hoy.getTime()) / (24 * 3600 * 1000))
-        const byma = bymaQuotes.get(inst.ticker)
-        const selected = chooseFreshPrice(byma ? [{ source: "byma_data_open", price: byma.lastPrice, asOf: byma.asOf }] : [])
-        const tcImplicito =
-          cclActual != null && selected.price != null && inst.tem != null && diasVto > 0
-            ? Number((cclActual * Math.pow(1 + inst.tem / 100, diasVto / 30)).toFixed(2))
-            : null
+      return {
+        ticker,
+        tipo: terminos?.tipo ?? quote?.tipo ?? "LECAP",
+        emision: terminos?.emision ?? null,
+        vencimiento,
+        fechaLiquidacion,
+        diasVencimiento: diasEntre(liquidacion, fechaUTC(vencimiento)),
+        precio: selected.price,
+        pagoFinal: terminos?.pagoFinal ?? null,
+        temEmision: terminos?.temEmision ?? null,
+        tem: m?.tem ?? null,
+        tna: m?.tna ?? null,
+        tea: m?.tea ?? null,
+        // En un cero cupón la TIR (XIRR, Act/365) es la TEA.
+        tir: m?.tea ?? null,
+        durationMac: m?.durationMac ?? null,
+        durationMod: m?.durationMod ?? null,
+        valorTecnico: m?.valorTecnico ?? null,
+        paridad: m?.paridad ?? null,
+        tcImplicito,
+        change1D: selected.price != null ? quote?.change1D ?? null : null,
+        asOf: selected.asOf,
+        priceAsOf: selected.asOf,
+        priceStatus: selected.freshness,
+        priceSourceMode: sourceMode,
+        priceFallbackFrom: selected.fallbackFrom,
+        retrievedAt: new Date().toISOString(),
+        fuente: sourceLabel(selected),
+        sinTerminos: terminos == null,
+      }
+    }).sort((a, b) => a.vencimiento.localeCompare(b.vencimiento) || a.ticker.localeCompare(b.ticker))
 
-        return {
-          ticker: inst.ticker,
-          tipo: inst.tipo,
-          vencimiento: inst.vencimiento,
-          diasVencimiento: diasVto,
-          precio: selected.price,
-          tir: null,
-          tea: null,
-          tem: inst.tem ?? null,
-          tcImplicito,
-          change1D: selected.price != null ? byma?.change1D ?? null : null,
-          asOf: selected.asOf,
-          priceAsOf: selected.asOf,
-          priceStatus: selected.freshness,
-          priceSourceMode: selected.sourceMode,
-          priceFallbackFrom: selected.fallbackFrom,
-          retrievedAt: new Date().toISOString(),
-          fuente: sourceLabel(selected),
-        }
-      })
-
-    setCache(cacheKey, screener, 300)
-    return NextResponse.json({
+    const body = {
       data: screener,
       updated_at: new Date().toISOString(),
       ...marketMetaForRows(screener),
-      nota: "precios desde BYMA Data con metadata estática cuando la DB local no está disponible",
-    })
+      fechaLiquidacion,
+      convenciones: "Días Act desde la liquidación 24 hs. TEM = (VF/P)^(30/d) − 1 · TNA = TEM × 12 · TEA = (VF/P)^(365/d) − 1 · Dur. mod. = (d/365) / (1 + TEA) · Paridad = P / valor técnico capitalizado a la TEM de emisión (30/360 US).",
+      nota: "precios desde BYMA Data (20 min de demora); pago final de la condición de emisión",
+    }
+    setCache(cacheKey, body, 60)
+    return NextResponse.json(body)
   }
 
   const cacheKey = tickerParam ? `bono_${tickerParam}` : "bonos_screener"
