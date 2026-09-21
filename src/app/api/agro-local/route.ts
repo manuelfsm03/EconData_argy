@@ -7,23 +7,34 @@ import { fetchRegistered } from "@/server/http/fetch-source"
  * fuente y se conserva como null.
  *
  * FOB teórico = precio disponible × (1 - retención) - gastos estimados.
+ *
+ * Retenciones y gastos portuarios: se leen de `public/data/retenciones.json`
+ * para poder actualizarlos con un commit cuando cambien por resolución
+ * ministerial, sin tocar código. Ver `public/data/retenciones.README.md`.
  */
 
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import { NextResponse } from "next/server"
 import { parseRavaRosarioPrices } from "@/server/external/rava-prices"
 
 export const runtime = "nodejs"
 
 const RAVA_INDICES_URL = "https://mercado.rava.com/api/prices/indices"
-const RETENCIONES = {
+
+// Fallback inline por si el JSON queda malformado o el archivo desaparece.
+// Debe reflejar los valores hardcodeados históricos (previos a la migración).
+const RETENCIONES_FALLBACK = {
   soja: 0.33,
   maiz: 0.12,
   trigo: 0.12,
   girasol: 0.07,
 } as const
-const GASTOS_PORTUARIOS = 15
+const GASTOS_PORTUARIOS_FALLBACK = 15
 
 let _cache: { data: AgroLocalData; expiry: number } | null = null
+
+type CultivoKey = "soja" | "maiz" | "trigo" | "girasol"
 
 interface GranoData {
   disponible: number | null
@@ -41,18 +52,92 @@ interface AgroLocalData {
   source: string
 }
 
-function grainData(precio: number | null, retencion: number): GranoData {
+interface RetencionesConfig {
+  retenciones: Record<CultivoKey, number>
+  gastosPortuarios: number
+  origen: string
+}
+
+/**
+ * Lee `public/data/retenciones.json` y devuelve los valores parseados.
+ * Si el archivo falta, el JSON está mal formado o le faltan campos, cae al
+ * fallback inline y loguea la razón para poder diagnosticar en Vercel.
+ */
+function loadRetenciones(): RetencionesConfig {
+  const path = join(process.cwd(), "public", "data", "retenciones.json")
+  try {
+    const raw = readFileSync(path, "utf8")
+    const parsed = JSON.parse(raw) as {
+      cultivos?: Record<string, { derecho_export?: number }>
+      gastos_portuarios_usd_ton?: number
+      vigente_desde?: string
+    }
+
+    const cultivos = parsed.cultivos
+    if (!cultivos) throw new Error("cultivos missing")
+
+    const retenciones = {
+      soja: cultivos.soja?.derecho_export,
+      maiz: cultivos.maiz?.derecho_export,
+      trigo: cultivos.trigo?.derecho_export,
+      girasol: cultivos.girasol?.derecho_export,
+    }
+    for (const [k, v] of Object.entries(retenciones)) {
+      if (typeof v !== "number" || !Number.isFinite(v)) {
+        throw new Error(`derecho_export inválido para ${k}: ${v}`)
+      }
+    }
+
+    const gastos = parsed.gastos_portuarios_usd_ton
+    if (typeof gastos !== "number" || !Number.isFinite(gastos)) {
+      throw new Error(`gastos_portuarios_usd_ton inválido: ${gastos}`)
+    }
+
+    console.log(
+      `[agro-local] retenciones cargadas desde ${path} ` +
+        `(vigente_desde=${parsed.vigente_desde ?? "?"}): ` +
+        `soja=${retenciones.soja} maiz=${retenciones.maiz} ` +
+        `trigo=${retenciones.trigo} girasol=${retenciones.girasol} ` +
+        `gastos=${gastos}`,
+    )
+
+    return {
+      retenciones: retenciones as Record<CultivoKey, number>,
+      gastosPortuarios: gastos,
+      origen: "public/data/retenciones.json",
+    }
+  } catch (error) {
+    console.warn(
+      `[agro-local] no pude leer retenciones.json (${path}), uso fallback inline:`,
+      error,
+    )
+    return {
+      retenciones: { ...RETENCIONES_FALLBACK },
+      gastosPortuarios: GASTOS_PORTUARIOS_FALLBACK,
+      origen: "fallback-inline",
+    }
+  }
+}
+
+function grainData(
+  precio: number | null,
+  retencion: number,
+  gastosPortuarios: number,
+): GranoData {
   return {
     disponible: precio,
     fobOficial: precio === null
       ? null
-      : Number((precio * (1 - retencion) - GASTOS_PORTUARIOS).toFixed(2)),
+      : Number((precio * (1 - retencion) - gastosPortuarios).toFixed(2)),
     retencion: retencion * 100,
     unidad: "USD/tn",
   }
 }
 
-async function fetchRavaGranos(): Promise<AgroLocalData | null> {
+async function fetchRavaGranos(
+  config: RetencionesConfig,
+): Promise<AgroLocalData | null> {
+  const { retenciones, gastosPortuarios } = config
   try {
     const response = await fetchRegistered(RAVA_INDICES_URL, {
       headers: {
@@ -70,10 +155,10 @@ async function fetchRavaGranos(): Promise<AgroLocalData | null> {
     }
 
     return {
-      soja: grainData(prices.soja, RETENCIONES.soja),
-      maiz: grainData(prices.maiz, RETENCIONES.maiz),
-      trigo: grainData(prices.trigo, RETENCIONES.trigo),
-      girasol: grainData(null, RETENCIONES.girasol),
+      soja: grainData(prices.soja, retenciones.soja, gastosPortuarios),
+      maiz: grainData(prices.maiz, retenciones.maiz, gastosPortuarios),
+      trigo: grainData(prices.trigo, retenciones.trigo, gastosPortuarios),
+      girasol: grainData(null, retenciones.girasol, gastosPortuarios),
       updated_at: new Date().toISOString(),
       source: "mercado.rava.com (pizarra Rosario)",
     }
@@ -88,17 +173,20 @@ export async function GET() {
     return NextResponse.json(_cache.data)
   }
 
-  const data = await fetchRavaGranos()
+  const config = loadRetenciones()
+  const { retenciones, gastosPortuarios } = config
+
+  const data = await fetchRavaGranos(config)
   if (data) {
     _cache = { data, expiry: Date.now() + 900_000 }
     return NextResponse.json(data)
   }
 
   const empty: AgroLocalData = {
-    soja: grainData(null, RETENCIONES.soja),
-    maiz: grainData(null, RETENCIONES.maiz),
-    trigo: grainData(null, RETENCIONES.trigo),
-    girasol: grainData(null, RETENCIONES.girasol),
+    soja: grainData(null, retenciones.soja, gastosPortuarios),
+    maiz: grainData(null, retenciones.maiz, gastosPortuarios),
+    trigo: grainData(null, retenciones.trigo, gastosPortuarios),
+    girasol: grainData(null, retenciones.girasol, gastosPortuarios),
     updated_at: new Date().toISOString(),
     source: "fuente no disponible",
   }

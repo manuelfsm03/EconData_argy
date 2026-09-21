@@ -1,0 +1,20 @@
+{
+  "generado_en": "2026-09-21T00:00:00Z",
+  "fuente": "Ministerio de Economía / Boletín Oficial",
+  "unidad": "porcentaje de derecho de exportación (fracción decimal)",
+  "vigente_desde": "2026-01-01",
+  "vigente_hasta": null,
+  "resolucion_ref": "TODO: verificar y completar con la última resolución ministerial aplicable (Res. Min. Economía N° XXX/2026)",
+  "gastos_portuarios_usd_ton": 15,
+  "cultivos": {
+    "soja":    { "derecho_export": 0.33, "descripcion": "Soja poroto" },
+    "maiz":    { "derecho_export": 0.12, "descripcion": "Maíz en grano" },
+    "trigo":   { "derecho_export": 0.12, "descripcion": "Trigo en grano" },
+    "girasol": { "derecho_export": 0.07, "descripcion": "Girasol en grano" }
+  },
+  "notas": [
+    "Los valores actuales son los que estaban hardcodeados en el código antes de mover a este JSON.",
+    "Actualizá este archivo cuando el Ministerio publique nuevas resoluciones — un commit al JSON dispara el redeploy.",
+    "Fuente autoritativa: https://www.boletinoficial.gob.ar/"
+  ]
+}
