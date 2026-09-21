@@ -9,6 +9,7 @@ import {
 import { ForoActivo } from "./foro-activo"
 import { AssetScreener } from "./screener-activos"
 import { TabBonos } from "./tab-bonos"
+import { CapPanel } from "./cap-panel"
 import { ajustarPolinomio, gradoSugerido, muestrearCurva, residuos } from "@/lib/curve-fit"
 import { StockHeatmap } from "./stock-heatmap"
 
@@ -701,60 +702,10 @@ export function BonosView({ initialTicker = null }: { initialTicker?: string | n
 
 
       {tab === "lecap" && (
-        <div style={{ padding: 16, background: "var(--bg)" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "var(--bg-elev-2)", marginBottom: 1 }}>
-            {/* Curva LECAP */}
-            <div style={{ background: "var(--bg)", padding: 16 }}>
-              <SectionTitle title="Curva LECAP / BONCAP — TEM vs plazo" />
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={lecaps.filter(l => l.tem != null).sort((a, b) => a.diasVencimiento - b.diasVencimiento).map(l => ({ label: l.ticker, dias: l.diasVencimiento, tem: l.tem }))} margin={{ top: 8, right: 20, left: 0, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
-                  <XAxis dataKey="dias" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}d`} />
-                  <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}%`} />
-                  <Tooltip {...tooltipStyle} formatter={(v: unknown) => [`${fmtNum(v as number, 2)}%`, "TEM"]} />
-                  <Line type="monotone" dataKey="tem" stroke="#FFD700" strokeWidth={2} dot={{ r: 3, fill: "#FFD700" }} isAnimationActive={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Tabla LECAP */}
-            <div style={{ background: "var(--bg)", padding: 16 }}>
-              <SectionTitle title="Detalle instrumentos" />
-              <div style={{ overflowY: "auto", maxHeight: 240 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-data)", fontSize: 9 }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                      {["Ticker", "Tipo", "Vto.", "Días", "Precio", "TEM", "TEA"].map(h => (
-                        <th key={h} style={{ padding: "4px 6px", color: "var(--text-dim)", fontWeight: 400, textAlign: h === "Ticker" || h === "Tipo" ? "left" : "right" }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lecaps.sort((a, b) => a.diasVencimiento - b.diasVencimiento).map((l, i) => (
-                      <tr
-                        key={i}
-                        onClick={() => setSelected(prev => prev?.type === "cap" && prev.ticker === l.ticker ? null : { type: "cap", ticker: l.ticker })}
-                        style={{
-                          borderBottom: "1px solid var(--bg-elev-2)",
-                          cursor: "pointer",
-                          background: selected?.type === "cap" && selected.ticker === l.ticker ? "var(--bg-elev-2)" : "transparent",
-                        }}
-                      >
-                        <td style={{ padding: "3px 6px", color: "var(--amber)", fontWeight: 700 }}>{l.ticker}</td>
-                        <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{l.tipo}</td>
-                        <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{l.vencimiento}</td>
-                        <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{l.diasVencimiento}</td>
-                        <td style={{ padding: "3px 6px", color: "var(--text)", textAlign: "right" }}>{l.precio != null ? fmtNum(l.precio, 2) : "—"}</td>
-                        <td style={{ padding: "3px 6px", color: "#FFD700", textAlign: "right", fontWeight: 700 }}>{l.tem != null ? fmtPct(l.tem) : "—"}</td>
-                        <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{l.tea != null ? fmtPct(l.tea) : "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
+        <CapPanel
+          selectedTicker={selected?.type === "cap" ? selected.ticker : null}
+          onSelect={(ticker) => setSelected(prev => prev?.type === "cap" && prev.ticker === ticker ? null : { type: "cap", ticker })}
+        />
       )}
 
       {(tab === "cer" || tab === "dual") && (() => {

@@ -26,6 +26,7 @@ import { WATCHLIST_EVENT, readWatchlist, toggleWatchlistId } from "@/lib/watchli
 import { construirCashflows, ESQUEMAS } from "@/lib/bond-schedule"
 import { metricasDeMercado } from "@/lib/bond-math"
 import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
+import { CapPanel } from "./cap-panel"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -59,16 +60,6 @@ interface SovereignBond {
   dataQuality?: string | null
 }
 
-interface CapInstrument {
-  ticker: string
-  tipo: string
-  vencimiento: string
-  diasVencimiento: number
-  precio: number | null
-  tir: number | null
-  tea: number | null
-  tem: number | null
-}
 
 interface RiesgoPaisData {
   actual: {
@@ -749,76 +740,6 @@ function BondHeatmap({ bonds }: { bonds: SovereignBond[] }) {
   )
 }
 
-// ── LECAPs Screener ────────────────────────────────────────────────────────────
-function LecapsScreener() {
-  const [instrumentos, setInstrumentos] = useState<CapInstrument[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetch("/api/bonos?tipo=lecap")
-      .then((r) => r.json())
-      .then((j) => { setInstrumentos(j.data ?? []); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
-
-  if (loading) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Cargando LECAPs...</div>
-
-  const lecaps = instrumentos.filter((i) => i.tipo === "LECAP")
-  const boncaps = instrumentos.filter((i) => i.tipo === "BONCAP")
-
-  const Section = ({ title, items }: { title: string; items: CapInstrument[] }) => (
-    <div style={{ marginBottom: 1 }}>
-      <div style={{ padding: "3px 8px", background: "var(--bg-elev-2)", fontSize: 9, color: "var(--amber)", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid var(--bg-elev-2)" }}>
-        {title}
-      </div>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr>
-            {["Ticker", "Vencimiento", "Días", "Precio", "TEM", "TEA", "TIR anual"].map((h, i) => (
-              <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "var(--text-dim)", textAlign: i === 0 ? "left" : "right", borderBottom: "1px solid var(--border)" }}>
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((inst, i) => (
-            <tr key={inst.ticker} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg-row-alt)" }}>
-              <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: "var(--amber)" }}>{inst.ticker}</td>
-              <td style={{ padding: "5px 8px", fontSize: 10, color: "var(--text-mute)", textAlign: "right" }}>{inst.vencimiento}</td>
-              <td style={{ padding: "5px 8px", fontSize: 11, color: inst.diasVencimiento < 30 ? "var(--negative)" : inst.diasVencimiento < 90 ? "var(--amber)" : "#ccc", textAlign: "right", fontFamily: "var(--font-data)" }}>
-                {inst.diasVencimiento}
-              </td>
-              <td style={{ padding: "5px 8px", fontSize: 11, color: "var(--text)", textAlign: "right", fontFamily: "var(--font-data)" }}>
-                {inst.precio != null ? inst.precio.toFixed(2) : "—"}
-              </td>
-              <td style={{ padding: "5px 8px", fontSize: 11, color: "var(--positive)", textAlign: "right", fontFamily: "var(--font-data)" }}>
-                {inst.tem != null ? inst.tem.toFixed(2) + "%" : "—"}
-              </td>
-              <td style={{ padding: "5px 8px", fontSize: 11, color: "#FFD700", textAlign: "right", fontFamily: "var(--font-data)" }}>
-                {inst.tea != null ? inst.tea.toFixed(2) + "%" : "—"}
-              </td>
-              <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: tirColor(inst.tir), textAlign: "right", fontFamily: "var(--font-data)" }}>
-                {inst.tir != null ? inst.tir.toFixed(2) + "%" : "—"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-
-  return (
-    <div>
-      <Section title="LECAPs — Letras del Tesoro Capitalizables" items={lecaps} />
-      <Section title="BONCAPs — Bonos del Tesoro Capitalizables" items={boncaps} />
-      <div style={{ padding: "4px 8px", fontSize: 9, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
-        Precios: actualización diaria via ByMA · Ordenados por vencimiento · TIR: compuesto continuo vs VN
-      </div>
-    </div>
-  )
-}
-
 // ── Riesgo País (enhanced) ────────────────────────────────────────────────────
 function fmtBps(v: number | null | undefined): string {
   if (v == null) return "—"
@@ -1120,7 +1041,7 @@ export function TabBonos() {
       {activeTab === "snapshot" && <SnapshotView bonds={bonds} />}
       {activeTab === "curva" && <SovereignCurve bonds={bonds} />}
       {activeTab === "heatmap" && <BondHeatmap bonds={bonds} />}
-      {activeTab === "lecaps" && <LecapsScreener />}
+      {activeTab === "lecaps" && <CapPanel />}
       {activeTab === "riesgo" && <RiesgoPaisView />}
     </div>
   )
