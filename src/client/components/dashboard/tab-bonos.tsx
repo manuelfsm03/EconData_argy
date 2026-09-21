@@ -26,6 +26,7 @@ import { WATCHLIST_EVENT, readWatchlist, toggleWatchlistId } from "@/lib/watchli
 import { construirCashflows, ESQUEMAS } from "@/lib/bond-schedule"
 import { metricasDeMercado } from "@/lib/bond-math"
 import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
+import { BOND_OUTSTANDING } from "@/lib/bond-outstanding"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -86,12 +87,9 @@ interface RiesgoPaisData {
   alertas: { nivel: string; mensaje: string }[]
 }
 
-// Outstanding estimado en billones USD
-const OUTSTANDING: Record<string, number> = {
-  GD35: 14.79, GD30: 12.65, AL30: 12.15, GD41: 11.15,
-  AL35: 10.27, GD46: 8.04, AL29: 7.61, AE38: 4.57, GD38: 6.0,
-  AO27: 1.5, AO28: 2.0, AO29: 2.5,
-}
+// Outstanding en miles de millones USD — la constante vive en
+// @/lib/bond-outstanding y se importa arriba (BOND_OUTSTANDING) para que
+// este componente y /api/riesgo-pais lean exactamente el mismo número.
 
 // Orden de display por familia
 const GLOBALES_ORDER = ["GD29", "GD30", "GD35", "GD38", "GD41", "GD46"]
@@ -164,9 +162,9 @@ function SubTabs({ tabs, active, onChange }: { tabs: { key: string; label: strin
 function weightedAvgTEA(bonds: SovereignBond[]): number | null {
   const valid = bonds.filter((b) => b.teaMep != null)
   if (valid.length === 0) return null
-  const totalOut = valid.reduce((s, b) => s + (OUTSTANDING[b.ticker] ?? 0), 0)
+  const totalOut = valid.reduce((s, b) => s + (BOND_OUTSTANDING[b.ticker] ?? 0), 0)
   if (totalOut === 0) return null
-  return valid.reduce((s, b) => s + (b.teaMep! * (OUTSTANDING[b.ticker] ?? 0)), 0) / totalOut
+  return valid.reduce((s, b) => s + (b.teaMep! * (BOND_OUTSTANDING[b.ticker] ?? 0)), 0) / totalOut
 }
 
 // Canje MEP/CCL = px cable / px mep. Se muestra como ratio (ej. 0.978).
@@ -375,7 +373,7 @@ function BondTable({ title, color, bonds, order, liquidacion, pinnedTickers, onT
     return [...bonds].sort((a, b) => (idx.get(a.ticker) ?? 999) - (idx.get(b.ticker) ?? 999))
   }, [bonds, order])
 
-  const totalOut = bonds.reduce((s, b) => s + (OUTSTANDING[b.ticker] ?? 0), 0)
+  const totalOut = bonds.reduce((s, b) => s + (BOND_OUTSTANDING[b.ticker] ?? 0), 0)
   const wavgTea = weightedAvgTEA(bonds)
 
   const COL_HEADERS = ["", "Ticker", "Px Dirty", "Var %", "TNA MEP", "TNA CCL", "TEA MEP", "TEA CCL", "Dur.", "Paridad", "Canje"]
@@ -679,11 +677,11 @@ function SovereignCurve({ bonds }: { bonds: SovereignBond[] }) {
 
 // ── Bond Heatmap ──────────────────────────────────────────────────────────────
 function BondHeatmap({ bonds }: { bonds: SovereignBond[] }) {
-  const totalOut = bonds.reduce((s, b) => s + (OUTSTANDING[b.ticker] ?? 0), 0)
+  const totalOut = bonds.reduce((s, b) => s + (BOND_OUTSTANDING[b.ticker] ?? 0), 0)
 
   const blocks = bonds
-    .filter((b) => (OUTSTANDING[b.ticker] ?? 0) > 0)
-    .sort((a, b) => (OUTSTANDING[b.ticker] ?? 0) - (OUTSTANDING[a.ticker] ?? 0))
+    .filter((b) => (BOND_OUTSTANDING[b.ticker] ?? 0) > 0)
+    .sort((a, b) => (BOND_OUTSTANDING[b.ticker] ?? 0) - (BOND_OUTSTANDING[a.ticker] ?? 0))
 
   function blockColor(change: number | null | undefined): string {
     if (change == null) return "var(--border)"
@@ -708,7 +706,7 @@ function BondHeatmap({ bonds }: { bonds: SovereignBond[] }) {
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "0 1px 1px" }}>
         {blocks.map((bond) => {
-          const out = OUTSTANDING[bond.ticker] ?? 0
+          const out = BOND_OUTSTANDING[bond.ticker] ?? 0
           const pct = totalOut > 0 ? (out / totalOut) : 0
           const minWidth = Math.max(80, Math.floor(pct * 600))
 
@@ -1066,11 +1064,11 @@ export function TabBonos() {
 
       setBonds(rawBonds.map((b) => ({
         ...b,
-        outstanding: OUTSTANDING[b.ticker],
+        outstanding: BOND_OUTSTANDING[b.ticker],
       })))
     } catch {
       const j = await fetch("/api/bonos").then((r) => r.json()).catch(() => ({ data: [] }))
-      setBonds((j.data ?? []).map((b: SovereignBond) => ({ ...b, outstanding: OUTSTANDING[b.ticker] })))
+      setBonds((j.data ?? []).map((b: SovereignBond) => ({ ...b, outstanding: BOND_OUTSTANDING[b.ticker] })))
       if (!(j.data ?? []).length) setLoadError("no se pudieron cargar bonos desde el backend")
     } finally {
       setLoading(false)

@@ -4,12 +4,16 @@ import { fetchRegistered } from "@/server/http/fetch-source"
  *
  * Fuentes:
  *   - argentinadatos.com /v1/finanzas/indices/riesgo-pais  (histórico oficial EMBI+)
- *   - Yahoo Finance ^TNX (US 10Y treasury yield)
+ *   - Yahoo Finance ^TNX (US 10Y treasury yield) — con fallback a FRED (serie DGS10)
+ *     si Yahoo falla y hay FRED_API_KEY seteada. Si ambas fallan, cae a 4.5% default.
  *   - TIR de los Globales (GD30/GD35/GD41/GD29): motor verificado de bond-schedule.ts
  *     + precio en vivo BYMA Data -- MISMO cálculo que /api/bonos, no una consulta
  *     aparte a la DB (esa consulta directa a Prisma quedaba en blanco si la DB
  *     local no tenía el bono seedeado; con esto no depende de la DB en absoluto).
- *   - Comparativos regionales: estimaciones EMBI+ fijas (sin API de pago)
+ *   - Outstanding de bonos: @/lib/bond-outstanding (única fuente de verdad,
+ *     compartida con la UI de bonos).
+ *   - Comparativos regionales: valores de referencia manual (FRED no tiene
+ *     EMBI+ regionales gratis — el índice es propietario de JPMorgan).
  */
 
 import { NextRequest, NextResponse } from "next/server"
@@ -17,6 +21,8 @@ import { ESQUEMAS, construirCashflows } from "@/lib/bond-schedule"
 import { metricasDeMercado, metricasDevengadas } from "@/lib/bond-math"
 import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
 import { fetchBymaQuotes } from "@/server/external/byma-data"
+import { fetchFREDLatest } from "@/server/external/fred"
+import { BOND_OUTSTANDING } from "@/lib/bond-outstanding"
 
 const YF_HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -91,12 +97,28 @@ export async function GET(_request: NextRequest) {
   if (cached) return NextResponse.json({ data: cached, cached: true, updated_at: new Date().toISOString() })
 
   // Fetch en paralelo
-  const [argDatosHist, us10y, globalesTir] = await Promise.all([
+  const [argDatosHist, us10yYahoo, globalesTir] = await Promise.all([
     fetchArgDatosHistorico(),
     getYFPrice("^TNX"),
     fetchGlobalesTir().catch(() => [] as GlobalTir[]),
   ])
   const gd30 = globalesTir.find((g) => g.ticker === "GD30") ?? null
+
+  // US10Y: Yahoo primero, FRED (serie DGS10) como fallback, default 4.5%
+  // solo si ambas fallan. FRED devuelve null si no hay FRED_API_KEY (degrada
+  // grácilmente). Se loguea la fuente elegida para depurar caídas.
+  let us10y: number | null = us10yYahoo
+  let us10yFuente: "yahoo" | "fred" | "default_45" = "yahoo"
+  if (us10y == null) {
+    const fredVal = await fetchFREDLatest("DGS10")
+    if (fredVal != null) {
+      us10y = fredVal
+      us10yFuente = "fred"
+    } else {
+      us10yFuente = "default_45"
+    }
+  }
+  console.log(`[riesgo-pais] US10Y fuente=${us10yFuente} valor=${us10y ?? "null"}`)
 
   // Valor actual = último de la serie
   const histSorted = [...argDatosHist].sort((a, b) => (a.fecha > b.fecha ? 1 : -1))
@@ -121,16 +143,30 @@ export async function GET(_request: NextRequest) {
   // Spread calculado
   const spreadAr = arTir != null ? arTir - us10yPct : null
 
-  // Comparativos regionales — valores de referencia (sin API de JP Morgan en tiempo real).
-  // Actualizados manualmente a ago-2025. Mostrar siempre con badge de referencia en la UI.
+  // Comparativos regionales — valores de referencia MANUAL (sin API en vivo).
+  //
+  // TODO: FRED NO publica las series EMBI+ regionales de JPMorgan de forma
+  // gratuita (el índice EMBI+ es propietario de JPMorgan/CEMBI). Opciones para
+  // conectarlo en vivo cuando haya presupuesto/tiempo:
+  //   - Bloomberg / Refinitiv / JPMorgan Markets (todas pagas).
+  //   - World Bank GEM Commodities / IMF SDMX no traen EMBI regional.
+  //   - Proxy imperfecto: CDS soberano a 5Y desde S&P/Markit (también pago).
+  // Por ahora los mantenemos hardcodeados con la fecha de referencia; el flag
+  // `esVivo:false` y `refFecha` se muestran en la UI para que quede claro que
+  // NO son datos en vivo. Actualizar manualmente cuando haga falta.
   const REGIONALES_REF_FECHA = "2025-08"
-  const regionales = {
+  const REGIONALES_REFERENCIA: Record<string, { bps: number; moneda: string }> = {
+    brasil:    { bps: 185, moneda: "BRL" },
+    chile:     { bps: 80,  moneda: "CLP" },
+    colombia:  { bps: 245, moneda: "COP" },
+    peru:      { bps: 140, moneda: "PEN" },
+    mexico:    { bps: 175, moneda: "MXN" },
+  }
+  const regionales: Record<string, { bps: number | null; moneda: string; nota?: string; ticker?: string; fuente?: string; esVivo: boolean; refFecha?: string }> = {
     argentina: { bps: riesgoPaisBps, moneda: "ARS", ticker: "GD30", fuente: "EMBI+ argentinadatos.com", esVivo: true },
-    brasil:    { bps: 185, moneda: "BRL", nota: "referencia ago-2025", esVivo: false, refFecha: REGIONALES_REF_FECHA },
-    chile:     { bps: 80,  moneda: "CLP", nota: "referencia ago-2025", esVivo: false, refFecha: REGIONALES_REF_FECHA },
-    colombia:  { bps: 245, moneda: "COP", nota: "referencia ago-2025", esVivo: false, refFecha: REGIONALES_REF_FECHA },
-    peru:      { bps: 140, moneda: "PEN", nota: "referencia ago-2025", esVivo: false, refFecha: REGIONALES_REF_FECHA },
-    mexico:    { bps: 175, moneda: "MXN", nota: "referencia ago-2025", esVivo: false, refFecha: REGIONALES_REF_FECHA },
+  }
+  for (const [pais, ref] of Object.entries(REGIONALES_REFERENCIA)) {
+    regionales[pais] = { bps: ref.bps, moneda: ref.moneda, nota: `referencia ${REGIONALES_REF_FECHA}`, esVivo: false, refFecha: REGIONALES_REF_FECHA }
   }
 
   // Histórico: últimos 2 años para gráfico
@@ -142,16 +178,17 @@ export async function GET(_request: NextRequest) {
   // SMA 30D y 90D sobre el histórico
   const historicoConSMA = calcularSMA(historico2y)
 
-  // Ponderación por bono (estimación — contribución al EMBI AR es proporcional a outstanding)
-  const ponderacionBonos = [
-    { ticker: "GD35", outstanding: 14.79, pct: 21 },
-    { ticker: "GD30", outstanding: 12.65, pct: 18 },
-    { ticker: "GD41", outstanding: 11.15, pct: 16 },
-    { ticker: "AL30", outstanding: 12.15, pct: 17 },
-    { ticker: "AL35", outstanding: 10.27, pct: 14 },
-    { ticker: "GD46", outstanding: 8.04, pct: 11 },
-    { ticker: "AE38", outstanding: 4.57, pct: 6 },
-  ]
+  // Ponderación por bono (estimación — contribución al EMBI AR proporcional
+  // al outstanding). Los montos vienen de @/lib/bond-outstanding para que
+  // este endpoint y la UI de bonos usen SIEMPRE el mismo número (evitar
+  // drift si hay buybacks/canjes/reaperturas).
+  const PONDERACION_TICKERS = ["GD35", "GD30", "GD41", "AL30", "AL35", "GD46", "AE38"] as const
+  const outstandingTotal = PONDERACION_TICKERS.reduce((s, t) => s + (BOND_OUTSTANDING[t] ?? 0), 0)
+  const ponderacionBonos = PONDERACION_TICKERS.map((ticker) => {
+    const outstanding = BOND_OUTSTANDING[ticker] ?? 0
+    const pct = outstandingTotal > 0 ? Math.round((outstanding / outstandingTotal) * 100) : 0
+    return { ticker, outstanding, pct }
+  })
 
   const alertas = []
   if (riesgoPaisBps != null) {
