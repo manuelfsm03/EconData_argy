@@ -26,6 +26,7 @@ import { WATCHLIST_EVENT, readWatchlist, toggleWatchlistId } from "@/lib/watchli
 import { construirCashflows, ESQUEMAS } from "@/lib/bond-schedule"
 import { metricasDeMercado } from "@/lib/bond-math"
 import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
+import { CapPanel } from "./cap-panel"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -59,16 +60,6 @@ interface SovereignBond {
   dataQuality?: string | null
 }
 
-interface CapInstrument {
-  ticker: string
-  tipo: string
-  vencimiento: string
-  diasVencimiento: number
-  precio: number | null
-  tir: number | null
-  tea: number | null
-  tem: number | null
-}
 
 interface RiesgoPaisData {
   actual: {
@@ -531,8 +522,10 @@ function CurveTooltip({ active, payload }: any) {
       {d.fittedYtm != null && (
         <>
           <div style={{ color: "var(--text-dim)" }}>YTM curva: {d.fittedYtm.toFixed(2)}%</div>
-          <div style={{ color: d.residualBps! > 5 ? "var(--positive)" : d.residualBps! < -5 ? "var(--negative)" : "var(--text-dim)" }}>
-            Residual: {d.residualBps! > 0 ? "+" : ""}{d.residualBps!.toFixed(0)} bp · {d.valuation === "en_curva" ? "en curva" : d.valuation}
+          <div style={{ color: "var(--text)" }}>
+            {Math.round(d.residualBps!) === 0
+              ? "= en la curva"
+              : `${d.residualBps! > 0 ? "▲" : "▼"} ${Math.abs(Math.round(d.residualBps!))} bp ${d.residualBps! > 0 ? "sobre" : "bajo"} la curva`}
           </div>
         </>
       )}
@@ -596,7 +589,7 @@ function SovereignCurve({ bonds }: { bonds: SovereignBond[] }) {
   return (
     <div style={{ background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 4px 8px 0" }}>
       <div style={{ padding: "0 12px 8px", fontSize: 9, color: "var(--text-dim)" }}>
-        Curvas soberanas separadas por ley — YTM (%) vs Duration Modificada (años). La recta es el ajuste de cada ley; el residual compara sólo bonos de esa ley: YTM por encima = barato; por debajo = caro.
+        Curvas soberanas separadas por ley — YTM (%) vs Duration Modificada (años). La recta es el ajuste de cada ley; el residual compara sólo bonos de esa ley, en bp de YTM: ▲ por encima de la curva, ▼ por debajo.
       </div>
       <ResponsiveContainer width="100%" height={340}>
         <ScatterChart margin={{ top: 8, right: 48, left: 0, bottom: 16 }}>
@@ -652,13 +645,15 @@ function SovereignCurve({ bonds }: { bonds: SovereignBond[] }) {
                 Ley {law === "NY" ? "Nueva York" : "Local"}
               </div>
               {hasReference ? points.map((point) => {
-                const residual = point.residualBps ?? 0
-                const color = residual > 5 ? "var(--positive)" : residual < -5 ? "var(--negative)" : "var(--text-dim)"
-                const label = point.valuation === "en_curva" ? "en curva" : point.valuation
+                // Sin barato/caro ni verde/rojo: se muestra la diferencia, no
+                // una recomendación.
+                const residual = Math.round(point.residualBps ?? 0)
                 return (
                   <div key={point.ticker} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 10, lineHeight: "18px" }}>
                     <span style={{ color: "var(--text)" }}>{point.ticker}</span>
-                    <span style={{ color, fontFamily: "var(--font-data)" }}>{residual > 0 ? "+" : ""}{residual.toFixed(0)} bp · {label}</span>
+                    <span style={{ color: "var(--text)", fontFamily: "var(--font-data)" }}>
+                      {residual === 0 ? "= en la curva" : `${residual > 0 ? "▲ +" : "▼ "}${residual} bp`}
+                    </span>
                   </div>
                 )
               }) : (
@@ -744,76 +739,6 @@ function BondHeatmap({ bonds }: { bonds: SovereignBond[] }) {
       </div>
       <div style={{ padding: "4px 8px", fontSize: 9, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
         Outstanding: fuentes MECON · Variaciones: cierre anterior vs último precio
-      </div>
-    </div>
-  )
-}
-
-// ── LECAPs Screener ────────────────────────────────────────────────────────────
-function LecapsScreener() {
-  const [instrumentos, setInstrumentos] = useState<CapInstrument[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetch("/api/bonos?tipo=lecap")
-      .then((r) => r.json())
-      .then((j) => { setInstrumentos(j.data ?? []); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
-
-  if (loading) return <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Cargando LECAPs...</div>
-
-  const lecaps = instrumentos.filter((i) => i.tipo === "LECAP")
-  const boncaps = instrumentos.filter((i) => i.tipo === "BONCAP")
-
-  const Section = ({ title, items }: { title: string; items: CapInstrument[] }) => (
-    <div style={{ marginBottom: 1 }}>
-      <div style={{ padding: "3px 8px", background: "var(--bg-elev-2)", fontSize: 9, color: "var(--amber)", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid var(--bg-elev-2)" }}>
-        {title}
-      </div>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr>
-            {["Ticker", "Vencimiento", "Días", "Precio", "TEM", "TEA", "TIR anual"].map((h, i) => (
-              <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "var(--text-dim)", textAlign: i === 0 ? "left" : "right", borderBottom: "1px solid var(--border)" }}>
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((inst, i) => (
-            <tr key={inst.ticker} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg-row-alt)" }}>
-              <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: "var(--amber)" }}>{inst.ticker}</td>
-              <td style={{ padding: "5px 8px", fontSize: 10, color: "var(--text-mute)", textAlign: "right" }}>{inst.vencimiento}</td>
-              <td style={{ padding: "5px 8px", fontSize: 11, color: inst.diasVencimiento < 30 ? "var(--negative)" : inst.diasVencimiento < 90 ? "var(--amber)" : "#ccc", textAlign: "right", fontFamily: "var(--font-data)" }}>
-                {inst.diasVencimiento}
-              </td>
-              <td style={{ padding: "5px 8px", fontSize: 11, color: "var(--text)", textAlign: "right", fontFamily: "var(--font-data)" }}>
-                {inst.precio != null ? inst.precio.toFixed(2) : "—"}
-              </td>
-              <td style={{ padding: "5px 8px", fontSize: 11, color: "var(--positive)", textAlign: "right", fontFamily: "var(--font-data)" }}>
-                {inst.tem != null ? inst.tem.toFixed(2) + "%" : "—"}
-              </td>
-              <td style={{ padding: "5px 8px", fontSize: 11, color: "#FFD700", textAlign: "right", fontFamily: "var(--font-data)" }}>
-                {inst.tea != null ? inst.tea.toFixed(2) + "%" : "—"}
-              </td>
-              <td style={{ padding: "5px 8px", fontSize: 12, fontWeight: 700, color: tirColor(inst.tir), textAlign: "right", fontFamily: "var(--font-data)" }}>
-                {inst.tir != null ? inst.tir.toFixed(2) + "%" : "—"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-
-  return (
-    <div>
-      <Section title="LECAPs — Letras del Tesoro Capitalizables" items={lecaps} />
-      <Section title="BONCAPs — Bonos del Tesoro Capitalizables" items={boncaps} />
-      <div style={{ padding: "4px 8px", fontSize: 9, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
-        Precios: actualización diaria via ByMA · Ordenados por vencimiento · TIR: compuesto continuo vs VN
       </div>
     </div>
   )
@@ -1120,7 +1045,7 @@ export function TabBonos() {
       {activeTab === "snapshot" && <SnapshotView bonds={bonds} />}
       {activeTab === "curva" && <SovereignCurve bonds={bonds} />}
       {activeTab === "heatmap" && <BondHeatmap bonds={bonds} />}
-      {activeTab === "lecaps" && <LecapsScreener />}
+      {activeTab === "lecaps" && <CapPanel />}
       {activeTab === "riesgo" && <RiesgoPaisView />}
     </div>
   )

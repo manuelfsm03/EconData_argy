@@ -25,7 +25,7 @@ export function DataLibrary({ focusTicker = null }: { focusTicker?: TickerFocus 
   const results = useMemo(() => query.trim() ? searchDataCards(query).slice(0, 10) : [], [query])
 
   return (
-    <div className="min-h-screen bg-[var(--bg)]">
+    <div className="min-h-[var(--app-vh)] bg-[var(--bg)]">
       <div className="border-b border-[var(--border)] bg-[var(--bg)] px-4 py-3">
         <div className="mx-auto max-w-[1384px]">
           <div className="relative max-w-2xl">

@@ -479,7 +479,7 @@ export function NewsFeed() {
       style={{
         display: "flex",
         flexDirection: "column",
-        height: "calc(100dvh - 68px)",
+        height: "calc(var(--app-dvh) - 68px)",
         containerType: "inline-size",
         containerName: "news-feed",
       }}

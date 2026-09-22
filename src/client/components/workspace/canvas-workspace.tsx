@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react"
 import GridLayout, { type Layout, useContainerWidth } from "react-grid-layout"
+import { transformStrategy } from "react-grid-layout/core"
 import { Copy, GripHorizontal, LayoutGrid, MessageCircle, Minimize2, Plus, Search, Trash2, X } from "lucide-react"
 import { Button } from "@/client/components/ui/button"
 import { CardDiscussionProvider } from "@/client/components/ui/card-discussion-context"
@@ -67,6 +68,14 @@ function uid(prefix: string) {
   return `${prefix}-${typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Date.now().toString(36)}`
 }
 
+
+/** Factor de `zoom` con que globals.css escala la app (--app-zoom). 1 si no hay. */
+function leerZoomApp(): number {
+  if (typeof window === "undefined") return 1
+  const valor = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--app-zoom"))
+  return Number.isFinite(valor) && valor > 0 ? valor : 1
+}
+
 export function CanvasWorkspace() {
   const [canvasState, dispatch] = useReducer(canvasReducer, undefined, createInitialCanvasState)
   const { sheets, activeId } = canvasState
@@ -77,6 +86,14 @@ export function CanvasWorkspace() {
   const [chatWidgetId, setChatWidgetId] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
   const { width, containerRef, mounted } = useContainerWidth()
+  // La app entera se escala con `zoom` (globals.css, --app-zoom) y la grilla
+  // mide el arrastre en px de pantalla: sin esta escala, una tarjeta se movía
+  // 1,25 veces lo que se movía el mouse y se escapaba del cursor.
+  // createScaledStrategy no sirve acá: su calcDragPosition toma la posición
+  // relativa a la ventana y no al contenedor, y la tarjeta salta el ancho de la
+  // barra lateral. Alcanza con la estrategia default y la escala corregida.
+  const [appZoom] = useState(leerZoomApp)
+  const positionStrategy = useMemo(() => ({ ...transformStrategy, scale: appZoom }), [appZoom])
 
   useEffect(() => {
     dispatch({ type: "hydrate", state: readCanvasState(localStorage) })
@@ -102,7 +119,7 @@ export function CanvasWorkspace() {
   // The catalog is a fixed 20rem desktop rail. Clamp the first grid render to
   // the available viewport while the ResizeObserver settles after opening it.
   const gridWidth = catalogOpen && !compactLayout && typeof window !== "undefined"
-    ? Math.min(width, Math.max(0, window.innerWidth - CANVAS_CATALOG_RAIL_PX - CANVAS_CONTENT_GUTTER_PX))
+    ? Math.min(width, Math.max(0, window.innerWidth / appZoom - CANVAS_CATALOG_RAIL_PX - CANVAS_CONTENT_GUTTER_PX))
     : width
 
   const updateActiveWidgets = useCallback((updater: (widgets: CanvasWidget[]) => CanvasWidget[]) => {
@@ -150,7 +167,7 @@ export function CanvasWorkspace() {
   const layout: Layout = buildCanvasLayout(activeSheet.widgets, compactLayout, DATA_CARD_BY_ID)
 
   return (
-    <div className="min-h-[calc(100vh-49px)] bg-[var(--bg)]">
+    <div className="min-h-[calc(var(--app-vh)_-_49px)] bg-[var(--bg)]">
       <div className="sticky top-12 z-[65] flex min-h-12 items-center gap-2 border-b border-[var(--border)] bg-[color:var(--bg-elev)]/95 px-3 backdrop-blur">
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-1">
           {sheets.map((sheet) => (
@@ -202,6 +219,7 @@ export function CanvasWorkspace() {
             <GridLayout
               width={gridWidth}
               layout={layout}
+              positionStrategy={positionStrategy}
               gridConfig={{ cols: compactLayout ? 1 : 12, rowHeight: GRID_ROW_HEIGHT, margin: [10, GRID_ROW_GAP], containerPadding: [0, 0] }}
               dragConfig={{ enabled: !compactLayout, handle: ".canvas-card-handle", cancel: ".canvas-card-interactive" }}
               resizeConfig={{ enabled: !compactLayout, handles: ["se"] }}
@@ -264,7 +282,7 @@ export function CanvasWorkspace() {
         </section>
 
         {catalogOpen && (
-          <aside className="sticky top-24 z-[70] h-[calc(100vh-6rem)] w-80 max-w-full shrink-0 overflow-hidden border-l border-[var(--border)] bg-[var(--bg-elev)] max-lg:fixed max-lg:right-0">
+          <aside className="sticky top-24 z-[70] h-[calc(var(--app-vh)_-_6rem)] w-80 max-w-full shrink-0 overflow-hidden border-l border-[var(--border)] bg-[var(--bg-elev)] max-lg:fixed max-lg:right-0">
             <div className="border-b border-[var(--border)] p-3">
               <div className="mb-2 flex items-center gap-2">
                 <div className="relative flex-1">

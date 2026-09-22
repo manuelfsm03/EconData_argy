@@ -37,7 +37,7 @@ function CodeBlock({ value }: { value: string }) {
 
 export function ConnectView() {
   return (
-    <main className="min-h-[calc(100vh-49px)] bg-[var(--bg)] p-4 md:p-6">
+    <main className="min-h-[calc(var(--app-vh)_-_49px)] bg-[var(--bg)] p-4 md:p-6">
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--amber-soft)] text-[var(--amber)]"><Cable size={20} /></div>

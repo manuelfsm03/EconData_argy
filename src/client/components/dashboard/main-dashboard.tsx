@@ -99,7 +99,7 @@ export function Dashboard({ initialTab = "macro", initialSubtab = null, initialT
     .toUpperCase()
 
   return (
-    <div style={{ background: "var(--bg)", minHeight: "100vh", overflowX: "hidden" }}>
+    <div style={{ background: "var(--bg)", minHeight: "var(--app-vh)", overflowX: "hidden" }}>
       <TickerTape />
 
       <div style={{

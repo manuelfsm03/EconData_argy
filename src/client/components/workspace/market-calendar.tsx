@@ -194,7 +194,7 @@ export function MarketCalendar({ initialTicker = null }: { initialTicker?: strin
   }
 
   return (
-    <div className="min-h-[calc(100vh-49px)] bg-[var(--bg)] p-4 md:p-6">
+    <div className="min-h-[calc(var(--app-vh)_-_49px)] bg-[var(--bg)] p-4 md:p-6">
       <div className="mx-auto max-w-7xl">
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--amber-soft)] text-[var(--amber)]"><CalendarDays size={20} /></div>

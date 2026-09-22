@@ -9,6 +9,7 @@ import {
 import { ForoActivo } from "./foro-activo"
 import { AssetScreener } from "./screener-activos"
 import { TabBonos } from "./tab-bonos"
+import { CapPanel } from "./cap-panel"
 import { ajustarPolinomio, gradoSugerido, muestrearCurva, residuos } from "@/lib/curve-fit"
 import { StockHeatmap } from "./stock-heatmap"
 
@@ -354,13 +355,13 @@ interface BondRow {
 const DURATION_MINIMA_CURVA = 0.25
 
 /**
- * Nube de bonos con la curva que mejor los describe, y cada punto pintado
- * según de qué lado quedó.
+ * Nube de bonos con la curva que mejor los describe.
  *
- * Sin la curva, el scatter dice dónde cotiza cada bono pero no si eso está
- * bien o mal. Con la curva, un punto VERDE rinde más de lo que le tocaría por
- * su plazo (barato) y uno ROJO rinde menos (caro). Eso es lo que se busca
- * cuando se mira una curva de rendimientos.
+ * Sin la curva, el scatter dice dónde cotiza cada bono pero no de qué lado de
+ * la curva queda. Con la curva, un bono por encima rinde más de lo que le
+ * tocaría por su plazo y uno por debajo, menos. Se muestra esa diferencia y
+ * nada más: sin rótulos barato/caro ni puntos verde/rojo, que se leen como
+ * recomendación (decisión del equipo de finanzas, 2026-09-22).
  *
  * El eje X va como número y no como categoría. Antes iba como categoría, que
  * es el default de Recharts, y por eso los bonos salían espaciados en el orden
@@ -441,7 +442,7 @@ function CurvaAjustada({ titulo, puntos, unidadTasa, etiquetaExtra }: {
                 <div>{unidadTasa}: {fmtPct(d.y)}</div>
                 <div>Duration: {fmtNum(d.x, 2)} años</div>
                 {etiquetaExtra && d.extra && <div>{etiquetaExtra}: {d.extra}</div>}
-                <div style={{ marginTop: 3, color: res >= 0 ? "var(--positive)" : "var(--negative)" }}>
+                <div style={{ marginTop: 3, color: "var(--text)" }}>
                   {res >= 0 ? "▲" : "▼"} {fmtNum(Math.abs(res), 2)} pp {res >= 0 ? "sobre" : "bajo"} la curva
                 </div>
               </div>
@@ -463,11 +464,10 @@ function CurvaAjustada({ titulo, puntos, unidadTasa, etiquetaExtra }: {
           <Scatter
             data={conResiduo}
             isAnimationActive={false}
-            shape={(props: { cx?: number; cy?: number; payload?: { residuo?: number } }) => {
-              const { cx, cy, payload } = props
+            shape={(props: { cx?: number; cy?: number }) => {
+              const { cx, cy } = props
               if (cx == null || cy == null) return <g />
-              const barato = (payload?.residuo ?? 0) >= 0
-              return <circle cx={cx} cy={cy} r={4.5} fill={barato ? "var(--positive)" : "var(--negative)"} />
+              return <circle cx={cx} cy={cy} r={4.5} fill="var(--sky)" />
             }}
           />
         </ScatterChart>
@@ -476,9 +476,8 @@ function CurvaAjustada({ titulo, puntos, unidadTasa, etiquetaExtra }: {
       <div style={{ fontSize: 8, color: "var(--text-mute)", fontFamily: "var(--font-data)", lineHeight: 1.7, marginTop: 4 }}>
         {ajuste ? (
           <>
-            Curva ajustada por mínimos cuadrados, grado {ajuste.grado} · R² {fmtNum(ajuste.r2, 3)} ·{" "}
-            <span style={{ color: "var(--positive)" }}>verde</span> rinde de más para su plazo (barato),{" "}
-            <span style={{ color: "var(--negative)" }}>rojo</span> rinde de menos (caro).
+            Curva ajustada por mínimos cuadrados, grado {ajuste.grado} · R² {fmtNum(ajuste.r2, 3)} · un bono
+            por encima de la curva rinde más de lo que le toca por su plazo; por debajo, menos.
             {excluidos > 0 && (
               <> · {excluidos} {excluidos === 1 ? "instrumento queda" : "instrumentos quedan"} fuera del
               ajuste por vencer en menos de {fmtNum(DURATION_MINIMA_CURVA * 12, 0)} meses: anualizados
@@ -701,60 +700,10 @@ export function BonosView({ initialTicker = null }: { initialTicker?: string | n
 
 
       {tab === "lecap" && (
-        <div style={{ padding: 16, background: "var(--bg)" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "var(--bg-elev-2)", marginBottom: 1 }}>
-            {/* Curva LECAP */}
-            <div style={{ background: "var(--bg)", padding: 16 }}>
-              <SectionTitle title="Curva LECAP / BONCAP — TEM vs plazo" />
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={lecaps.filter(l => l.tem != null).sort((a, b) => a.diasVencimiento - b.diasVencimiento).map(l => ({ label: l.ticker, dias: l.diasVencimiento, tem: l.tem }))} margin={{ top: 8, right: 20, left: 0, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="2 4" stroke="var(--bg-elev-2)" />
-                  <XAxis dataKey="dias" stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}d`} />
-                  <YAxis stroke="var(--border-hi)" fontSize={9} tick={{ fill: "var(--text-dim)" }} tickFormatter={v => `${v}%`} />
-                  <Tooltip {...tooltipStyle} formatter={(v: unknown) => [`${fmtNum(v as number, 2)}%`, "TEM"]} />
-                  <Line type="monotone" dataKey="tem" stroke="#FFD700" strokeWidth={2} dot={{ r: 3, fill: "#FFD700" }} isAnimationActive={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Tabla LECAP */}
-            <div style={{ background: "var(--bg)", padding: 16 }}>
-              <SectionTitle title="Detalle instrumentos" />
-              <div style={{ overflowY: "auto", maxHeight: 240 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-data)", fontSize: 9 }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                      {["Ticker", "Tipo", "Vto.", "Días", "Precio", "TEM", "TEA"].map(h => (
-                        <th key={h} style={{ padding: "4px 6px", color: "var(--text-dim)", fontWeight: 400, textAlign: h === "Ticker" || h === "Tipo" ? "left" : "right" }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lecaps.sort((a, b) => a.diasVencimiento - b.diasVencimiento).map((l, i) => (
-                      <tr
-                        key={i}
-                        onClick={() => setSelected(prev => prev?.type === "cap" && prev.ticker === l.ticker ? null : { type: "cap", ticker: l.ticker })}
-                        style={{
-                          borderBottom: "1px solid var(--bg-elev-2)",
-                          cursor: "pointer",
-                          background: selected?.type === "cap" && selected.ticker === l.ticker ? "var(--bg-elev-2)" : "transparent",
-                        }}
-                      >
-                        <td style={{ padding: "3px 6px", color: "var(--amber)", fontWeight: 700 }}>{l.ticker}</td>
-                        <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{l.tipo}</td>
-                        <td style={{ padding: "3px 6px", color: "var(--text-dim)" }}>{l.vencimiento}</td>
-                        <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{l.diasVencimiento}</td>
-                        <td style={{ padding: "3px 6px", color: "var(--text)", textAlign: "right" }}>{l.precio != null ? fmtNum(l.precio, 2) : "—"}</td>
-                        <td style={{ padding: "3px 6px", color: "#FFD700", textAlign: "right", fontWeight: 700 }}>{l.tem != null ? fmtPct(l.tem) : "—"}</td>
-                        <td style={{ padding: "3px 6px", color: "var(--text-dim)", textAlign: "right" }}>{l.tea != null ? fmtPct(l.tea) : "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
+        <CapPanel
+          selectedTicker={selected?.type === "cap" ? selected.ticker : null}
+          onSelect={(ticker) => setSelected(prev => prev?.type === "cap" && prev.ticker === ticker ? null : { type: "cap", ticker })}
+        />
       )}
 
       {(tab === "cer" || tab === "dual") && (() => {

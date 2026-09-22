@@ -158,7 +158,60 @@ export function muestrearCurva(
  */
 export function residuos<T extends Punto>(
   puntos: T[],
-  ajuste: AjustePolinomico,
+  ajuste: Pick<AjustePolinomico, "evaluar">,
 ): (T & { residuo: number })[] {
   return puntos.map((p) => ({ ...p, residuo: p.y - ajuste.evaluar(p.x) }))
+}
+
+export interface AjusteLogaritmico {
+  /** y = a + b·ln(x) */
+  a: number
+  b: number
+  /** Cuánta de la dispersión explica la curva, entre 0 y 1. */
+  r2: number
+  /** Evalúa la curva ajustada en un x > 0. */
+  evaluar: (x: number) => number
+}
+
+/**
+ * Ajuste logarítmico y = a + b·ln(x): la forma de la curva de letras en pesos,
+ * que sube rápido en el tramo corto y se aplana en el largo.
+ *
+ * Es una recta por mínimos cuadrados sobre ln(x), así que reusa
+ * ajustarPolinomio de grado 1. Sólo entran los x > 0 (el logaritmo no existe
+ * en cero).
+ *
+ * Pide al menos `minimoPuntos` x distintos, tres por defecto: con dos, la curva
+ * pasa exacto por ambos, los dos residuos dan cero y la curva no dice nada.
+ */
+export function ajustarLogaritmica(puntos: Punto[], minimoPuntos = 3): AjusteLogaritmico | null {
+  const enLog = puntos
+    .filter((p) => Number.isFinite(p.x) && p.x > 0 && Number.isFinite(p.y))
+    .map((p) => ({ x: Math.log(p.x), y: p.y }))
+  if (new Set(enLog.map((p) => p.x)).size < Math.max(2, minimoPuntos)) return null
+
+  const recta = ajustarPolinomio(enLog, 1)
+  if (recta === null) return null
+  const [a, b] = recta.coeficientes
+  return { a, b, r2: recta.r2, evaluar: (x: number) => a + b * Math.log(x) }
+}
+
+/**
+ * Puntos de una curva logarítmica entre `desde` y `hasta`, espaciados parejo en
+ * ln(x) y no en x: la curva dobla en el tramo corto, y con muestras lineales
+ * ese tramo quedaría dibujado con un par de segmentos rectos.
+ */
+export function muestrearLogaritmica(
+  ajuste: Pick<AjusteLogaritmico, "evaluar">,
+  desde: number,
+  hasta: number,
+  muestras = 60,
+): Punto[] {
+  if (!(desde > 0) || !(hasta > desde) || muestras < 2) return []
+  const lnDesde = Math.log(desde)
+  const paso = (Math.log(hasta) - lnDesde) / (muestras - 1)
+  return Array.from({ length: muestras }, (_, i) => {
+    const x = Math.exp(lnDesde + paso * i)
+    return { x, y: ajuste.evaluar(x) }
+  })
 }
