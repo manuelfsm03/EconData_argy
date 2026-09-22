@@ -101,11 +101,6 @@ function fmtBp(bp: number): string {
   return `${r > 0 ? "+" : r < 0 ? "-" : ""}${fmtNum(Math.abs(r), 1)} bp`
 }
 
-function colorResiduo(bp: number): string {
-  const r = redondearBp(bp)
-  return r > 0 ? "var(--positive)" : r < 0 ? "var(--negative)" : "var(--text-dim)"
-}
-
 /** Acepta coma o punto decimal. Devuelve null si no es un precio válido. */
 function parsePrecio(texto: string): number | null {
   const limpio = texto.trim().replace(/\s/g, "")
@@ -156,10 +151,10 @@ function TooltipCurva({ active, payload, ejeX }: any) {
       {p.curvaTem != null && r != null && (
         <>
           <div style={{ color: "var(--text-dim)", marginTop: 4 }}>Curva: {fmtPct(p.curvaTem)}</div>
-          <div style={{ color: colorResiduo(r) }}>
+          <div style={{ color: "var(--text)" }}>
             {r === 0
               ? "= en la curva"
-              : `${r > 0 ? "▲" : "▼"} ${fmtNum(Math.abs(r), 1)} bp ${r > 0 ? "sobre la curva · barato" : "bajo la curva · caro"}`}
+              : `${r > 0 ? "▲" : "▼"} ${fmtNum(Math.abs(r), 1)} bp ${r > 0 ? "sobre" : "bajo"} la curva`}
           </div>
         </>
       )}
@@ -216,9 +211,15 @@ export function CapPanel({ selectedTicker, onSelect }: { selectedTicker?: string
     .sort((a, b) => a.x - b.x)
 
   // Curva de referencia: logarítmica TEM = a + b·ln(x), ajustada SÓLO con los
-  // bonos que están en el gráfico. Como sale de los mismos puntos, se recalcula
-  // sola al prender o apagar un bono, al cambiar el eje y al editar un Px dirty.
-  const ajuste = ajustarLogaritmica(enGrafico.map((p) => ({ x: p.x, y: p.tem })))
+  // bonos prendidos en el gráfico, así que se recalcula al prender o apagar uno
+  // y al cambiar el eje. Se ajusta con PRECIOS DE MERCADO (rows, que la edición
+  // no toca): un Px dirty editado se dibuja y se mide contra esta curva, pero no
+  // la mueve. Si entrara al ajuste, simular un solo precio arrastraría la curva
+  // y cambiaría la lectura de todos los demás bonos sin que el mercado se haya movido.
+  const deMercado = (rows ?? [])
+    .filter((r) => !ocultos.has(r.ticker) && r.tem != null && r.durationMod != null && r.durationMac != null)
+    .map((r) => ({ x: (ejeX === "mod" ? r.durationMod : r.durationMac) as number, y: r.tem as number }))
+  const ajuste = ajustarLogaritmica(deMercado)
 
   const puntos: Punto[] = enGrafico.map((p, i) => {
     const curvaTem = ajuste ? ajuste.evaluar(p.x) : null
@@ -232,10 +233,11 @@ export function CapPanel({ selectedTicker, onSelect }: { selectedTicker?: string
     }
   })
 
-  // La curva se dibuja sólo entre el primer y el último bono: más allá sería
-  // extrapolar un tramo sin datos.
-  const curva = ajuste && puntos.length > 0
-    ? muestrearLogaritmica(ajuste, puntos[0].x, puntos[puntos.length - 1].x).map((c) => ({ x: c.x, tem: c.y }))
+  // La curva se dibuja sólo entre el primer y el último bono de mercado: más
+  // allá sería extrapolar un tramo sin datos.
+  const xsMercado = deMercado.map((p) => p.x)
+  const curva = ajuste && xsMercado.length > 0
+    ? muestrearLogaritmica(ajuste, Math.min(...xsMercado), Math.max(...xsMercado)).map((c) => ({ x: c.x, tem: c.y }))
     : []
   const rankingResiduos = [...puntos].sort((a, b) => (b.residuoBps ?? 0) - (a.residuoBps ?? 0))
 
@@ -420,7 +422,7 @@ export function CapPanel({ selectedTicker, onSelect }: { selectedTicker?: string
                       >
                         {payload.ticker}
                         {payload.residuoBps != null && redondearBp(payload.residuoBps) !== 0 && (
-                          <tspan fill={colorResiduo(payload.residuoBps)}> {payload.residuoBps > 0 ? "▲" : "▼"}</tspan>
+                          <tspan> {payload.residuoBps > 0 ? "▲" : "▼"}</tspan>
                         )}
                       </text>
                     </g>
@@ -442,18 +444,19 @@ export function CapPanel({ selectedTicker, onSelect }: { selectedTicker?: string
           <div style={{ marginTop: 10, borderTop: "1px solid var(--bg-elev-2)", paddingTop: 8, fontFamily: "var(--font-data)" }}>
             <div style={{ fontSize: 9, color: "var(--text-dim)", marginBottom: 6 }}>
               Curva: TEM = {fmtNum(ajuste.a, 3)}% {ajuste.b >= 0 ? "+" : "-"} {fmtNum(Math.abs(ajuste.b), 3)}% · ln({ejeX === "mod" ? "dur. mod." : "duration"})
-              {" · "}R² {fmtNum(ajuste.r2, 2)} · {puntos.length} bonos
+              {" · "}R² {fmtNum(ajuste.r2, 2)} · {deMercado.length} bonos
+              {hayEdiciones && " · ajustada con precios de mercado"}
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", fontSize: 10 }}>
               {rankingResiduos.map((p) => (
                 <span key={p.ticker} style={{ whiteSpace: "nowrap" }}>
                   <span style={{ color: COLOR[p.tipo] }}>{p.ticker}</span>{" "}
-                  <span style={{ color: colorResiduo(p.residuoBps ?? 0) }}>{fmtBp(p.residuoBps ?? 0)}</span>
+                  <span style={{ color: "var(--text)" }}>{fmtBp(p.residuoBps ?? 0)}</span>
                 </span>
               ))}
             </div>
             <div style={{ fontSize: 9, color: "var(--text-mute)", marginTop: 6 }}>
-              ▲ Por encima de la curva: rinde más de lo que le toca por plazo (barato). ▼ Por debajo: caro.
+              Diferencia de TEM contra la curva, en bp: ▲ por encima, ▼ por debajo.
             </div>
           </div>
         ) : puntos.length > 0 ? (
