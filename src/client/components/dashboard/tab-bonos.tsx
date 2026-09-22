@@ -522,8 +522,10 @@ function CurveTooltip({ active, payload }: any) {
       {d.fittedYtm != null && (
         <>
           <div style={{ color: "var(--text-dim)" }}>YTM curva: {d.fittedYtm.toFixed(2)}%</div>
-          <div style={{ color: d.residualBps! > 5 ? "var(--positive)" : d.residualBps! < -5 ? "var(--negative)" : "var(--text-dim)" }}>
-            Residual: {d.residualBps! > 0 ? "+" : ""}{d.residualBps!.toFixed(0)} bp · {d.valuation === "en_curva" ? "en curva" : d.valuation}
+          <div style={{ color: "var(--text)" }}>
+            {Math.round(d.residualBps!) === 0
+              ? "= en la curva"
+              : `${d.residualBps! > 0 ? "▲" : "▼"} ${Math.abs(Math.round(d.residualBps!))} bp ${d.residualBps! > 0 ? "sobre" : "bajo"} la curva`}
           </div>
         </>
       )}
@@ -587,7 +589,7 @@ function SovereignCurve({ bonds }: { bonds: SovereignBond[] }) {
   return (
     <div style={{ background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "12px 4px 8px 0" }}>
       <div style={{ padding: "0 12px 8px", fontSize: 9, color: "var(--text-dim)" }}>
-        Curvas soberanas separadas por ley — YTM (%) vs Duration Modificada (años). La recta es el ajuste de cada ley; el residual compara sólo bonos de esa ley: YTM por encima = barato; por debajo = caro.
+        Curvas soberanas separadas por ley — YTM (%) vs Duration Modificada (años). La recta es el ajuste de cada ley; el residual compara sólo bonos de esa ley, en bp de YTM: ▲ por encima de la curva, ▼ por debajo.
       </div>
       <ResponsiveContainer width="100%" height={340}>
         <ScatterChart margin={{ top: 8, right: 48, left: 0, bottom: 16 }}>
@@ -643,13 +645,15 @@ function SovereignCurve({ bonds }: { bonds: SovereignBond[] }) {
                 Ley {law === "NY" ? "Nueva York" : "Local"}
               </div>
               {hasReference ? points.map((point) => {
-                const residual = point.residualBps ?? 0
-                const color = residual > 5 ? "var(--positive)" : residual < -5 ? "var(--negative)" : "var(--text-dim)"
-                const label = point.valuation === "en_curva" ? "en curva" : point.valuation
+                // Sin barato/caro ni verde/rojo: se muestra la diferencia, no
+                // una recomendación.
+                const residual = Math.round(point.residualBps ?? 0)
                 return (
                   <div key={point.ticker} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 10, lineHeight: "18px" }}>
                     <span style={{ color: "var(--text)" }}>{point.ticker}</span>
-                    <span style={{ color, fontFamily: "var(--font-data)" }}>{residual > 0 ? "+" : ""}{residual.toFixed(0)} bp · {label}</span>
+                    <span style={{ color: "var(--text)", fontFamily: "var(--font-data)" }}>
+                      {residual === 0 ? "= en la curva" : `${residual > 0 ? "▲ +" : "▼ "}${residual} bp`}
+                    </span>
                   </div>
                 )
               }) : (

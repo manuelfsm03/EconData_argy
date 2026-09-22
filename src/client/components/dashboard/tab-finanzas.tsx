@@ -355,13 +355,13 @@ interface BondRow {
 const DURATION_MINIMA_CURVA = 0.25
 
 /**
- * Nube de bonos con la curva que mejor los describe, y cada punto pintado
- * según de qué lado quedó.
+ * Nube de bonos con la curva que mejor los describe.
  *
- * Sin la curva, el scatter dice dónde cotiza cada bono pero no si eso está
- * bien o mal. Con la curva, un punto VERDE rinde más de lo que le tocaría por
- * su plazo (barato) y uno ROJO rinde menos (caro). Eso es lo que se busca
- * cuando se mira una curva de rendimientos.
+ * Sin la curva, el scatter dice dónde cotiza cada bono pero no de qué lado de
+ * la curva queda. Con la curva, un bono por encima rinde más de lo que le
+ * tocaría por su plazo y uno por debajo, menos. Se muestra esa diferencia y
+ * nada más: sin rótulos barato/caro ni puntos verde/rojo, que se leen como
+ * recomendación (decisión del equipo de finanzas, 2026-09-22).
  *
  * El eje X va como número y no como categoría. Antes iba como categoría, que
  * es el default de Recharts, y por eso los bonos salían espaciados en el orden
@@ -442,7 +442,7 @@ function CurvaAjustada({ titulo, puntos, unidadTasa, etiquetaExtra }: {
                 <div>{unidadTasa}: {fmtPct(d.y)}</div>
                 <div>Duration: {fmtNum(d.x, 2)} años</div>
                 {etiquetaExtra && d.extra && <div>{etiquetaExtra}: {d.extra}</div>}
-                <div style={{ marginTop: 3, color: res >= 0 ? "var(--positive)" : "var(--negative)" }}>
+                <div style={{ marginTop: 3, color: "var(--text)" }}>
                   {res >= 0 ? "▲" : "▼"} {fmtNum(Math.abs(res), 2)} pp {res >= 0 ? "sobre" : "bajo"} la curva
                 </div>
               </div>
@@ -464,11 +464,10 @@ function CurvaAjustada({ titulo, puntos, unidadTasa, etiquetaExtra }: {
           <Scatter
             data={conResiduo}
             isAnimationActive={false}
-            shape={(props: { cx?: number; cy?: number; payload?: { residuo?: number } }) => {
-              const { cx, cy, payload } = props
+            shape={(props: { cx?: number; cy?: number }) => {
+              const { cx, cy } = props
               if (cx == null || cy == null) return <g />
-              const barato = (payload?.residuo ?? 0) >= 0
-              return <circle cx={cx} cy={cy} r={4.5} fill={barato ? "var(--positive)" : "var(--negative)"} />
+              return <circle cx={cx} cy={cy} r={4.5} fill="var(--sky)" />
             }}
           />
         </ScatterChart>
@@ -477,9 +476,8 @@ function CurvaAjustada({ titulo, puntos, unidadTasa, etiquetaExtra }: {
       <div style={{ fontSize: 8, color: "var(--text-mute)", fontFamily: "var(--font-data)", lineHeight: 1.7, marginTop: 4 }}>
         {ajuste ? (
           <>
-            Curva ajustada por mínimos cuadrados, grado {ajuste.grado} · R² {fmtNum(ajuste.r2, 3)} ·{" "}
-            <span style={{ color: "var(--positive)" }}>verde</span> rinde de más para su plazo (barato),{" "}
-            <span style={{ color: "var(--negative)" }}>rojo</span> rinde de menos (caro).
+            Curva ajustada por mínimos cuadrados, grado {ajuste.grado} · R² {fmtNum(ajuste.r2, 3)} · un bono
+            por encima de la curva rinde más de lo que le toca por su plazo; por debajo, menos.
             {excluidos > 0 && (
               <> · {excluidos} {excluidos === 1 ? "instrumento queda" : "instrumentos quedan"} fuera del
               ajuste por vencer en menos de {fmtNum(DURATION_MINIMA_CURVA * 12, 0)} meses: anualizados
