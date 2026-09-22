@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState } from "react"
 import { CartesianGrid, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts"
 import { Info, RotateCcw } from "lucide-react"
 import { metricasCap } from "@/lib/cap-math"
+import { ajustarLogaritmica, muestrearLogaritmica } from "@/lib/curve-fit"
 import { fechaUTC } from "@/lib/market-calendar"
 
 export interface CapRow {
@@ -38,7 +39,20 @@ export interface CapRow {
 
 type Fila = CapRow & { editado: boolean; precioMercado: number | null }
 type EjeX = "mod" | "mac"
-type Punto = { ticker: string; tipo: CapRow["tipo"]; x: number; tem: number; vencimiento: string; dias: number; editado: boolean; labelArriba: boolean }
+type Punto = {
+  ticker: string
+  tipo: CapRow["tipo"]
+  x: number
+  tem: number
+  vencimiento: string
+  dias: number
+  editado: boolean
+  labelArriba: boolean
+  /** TEM de la curva logarítmica en la duration del bono. */
+  curvaTem: number | null
+  /** TEM del bono menos la de la curva, en bp. Positivo = por encima. */
+  residuoBps: number | null
+}
 
 const COLOR = { LECAP: "var(--amber)", BONCAP: "var(--sky)" } as const
 
@@ -75,6 +89,21 @@ function ticksEntre(min: number, max: number, paso: number): number[] {
   const ticks: number[] = []
   for (let v = min; v <= max + paso / 1000; v += paso) ticks.push(Number(v.toFixed(6)))
   return ticks
+}
+
+/** Residuo redondeado a 0,1 bp: lo que se muestra es lo que decide arriba/abajo. */
+function redondearBp(bp: number): number {
+  return Math.round(bp * 10) / 10
+}
+
+function fmtBp(bp: number): string {
+  const r = redondearBp(bp)
+  return `${r > 0 ? "+" : r < 0 ? "-" : ""}${fmtNum(Math.abs(r), 1)} bp`
+}
+
+function colorResiduo(bp: number): string {
+  const r = redondearBp(bp)
+  return r > 0 ? "var(--positive)" : r < 0 ? "var(--negative)" : "var(--text-dim)"
 }
 
 /** Acepta coma o punto decimal. Devuelve null si no es un precio válido. */
@@ -116,13 +145,24 @@ function TituloSeccion({ children }: { children: React.ReactNode }) {
 function TooltipCurva({ active, payload, ejeX }: any) {
   if (!active || !payload?.length) return null
   const p = payload[0]?.payload as Punto | undefined
-  if (!p) return null
+  if (!p?.ticker) return null
+  const r = p.residuoBps != null ? redondearBp(p.residuoBps) : null
   return (
     <div style={{ background: "var(--bg-elev-2)", border: "1px solid var(--border-hi)", padding: "8px 12px", fontSize: 11, fontFamily: "var(--font-data)" }}>
       <div style={{ color: COLOR[p.tipo], fontWeight: 700, marginBottom: 4 }}>{p.ticker} · {p.tipo}</div>
       <div style={{ color: "#ccc" }}>TEM: <span style={{ color: "var(--text)", fontWeight: 700 }}>{fmtPct(p.tem)}</span></div>
       <div style={{ color: "#ccc" }}>Vence: <span style={{ color: "var(--text)" }}>{fmtFecha(p.vencimiento)}</span> · {p.dias} días</div>
       <div style={{ color: "var(--text-dim)" }}>{ejeX === "mod" ? "Dur. mod." : "Duration"}: {fmtNum(p.x, 3)} años</div>
+      {p.curvaTem != null && r != null && (
+        <>
+          <div style={{ color: "var(--text-dim)", marginTop: 4 }}>Curva: {fmtPct(p.curvaTem)}</div>
+          <div style={{ color: colorResiduo(r) }}>
+            {r === 0
+              ? "= en la curva"
+              : `${r > 0 ? "▲" : "▼"} ${fmtNum(Math.abs(r), 1)} bp ${r > 0 ? "sobre la curva · barato" : "bajo la curva · caro"}`}
+          </div>
+        </>
+      )}
       {p.editado && <div style={{ color: "var(--amber)", marginTop: 4 }}>Con Px dirty editado</div>}
     </div>
   )
@@ -162,7 +202,7 @@ export function CapPanel({ selectedTicker, onSelect }: { selectedTicker?: string
 
   const conMetricas = filas.filter((f) => f.tem != null && f.durationMod != null && f.durationMac != null)
 
-  const puntos: Punto[] = conMetricas
+  const enGrafico = conMetricas
     .filter((f) => !ocultos.has(f.ticker))
     .map((f) => ({
       ticker: f.ticker,
@@ -172,12 +212,32 @@ export function CapPanel({ selectedTicker, onSelect }: { selectedTicker?: string
       vencimiento: f.vencimiento,
       dias: f.diasVencimiento,
       editado: f.editado,
-      labelArriba: true,
     }))
     .sort((a, b) => a.x - b.x)
-    // Labels alternados arriba y abajo: dos letras con duration parecida
-    // (T15E7 y S29E7) quedan pegadas y sus tickers se pisaban.
-    .map((p, i) => ({ ...p, labelArriba: i % 2 === 0 }))
+
+  // Curva de referencia: logarítmica TEM = a + b·ln(x), ajustada SÓLO con los
+  // bonos que están en el gráfico. Como sale de los mismos puntos, se recalcula
+  // sola al prender o apagar un bono, al cambiar el eje y al editar un Px dirty.
+  const ajuste = ajustarLogaritmica(enGrafico.map((p) => ({ x: p.x, y: p.tem })))
+
+  const puntos: Punto[] = enGrafico.map((p, i) => {
+    const curvaTem = ajuste ? ajuste.evaluar(p.x) : null
+    return {
+      ...p,
+      // Labels alternados arriba y abajo: dos letras con duration parecida
+      // (T15E7 y S29E7) quedan pegadas y sus tickers se pisaban.
+      labelArriba: i % 2 === 0,
+      curvaTem,
+      residuoBps: curvaTem != null ? (p.tem - curvaTem) * 100 : null,
+    }
+  })
+
+  // La curva se dibuja sólo entre el primer y el último bono: más allá sería
+  // extrapolar un tramo sin datos.
+  const curva = ajuste && puntos.length > 0
+    ? muestrearLogaritmica(ajuste, puntos[0].x, puntos[puntos.length - 1].x).map((c) => ({ x: c.x, tem: c.y }))
+    : []
+  const rankingResiduos = [...puntos].sort((a, b) => (b.residuoBps ?? 0) - (a.residuoBps ?? 0))
 
   const ultimaHora = horaBuenosAires(
     (rows ?? []).map((r) => r.asOf).filter((v): v is string => Boolean(v)).sort().at(-1) ?? null,
@@ -236,7 +296,7 @@ export function CapPanel({ selectedTicker, onSelect }: { selectedTicker?: string
   }
 
   const xs = puntos.map((p) => p.x)
-  const ys = puntos.map((p) => p.tem)
+  const ys = [...puntos.map((p) => p.tem), ...curva.map((c) => c.tem)]
   const xTope = xs.length ? Math.max(...xs) * 1.08 : 1
   const xPaso = pasoLindo(xTope, 7)
   const xMax = Math.ceil(xTope / xPaso) * xPaso
@@ -327,11 +387,20 @@ export function CapPanel({ selectedTicker, onSelect }: { selectedTicker?: string
                 label={{ value: "TEM", angle: -90, position: "insideLeft", fill: "var(--text-mute)", fontSize: 9 }}
               />
               <Tooltip content={<TooltipCurva ejeX={ejeX} />} cursor={{ strokeDasharray: "3 3", stroke: "var(--border-hi)" }} isAnimationActive={false} />
+              {/* La curva primero, para que los puntos queden por encima. */}
+              {curva.length > 0 && (
+                <Scatter
+                  data={curva}
+                  line={{ stroke: "var(--text-dim)", strokeWidth: 1.5, strokeDasharray: "5 4" }}
+                  lineType="joint"
+                  shape={() => <g />}
+                  legendType="none"
+                  isAnimationActive={false}
+                />
+              )}
               <Scatter
                 data={puntos}
                 isAnimationActive={false}
-                line={{ stroke: "var(--border-hi)", strokeWidth: 1 }}
-                lineType="joint"
                 shape={(props: { cx?: number; cy?: number; payload?: Punto }) => {
                   const { cx, cy, payload } = props
                   if (cx == null || cy == null || !payload) return <g />
@@ -350,6 +419,9 @@ export function CapPanel({ selectedTicker, onSelect }: { selectedTicker?: string
                         style={{ pointerEvents: "none" }}
                       >
                         {payload.ticker}
+                        {payload.residuoBps != null && redondearBp(payload.residuoBps) !== 0 && (
+                          <tspan fill={colorResiduo(payload.residuoBps)}> {payload.residuoBps > 0 ? "▲" : "▼"}</tspan>
+                        )}
                       </text>
                     </g>
                   )
@@ -363,7 +435,32 @@ export function CapPanel({ selectedTicker, onSelect }: { selectedTicker?: string
           <span><span style={{ color: COLOR.LECAP }}>●</span> LECAP</span>
           <span><span style={{ color: COLOR.BONCAP }}>●</span> BONCAP</span>
           <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", border: "2px solid var(--text)", verticalAlign: "middle" }} /> Px dirty editado</span>
+          {curva.length > 0 && <span><span style={{ letterSpacing: -1 }}>- - -</span> Curva log</span>}
         </div>
+
+        {ajuste ? (
+          <div style={{ marginTop: 10, borderTop: "1px solid var(--bg-elev-2)", paddingTop: 8, fontFamily: "var(--font-data)" }}>
+            <div style={{ fontSize: 9, color: "var(--text-dim)", marginBottom: 6 }}>
+              Curva: TEM = {fmtNum(ajuste.a, 3)}% {ajuste.b >= 0 ? "+" : "-"} {fmtNum(Math.abs(ajuste.b), 3)}% · ln({ejeX === "mod" ? "dur. mod." : "duration"})
+              {" · "}R² {fmtNum(ajuste.r2, 2)} · {puntos.length} bonos
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", fontSize: 10 }}>
+              {rankingResiduos.map((p) => (
+                <span key={p.ticker} style={{ whiteSpace: "nowrap" }}>
+                  <span style={{ color: COLOR[p.tipo] }}>{p.ticker}</span>{" "}
+                  <span style={{ color: colorResiduo(p.residuoBps ?? 0) }}>{fmtBp(p.residuoBps ?? 0)}</span>
+                </span>
+              ))}
+            </div>
+            <div style={{ fontSize: 9, color: "var(--text-mute)", marginTop: 6 }}>
+              ▲ Por encima de la curva: rinde más de lo que le toca por plazo (barato). ▼ Por debajo: caro.
+            </div>
+          </div>
+        ) : puntos.length > 0 ? (
+          <div style={{ marginTop: 10, fontSize: 9, color: "var(--text-mute)", fontFamily: "var(--font-data)" }}>
+            Con menos de 3 bonos en el gráfico no hay curva de referencia.
+          </div>
+        ) : null}
       </div>
 
       {/* ── Screener ──────────────────────────────────────────────────── */}
