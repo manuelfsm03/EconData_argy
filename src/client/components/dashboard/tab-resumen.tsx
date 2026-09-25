@@ -204,7 +204,7 @@ export function TCStrip({ onNavigate }: { onNavigate: NavigateFn }) {
               <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "flex", alignItems: "center" }}>
                 {l.label}
                 {GLOSSARY[l.label.toUpperCase()] && (
-                  <InfoTooltip text={GLOSSARY[l.label.toUpperCase()].text} source={GLOSSARY[l.label.toUpperCase()].source} url={GLOSSARY[l.label.toUpperCase()].url} position="bottom" />
+                  <InfoTooltip termId={l.label.toUpperCase()} position="bottom" />
                 )}
               </div>
               <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "var(--font-data)", color: l.color, lineHeight: 1 }}>
@@ -321,7 +321,7 @@ export function IPCBlock({ onNavigate }: { onNavigate: NavigateFn }) {
     >
       <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "flex", alignItems: "center", gap: 2 }}>
         IPC — {periodo || "inflación"}
-        <InfoTooltip text={GLOSSARY["IPC"].text} source={GLOSSARY["IPC"].source} url={GLOSSARY["IPC"].url} position="bottom" />
+        <InfoTooltip termId="IPC" position="bottom" />
       </div>
       <div style={{ fontSize: 32, fontWeight: 900, fontFamily: "var(--font-data)", color: "var(--negative)", lineHeight: 1 }}>
         {mensual != null ? mensual.toFixed(1) + "%" : "—"}
@@ -383,7 +383,7 @@ export function RiesgoPaisBlock({ onNavigate }: { onNavigate: NavigateFn }) {
     >
       <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "flex", alignItems: "center", gap: 2 }}>
         Riesgo País — EMBI+
-        <InfoTooltip text={GLOSSARY["RIESGO PAÍS"].text} source={GLOSSARY["RIESGO PAÍS"].source} url={GLOSSARY["RIESGO PAÍS"].url} position="bottom" />
+        <InfoTooltip termId="RIESGO PAÍS" position="bottom" />
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ fontSize: 32, fontWeight: 900, fontFamily: "var(--font-data)", color, lineHeight: 1 }}>
@@ -448,7 +448,7 @@ export function ReservasBadlarBlock({ onNavigate }: { onNavigate: NavigateFn }) 
       >
         <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "flex", alignItems: "center", gap: 2 }}>
           Reservas BCRA
-          <InfoTooltip text={GLOSSARY["RESERVAS"].text} source={GLOSSARY["RESERVAS"].source} url={GLOSSARY["RESERVAS"].url} position="bottom" />
+          <InfoTooltip termId="RESERVAS" position="bottom" />
         </div>
         <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "var(--font-data)", color: "var(--positive)", lineHeight: 1 }}>
           {reservas != null ? `USD ${fmt(reservas / 1000, 1)}B` : "—"}
@@ -469,7 +469,7 @@ export function ReservasBadlarBlock({ onNavigate }: { onNavigate: NavigateFn }) 
       >
         <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "flex", alignItems: "center", gap: 2 }}>
           Tasa TAMAR
-          <InfoTooltip text={GLOSSARY["TAMAR"].text} source={GLOSSARY["TAMAR"].source} url={GLOSSARY["TAMAR"].url} position="bottom" />
+          <InfoTooltip termId="TAMAR" position="bottom" />
         </div>
         <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "var(--font-data)", color: "var(--amber)", lineHeight: 1 }}>
           {tamar != null ? tamar.toFixed(1) + "%" : "—"}
