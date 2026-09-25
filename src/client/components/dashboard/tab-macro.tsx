@@ -21,7 +21,6 @@ import { DownloadCSV } from "../ui/download-csv"
 import { ChartDownload } from "../ui/chart-download"
 import { SectionMeta } from "../ui/help-tooltip"
 import { InfoTooltip } from "../ui/info-tooltip"
-import { GLOSSARY } from "@/lib/glossary"
 import { toWeightedSectorShares } from "@/lib/macro-sector-shares"
 import {
   BarChart, Bar, Cell, LineChart, Line,
@@ -64,6 +63,7 @@ function KPI({
   var2,
   var2Label,
   valueColor,
+  termId,
 }: {
   label: string
   value: string | null
@@ -73,6 +73,8 @@ function KPI({
   var2?: number | null
   var2Label?: string
   valueColor?: string
+  /** ID de término del GLOSSARY para mostrar tooltip educativo. Opcional. */
+  termId?: string
 }) {
   return (
     <div
@@ -83,8 +85,9 @@ function KPI({
         flex: "1 1 160px",
       }}
     >
-      <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+      <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, display: "flex", alignItems: "center", gap: 2 }}>
         {label}
+        {termId && <InfoTooltip termId={termId} position="bottom" />}
       </div>
       <div style={{ fontSize: 20, fontWeight: 700, color: valueColor ?? "var(--amber)", fontFamily: "var(--font-data)" }}>
         {value ?? "—"}
@@ -673,6 +676,7 @@ export function EmaeView() {
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
         <KPI
           label="EMAE"
+          termId="EMAE"
           value={ultimoEmae ? fmtNum(ultimoEmae[1]) : null}
           unit={`Índice base 2004=100 · ${ultimoEmae?.[0] ?? ""}`}
           var1={varMensual} var1Label="mensual"
@@ -680,6 +684,7 @@ export function EmaeView() {
         />
         <KPI
           label="IPI Manufacturero"
+          termId="IPI"
           value={ultimoIpi ? fmtNum(ultimoIpi[1], 1) : null}
           unit={`Índice 2004=100 · ${ultimoIpi?.[0] ?? "cargando..."}`}
           valueColor="var(--amber)"
@@ -2062,12 +2067,12 @@ export function IpcView() {
     <div>
       <SectionMeta title="IPC — Inflación" help="El IPC mide la variación mensual de los precios al consumidor. Elaborado por INDEC. La variación interanual compara con el mismo mes del año anterior." source="INDEC · datos.gob.ar" />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
-        <KPI label="IPC Var. Mensual"  value={varMensual    != null ? fmtNum(varMensual * 100)    : null} unit="% mensual · último dato" />
-        <KPI label="IPC Interanual"    value={varInteranual != null ? fmtNum(varInteranual)        : null} unit="% interanual · último dato" />
-        <KPI label="IPC Núcleo"        value={getVarMens("ipc_nucleo")     != null ? fmtNum(getVarMens("ipc_nucleo")!)     : null} unit="% mensual · excl. estac. y reg." />
+        <KPI label="IPC Var. Mensual"  termId="IPC MENSUAL"    value={varMensual    != null ? fmtNum(varMensual * 100)    : null} unit="% mensual · último dato" />
+        <KPI label="IPC Interanual"    termId="IPC INTERANUAL"  value={varInteranual != null ? fmtNum(varInteranual)        : null} unit="% interanual · último dato" />
+        <KPI label="IPC Núcleo"        termId="NÚCLEO"          value={getVarMens("ipc_nucleo")     != null ? fmtNum(getVarMens("ipc_nucleo")!)     : null} unit="% mensual · excl. estac. y reg." />
         <KPI label="Alimentos"         value={getVarMens("ipc_alimentos")  != null ? fmtNum(getVarMens("ipc_alimentos")!)  : null} unit="% mensual" />
-        <KPI label="Regulados"         value={getVarMens("ipc_regulados")  != null ? fmtNum(getVarMens("ipc_regulados")!)  : null} unit="% mensual" />
-        <KPI label="Estacionales"      value={getVarMens("ipc_estacionales") != null ? fmtNum(getVarMens("ipc_estacionales")!) : null} unit="% mensual" />
+        <KPI label="Regulados"         termId="REGULADOS"       value={getVarMens("ipc_regulados")  != null ? fmtNum(getVarMens("ipc_regulados")!)  : null} unit="% mensual" />
+        <KPI label="Estacionales"      termId="ESTACIONALES"    value={getVarMens("ipc_estacionales") != null ? fmtNum(getVarMens("ipc_estacionales")!) : null} unit="% mensual" />
       </div>
 
       <SubTabs
@@ -2250,10 +2255,11 @@ export function BalanzaView() {
           <div style={{ padding: 16, color: "var(--text-dim)", fontSize: 11 }}>Cargando balanza...</div>
         ) : (<>
           <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
-            <KPI label="Exportaciones" value={lastExpo != null ? `USD ${fmtNum(lastExpo, 0)}M` : null} unit="último dato disponible" />
-            <KPI label="Importaciones" value={lastImpo != null ? `USD ${fmtNum(lastImpo, 0)}M` : null} unit="último dato disponible" />
+            <KPI label="Exportaciones" termId="FOB" value={lastExpo != null ? `USD ${fmtNum(lastExpo, 0)}M` : null} unit="último dato disponible" />
+            <KPI label="Importaciones" termId="CIF" value={lastImpo != null ? `USD ${fmtNum(lastImpo, 0)}M` : null} unit="último dato disponible" />
             <KPI
               label="Saldo Comercial"
+              termId="BALANZA COMERCIAL"
               value={lastSaldo != null ? `USD ${lastSaldo >= 0 ? "+" : ""}${fmtNum(lastSaldo, 0)}M` : null}
               unit="último dato disponible"
               valueColor={lastSaldo == null ? "var(--text-dim)" : lastSaldo >= 0 ? "var(--positive)" : "var(--negative)"}
@@ -3495,7 +3501,7 @@ export function RiesgoPaisView() {
     <div>
       <SectionMeta title="Riesgo País" help="El EMBI+ mide el spread de los bonos soberanos argentinos sobre los Treasuries de EE.UU. A mayor valor, mayor riesgo percibido por los inversores. Por encima de 1000 bps se considera riesgo muy alto." source="argentinadatos.com · BCRA" />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
-        <KPI label="EMBI+ Argentina"
+        <KPI label="EMBI+ Argentina" termId="EMBI"
           value={bps != null ? String(Math.round(bps)) : null}
           unit={`bps · ${data?.actual?.fecha ?? "—"} · ${bps != null ? (bps < 500 ? "BAJO" : bps < 1000 ? "MEDIO" : "ALTO") : ""}`}
           valueColor={bpsColor} />
@@ -4112,7 +4118,7 @@ export function SenorejaView() {
         <div style={{ background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "10px 14px", flex: "1 1 140px" }}>
           <div style={kpiLabel}>
             α Cagan estimado
-            <InfoTooltip text={GLOSSARY["ALPHA CAGAN"].text} source={GLOSSARY["ALPHA CAGAN"].source} url={GLOSSARY["ALPHA CAGAN"].url} position="bottom" />
+            <InfoTooltip termId="ALPHA CAGAN" position="bottom" />
           </div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "var(--amber)", fontFamily: "var(--font-data)" }}>{fmtNum(params.alpha, 3)}</div>
           <div style={kpiUnit}>semi-elasticidad dinero</div>
@@ -4121,7 +4127,7 @@ export function SenorejaView() {
         <div style={{ background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "10px 14px", flex: "1 1 140px" }}>
           <div style={kpiLabel}>
             π* óptima (Laffer)
-            <InfoTooltip text={GLOSSARY["PI STAR"].text} source={GLOSSARY["PI STAR"].source} url={GLOSSARY["PI STAR"].url} position="bottom" />
+            <InfoTooltip termId="PI STAR" position="bottom" />
           </div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "var(--positive)", fontFamily: "var(--font-data)" }}>{fmtNum(params.pi_star_pct, 1)}%</div>
           <div style={kpiUnit}>inflación anual de max señoreaje</div>
@@ -4129,7 +4135,7 @@ export function SenorejaView() {
         <div style={{ background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "10px 14px", flex: "1 1 140px" }}>
           <div style={kpiLabel}>
             Señoreaje máx. teórico
-            <InfoTooltip text={GLOSSARY["SEÑOREAJE"].text} source={GLOSSARY["SEÑOREAJE"].source} url={GLOSSARY["SEÑOREAJE"].url} position="bottom" />
+            <InfoTooltip termId="SEÑOREAJE" position="bottom" />
           </div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "var(--positive)", fontFamily: "var(--font-data)" }}>{fmtNum(params.s_max / 1000, 0)}B</div>
           <div style={kpiUnit}>millones ARS reales (base)</div>
@@ -4159,7 +4165,7 @@ export function SenorejaView() {
         <div style={{ background: "var(--bg)", padding: 16 }}>
           <div style={{ fontSize: 10, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, display: "flex", alignItems: "center" }}>
             Señoreaje Anual Histórico
-            <InfoTooltip text={GLOSSARY["SEÑOREAJE"].text} source={GLOSSARY["SEÑOREAJE"].source} url={GLOSSARY["SEÑOREAJE"].url} position="bottom" />
+            <InfoTooltip termId="SEÑOREAJE" position="bottom" />
           </div>
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={barData} margin={{ top: 8, right: hasPbi ? 44 : 12, left: 0, bottom: 4 }}>
@@ -4190,7 +4196,7 @@ export function SenorejaView() {
         <div style={{ background: "var(--bg)", padding: 16 }}>
           <div style={{ fontSize: 10, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, display: "flex", alignItems: "center" }}>
             Curva de Laffer Monetaria
-            <InfoTooltip text={GLOSSARY["CURVA DE LAFFER MONETARIA"].text} source={GLOSSARY["CURVA DE LAFFER MONETARIA"].source} url={GLOSSARY["CURVA DE LAFFER MONETARIA"].url} position="bottom" />
+            <InfoTooltip termId="CURVA DE LAFFER MONETARIA" position="bottom" />
           </div>
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
@@ -4241,7 +4247,7 @@ export function SenorejaView() {
           <div style={{ fontSize: 10, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, display: "flex", alignItems: "center" }}>
 
             Saldos Reales M/P (Base Monetaria)
-            <InfoTooltip text={GLOSSARY["SALDOS REALES"].text} source={GLOSSARY["SALDOS REALES"].source} url={GLOSSARY["SALDOS REALES"].url} position="bottom" />
+            <InfoTooltip termId="SALDOS REALES" position="bottom" />
           </div>
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={serie_anual} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
@@ -4268,7 +4274,7 @@ export function SenorejaView() {
         <div style={{ background: "var(--bg)", padding: 16 }}>
           <div style={{ fontSize: 10, color: "#ccc", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, display: "flex", alignItems: "center" }}>
             Inflación Anual Observada
-            <InfoTooltip text={GLOSSARY["MODELO CAGAN"].text} source={GLOSSARY["MODELO CAGAN"].source} url={GLOSSARY["MODELO CAGAN"].url} position="bottom" />
+            <InfoTooltip termId="MODELO CAGAN" position="bottom" />
           </div>
           <ResponsiveContainer width="100%" height={240}>
             <ComposedChart data={serie_anual} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>

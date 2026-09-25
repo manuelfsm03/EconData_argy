@@ -15,6 +15,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { InfoTooltip } from "@/client/components/ui/info-tooltip"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -294,12 +295,15 @@ function StrokeSankeyChart({ nodes, links }: { nodes: RawNode[]; links: RawLink[
 
 // ── KPI ───────────────────────────────────────────────────────────────────────
 
-function KPI({ label, value, unit, color }: {
-  label: string; value: string; unit: string; color?: string
+function KPI({ label, value, unit, color, termId }: {
+  label: string; value: string; unit: string; color?: string; termId?: string
 }) {
   return (
     <div style={{ background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "10px 14px", flex: "1 1 160px" }}>
-      <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, display: "flex", alignItems: "center", gap: 2 }}>
+        {label}
+        {termId && <InfoTooltip termId={termId} position="bottom" />}
+      </div>
       <div style={{ fontSize: 20, fontWeight: 700, color: color ?? "var(--amber)", fontFamily: "var(--font-data)" }}>{value}</div>
       <div style={{ fontSize: 9, color: "var(--text-dim)", marginTop: 2 }}>{unit}</div>
     </div>
@@ -491,12 +495,12 @@ export function FiscalSankeyView() {
       )}
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-        <KPI label="Ingresos totales" value={fmtM(periodo.totalIngresos)} unit="pesos corrientes · importes abreviados" color="var(--positive)" />
-        <KPI label="Gasto primario" value={fmtM(periodo.totalGastoPrimario)} unit="sin intereses de deuda" color="var(--negative)" />
-        <KPI label="Resultado primario" value={fmtM(periodo.resultadoPrimario)} unit="ingresos − gasto primario"
+        <KPI label="Ingresos totales" termId="RECAUDACIÓN" value={fmtM(periodo.totalIngresos)} unit="pesos corrientes · importes abreviados" color="var(--positive)" />
+        <KPI label="Gasto primario" termId="GASTO PRIMARIO" value={fmtM(periodo.totalGastoPrimario)} unit="sin intereses de deuda" color="var(--negative)" />
+        <KPI label="Resultado primario" termId="RESULTADO PRIMARIO" value={fmtM(periodo.resultadoPrimario)} unit="ingresos − gasto primario"
           color={periodo.resultadoPrimario < 0 ? "var(--negative)" : "var(--positive)"} />
         <KPI label="Intereses de deuda" value={fmtM(periodo.interesesNetos)} unit="netos" color="#B91C1C" />
-        <KPI label={deficit ? "Déficit financiero" : "Superávit financiero"} value={fmtM(periodo.resultadoFinanciero)}
+        <KPI label={deficit ? "Déficit financiero" : "Superávit financiero"} termId="RESULTADO FINANCIERO" value={fmtM(periodo.resultadoFinanciero)}
           unit="primario − intereses" color={deficit ? "var(--negative)" : "var(--positive)"} />
       </div>
 

@@ -19,7 +19,6 @@ import {
 } from "recharts"
 import type { TooltipContentProps } from "recharts"
 import { InfoTooltip } from "@/client/components/ui/info-tooltip"
-import { GLOSSARY } from "@/lib/glossary"
 import { buildSovereignCurve, type SovereignCurveInput } from "@/lib/sovereign-curve"
 import { useTickerNav } from "@/lib/ticker-nav"
 import { WATCHLIST_EVENT, readWatchlist, toggleWatchlistId } from "@/lib/watchlist"
@@ -378,7 +377,20 @@ function BondTable({ title, color, bonds, order, liquidacion, pinnedTickers, onT
   const totalOut = bonds.reduce((s, b) => s + (OUTSTANDING[b.ticker] ?? 0), 0)
   const wavgTea = weightedAvgTEA(bonds)
 
-  const COL_HEADERS = ["", "Ticker", "Px Dirty", "Var %", "TNA MEP", "TNA CCL", "TEA MEP", "TEA CCL", "Dur.", "Paridad", "Canje"]
+  // Cada header puede tener un termId opcional que muestra el tooltip educativo.
+  const COL_HEADERS: { label: string; termId?: string }[] = [
+    { label: "" },
+    { label: "Ticker" },
+    { label: "Px Dirty" },
+    { label: "Var %" },
+    { label: "TNA MEP", termId: "TNA" },
+    { label: "TNA CCL", termId: "CCL" },
+    { label: "TEA MEP", termId: "TEA" },
+    { label: "TEA CCL", termId: "TEA" },
+    { label: "Dur.", termId: "DURATION" },
+    { label: "Paridad", termId: "PARIDAD" },
+    { label: "Canje" },
+  ]
 
   return (
     <div style={{ marginBottom: 1 }}>
@@ -405,7 +417,12 @@ function BondTable({ title, color, bonds, order, liquidacion, pinnedTickers, onT
                   textAlign: i <= 1 ? "left" : "right",
                   textTransform: "uppercase", letterSpacing: 0.5,
                   whiteSpace: "nowrap",
-                }}>{h}</th>
+                }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: i <= 1 ? "flex-start" : "flex-end", gap: 2, width: "100%" }}>
+                    {h.label}
+                    {h.termId && <InfoTooltip termId={h.termId} position="bottom" />}
+                  </span>
+                </th>
               ))}
             </tr>
           </thead>
@@ -766,17 +783,29 @@ function LecapsScreener() {
   const lecaps = instrumentos.filter((i) => i.tipo === "LECAP")
   const boncaps = instrumentos.filter((i) => i.tipo === "BONCAP")
 
-  const Section = ({ title, items }: { title: string; items: CapInstrument[] }) => (
+  const Section = ({ title, items, tipo }: { title: string; items: CapInstrument[]; tipo: "LECAP" | "BONCAP" }) => (
     <div style={{ marginBottom: 1 }}>
-      <div style={{ padding: "3px 8px", background: "var(--bg-elev-2)", fontSize: 9, color: "var(--amber)", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid var(--bg-elev-2)" }}>
+      <div style={{ padding: "3px 8px", background: "var(--bg-elev-2)", fontSize: 9, color: "var(--amber)", textTransform: "uppercase", letterSpacing: 1, borderBottom: "1px solid var(--bg-elev-2)", display: "flex", alignItems: "center", gap: 2 }}>
         {title}
+        <InfoTooltip termId={tipo} position="bottom" />
       </div>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
-            {["Ticker", "Vencimiento", "Días", "Precio", "TEM", "TEA", "TIR anual"].map((h, i) => (
-              <th key={h} style={{ padding: "4px 8px", fontSize: 9, color: "var(--text-dim)", textAlign: i === 0 ? "left" : "right", borderBottom: "1px solid var(--border)" }}>
-                {h}
+            {([
+              { label: "Ticker" },
+              { label: "Vencimiento" },
+              { label: "Días" },
+              { label: "Precio" },
+              { label: "TEM", termId: "TEM" },
+              { label: "TEA", termId: "TEA" },
+              { label: "TIR anual", termId: "TIR" },
+            ]).map((h, i) => (
+              <th key={h.label} style={{ padding: "4px 8px", fontSize: 9, color: "var(--text-dim)", textAlign: i === 0 ? "left" : "right", borderBottom: "1px solid var(--border)" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: i === 0 ? "flex-start" : "flex-end", gap: 2, width: "100%" }}>
+                  {h.label}
+                  {h.termId && <InfoTooltip termId={h.termId} position="bottom" />}
+                </span>
               </th>
             ))}
           </tr>
@@ -810,8 +839,8 @@ function LecapsScreener() {
 
   return (
     <div>
-      <Section title="LECAPs — Letras del Tesoro Capitalizables" items={lecaps} />
-      <Section title="BONCAPs — Bonos del Tesoro Capitalizables" items={boncaps} />
+      <Section title="LECAPs — Letras del Tesoro Capitalizables" items={lecaps} tipo="LECAP" />
+      <Section title="BONCAPs — Bonos del Tesoro Capitalizables" items={boncaps} tipo="BONCAP" />
       <div style={{ padding: "4px 8px", fontSize: 9, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
         Precios: actualización diaria via ByMA · Ordenados por vencimiento · TIR: compuesto continuo vs VN
       </div>
@@ -903,7 +932,7 @@ function RiesgoPaisView() {
       {/* KPI strip */}
       <div style={{ display: "flex", gap: 1, background: "var(--bg-elev-2)", padding: 1, flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 180px", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "14px 16px" }}>
-          <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, display: "flex", alignItems: "center", gap: 2 }}>Riesgo País EMBI+<InfoTooltip text={GLOSSARY["RIESGO PAÍS"].text} source={GLOSSARY["RIESGO PAÍS"].source} url={GLOSSARY["RIESGO PAÍS"].url} position="bottom" /></div>
+          <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, display: "flex", alignItems: "center", gap: 2 }}>Riesgo País EMBI+<InfoTooltip termId="RIESGO PAÍS" position="bottom" /></div>
           <div style={{ fontSize: 36, fontWeight: 700, color, fontFamily: "var(--font-data)" }}>
             {bps != null ? bps.toLocaleString("es-AR") : "—"}
           </div>
@@ -922,13 +951,13 @@ function RiesgoPaisView() {
           </div>
         </div>
         <div style={{ flex: "1 1 120px", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "14px 16px" }}>
-          <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, display: "flex", alignItems: "center", gap: 2 }}>US 10Y<InfoTooltip text={GLOSSARY["US 10Y"].text} source={GLOSSARY["US 10Y"].source} url={GLOSSARY["US 10Y"].url} position="bottom" /></div>
+          <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, display: "flex", alignItems: "center", gap: 2 }}>US 10Y<InfoTooltip termId="US 10Y" position="bottom" /></div>
           <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "var(--font-data)", color: "var(--text-dim)" }}>
             {data?.actual?.us10y != null ? data.actual.us10y.toFixed(2) + "%" : "—"}
           </div>
         </div>
         <div style={{ flex: "1 1 120px", background: "var(--bg-elev)", border: "1px solid var(--border)", padding: "14px 16px" }}>
-          <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, display: "flex", alignItems: "center", gap: 2 }}>TIR GD30<InfoTooltip text={GLOSSARY["TIR"].text} source={GLOSSARY["TIR"].source} url={GLOSSARY["TIR"].url} position="bottom" /></div>
+          <div style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, display: "flex", alignItems: "center", gap: 2 }}>TIR <InfoTooltip termId="TIR" position="bottom" /> GD30 <InfoTooltip termId="GD30" position="bottom" /></div>
           <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "var(--font-data)", color: "var(--amber)" }}>
             {data?.actual?.arTir != null ? data.actual.arTir.toFixed(2) + "%" : "—"}
           </div>

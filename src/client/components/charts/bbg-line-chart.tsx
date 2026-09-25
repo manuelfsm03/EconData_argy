@@ -230,12 +230,7 @@ export function BBGLineChart({
         <span style={{ display: "flex", alignItems: "center" }}>
           {title}
           {glossaryKey && GLOSSARY[glossaryKey] && (
-            <InfoTooltip
-              text={GLOSSARY[glossaryKey].text}
-              source={GLOSSARY[glossaryKey].source}
-              url={GLOSSARY[glossaryKey].url}
-              position="bottom"
-            />
+            <InfoTooltip termId={glossaryKey} position="bottom" />
           )}
         </span>
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
