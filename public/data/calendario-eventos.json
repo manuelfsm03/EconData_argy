@@ -1,0 +1,692 @@
+{
+  "actualizado": "2026-09-25",
+  "cobertura": {
+    "desde": "2026-10-01",
+    "hasta": "2027-03-31"
+  },
+  "nota": "Catálogo curado manualmente. Ver calendario-eventos.README.md para agregar o corregir eventos. Fechas de publicaciones INDEC son aproximaciones al patrón mensual habitual (~14 IPC, ~22 EMAE, ~25 IPI); la fecha exacta la confirma el calendario oficial del INDEC. Licitaciones del Tesoro estimadas al 2do y 4to miércoles del mes. Vencimientos de bonos soberanos con fechas de cupón estimadas — confirmar con el cronograma oficial de servicios de deuda del Ministerio de Economía.",
+  "eventos": [
+    {
+      "id": "afip-recaudacion-2026-10",
+      "fecha": "2026-10-02",
+      "categoria": "publicacion_datos",
+      "titulo": "Recaudación tributaria AFIP — Septiembre",
+      "descripcion": "Publicación mensual de la recaudación tributaria total y por concepto (IVA, Ganancias, Seguridad Social, Comercio Exterior).",
+      "fuente": { "nombre": "AFIP", "url": "https://www.afip.gob.ar/estudios/" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "reservas-bcra-2026-10-05",
+      "fecha": "2026-10-05",
+      "categoria": "publicacion_datos",
+      "titulo": "Reservas internacionales BCRA — actualización semanal",
+      "descripcion": "El BCRA publica sus reservas internacionales diariamente. Se muestra como recurrencia semanal para no saturar el calendario.",
+      "fuente": { "nombre": "BCRA", "url": "https://www.bcra.gob.ar/PublicacionesEstadisticas/Principales_variables.asp" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "feriado-diversidad-2026-10-12",
+      "fecha": "2026-10-12",
+      "categoria": "feriado",
+      "titulo": "Feriado — Día del Respeto a la Diversidad Cultural",
+      "descripcion": "Feriado nacional. Bancos y mercados cerrados en Argentina.",
+      "fuente": { "nombre": "Argentina.gob.ar", "url": "https://www.argentina.gob.ar/interior/feriados-nacionales-2026" },
+      "importancia": "media",
+      "recurrencia": "anual"
+    },
+    {
+      "id": "licitacion-tesoro-2026-10-14",
+      "fecha": "2026-10-14",
+      "categoria": "licitacion",
+      "titulo": "Licitación del Tesoro (2do miércoles) — estimada",
+      "descripcion": "El Tesoro Nacional licita instrumentos en pesos cada ~15 días. Fecha estimada al patrón 2do miércoles del mes; confirmar con la comunicación oficial.",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/mercado-de-capitales" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-ipc-2026-10-14",
+      "fecha": "2026-10-14",
+      "hora": "16:00",
+      "categoria": "publicacion_datos",
+      "titulo": "IPC INDEC — Septiembre",
+      "descripcion": "Índice de Precios al Consumidor Nacional. Variación mensual e interanual.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-5" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "bcra-inflacion-nucleo-2026-10-15",
+      "fecha": "2026-10-15",
+      "categoria": "publicacion_datos",
+      "titulo": "Inflación núcleo BCRA — Septiembre",
+      "descripcion": "El BCRA publica una medida de inflación núcleo (excluye regulados y estacionales) en su informe monetario mensual.",
+      "fuente": { "nombre": "BCRA", "url": "https://www.bcra.gob.ar/PublicacionesEstadisticas/Informe_monetario_mensual.asp" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-emae-2026-10-22",
+      "fecha": "2026-10-22",
+      "hora": "16:00",
+      "categoria": "publicacion_datos",
+      "titulo": "EMAE INDEC — Agosto",
+      "descripcion": "Estimador Mensual de Actividad Económica. Anticipa el PBI trimestral.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-9" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-ipi-2026-10-26",
+      "fecha": "2026-10-26",
+      "categoria": "publicacion_datos",
+      "titulo": "IPI Manufacturero INDEC — Septiembre",
+      "descripcion": "Índice de Producción Industrial Manufacturero.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-6" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-balanza-2026-10-27",
+      "fecha": "2026-10-27",
+      "categoria": "publicacion_datos",
+      "titulo": "Balanza comercial INDEC — Septiembre",
+      "descripcion": "Intercambio Comercial Argentino: exportaciones, importaciones y saldo.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-2" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "licitacion-tesoro-2026-10-28",
+      "fecha": "2026-10-28",
+      "categoria": "licitacion",
+      "titulo": "Licitación del Tesoro (4to miércoles) — estimada",
+      "descripcion": "Segunda licitación mensual del Tesoro Nacional. Fecha estimada al patrón 4to miércoles del mes.",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/mercado-de-capitales" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "reservas-bcra-2026-11-02",
+      "fecha": "2026-11-02",
+      "categoria": "publicacion_datos",
+      "titulo": "Reservas internacionales BCRA — actualización semanal",
+      "descripcion": "El BCRA publica sus reservas internacionales diariamente.",
+      "fuente": { "nombre": "BCRA", "url": "https://www.bcra.gob.ar/PublicacionesEstadisticas/Principales_variables.asp" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "afip-recaudacion-2026-11",
+      "fecha": "2026-11-03",
+      "categoria": "publicacion_datos",
+      "titulo": "Recaudación tributaria AFIP — Octubre",
+      "descripcion": "Publicación mensual de la recaudación tributaria.",
+      "fuente": { "nombre": "AFIP", "url": "https://www.afip.gob.ar/estudios/" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "licitacion-tesoro-2026-11-11",
+      "fecha": "2026-11-11",
+      "categoria": "licitacion",
+      "titulo": "Licitación del Tesoro (2do miércoles) — estimada",
+      "descripcion": "Licitación mensual del Tesoro Nacional. Fecha estimada.",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/mercado-de-capitales" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-ipc-2026-11-13",
+      "fecha": "2026-11-13",
+      "hora": "16:00",
+      "categoria": "publicacion_datos",
+      "titulo": "IPC INDEC — Octubre",
+      "descripcion": "Índice de Precios al Consumidor Nacional.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-5" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "bcra-inflacion-nucleo-2026-11-16",
+      "fecha": "2026-11-16",
+      "categoria": "publicacion_datos",
+      "titulo": "Inflación núcleo BCRA — Octubre",
+      "descripcion": "Medida de inflación núcleo del BCRA (informe monetario mensual).",
+      "fuente": { "nombre": "BCRA", "url": "https://www.bcra.gob.ar/PublicacionesEstadisticas/Informe_monetario_mensual.asp" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "feriado-soberania-2026-11-20",
+      "fecha": "2026-11-20",
+      "categoria": "feriado",
+      "titulo": "Feriado — Día de la Soberanía Nacional",
+      "descripcion": "Feriado nacional. Bancos y mercados cerrados.",
+      "fuente": { "nombre": "Argentina.gob.ar", "url": "https://www.argentina.gob.ar/interior/feriados-nacionales-2026" },
+      "importancia": "media",
+      "recurrencia": "anual"
+    },
+    {
+      "id": "indec-emae-2026-11-23",
+      "fecha": "2026-11-23",
+      "hora": "16:00",
+      "categoria": "publicacion_datos",
+      "titulo": "EMAE INDEC — Septiembre",
+      "descripcion": "Estimador Mensual de Actividad Económica.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-9" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "licitacion-tesoro-2026-11-25",
+      "fecha": "2026-11-25",
+      "categoria": "licitacion",
+      "titulo": "Licitación del Tesoro (4to miércoles) — estimada",
+      "descripcion": "Segunda licitación mensual del Tesoro Nacional.",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/mercado-de-capitales" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-ipi-2026-11-25",
+      "fecha": "2026-11-25",
+      "categoria": "publicacion_datos",
+      "titulo": "IPI Manufacturero INDEC — Octubre",
+      "descripcion": "Índice de Producción Industrial Manufacturero.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-6" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-balanza-2026-11-25",
+      "fecha": "2026-11-25",
+      "categoria": "publicacion_datos",
+      "titulo": "Balanza comercial INDEC — Octubre",
+      "descripcion": "Intercambio Comercial Argentino.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-2" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "afip-recaudacion-2026-12",
+      "fecha": "2026-12-02",
+      "categoria": "publicacion_datos",
+      "titulo": "Recaudación tributaria AFIP — Noviembre",
+      "descripcion": "Publicación mensual de la recaudación tributaria.",
+      "fuente": { "nombre": "AFIP", "url": "https://www.afip.gob.ar/estudios/" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "reservas-bcra-2026-12-07",
+      "fecha": "2026-12-07",
+      "categoria": "publicacion_datos",
+      "titulo": "Reservas internacionales BCRA — actualización semanal",
+      "descripcion": "El BCRA publica sus reservas internacionales diariamente.",
+      "fuente": { "nombre": "BCRA", "url": "https://www.bcra.gob.ar/PublicacionesEstadisticas/Principales_variables.asp" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "feriado-inmaculada-2026-12-08",
+      "fecha": "2026-12-08",
+      "categoria": "feriado",
+      "titulo": "Feriado — Inmaculada Concepción de María",
+      "descripcion": "Feriado nacional. Bancos y mercados cerrados.",
+      "fuente": { "nombre": "Argentina.gob.ar", "url": "https://www.argentina.gob.ar/interior/feriados-nacionales-2026" },
+      "importancia": "media",
+      "recurrencia": "anual"
+    },
+    {
+      "id": "licitacion-tesoro-2026-12-09",
+      "fecha": "2026-12-09",
+      "categoria": "licitacion",
+      "titulo": "Licitación del Tesoro (2do miércoles) — estimada",
+      "descripcion": "Licitación mensual del Tesoro Nacional. Cierre de año.",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/mercado-de-capitales" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-ipc-2026-12-14",
+      "fecha": "2026-12-14",
+      "hora": "16:00",
+      "categoria": "publicacion_datos",
+      "titulo": "IPC INDEC — Noviembre",
+      "descripcion": "Índice de Precios al Consumidor Nacional.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-5" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "bcra-inflacion-nucleo-2026-12-15",
+      "fecha": "2026-12-15",
+      "categoria": "publicacion_datos",
+      "titulo": "Inflación núcleo BCRA — Noviembre",
+      "descripcion": "Medida de inflación núcleo del BCRA.",
+      "fuente": { "nombre": "BCRA", "url": "https://www.bcra.gob.ar/PublicacionesEstadisticas/Informe_monetario_mensual.asp" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-balanza-2026-12-22",
+      "fecha": "2026-12-22",
+      "categoria": "publicacion_datos",
+      "titulo": "Balanza comercial INDEC — Noviembre",
+      "descripcion": "Intercambio Comercial Argentino.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-2" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-emae-2026-12-22",
+      "fecha": "2026-12-22",
+      "hora": "16:00",
+      "categoria": "publicacion_datos",
+      "titulo": "EMAE INDEC — Octubre",
+      "descripcion": "Estimador Mensual de Actividad Económica.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-9" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "licitacion-tesoro-2026-12-23",
+      "fecha": "2026-12-23",
+      "categoria": "licitacion",
+      "titulo": "Licitación del Tesoro (4to miércoles) — estimada",
+      "descripcion": "Última licitación del año. Fecha estimada.",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/mercado-de-capitales" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-ipi-2026-12-24",
+      "fecha": "2026-12-24",
+      "categoria": "publicacion_datos",
+      "titulo": "IPI Manufacturero INDEC — Noviembre",
+      "descripcion": "Índice de Producción Industrial Manufacturero.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-6" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "feriado-navidad-2026-12-25",
+      "fecha": "2026-12-25",
+      "categoria": "feriado",
+      "titulo": "Feriado — Navidad",
+      "descripcion": "Feriado nacional. Bancos y mercados cerrados.",
+      "fuente": { "nombre": "Argentina.gob.ar", "url": "https://www.argentina.gob.ar/interior/feriados-nacionales-2026" },
+      "importancia": "alta",
+      "recurrencia": "anual"
+    },
+    {
+      "id": "feriado-anio-nuevo-2027-01-01",
+      "fecha": "2027-01-01",
+      "categoria": "feriado",
+      "titulo": "Feriado — Año Nuevo",
+      "descripcion": "Feriado nacional. Bancos y mercados cerrados.",
+      "fuente": { "nombre": "Argentina.gob.ar", "url": "https://www.argentina.gob.ar/interior/feriados-nacionales-2027" },
+      "importancia": "alta",
+      "recurrencia": "anual"
+    },
+    {
+      "id": "afip-recaudacion-2027-01",
+      "fecha": "2027-01-05",
+      "categoria": "publicacion_datos",
+      "titulo": "Recaudación tributaria AFIP — Diciembre",
+      "descripcion": "Cierre anual de recaudación.",
+      "fuente": { "nombre": "AFIP", "url": "https://www.afip.gob.ar/estudios/" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "vto-gd30-2027-01-09",
+      "fecha": "2027-01-09",
+      "categoria": "vencimiento_tesoro",
+      "titulo": "Vencimiento cupón GD30 (bono global 2030) — estimado",
+      "descripcion": "Pago de servicios (renta + amortización) del GD30. Fecha estimada al cronograma habitual de enero; confirmar con el cronograma oficial de servicios de deuda.",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/deudapublica/cronograma-de-servicios" },
+      "importancia": "alta",
+      "recurrencia": null
+    },
+    {
+      "id": "vto-gd35-2027-01-09",
+      "fecha": "2027-01-09",
+      "categoria": "vencimiento_tesoro",
+      "titulo": "Vencimiento cupón GD35 (bono global 2035) — estimado",
+      "descripcion": "Pago de servicios del GD35. Fecha estimada.",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/deudapublica/cronograma-de-servicios" },
+      "importancia": "alta",
+      "recurrencia": null
+    },
+    {
+      "id": "vto-gd38-2027-01-09",
+      "fecha": "2027-01-09",
+      "categoria": "vencimiento_tesoro",
+      "titulo": "Vencimiento cupón AE38 (bono global 2038) — estimado",
+      "descripcion": "Pago de servicios del AE38.",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/deudapublica/cronograma-de-servicios" },
+      "importancia": "media",
+      "recurrencia": null
+    },
+    {
+      "id": "vto-gd41-2027-01-09",
+      "fecha": "2027-01-09",
+      "categoria": "vencimiento_tesoro",
+      "titulo": "Vencimiento cupón GD41 (bono global 2041) — estimado",
+      "descripcion": "Pago de servicios del GD41.",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/deudapublica/cronograma-de-servicios" },
+      "importancia": "media",
+      "recurrencia": null
+    },
+    {
+      "id": "vto-gd46-2027-01-09",
+      "fecha": "2027-01-09",
+      "categoria": "vencimiento_tesoro",
+      "titulo": "Vencimiento cupón GD46 (bono global 2046) — estimado",
+      "descripcion": "Pago de servicios del GD46.",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/deudapublica/cronograma-de-servicios" },
+      "importancia": "media",
+      "recurrencia": null
+    },
+    {
+      "id": "vto-al30-2027-01-09",
+      "fecha": "2027-01-09",
+      "categoria": "vencimiento_tesoro",
+      "titulo": "Vencimiento cupón AL30 (bono ley local 2030) — estimado",
+      "descripcion": "Pago de servicios del AL30 (bono soberano ley Argentina).",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/deudapublica/cronograma-de-servicios" },
+      "importancia": "alta",
+      "recurrencia": null
+    },
+    {
+      "id": "vto-al35-2027-01-09",
+      "fecha": "2027-01-09",
+      "categoria": "vencimiento_tesoro",
+      "titulo": "Vencimiento cupón AL35 (bono ley local 2035) — estimado",
+      "descripcion": "Pago de servicios del AL35.",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/deudapublica/cronograma-de-servicios" },
+      "importancia": "media",
+      "recurrencia": null
+    },
+    {
+      "id": "licitacion-tesoro-2027-01-13",
+      "fecha": "2027-01-13",
+      "categoria": "licitacion",
+      "titulo": "Licitación del Tesoro (2do miércoles) — estimada",
+      "descripcion": "Primera licitación del año. Fecha estimada.",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/mercado-de-capitales" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-ipc-2027-01-14",
+      "fecha": "2027-01-14",
+      "hora": "16:00",
+      "categoria": "publicacion_datos",
+      "titulo": "IPC INDEC — Diciembre",
+      "descripcion": "Cierre anual de inflación. Dato ancla del año.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-5" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "bcra-inflacion-nucleo-2027-01-15",
+      "fecha": "2027-01-15",
+      "categoria": "publicacion_datos",
+      "titulo": "Inflación núcleo BCRA — Diciembre",
+      "descripcion": "Medida de inflación núcleo del BCRA.",
+      "fuente": { "nombre": "BCRA", "url": "https://www.bcra.gob.ar/PublicacionesEstadisticas/Informe_monetario_mensual.asp" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-emae-2027-01-22",
+      "fecha": "2027-01-22",
+      "hora": "16:00",
+      "categoria": "publicacion_datos",
+      "titulo": "EMAE INDEC — Noviembre",
+      "descripcion": "Estimador Mensual de Actividad Económica.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-9" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-ipi-2027-01-25",
+      "fecha": "2027-01-25",
+      "categoria": "publicacion_datos",
+      "titulo": "IPI Manufacturero INDEC — Diciembre",
+      "descripcion": "Índice de Producción Industrial Manufacturero.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-6" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "licitacion-tesoro-2027-01-27",
+      "fecha": "2027-01-27",
+      "categoria": "licitacion",
+      "titulo": "Licitación del Tesoro (4to miércoles) — estimada",
+      "descripcion": "Segunda licitación mensual. Fecha estimada.",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/mercado-de-capitales" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-balanza-2027-01-27",
+      "fecha": "2027-01-27",
+      "categoria": "publicacion_datos",
+      "titulo": "Balanza comercial INDEC — Diciembre",
+      "descripcion": "Intercambio Comercial Argentino.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-2" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "reservas-bcra-2027-02-01",
+      "fecha": "2027-02-01",
+      "categoria": "publicacion_datos",
+      "titulo": "Reservas internacionales BCRA — actualización semanal",
+      "descripcion": "El BCRA publica sus reservas internacionales diariamente.",
+      "fuente": { "nombre": "BCRA", "url": "https://www.bcra.gob.ar/PublicacionesEstadisticas/Principales_variables.asp" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "afip-recaudacion-2027-02",
+      "fecha": "2027-02-02",
+      "categoria": "publicacion_datos",
+      "titulo": "Recaudación tributaria AFIP — Enero",
+      "descripcion": "Publicación mensual de la recaudación tributaria.",
+      "fuente": { "nombre": "AFIP", "url": "https://www.afip.gob.ar/estudios/" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "licitacion-tesoro-2027-02-10",
+      "fecha": "2027-02-10",
+      "categoria": "licitacion",
+      "titulo": "Licitación del Tesoro (2do miércoles) — estimada",
+      "descripcion": "Licitación mensual del Tesoro Nacional.",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/mercado-de-capitales" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-ipc-2027-02-12",
+      "fecha": "2027-02-12",
+      "hora": "16:00",
+      "categoria": "publicacion_datos",
+      "titulo": "IPC INDEC — Enero",
+      "descripcion": "Índice de Precios al Consumidor Nacional.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-5" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "feriado-carnaval-2027-02-15",
+      "fecha": "2027-02-15",
+      "categoria": "feriado",
+      "titulo": "Feriado — Carnaval (lunes)",
+      "descripcion": "Feriado nacional. Bancos y mercados cerrados.",
+      "fuente": { "nombre": "Argentina.gob.ar", "url": "https://www.argentina.gob.ar/interior/feriados-nacionales-2027" },
+      "importancia": "media",
+      "recurrencia": "anual"
+    },
+    {
+      "id": "feriado-carnaval-2027-02-16",
+      "fecha": "2027-02-16",
+      "categoria": "feriado",
+      "titulo": "Feriado — Carnaval (martes)",
+      "descripcion": "Feriado nacional. Bancos y mercados cerrados.",
+      "fuente": { "nombre": "Argentina.gob.ar", "url": "https://www.argentina.gob.ar/interior/feriados-nacionales-2027" },
+      "importancia": "media",
+      "recurrencia": "anual"
+    },
+    {
+      "id": "indec-emae-2027-02-22",
+      "fecha": "2027-02-22",
+      "hora": "16:00",
+      "categoria": "publicacion_datos",
+      "titulo": "EMAE INDEC — Diciembre",
+      "descripcion": "Estimador Mensual de Actividad Económica. Cierre 2026.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-9" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-ipi-2027-02-25",
+      "fecha": "2027-02-25",
+      "categoria": "publicacion_datos",
+      "titulo": "IPI Manufacturero INDEC — Enero",
+      "descripcion": "Índice de Producción Industrial Manufacturero.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-6" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "licitacion-tesoro-2027-02-24",
+      "fecha": "2027-02-24",
+      "categoria": "licitacion",
+      "titulo": "Licitación del Tesoro (4to miércoles) — estimada",
+      "descripcion": "Segunda licitación mensual del Tesoro Nacional.",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/mercado-de-capitales" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-balanza-2027-02-24",
+      "fecha": "2027-02-24",
+      "categoria": "publicacion_datos",
+      "titulo": "Balanza comercial INDEC — Enero",
+      "descripcion": "Intercambio Comercial Argentino.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-2" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "reservas-bcra-2027-03-01",
+      "fecha": "2027-03-01",
+      "categoria": "publicacion_datos",
+      "titulo": "Reservas internacionales BCRA — actualización semanal",
+      "descripcion": "El BCRA publica sus reservas internacionales diariamente.",
+      "fuente": { "nombre": "BCRA", "url": "https://www.bcra.gob.ar/PublicacionesEstadisticas/Principales_variables.asp" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "afip-recaudacion-2027-03",
+      "fecha": "2027-03-02",
+      "categoria": "publicacion_datos",
+      "titulo": "Recaudación tributaria AFIP — Febrero",
+      "descripcion": "Publicación mensual de la recaudación tributaria.",
+      "fuente": { "nombre": "AFIP", "url": "https://www.afip.gob.ar/estudios/" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "licitacion-tesoro-2027-03-10",
+      "fecha": "2027-03-10",
+      "categoria": "licitacion",
+      "titulo": "Licitación del Tesoro (2do miércoles) — estimada",
+      "descripcion": "Licitación mensual del Tesoro Nacional.",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/mercado-de-capitales" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-ipc-2027-03-12",
+      "fecha": "2027-03-12",
+      "hora": "16:00",
+      "categoria": "publicacion_datos",
+      "titulo": "IPC INDEC — Febrero",
+      "descripcion": "Índice de Precios al Consumidor Nacional.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-5" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "bcra-inflacion-nucleo-2027-03-15",
+      "fecha": "2027-03-15",
+      "categoria": "publicacion_datos",
+      "titulo": "Inflación núcleo BCRA — Febrero",
+      "descripcion": "Medida de inflación núcleo del BCRA.",
+      "fuente": { "nombre": "BCRA", "url": "https://www.bcra.gob.ar/PublicacionesEstadisticas/Informe_monetario_mensual.asp" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-emae-2027-03-22",
+      "fecha": "2027-03-22",
+      "hora": "16:00",
+      "categoria": "publicacion_datos",
+      "titulo": "EMAE INDEC — Enero",
+      "descripcion": "Estimador Mensual de Actividad Económica.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-9" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "feriado-memoria-2027-03-24",
+      "fecha": "2027-03-24",
+      "categoria": "feriado",
+      "titulo": "Feriado — Día Nacional de la Memoria por la Verdad y la Justicia",
+      "descripcion": "Feriado nacional. Bancos y mercados cerrados.",
+      "fuente": { "nombre": "Argentina.gob.ar", "url": "https://www.argentina.gob.ar/interior/feriados-nacionales-2027" },
+      "importancia": "media",
+      "recurrencia": "anual"
+    },
+    {
+      "id": "licitacion-tesoro-2027-03-24",
+      "fecha": "2027-03-24",
+      "categoria": "licitacion",
+      "titulo": "Licitación del Tesoro (4to miércoles) — estimada",
+      "descripcion": "Segunda licitación mensual del Tesoro Nacional.",
+      "fuente": { "nombre": "Ministerio de Economía", "url": "https://www.argentina.gob.ar/economia/finanzas/mercado-de-capitales" },
+      "importancia": "alta",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-ipi-2027-03-25",
+      "fecha": "2027-03-25",
+      "categoria": "publicacion_datos",
+      "titulo": "IPI Manufacturero INDEC — Febrero",
+      "descripcion": "Índice de Producción Industrial Manufacturero.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-6" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    },
+    {
+      "id": "indec-balanza-2027-03-25",
+      "fecha": "2027-03-25",
+      "categoria": "publicacion_datos",
+      "titulo": "Balanza comercial INDEC — Febrero",
+      "descripcion": "Intercambio Comercial Argentino.",
+      "fuente": { "nombre": "INDEC", "url": "https://www.indec.gob.ar/indec/web/Nivel3-Tema-3-2" },
+      "importancia": "media",
+      "recurrencia": "mensual"
+    }
+  ]
+}

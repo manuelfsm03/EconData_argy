@@ -11,6 +11,7 @@ import { useBCRAData } from "@/client/hooks/use-bcra-data"
 import { recentObservedValues } from "@/client/lib/series-values"
 import { InfoTooltip } from "@/client/components/ui/info-tooltip"
 import { GLOSSARY } from "@/lib/glossary"
+import { ProximosEventos } from "@/client/components/dashboard/proximos-eventos"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -585,8 +586,12 @@ export function TabResumen({ onNavigate }: { onNavigate: NavigateFn }) {
         <ReservasBadlarBlock onNavigate={onNavigate} />
       </section>
 
-      {/* Fila 3: Headlines */}
-      <section>
+      {/* Fila 3: Próximos eventos + Headlines */}
+      <section style={{ display: "grid", gridTemplateColumns: "minmax(280px, 1fr) minmax(280px, 1.4fr)", gap: 12 }}>
+        <ProximosEventos
+          cantidad={5}
+          onVerTodos={() => { if (typeof window !== "undefined") window.location.href = "/calendario" }}
+        />
         <HeadlinesBlock onNavigate={onNavigate} />
       </section>
 
