@@ -19,6 +19,7 @@ import { fetchRavaBondPrices } from "@/server/external/rava-prices"
 import { pesoBondsVigentes } from "@/server/domain/peso-bonds"
 import { fetchBymaCapInstruments, fetchBymaQuotes, marketMetaForRows } from "@/server/external/byma-data"
 import { chooseFreshPrice, gateMarketPrice, type SelectedMarketPrice } from "@/server/domain/market-freshness"
+import { fetchTasasLetras, tasasAplicables } from "@/server/external/argentinadatos-letras"
 
 type Cashflow = { fechaPago: Date; cupon: number; amortizacion: number; flujoTotal: number }
 
@@ -383,7 +384,10 @@ export async function GET(request: NextRequest) {
             tipo: instrumento.tipo as "LECAP" | "BONCAP",
             vencimiento: instrumento.vencimiento.toISOString().slice(0, 10),
           }))
-      const bymaQuotes = await fetchBymaQuotes(instruments.map((instrumento) => instrumento.ticker))
+      const [bymaQuotes, tasasLetras] = await Promise.all([
+        fetchBymaQuotes(instruments.map((instrumento) => instrumento.ticker)),
+        fetchTasasLetras(),
+      ])
       const screener = instruments.map((instrument) => {
         const inst = dbByTicker.get(instrument.ticker)
         const maturity = new Date(instrument.vencimiento)
@@ -396,9 +400,21 @@ export async function GET(request: NextRequest) {
           ...(byma ? [{ source: "byma_data_open", price: byma.lastPrice, asOf: byma.asOf }] : []),
           ...(inst?.precio != null ? [{ source: "db_local", price: inst.precio, asOf: dbAsOf }] : []),
         ])
+
+        // La DB manda cuando tiene tasas frescas; hoy nunca las tiene, porque
+        // nada las escribe. En ese caso van las de ArgentinaDatos, siempre que
+        // describan el mismo precio que muestra la fila.
+        const tasasDb = dbGate.accepted && (inst?.tir != null || inst?.tea != null || inst?.tem != null)
+          ? { tir: inst?.tir ?? null, tea: inst?.tea ?? null, tem: inst?.tem ?? null }
+          : null
+        const tasasExternas = tasasDb ? null : tasasAplicables(tasasLetras.letras.get(instrument.ticker), selected.price)
+        const tir = tasasDb?.tir ?? tasasExternas?.tna ?? null
+        const tea = tasasDb?.tea ?? tasasExternas?.tea ?? null
+        const tem = tasasDb?.tem ?? tasasExternas?.tem ?? null
+
         const tcImplicito =
-          cclActual != null && dbGate.accepted && inst?.tem != null && diasVto > 0
-            ? Number((cclActual * Math.pow(1 + inst.tem / 100, diasVto / 30)).toFixed(2))
+          cclActual != null && tem != null && diasVto > 0
+            ? Number((cclActual * Math.pow(1 + tem / 100, diasVto / 30)).toFixed(2))
             : null
 
         return {
@@ -407,9 +423,11 @@ export async function GET(request: NextRequest) {
           vencimiento: instrument.vencimiento,
           diasVencimiento: diasVto,
           precio: selected.price,
-          tir: dbGate.accepted ? inst?.tir ?? null : null,
-          tea: dbGate.accepted ? inst?.tea ?? null : null,
-          tem: dbGate.accepted ? inst?.tem ?? null : null,
+          tir,
+          tea,
+          tem,
+          tasasFuente: tasasDb ? "db_local" : tasasExternas ? "argentina_datos" : null,
+          tasasAsOf: tasasDb ? dbAsOf : tasasExternas ? tasasLetras.asOf : null,
           tcImplicito,
           change1D: gateMarketPrice("byma_data_open", byma?.asOf).accepted ? byma?.change1D ?? null : null,
           asOf: selected.asOf,
@@ -426,23 +444,33 @@ export async function GET(request: NextRequest) {
         data: screener,
         updated_at: new Date().toISOString(),
         ...marketMetaForRows(screener),
-        nota: "catálogo y precios priorizados desde BYMA Data; métricas complementarias desde DB local cuando existen",
+        nota: "catálogo y precios priorizados desde BYMA Data; TNA/TEA/TEM desde DB local si están, y si no desde ArgentinaDatos cuando describen el mismo precio",
       })
     }
 
     const hoy = new Date()
     const activeDefinitions = CAP_INSTRUMENT_DEFS
       .filter((inst) => new Date(inst.vencimiento).getTime() >= hoy.getTime())
-    const bymaQuotes = await fetchBymaQuotes(activeDefinitions.map((instrumento) => instrumento.ticker))
+    const [bymaQuotes, tasasLetras] = await Promise.all([
+      fetchBymaQuotes(activeDefinitions.map((instrumento) => instrumento.ticker)),
+      fetchTasasLetras(),
+    ])
     const screener = activeDefinitions
       .map((inst) => {
         const vencimiento = new Date(inst.vencimiento)
         const diasVto = Math.round((vencimiento.getTime() - hoy.getTime()) / (24 * 3600 * 1000))
         const byma = bymaQuotes.get(inst.ticker)
         const selected = chooseFreshPrice(byma ? [{ source: "byma_data_open", price: byma.lastPrice, asOf: byma.asOf }] : [])
+
+        // El catálogo estático solo trae la TEM de emisión, que no es el
+        // rendimiento de mercado: si la fuente publica tasas para este ticker,
+        // mandan las suyas.
+        const tasasExternas = tasasAplicables(tasasLetras.letras.get(inst.ticker), selected.price)
+        const tem = tasasExternas?.tem ?? inst.tem ?? null
+
         const tcImplicito =
-          cclActual != null && selected.price != null && inst.tem != null && diasVto > 0
-            ? Number((cclActual * Math.pow(1 + inst.tem / 100, diasVto / 30)).toFixed(2))
+          cclActual != null && tem != null && diasVto > 0
+            ? Number((cclActual * Math.pow(1 + tem / 100, diasVto / 30)).toFixed(2))
             : null
 
         return {
@@ -451,9 +479,11 @@ export async function GET(request: NextRequest) {
           vencimiento: inst.vencimiento,
           diasVencimiento: diasVto,
           precio: selected.price,
-          tir: null,
-          tea: null,
-          tem: inst.tem ?? null,
+          tir: tasasExternas?.tna ?? null,
+          tea: tasasExternas?.tea ?? null,
+          tem,
+          tasasFuente: tasasExternas ? "argentina_datos" : inst.tem != null ? "catalogo_estatico" : null,
+          tasasAsOf: tasasExternas ? tasasLetras.asOf : null,
           tcImplicito,
           change1D: selected.price != null ? byma?.change1D ?? null : null,
           asOf: selected.asOf,
