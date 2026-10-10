@@ -18,11 +18,16 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(news)
   } catch (error) {
-    console.error("Error fetching news:", error)
-    return NextResponse.json(
-      { error: "Failed to fetch news" },
-      { status: 500 }
-    )
+    // La tabla newsItem vive en la Postgres que todavía no está provisionada
+    // (mismo bloqueo que login/foro/profiles, ver PR #89/#90 — depende de
+    // credenciales de Vercel que no son mías para resolver). El único
+    // consumidor real de esta ruta (`lapizarra coyuntura` en el CLI) ya cae
+    // a /api/rss-news apenas ve un array vacío — devolver [] acá, en vez de
+    // un 500 con stack trace en cada llamada, es la misma señal sin el
+    // ruido: se degrada limpio en vez de "fallar" por algo que no es un bug
+    // de esta ruta. Si vuelve a estar disponible, vuelve a andar solo.
+    console.warn("[/api/news] newsItem no disponible (Postgres sin provisionar), devuelvo vacío:", error instanceof Error ? error.message : error)
+    return NextResponse.json([])
   }
 }
 
