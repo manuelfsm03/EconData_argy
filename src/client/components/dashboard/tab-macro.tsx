@@ -4686,7 +4686,7 @@ function PreciosPillarView({ onNavegar }: { onNavegar: (key: string) => void }) 
   const [sub, setSub] = useState("ipc")
   const items = [
     { key: "ipc",        label: "Inflación (IPC)" },
-    { key: "divisiones", label: "Divisiones" },
+    { key: "divisiones", label: "División sectorial" },
     { key: "rem",        label: "Proyecciones (REM)" },
   ]
   return (
