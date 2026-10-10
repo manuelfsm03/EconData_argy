@@ -95,6 +95,19 @@ test("status healthchecks are derived only from the canonical registry", () => {
   assert.equal(SOURCE_REGISTRY.eia.healthcheck?.credentialQueryParam, "api_key")
 })
 
+test("rava_market tiene sonda de transporte: antes era la única fuente de precio en vivo de bonos sin healthcheck", () => {
+  const checks = registeredHealthchecks()
+  const ravaMarket = checks.find((check) => check.id === "rava_market")
+  assert.ok(ravaMarket, "rava_market debería estar en registeredHealthchecks()")
+  // Liviana (indices, no el dump de ~8MB de bonos/arg) para no pagar el costo
+  // completo sólo por chequear que el host responde.
+  assert.equal(ravaMarket?.healthcheck?.path, "/api/prices/indices")
+  // Esta sonda trae cierre diario, no intraday: si hereda el default de
+  // intraday_market (30 min) queda "expired" todos los fines de semana y
+  // buena parte de cualquier día hábil, aunque el dato esté perfecto.
+  assert.equal(ravaMarket?.freshness.rejectAfterSeconds, 432_000)
+})
+
 test("registry timeout cannot be disabled by a caller signal and retries get fresh signals", async () => {
   const caller = new AbortController()
   const signals: AbortSignal[] = []
