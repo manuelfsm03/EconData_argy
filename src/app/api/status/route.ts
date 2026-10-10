@@ -108,8 +108,17 @@ async function runHealthcheck(check: HealthCheck): Promise<Transport> {
       headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json,text/html,application/xml" },
       next: { revalidate: 300 },
     })
+    // El endpoint de healthcheck puede devolver JSON aunque la fuente en
+    // general sea csv/html/rss (ej. magyp_siia: la DESCARGA de datos es un
+    // CSV de 15MB, pero su sonda de transporte pega a la API CKAN, que es
+    // JSON puro con metadata_modified). Decidir por el Content-Type real de
+    // ESTA respuesta, no por el `kind` declarado de la fuente — si no,
+    // timestamps reales como ese quedan tirados y la frescura queda en
+    // "unknown" para siempre sin necesidad.
     let payload: unknown = null
-    if (check.definition.kind === "json") {
+    const contentType = response.headers.get("content-type") ?? ""
+    const looksJson = contentType.includes("json")
+    if (looksJson || (!contentType && check.definition.kind === "json")) {
       try {
         payload = await response.json()
       } catch {

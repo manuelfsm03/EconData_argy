@@ -105,7 +105,25 @@ export const SOURCE_REGISTRY = {
   // fetchRegistered lo rechazaba con SOURCE_RESPONSE_TOO_LARGE en cada
   // request, dejando /api/rofex sin datos en vivo (verificado en vivo
   // 2026-08-14: Content-Length real 8830509 bytes).
-  rava_market: source("rava_market", { displayName: "Rava Mercado", publisher: "Rava Bursátil", host: "mercado.rava.com", dataClass: "intraday_market", maxResponseBytes: 15 * MB }),
+  // Healthcheck contra /api/prices/indices (no /api/prices/bonos ni /arg):
+  // mismo host y mismo contrato de datos, pero liviano (~80KB vs 8+MB) y
+  // trae `fecha` por fila — antes esta fuente no tenía NINGUNA sonda de
+  // transporte pese a ser la que da precio en vivo de bonos (ver
+  // market-freshness.ts), así que /api/status nunca podía avisar si
+  // mercado.rava.com se caía del todo.
+  // La frescura NO usa el default de intraday_market (30 min): verificado en
+  // vivo, `fecha` llega en cierre diario (00:00:00Z), igual que el resto del
+  // feed de Rava — mismo tipo de descalibre que tuvo rava_market en
+  // market-freshness.ts hace un tiempo. Umbral de daily_market en su lugar.
+  rava_market: source("rava_market", {
+    displayName: "Rava Mercado",
+    publisher: "Rava Bursátil",
+    host: "mercado.rava.com",
+    dataClass: "intraday_market",
+    maxResponseBytes: 15 * MB,
+    healthcheckPath: "/api/prices/indices",
+    freshness: { warnAfterSeconds: 129_600, rejectAfterSeconds: 432_000 },
+  }),
   owid: source("owid", { displayName: "Our World in Data", publisher: "Our World in Data", host: "ourworldindata.org", kind: "csv", dataClass: "annual", healthcheckPath: "/grapher/soybean-production.csv" }),
   owid_github: source("owid_github", { displayName: "OWID datasets", publisher: "Our World in Data", host: "raw.githubusercontent.com", kind: "csv", dataClass: "annual" }),
   // Estimaciones Agrícolas del SIIA: un único CSV de ~15 MB con la serie por
