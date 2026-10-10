@@ -16,6 +16,7 @@ import { useState, useEffect, useRef } from "react"
 import { ProvinciasRanking } from "./provincias-ranking"
 import { AgroProduccion } from "./agro-produccion"
 import { FiscalSankeyView } from "./fiscal-sankey"
+import { REMView } from "./tab-bcra"
 import { BBGAreaChart } from "../charts/bbg-area-chart"
 import { BBGLineChart } from "../charts/bbg-line-chart"
 import { DownloadCSV } from "../ui/download-csv"
@@ -695,11 +696,11 @@ export function EmaeView() {
 
       <SubTabs
         tabs={[
-          { key: "actividad",   label: "Actividad" },
-          { key: "sectorial",   label: "Apertura Sectorial" },
+          { key: "actividad",   label: "1 · Titular" },
+          { key: "sectorial",   label: "2 · Apertura sectorial" },
           { key: "laboral",     label: "Mercado Laboral" },
           { key: "estructural", label: "Estructural" },
-          { key: "industria",   label: "Industria & Confianza" },
+          { key: "industria",   label: "4 · Expectativa (ICC)" },
         ]}
         active={emaeSubTab}
         onChange={setEmaeSubTab}
@@ -1398,6 +1399,128 @@ export function EmaeView() {
   )
 }
 
+// ── Mercado Laboral (EPH) — extraído de EmaeView para el pilar Empleo y Sociedad ──
+
+export function MercadoLaboralView() {
+  const [laboralData, setLaboralData] = useState<LaboralData | null>(null)
+  const [laboralLoading, setLaboralLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/macro?endpoint=laboral")
+      .then((r) => r.json())
+      .then((j) => { setLaboralData(j.data); setLaboralLoading(false) })
+      .catch(() => setLaboralLoading(false))
+  }, [])
+
+  const desempleo    = laboralData?.tasa_desempleo?.[0]
+  const actividad    = laboralData?.tasa_actividad?.[0]
+  const empleo       = laboralData?.tasa_empleo?.[0]
+  const subocupacion = laboralData?.tasa_subocupacion?.[0]
+  const periodoLaboral = desempleo?.[0] ?? null
+
+  return (
+    <div>
+      <SectionHeader
+        title="Mercado Laboral — EPH"
+        source={`INDEC · EPH Continua${periodoLaboral ? ` · ${periodoLaboral}` : ""}`}
+      />
+      {laboralLoading ? (
+        <div style={{ padding: 12, color: "var(--text-dim)", fontSize: 11 }}>Cargando datos EPH...</div>
+      ) : (
+        <>
+          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
+            <KPI
+              label="Tasa de Desocupación"
+              value={desempleo ? fmtNum(desempleo[1]) : null}
+              unit="% de la PEA · 31 aglomerados"
+              valueColor={desempleo ? (desempleo[1] > 10 ? "var(--negative)" : desempleo[1] > 7 ? "var(--amber)" : "var(--positive)") : "var(--text-mute)"}
+            />
+            <KPI
+              label="Tasa de Actividad (PEA)"
+              value={actividad ? fmtNum(actividad[1]) : null}
+              unit="% de la pob. total · 14 años y más"
+              valueColor="var(--sky)"
+            />
+            <KPI
+              label="Tasa de Empleo"
+              value={empleo ? fmtNum(empleo[1]) : null}
+              unit="% de la pob. total · ocupados"
+              valueColor="var(--positive)"
+            />
+            <KPI
+              label="Tasa de Subocupación"
+              value={subocupacion ? fmtNum(subocupacion[1]) : null}
+              unit="% de la PEA · menos de 35hs/sem"
+              valueColor="var(--yellow)"
+            />
+          </div>
+          {(laboralData?.tasa_desempleo?.length ?? 0) > 0 && (
+            <MiniTable
+              title="Desempleo — Últimos 12 trimestres"
+              rows={(laboralData?.tasa_desempleo ?? []).slice(0, 12).map(([d, v]) => ({
+                label: d,
+                value: `${fmtNum(v)}%`,
+                color: v > 10 ? "var(--negative)" : v > 7 ? "var(--amber)" : "var(--positive)",
+              }))}
+            />
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+// ── IPC por división — 12 divisiones oficiales INDEC ──────────────────────────
+
+type IpcDivisionRow = {
+  key: string
+  nombre: string
+  data_date: string | null
+  nivel: number | null
+  var_mensual: number | null
+  var_interanual: number | null
+}
+
+export function IpcDivisionesView() {
+  const [divisiones, setDivisiones] = useState<IpcDivisionRow[] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [dataDate, setDataDate] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch("/api/macro?endpoint=ipc_divisiones")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.status !== "ok") { setError(true); setLoading(false); return }
+        setDivisiones(j.divisiones ?? [])
+        setDataDate(j.data_date ?? null)
+        setLoading(false)
+      })
+      .catch(() => { setError(true); setLoading(false) })
+  }, [])
+
+  if (loading) return <div style={{ padding: 12, color: "var(--text-dim)", fontSize: 11 }}>Cargando divisiones IPC...</div>
+  if (error || !divisiones) {
+    return <div style={{ padding: 12, color: "var(--text-mute)", fontSize: 11 }}>Fuente de divisiones IPC no disponible por el momento.</div>
+  }
+
+  const ordenadas = [...divisiones].sort((a, b) => (b.var_mensual ?? -Infinity) - (a.var_mensual ?? -Infinity))
+
+  return (
+    <div>
+      <SectionHeader title="IPC por división (12 divisiones INDEC)" source={`apis.datos.gob.ar${dataDate ? ` · ${dataDate}` : ""}`} />
+      <MiniTable
+        title="Variación mensual por división, de mayor a menor"
+        rows={ordenadas.map((d) => ({
+          label: d.nombre,
+          value: d.var_mensual !== null ? `${fmtNum(d.var_mensual)}%` : "s/d",
+          color: d.var_mensual === null ? "var(--text-mute)" : d.var_mensual > 3 ? "var(--negative)" : d.var_mensual > 1.5 ? "var(--amber)" : "var(--positive)",
+        }))}
+      />
+    </div>
+  )
+}
+
 // ── Mi Inflación Component ──────────────────────────────────────────────────────
 
 export function MiInflacionView() {
@@ -2078,9 +2201,9 @@ export function IpcView() {
 
       <SubTabs
         tabs={[
-          { key: "serie",     label: "Serie Mensual" },
-          { key: "historica", label: "Histórica 1943–" },
-          { key: "personal",  label: "Mi Inflación" },
+          { key: "serie",     label: "1 · Titular" },
+          { key: "historica", label: "3 · Histórica 1943–" },
+          { key: "personal",  label: "3 · Mi Inflación" },
         ]}
         active={ipcTab}
         onChange={setIpcTab}
@@ -2625,9 +2748,9 @@ export function DesigualdadView() {
   return (
     <div>
       <SubTabs tabs={[
-        { key: "gini_arg",     label: "Gini ARG" },
-        { key: "gini_mundo",   label: "Gini Mundial" },
-        { key: "informalidad", label: "Informalidad" },
+        { key: "gini_arg",     label: "3 · Gini ARG" },
+        { key: "gini_mundo",   label: "3 · Gini Mundial" },
+        { key: "informalidad", label: "2 · Informalidad" },
       ]} active={subTab} onChange={setSubTab} />
 
       {subTab === "gini_arg" && (<>
@@ -4482,47 +4605,197 @@ function AgroView() {
   )
 }
 
+// ── Pilares — Titular / Apertura / Comparación / Expectativa ──────────────────
+//
+// Reorganización del tab Macro: en vez de 11 sub-tabs sueltos, 5 pilares
+// económicos (filas), cada uno recorrido en 4 niveles de profundidad
+// (columnas): qué pasó, por qué, es mucho o poco, y qué se espera. El
+// contenido de abajo es el mismo que ya existía (EMAE, IPC, Balanza, Deuda,
+// FX, Desigualdad, Pirámides, Riesgo País, REM) — esto es reorganización de
+// navegación, no datos nuevos. Las dos excepciones reales son IpcDivisionesView
+// (el backend ya tenía el endpoint `ipc_divisiones`, pero ningún componente lo
+// consumía) y MercadoLaboralView (extraído de EmaeView para que Empleo y
+// Sociedad tenga su propio "Titular" en vez de vivir escondido adentro de EMAE).
+
+const NIVELES_PROFUNDIDAD = [
+  { n: 1, titulo: "Titular",     pregunta: "¿Qué pasó?" },
+  { n: 2, titulo: "Apertura",    pregunta: "¿Por qué?" },
+  { n: 3, titulo: "Comparación", pregunta: "¿Es mucho o poco?" },
+  { n: 4, titulo: "Expectativa", pregunta: "¿Qué se espera?" },
+] as const
+
+function DepthHeader({ n, nota }: { n: 1 | 2 | 3 | 4; nota?: string }) {
+  const nivel = NIVELES_PROFUNDIDAD[n - 1]
+  return (
+    <div style={{
+      display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap",
+      padding: "14px 14px 6px", marginTop: 10, borderTop: "1px solid var(--bg-elev-2)",
+    }}>
+      <span style={{
+        fontSize: 10, fontWeight: 700, color: "var(--bg)",
+        background: "var(--sky)", borderRadius: 3, padding: "1px 6px", lineHeight: 1.4,
+      }}>{nivel.n}</span>
+      <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.3 }}>{nivel.titulo}</span>
+      <span style={{ fontSize: 10, color: "var(--text-dim)" }}>{nivel.pregunta}</span>
+      {nota && <span style={{ fontSize: 9, color: "var(--text-mute)" }}>— {nota}</span>}
+    </div>
+  )
+}
+
+function ConectaConFooter({ hacia, onNavegar }: { hacia: { key: string; label: string }[]; onNavegar: (key: string) => void }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", padding: 14, marginTop: 10, borderTop: "1px solid var(--bg-elev-2)" }}>
+      <span style={{ fontSize: 10, color: "var(--text-dim)" }}>Se conecta con:</span>
+      {hacia.map((p) => (
+        <button
+          key={p.key}
+          onClick={() => onNavegar(p.key)}
+          style={{
+            fontSize: 10, padding: "2px 8px", borderRadius: 10, cursor: "pointer",
+            border: "1px solid var(--bg-elev-3)", background: "var(--bg-elev-1)", color: "var(--sky)",
+          }}
+        >{p.label}</button>
+      ))}
+    </div>
+  )
+}
+
+function PendienteCard({ titulo, detalle }: { titulo: string; detalle: string }) {
+  return (
+    <div style={{ margin: "0 14px 14px", padding: 12, border: "1px dashed var(--bg-elev-3)", borderRadius: 4, fontSize: 10, color: "var(--text-mute)" }}>
+      <span style={{ color: "var(--text-dim)", fontWeight: 600 }}>{titulo}:</span> {detalle}
+    </div>
+  )
+}
+
+function ActividadPillarView({ onNavegar }: { onNavegar: (key: string) => void }) {
+  return (
+    <div>
+      <EmaeView />
+      <DepthHeader n={2} nota="sectores completos, agro y por provincia" />
+      <AgroView />
+      <div style={{ padding: "4px 14px 16px" }}>
+        <ProvinciasRanking />
+      </div>
+      <DepthHeader n={4} nota="crecimiento esperado (REM)" />
+      <PendienteCard titulo="Pendiente" detalle="El REM de BCRA no trae la variable de nivel de actividad/PIB esperado en la planilla que ya integramos — falta sumar esa serie. Por ahora, ver el ICC arriba, adentro de EMAE → 4 · Expectativa (ICC)." />
+      <ConectaConFooter
+        hacia={[{ key: "empleo", label: "Empleo y sociedad" }, { key: "publico", label: "Sector público" }]}
+        onNavegar={onNavegar}
+      />
+    </div>
+  )
+}
+
+function PreciosPillarView({ onNavegar }: { onNavegar: (key: string) => void }) {
+  return (
+    <div>
+      <IpcView />
+      <DepthHeader n={2} nota="núcleo/regulados/estacionales ya están arriba en el KPI — acá, las 12 divisiones oficiales" />
+      <IpcDivisionesView />
+      <DepthHeader n={4} />
+      <REMView />
+      <ConectaConFooter
+        hacia={[{ key: "externo", label: "Tipo de cambio" }]}
+        onNavegar={onNavegar}
+      />
+    </div>
+  )
+}
+
+function SectorExternoPillarView({ onNavegar }: { onNavegar: (key: string) => void }) {
+  return (
+    <div>
+      <DepthHeader n={1} nota="saldo comercial — el tipo de cambio oficial está en la sección FX, debajo" />
+      <BalanzaView />
+      <div style={{ padding: "4px 14px 0", fontSize: 9, color: "var(--text-mute)" }}>
+        Dentro de FX (debajo): 1 · Titular = cotizaciones · 3 · Comparación = TCR multilateral y Big Mac · 4 · Expectativa = bandas cambiarias y futuros (REM + Polymarket).
+      </div>
+      <FXView />
+      <ConectaConFooter
+        hacia={[{ key: "precios", label: "Precios" }, { key: "actividad", label: "Agro" }]}
+        onNavegar={onNavegar}
+      />
+    </div>
+  )
+}
+
+function SectorPublicoPillarView({ onNavegar }: { onNavegar: (key: string) => void }) {
+  return (
+    <div>
+      <DepthHeader n={1} nota="resultado fiscal y riesgo país" />
+      <FiscalSankeyView />
+      <RiesgoPaisView />
+      <div style={{ padding: "4px 14px 0", fontSize: 9, color: "var(--text-mute)" }}>
+        Dentro de Deuda Pública (debajo): "Stock & Composición" junta 2 · Apertura (deuda por acreedor/moneda) y 3 · Comparación (deuda/PIB en el tiempo) · "Licitaciones" es 4 · Expectativa (vencimientos) + historial de colocaciones.
+      </div>
+      <DeudaView />
+      <ConectaConFooter
+        hacia={[{ key: "actividad", label: "Actividad" }]}
+        onNavegar={onNavegar}
+      />
+    </div>
+  )
+}
+
+function EmpleoSociedadPillarView({ onNavegar }: { onNavegar: (key: string) => void }) {
+  return (
+    <div>
+      <DepthHeader n={1} />
+      <MercadoLaboralView />
+      <div style={{ padding: "4px 14px 0", fontSize: 9, color: "var(--text-mute)" }}>
+        Dentro de Desigualdad (debajo): 2 · Informalidad · 3 · Gini ARG y Gini Mundial.
+      </div>
+      <DesigualdadView />
+      <DepthHeader n={4} nota="contexto demográfico" />
+      <PiramidesView />
+      <ConectaConFooter
+        hacia={[{ key: "actividad", label: "Actividad" }, { key: "precios", label: "Precios" }]}
+        onNavegar={onNavegar}
+      />
+    </div>
+  )
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 const MACRO_TABS = [
-  { key: "emae",        label: "EMAE"             },
-  { key: "ipc",         label: "IPC"              },
-  { key: "balanza",     label: "Balanza Comercial" },
-  { key: "agro",        label: "Agro"             },
-  { key: "provincias",  label: "Provincias"       },
-  { key: "desigualdad", label: "Desigualdad"      },
-  { key: "piramides",   label: "Pirámides"        },
-  { key: "fx",          label: "FX"               },
-  { key: "riesgo",      label: "Riesgo País"      },
-  { key: "deuda",       label: "Deuda Pública"    },
-  { key: "fiscal",      label: "Fiscal"           },
+  { key: "actividad", label: "Actividad"          },
+  { key: "precios",   label: "Precios"            },
+  { key: "externo",   label: "Sector externo"     },
+  { key: "publico",   label: "Sector público"     },
+  { key: "empleo",    label: "Empleo y sociedad"  },
 ]
 
+// Alias de las claves viejas (de cuando había 11 sub-tabs sueltos) a los 5
+// pilares nuevos, para que los links guardados en card-catalog.ts y cualquier
+// bookmark viejo sigan aterrizando en algún lado en vez de romperse en blanco.
+const SUBTAB_ALIAS: Record<string, string> = {
+  emae: "actividad", agro: "actividad", provincias: "actividad",
+  ipc: "precios",
+  balanza: "externo", fx: "externo",
+  riesgo: "publico", deuda: "publico", fiscal: "publico",
+  desigualdad: "empleo", piramides: "empleo",
+}
+
 export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
-  const [activeTab, setActiveTab] = useState(initialSubtab ?? "emae")
+  const [activeTab, setActiveTab] = useState(() => {
+    const inicial = initialSubtab ?? "actividad"
+    return SUBTAB_ALIAS[inicial] ?? inicial
+  })
 
   useEffect(() => {
-    if (initialSubtab) setActiveTab(initialSubtab)
+    if (initialSubtab) setActiveTab(SUBTAB_ALIAS[initialSubtab] ?? initialSubtab)
   }, [initialSubtab])
 
   return (
     <div>
       <SubTabs tabs={MACRO_TABS} active={activeTab} onChange={setActiveTab} />
-      {activeTab === "emae"        && <EmaeView />}
-      {activeTab === "ipc"         && <IpcView />}
-      {activeTab === "balanza"     && <BalanzaView />}
-      {activeTab === "agro"        && <AgroView />}
-      {activeTab === "provincias"  && (
-        <div style={{ padding: "16px 14px" }}>
-          <ProvinciasRanking />
-        </div>
-      )}
-      {activeTab === "desigualdad" && <DesigualdadView />}
-      {activeTab === "piramides"   && <PiramidesView />}
-      {activeTab === "fx"          && <FXView />}
-      {activeTab === "riesgo"      && <RiesgoPaisView />}
-      {activeTab === "deuda"       && <DeudaView />}
-      {activeTab === "fiscal"      && <FiscalSankeyView />}
+      {activeTab === "actividad" && <ActividadPillarView onNavegar={setActiveTab} />}
+      {activeTab === "precios"   && <PreciosPillarView onNavegar={setActiveTab} />}
+      {activeTab === "externo"   && <SectorExternoPillarView onNavegar={setActiveTab} />}
+      {activeTab === "publico"   && <SectorPublicoPillarView onNavegar={setActiveTab} />}
+      {activeTab === "empleo"    && <EmpleoSociedadPillarView onNavegar={setActiveTab} />}
     </div>
   )
 }
