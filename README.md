@@ -7,9 +7,9 @@ Dashboard de datos económicos de Argentina en tiempo real, con estética Bloomb
 ## Repositorio canónico y espejo
 
 - `manuelfsm03/EconData_argy` es la fuente canónica de producto.
-- `000gon/paneldecontrol` es un espejo operativo exacto de `EconData_argy/main` y alimenta el deploy de `lapizarra.ar`.
-- Las features se integran primero en el repositorio canónico. El workflow `sync-upstream.yml` replica después el mismo commit a `paneldecontrol/main`.
-- Una release no está completa hasta verificar igualdad de árbol entre ambos `main` y hacer smoke test de producción.
+- `000gon/paneldecontrol` sigue a `EconData_argy/main` y alimenta el deploy de `lapizarra.ar`; también conserva los cambios propios del despliegue.
+- Las features se integran primero en el repositorio canónico. El workflow `sync-upstream.yml` incorpora después `upstream/main` mediante merge y publica con un push normal; si hay conflictos, el workflow falla sin descartar commits.
+- Una release no está completa hasta verificar que `upstream/main` sea ancestro de `paneldecontrol/main` y hacer smoke test de producción.
 
 ---
 

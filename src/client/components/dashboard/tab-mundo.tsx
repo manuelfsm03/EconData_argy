@@ -803,7 +803,7 @@ function QuoteCard({
     >
       <div style={{ fontSize: 9, color: selected ? "var(--amber)" : "#666", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, display: "flex", alignItems: "center", gap: 2 }}>
         {TICKER_LABELS[nombre] ?? nombre.toUpperCase()}
-        {(() => { const lbl = TICKER_LABELS[nombre] ?? nombre.toUpperCase(); const g = GLOSSARY[lbl]; return g ? <InfoTooltip text={g.text} source={g.source} url={g.url} position="bottom" /> : null })()}
+        {(() => { const lbl = TICKER_LABELS[nombre] ?? nombre.toUpperCase(); return GLOSSARY[lbl] ? <InfoTooltip termId={lbl} position="bottom" /> : null })()}
       </div>
       <div style={{ fontSize: 14, fontFamily: "var(--font-data)", fontWeight: 700, color: "var(--text)" }}>
         {data?.precio != null ? data.precio.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "—"}
