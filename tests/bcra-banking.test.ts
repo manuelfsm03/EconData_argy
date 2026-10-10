@@ -5,9 +5,10 @@ import {
   excelSerialToDate,
   parseBankingDateRange,
   parseBankingRows,
+  parseCarteraRows,
   type BankingSheetRow,
 } from "../src/server/sources/bcra-banking"
-import { buildBankingApiUrl } from "../src/client/lib/bcra-banking"
+import { buildBankingApiUrl, buildMorosidadApiUrl } from "../src/client/lib/bcra-banking"
 
 function completeRows(): BankingSheetRow[] {
   const rows: BankingSheetRow[] = Array.from({ length: 46 }, () => [])
@@ -120,4 +121,71 @@ test("construye la query de bancos explícita y sin endpoint allowlist", () => {
     buildBankingApiUrl("2021-01-02", "2026-01-02"),
     "/api/bcra-data?endpoint=bancos&desde=2021-01-02&hasta=2026-01-02",
   )
+})
+
+test("construye la query de morosidad explícita", () => {
+  assert.equal(
+    buildMorosidadApiUrl("2021-01-02", "2026-01-02"),
+    "/api/bcra-data?endpoint=morosidad&desde=2021-01-02&hasta=2026-01-02",
+  )
+})
+
+// ── Calidad de cartera (morosidad) ──────────────────────────────────────────
+// Mismo layout repetido verificado contra el archivo real: la fila "En
+// porcentaje" trae las fechas, la fila siguiente trae los valores — a
+// distintos offsets por segmento (por eso el test fija filas puntuales, no
+// un patrón genérico que podría desalinearse si BCRA reordena el anexo).
+
+function carteraPorEntidadRows(): BankingSheetRow[] {
+  const rows: BankingSheetRow[] = Array.from({ length: 80 }, () => [])
+  rows[3] = ["En porcentaje", 44_927, 44_958]  // Sistema financiero
+  rows[4] = ["Cartera irregular total", 6.06, 6.40]
+  rows[18] = ["En porcentaje", 44_927, 44_958]  // Bancos privados
+  rows[19] = ["Cartera irregular total", 5.5, 5.8]
+  return rows
+}
+
+function carteraPorDeudorRows(): BankingSheetRow[] {
+  const rows: BankingSheetRow[] = Array.from({ length: 103 }, () => [])
+  rows[5] = ["En porcentaje", 44_927, 44_958]  // Total sector privado
+  rows[6] = ["Cartera irregular total", 6.36, 6.71]
+  rows[57] = ["En porcentaje", 44_927, 44_958]  // Familias
+  rows[58] = ["Cartera irregular total", 10.61, 11.22]
+  rows[101] = ["En porcentaje", 44_927, 44_958]  // Empresas
+  rows[102] = ["Cartera irregular total", 2.85, 2.92]
+  return rows
+}
+
+test("calidad de cartera: separa por entidad y por deudor en segmentos propios", () => {
+  const { porEntidad, porDeudor } = parseCarteraRows(
+    carteraPorEntidadRows(),
+    carteraPorDeudorRows(),
+    "2023-01-01",
+    "2023-01-31",
+  )
+  const familias = porDeudor.find(s => s.segmento === "familias")
+  assert.ok(familias)
+  assert.equal(familias.serie.length, 1)
+  assert.equal(familias.serie[0].valor, 10.61)
+
+  const sistemaFinanciero = porEntidad.find(s => s.segmento === "sistema_financiero")
+  assert.equal(sistemaFinanciero?.serie[0].valor, 6.06)
+})
+
+test("calidad de cartera respeta el rango de fechas igual que el balance", () => {
+  const { porDeudor } = parseCarteraRows(
+    carteraPorEntidadRows(),
+    carteraPorDeudorRows(),
+    "2023-02-01",
+    "2023-02-28",
+  )
+  const empresas = porDeudor.find(s => s.segmento === "empresas")
+  assert.deepEqual(empresas?.serie.map(p => p.valor), [2.92])
+})
+
+test("calidad de cartera conserva null sin inventar un valor cuando falta el dato", () => {
+  const rows = carteraPorDeudorRows()
+  rows[58][1] = null
+  const { porDeudor } = parseCarteraRows(carteraPorEntidadRows(), rows, "2023-01-01", "2023-01-01")
+  assert.equal(porDeudor.find(s => s.segmento === "familias")?.serie[0].valor, null)
 })
