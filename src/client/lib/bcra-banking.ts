@@ -6,3 +6,10 @@ export function buildBankingApiUrl(desde: string, hasta: string): string {
   }
   return `/api/bcra-data?endpoint=bancos&desde=${desde}&hasta=${hasta}`
 }
+
+export function buildMorosidadApiUrl(desde: string, hasta: string): string {
+  if (!DATE_RE.test(desde) || !DATE_RE.test(hasta)) {
+    throw new Error("Las fechas de morosidad deben usar YYYY-MM-DD")
+  }
+  return `/api/bcra-data?endpoint=morosidad&desde=${desde}&hasta=${hasta}`
+}
