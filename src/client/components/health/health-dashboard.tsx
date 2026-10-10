@@ -10,6 +10,7 @@ import {
   type CardHealthProbeResult,
 } from "@/client/lib/card-health"
 import { CARD_CATEGORIES, DATA_CARD_CATALOG } from "@/lib/card-catalog"
+import { VeracityPanel } from "./veracity-panel"
 
 type SourceStatus = {
   name: string
@@ -50,14 +51,14 @@ function formatTimestamp(value: string | null | undefined): string {
   return Number.isFinite(parsed) ? new Date(parsed).toLocaleString("es-AR") : value
 }
 
-function statusStyle(status: "ok" | "error" | "checking" | "unknown") {
+export function statusStyle(status: "ok" | "error" | "checking" | "unknown") {
   if (status === "ok") return "border-emerald-500/25 bg-emerald-500/10 text-emerald-400"
   if (status === "error") return "border-red-500/25 bg-red-500/10 text-red-400"
   if (status === "checking") return "border-amber-500/25 bg-amber-500/10 text-[var(--amber)]"
   return "border-[var(--border)] bg-[var(--bg-elev-2)] text-[var(--text-dim)]"
 }
 
-function StatusPill({ status, children }: { status: "ok" | "error" | "checking" | "unknown"; children: React.ReactNode }) {
+export function StatusPill({ status, children }: { status: "ok" | "error" | "checking" | "unknown"; children: React.ReactNode }) {
   return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-[9px] ${statusStyle(status)}`}>{children}</span>
 }
 
@@ -166,6 +167,8 @@ export function HealthDashboard() {
             <div className="mt-2 font-mono text-2xl font-semibold">{value}</div>
           </div>)}
         </section>
+
+        <VeracityPanel />
 
         <section className="mb-10">
           <div className="mb-3 flex items-end justify-between"><div><h2 className="text-lg font-semibold">Fuentes de datos</h2><p className="text-[11px] text-[var(--text-mute)]">Registro completo; “sin sonda” no se interpreta como saludable.</p></div><span className="font-mono text-[10px] text-[var(--text-mute)]">{sources.length} fuentes</span></div>
