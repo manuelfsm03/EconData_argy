@@ -696,11 +696,11 @@ export function EmaeView() {
 
       <SubTabs
         tabs={[
-          { key: "actividad",   label: "1 · Titular" },
-          { key: "sectorial",   label: "2 · Apertura sectorial" },
+          { key: "actividad",   label: "Actividad" },
+          { key: "sectorial",   label: "Apertura Sectorial" },
           { key: "laboral",     label: "Mercado Laboral" },
           { key: "estructural", label: "Estructural" },
-          { key: "industria",   label: "4 · Expectativa (ICC)" },
+          { key: "industria",   label: "Industria & Confianza" },
         ]}
         active={emaeSubTab}
         onChange={setEmaeSubTab}
@@ -2201,9 +2201,9 @@ export function IpcView() {
 
       <SubTabs
         tabs={[
-          { key: "serie",     label: "1 · Titular" },
-          { key: "historica", label: "3 · Histórica 1943–" },
-          { key: "personal",  label: "3 · Mi Inflación" },
+          { key: "serie",     label: "Serie Mensual" },
+          { key: "historica", label: "Histórica 1943–" },
+          { key: "personal",  label: "Mi Inflación" },
         ]}
         active={ipcTab}
         onChange={setIpcTab}
@@ -2748,9 +2748,9 @@ export function DesigualdadView() {
   return (
     <div>
       <SubTabs tabs={[
-        { key: "gini_arg",     label: "3 · Gini ARG" },
-        { key: "gini_mundo",   label: "3 · Gini Mundial" },
-        { key: "informalidad", label: "2 · Informalidad" },
+        { key: "gini_arg",     label: "Gini ARG" },
+        { key: "gini_mundo",   label: "Gini Mundial" },
+        { key: "informalidad", label: "Informalidad" },
       ]} active={subTab} onChange={setSubTab} />
 
       {subTab === "gini_arg" && (<>
@@ -4605,39 +4605,36 @@ function AgroView() {
   )
 }
 
-// ── Pilares — Titular / Apertura / Comparación / Expectativa ──────────────────
+// ── Pilares ────────────────────────────────────────────────────────────────────
 //
 // Reorganización del tab Macro: en vez de 11 sub-tabs sueltos, 5 pilares
-// económicos (filas), cada uno recorrido en 4 niveles de profundidad
-// (columnas): qué pasó, por qué, es mucho o poco, y qué se espera. El
-// contenido de abajo es el mismo que ya existía (EMAE, IPC, Balanza, Deuda,
-// FX, Desigualdad, Pirámides, Riesgo País, REM) — esto es reorganización de
-// navegación, no datos nuevos. Las dos excepciones reales son IpcDivisionesView
-// (el backend ya tenía el endpoint `ipc_divisiones`, pero ningún componente lo
-// consumía) y MercadoLaboralView (extraído de EmaeView para que Empleo y
-// Sociedad tenga su propio "Titular" en vez de vivir escondido adentro de EMAE).
+// económicos (Actividad, Precios, Sector externo, Sector público, Empleo y
+// sociedad). Adentro de cada pilar, una fila de bullets por tema — se elige
+// uno y se ve sólo ese, nada de scroll largo con todo apilado. El contenido
+// es el mismo que ya existía (EMAE, IPC, Balanza, Deuda, FX, Desigualdad,
+// Pirámides, Riesgo País, REM) — esto es reorganización de navegación, no
+// datos nuevos. Las dos excepciones reales son IpcDivisionesView (el backend
+// ya tenía el endpoint `ipc_divisiones`, pero ningún componente lo consumía)
+// y MercadoLaboralView (extraído de EmaeView para que Empleo y Sociedad
+// tenga su propio bullet de mercado laboral en vez de vivir escondido
+// adentro de EMAE).
 
-const NIVELES_PROFUNDIDAD = [
-  { n: 1, titulo: "Titular",     pregunta: "¿Qué pasó?" },
-  { n: 2, titulo: "Apertura",    pregunta: "¿Por qué?" },
-  { n: 3, titulo: "Comparación", pregunta: "¿Es mucho o poco?" },
-  { n: 4, titulo: "Expectativa", pregunta: "¿Qué se espera?" },
-] as const
-
-function DepthHeader({ n, nota }: { n: 1 | 2 | 3 | 4; nota?: string }) {
-  const nivel = NIVELES_PROFUNDIDAD[n - 1]
+function BulletNav({ items, active, onChange }: { items: { key: string; label: string }[]; active: string; onChange: (k: string) => void }) {
   return (
-    <div style={{
-      display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap",
-      padding: "14px 14px 6px", marginTop: 10, borderTop: "1px solid var(--bg-elev-2)",
-    }}>
-      <span style={{
-        fontSize: 10, fontWeight: 700, color: "var(--bg)",
-        background: "var(--sky)", borderRadius: 3, padding: "1px 6px", lineHeight: 1.4,
-      }}>{nivel.n}</span>
-      <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.3 }}>{nivel.titulo}</span>
-      <span style={{ fontSize: 10, color: "var(--text-dim)" }}>{nivel.pregunta}</span>
-      {nota && <span style={{ fontSize: 9, color: "var(--text-mute)" }}>— {nota}</span>}
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: 14 }}>
+      {items.map((it) => (
+        <button
+          key={it.key}
+          onClick={() => onChange(it.key)}
+          style={{
+            fontSize: 11, fontWeight: active === it.key ? 700 : 500,
+            padding: "7px 16px", borderRadius: 18, cursor: "pointer",
+            border: active === it.key ? "1px solid var(--amber)" : "1px solid var(--bg-elev-3)",
+            background: active === it.key ? "var(--amber)" : "var(--bg-elev-1)",
+            color: active === it.key ? "var(--bg)" : "var(--text)",
+          }}
+        >{it.label}</button>
+      ))}
     </div>
   )
 }
@@ -4660,25 +4657,23 @@ function ConectaConFooter({ hacia, onNavegar }: { hacia: { key: string; label: s
   )
 }
 
-function PendienteCard({ titulo, detalle }: { titulo: string; detalle: string }) {
-  return (
-    <div style={{ margin: "0 14px 14px", padding: 12, border: "1px dashed var(--bg-elev-3)", borderRadius: 4, fontSize: 10, color: "var(--text-mute)" }}>
-      <span style={{ color: "var(--text-dim)", fontWeight: 600 }}>{titulo}:</span> {detalle}
-    </div>
-  )
-}
-
 function ActividadPillarView({ onNavegar }: { onNavegar: (key: string) => void }) {
+  const [sub, setSub] = useState("emae")
+  const items = [
+    { key: "emae",        label: "EMAE" },
+    { key: "agro",        label: "Agro" },
+    { key: "provincias",  label: "Provincias" },
+  ]
   return (
     <div>
-      <EmaeView />
-      <DepthHeader n={2} nota="sectores completos, agro y por provincia" />
-      <AgroView />
-      <div style={{ padding: "4px 14px 16px" }}>
-        <ProvinciasRanking />
-      </div>
-      <DepthHeader n={4} nota="crecimiento esperado (REM)" />
-      <PendienteCard titulo="Pendiente" detalle="El REM de BCRA no trae la variable de nivel de actividad/PIB esperado en la planilla que ya integramos — falta sumar esa serie. Por ahora, ver el ICC arriba, adentro de EMAE → 4 · Expectativa (ICC)." />
+      <BulletNav items={items} active={sub} onChange={setSub} />
+      {sub === "emae" && <EmaeView />}
+      {sub === "agro" && <AgroView />}
+      {sub === "provincias" && (
+        <div style={{ padding: "4px 14px 16px" }}>
+          <ProvinciasRanking />
+        </div>
+      )}
       <ConectaConFooter
         hacia={[{ key: "empleo", label: "Empleo y sociedad" }, { key: "publico", label: "Sector público" }]}
         onNavegar={onNavegar}
@@ -4688,13 +4683,18 @@ function ActividadPillarView({ onNavegar }: { onNavegar: (key: string) => void }
 }
 
 function PreciosPillarView({ onNavegar }: { onNavegar: (key: string) => void }) {
+  const [sub, setSub] = useState("ipc")
+  const items = [
+    { key: "ipc",        label: "Inflación (IPC)" },
+    { key: "divisiones", label: "Divisiones" },
+    { key: "rem",        label: "Proyecciones (REM)" },
+  ]
   return (
     <div>
-      <IpcView />
-      <DepthHeader n={2} nota="núcleo/regulados/estacionales ya están arriba en el KPI — acá, las 12 divisiones oficiales" />
-      <IpcDivisionesView />
-      <DepthHeader n={4} />
-      <REMView />
+      <BulletNav items={items} active={sub} onChange={setSub} />
+      {sub === "ipc" && <IpcView />}
+      {sub === "divisiones" && <IpcDivisionesView />}
+      {sub === "rem" && <REMView />}
       <ConectaConFooter
         hacia={[{ key: "externo", label: "Tipo de cambio" }]}
         onNavegar={onNavegar}
@@ -4704,14 +4704,16 @@ function PreciosPillarView({ onNavegar }: { onNavegar: (key: string) => void }) 
 }
 
 function SectorExternoPillarView({ onNavegar }: { onNavegar: (key: string) => void }) {
+  const [sub, setSub] = useState("balanza")
+  const items = [
+    { key: "balanza", label: "Balanza comercial" },
+    { key: "tc",      label: "Tipo de cambio" },
+  ]
   return (
     <div>
-      <DepthHeader n={1} nota="saldo comercial — el tipo de cambio oficial está en la sección FX, debajo" />
-      <BalanzaView />
-      <div style={{ padding: "4px 14px 0", fontSize: 9, color: "var(--text-mute)" }}>
-        Dentro de FX (debajo): 1 · Titular = cotizaciones · 3 · Comparación = TCR multilateral y Big Mac · 4 · Expectativa = bandas cambiarias y futuros (REM + Polymarket).
-      </div>
-      <FXView />
+      <BulletNav items={items} active={sub} onChange={setSub} />
+      {sub === "balanza" && <BalanzaView />}
+      {sub === "tc" && <FXView />}
       <ConectaConFooter
         hacia={[{ key: "precios", label: "Precios" }, { key: "actividad", label: "Agro" }]}
         onNavegar={onNavegar}
@@ -4721,15 +4723,18 @@ function SectorExternoPillarView({ onNavegar }: { onNavegar: (key: string) => vo
 }
 
 function SectorPublicoPillarView({ onNavegar }: { onNavegar: (key: string) => void }) {
+  const [sub, setSub] = useState("fiscal")
+  const items = [
+    { key: "fiscal", label: "Resultado fiscal" },
+    { key: "riesgo", label: "Riesgo país" },
+    { key: "deuda",  label: "Deuda pública" },
+  ]
   return (
     <div>
-      <DepthHeader n={1} nota="resultado fiscal y riesgo país" />
-      <FiscalSankeyView />
-      <RiesgoPaisView />
-      <div style={{ padding: "4px 14px 0", fontSize: 9, color: "var(--text-mute)" }}>
-        Dentro de Deuda Pública (debajo): "Stock & Composición" junta 2 · Apertura (deuda por acreedor/moneda) y 3 · Comparación (deuda/PIB en el tiempo) · "Licitaciones" es 4 · Expectativa (vencimientos) + historial de colocaciones.
-      </div>
-      <DeudaView />
+      <BulletNav items={items} active={sub} onChange={setSub} />
+      {sub === "fiscal" && <FiscalSankeyView />}
+      {sub === "riesgo" && <RiesgoPaisView />}
+      {sub === "deuda" && <DeudaView />}
       <ConectaConFooter
         hacia={[{ key: "actividad", label: "Actividad" }]}
         onNavegar={onNavegar}
@@ -4739,16 +4744,18 @@ function SectorPublicoPillarView({ onNavegar }: { onNavegar: (key: string) => vo
 }
 
 function EmpleoSociedadPillarView({ onNavegar }: { onNavegar: (key: string) => void }) {
+  const [sub, setSub] = useState("laboral")
+  const items = [
+    { key: "laboral",      label: "Mercado laboral" },
+    { key: "desigualdad",  label: "Desigualdad" },
+    { key: "demografia",   label: "Demografía" },
+  ]
   return (
     <div>
-      <DepthHeader n={1} />
-      <MercadoLaboralView />
-      <div style={{ padding: "4px 14px 0", fontSize: 9, color: "var(--text-mute)" }}>
-        Dentro de Desigualdad (debajo): 2 · Informalidad · 3 · Gini ARG y Gini Mundial.
-      </div>
-      <DesigualdadView />
-      <DepthHeader n={4} nota="contexto demográfico" />
-      <PiramidesView />
+      <BulletNav items={items} active={sub} onChange={setSub} />
+      {sub === "laboral" && <MercadoLaboralView />}
+      {sub === "desigualdad" && <DesigualdadView />}
+      {sub === "demografia" && <PiramidesView />}
       <ConectaConFooter
         hacia={[{ key: "actividad", label: "Actividad" }, { key: "precios", label: "Precios" }]}
         onNavegar={onNavegar}

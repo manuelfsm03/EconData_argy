@@ -74,7 +74,37 @@ test("MercadoLaboralView tiene su propio fetch, no depende del estado interno de
   assert.match(block, /useEffect/)
 })
 
-test("Precios · Expectativa reutiliza el REM ya construido en BCRA, no lo reinventa", () => {
+test("no quedan rótulos numerados de nivel de profundidad en la UI", () => {
+  // Lorenzo pidió sacar el lenguaje de "niveles de profundidad": navegación
+  // por bullets temáticos (EMAE, Agro, Inflación...), no por "1 · Titular",
+  // "2 · Apertura", etc. "Apertura Sectorial" como título descriptivo normal
+  // (no numerado) ya existía antes y no es parte de ese sistema — queda.
+  assert.doesNotMatch(macroUi, /\d\s*·\s*(Titular|Apertura|Comparación|Expectativa)/)
+  assert.doesNotMatch(macroUi, /\bTitular\b/)
+  assert.doesNotMatch(macroUi, /\bComparación\b/)
+  assert.doesNotMatch(macroUi, /label:\s*"[^"]*Expectativa/)
+})
+
+test("Precios arranca en el bullet de Inflación (IPC), no en otro", () => {
+  const start = macroUi.indexOf("function PreciosPillarView")
+  const end = macroUi.indexOf("function SectorExternoPillarView")
+  assert.ok(start >= 0 && end > start)
+  const block = macroUi.slice(start, end)
+  assert.match(block, /useState\("ipc"\)/)
+  assert.match(block, /key: "ipc",\s*label: "Inflación \(IPC\)"/)
+})
+
+test("cada pilar navega por bullets (BulletNav), no por todo apilado en una sola página", () => {
+  for (const pillar of ["ActividadPillarView", "PreciosPillarView", "SectorExternoPillarView", "SectorPublicoPillarView", "EmpleoSociedadPillarView"]) {
+    const start = macroUi.indexOf(`function ${pillar}`)
+    const end = macroUi.indexOf("\nfunction ", start + 1)
+    assert.ok(start >= 0, `no encontré ${pillar}`)
+    const block = macroUi.slice(start, end > 0 ? end : undefined)
+    assert.match(block, /<BulletNav/, `${pillar} no usa BulletNav`)
+  }
+})
+
+test("el bullet de Proyecciones en Precios reutiliza el REM ya construido en BCRA, no lo reinventa", () => {
   assert.match(macroUi, /import \{ REMView \} from "\.\/tab-bcra"/)
   const start = macroUi.indexOf("function PreciosPillarView")
   const end = macroUi.indexOf("function SectorExternoPillarView")
