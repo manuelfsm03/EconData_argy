@@ -10,11 +10,12 @@
  *   - /api/dolares        → Tipos de cambio
  *   - /api/bcra?endpoint=reservas  → Reservas BCRA
  *   - /api/bcra?endpoint=tasas     → Tasas de referencia (TAMAR / BADLAR)
- *   - /api/riesgo-pais    → Riesgo País EMBI+ y bonos soberanos
+ *   - /api/riesgo-pais    → Riesgo País EMBI+ y US 10Y
+ *   - /api/bonos          → Precio / TIR / variación diaria de GD30 y AL30
  *   - /api/macro?endpoint=ipc      → Precios (IPC)
  */
 
-import { useEffect, useState, useCallback, useRef } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
@@ -59,6 +60,17 @@ interface RiesgoPais {
     }
     globalesTir: Array<{ ticker: string; tir: number | null; precio: number | null }>
   }
+}
+
+interface BonoRow {
+  ticker: string
+  precio: number | null
+  tir: number | null
+  change1D: number | null
+}
+
+interface BonosData {
+  data: BonoRow[]
 }
 
 interface MacroIpc {
@@ -282,14 +294,9 @@ function SlideBCRA({
   const tamarLast = lastOf(tasas?.data?.tamar)
   const badlarLast = lastOf(tasas?.data?.badlar)
 
-  // Reservas netas: positivo o negativo determina color
-  const netasVal = ultima?.brutas != null ? ultima.brutas : null
-  // Convertir millones a miles de millones para legibilidad
-  const brutasBn = netasVal != null ? netasBn(netasVal) : null
-  const netasNum = ultima?.netas != null ? netas(ultima.netas) : null
-
-  function netasBn(v: number) { return v / 1000 }
-  function netas(v: number) { return v / 1000 }
+  // La API devuelve millones de USD; se muestran en miles de millones
+  const brutasBn = ultima?.brutas != null ? ultima.brutas / 1000 : null
+  const netasBn = ultima?.netas != null ? ultima.netas / 1000 : null
 
   return (
     <>
@@ -302,8 +309,8 @@ function SlideBCRA({
       <Metric
         label="Reservas Netas"
         value={
-          ultima?.netas != null
-            ? `USD ${fmtNum(netas(ultima.netas), 1)}B`
+          netasBn != null
+            ? `USD ${fmtNum(netasBn, 1)}B`
             : "—"
         }
         sub={
@@ -347,12 +354,13 @@ function SlideBCRA({
 
 // ── Slide 3: Deuda soberana ───────────────────────────────────────────────────
 
-function SlideDeuda({ data }: { data: RiesgoPais | null }) {
+function SlideDeuda({ data, bonos }: { data: RiesgoPais | null; bonos: BonosData | null }) {
   const actual = data?.data?.actual
-  const globales = data?.data?.globalesTir ?? []
+  const filas = Array.isArray(bonos?.data) ? bonos.data : []
 
-  const gd30 = globales.find((g) => g.ticker === "GD30")
-  const al30 = globales.find((g) => g.ticker === "AL30")
+  // GD30 y AL30 salen del screener de /api/bonos (mismo motor verificado)
+  const gd30 = filas.find((b) => b.ticker === "GD30")
+  const al30 = filas.find((b) => b.ticker === "AL30")
 
   // Color del riesgo país por nivel
   const rpBps = actual?.riesgoPaisBps
@@ -392,22 +400,30 @@ function SlideDeuda({ data }: { data: RiesgoPais | null }) {
             : "—"
         }
         sub={
-          gd30?.tir != null
-            ? `TIR ${fmtNum(gd30.tir, 2)}%`
-            : actual?.arTir != null
-            ? `TIR ${fmtNum(actual.arTir, 2)}%`
+          gd30?.change1D != null
+            ? `${fmtPct(gd30.change1D, 2)} (1d)`
             : undefined
         }
-        subColor="var(--text-dim)"
-        note="Global USD Ley NY 2030"
+        subColor={dirColor(gd30?.change1D)}
+        note={
+          gd30?.tir != null
+            ? `TIR ${fmtNum(gd30.tir, 2)}% · Global USD Ley NY 2030`
+            : actual?.arTir != null
+            ? `TIR ${fmtNum(actual.arTir, 2)}% · Global USD Ley NY 2030`
+            : "Global USD Ley NY 2030"
+        }
         accent="var(--sky)"
       />
       <Metric
         label="AL30 Precio"
         value={al30?.precio != null ? `USD ${fmtNum(al30.precio, 2)}` : "—"}
-        sub={al30?.tir != null ? `TIR ${fmtNum(al30.tir, 2)}%` : undefined}
-        subColor="var(--text-dim)"
-        note="Soberano USD Ley Argentina 2030"
+        sub={al30?.change1D != null ? `${fmtPct(al30.change1D, 2)} (1d)` : undefined}
+        subColor={dirColor(al30?.change1D)}
+        note={
+          al30?.tir != null
+            ? `TIR ${fmtNum(al30.tir, 2)}% · Bonar USD Ley Argentina 2030`
+            : "Bonar USD Ley Argentina 2030"
+        }
         accent="var(--amber)"
       />
       <Metric
@@ -585,6 +601,7 @@ export function TvMode() {
   const [reservas, setReservas] = useState<BcraReservas | null>(null)
   const [tasas, setTasas] = useState<BcraTasas | null>(null)
   const [riesgoPais, setRiesgoPais] = useState<RiesgoPais | null>(null)
+  const [bonos, setBonos] = useState<BonosData | null>(null)
   const [macro, setMacro] = useState<MacroIpc | null>(null)
 
   // Salir del modo TV
@@ -629,11 +646,12 @@ export function TvMode() {
   // Fetch de todos los endpoints
   const fetchAll = useCallback(async () => {
     setLoading(true)
-    const [d, r, t, rp, m] = await Promise.allSettled([
+    const [d, r, t, rp, b, m] = await Promise.allSettled([
       fetch("/api/dolares").then((res) => res.json()),
       fetch("/api/bcra?endpoint=reservas").then((res) => res.json()),
       fetch("/api/bcra?endpoint=tasas").then((res) => res.json()),
       fetch("/api/riesgo-pais").then((res) => res.json()),
+      fetch("/api/bonos").then((res) => res.json()),
       fetch("/api/macro?endpoint=ipc").then((res) => res.json()),
     ])
 
@@ -641,6 +659,7 @@ export function TvMode() {
     if (r.status === "fulfilled") setReservas(r.value)
     if (t.status === "fulfilled") setTasas(t.value)
     if (rp.status === "fulfilled") setRiesgoPais(rp.value)
+    if (b.status === "fulfilled") setBonos(b.value)
     if (m.status === "fulfilled") setMacro(m.value)
 
     setLastUpdate(new Date())
@@ -724,7 +743,7 @@ export function TvMode() {
       }}>
         {slide === "cambio" && <SlideCambio data={dolares} />}
         {slide === "bcra" && <SlideBCRA reservas={reservas} tasas={tasas} />}
-        {slide === "deuda" && <SlideDeuda data={riesgoPais} />}
+        {slide === "deuda" && <SlideDeuda data={riesgoPais} bonos={bonos} />}
         {slide === "macro" && <SlideMacro data={macro} />}
       </div>
 
