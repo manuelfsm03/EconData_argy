@@ -20,7 +20,7 @@
 
 import { writeFileSync, mkdirSync } from "node:fs"
 import { join, dirname } from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import * as XLSX from "xlsx"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -90,7 +90,10 @@ async function descargarWorkbook() {
   if (!res.ok) throw new Error(`Descarga del Excel: HTTP ${res.status}`)
   const buffer = Buffer.from(await res.arrayBuffer())
   if (buffer.length < 10_000) throw new Error(`Respuesta demasiado chica (${buffer.length} bytes) — ¿cambió la URL?`)
-  return XLSX.read(buffer, { type: "buffer" })
+  // Parsear sólo las hojas de provincia (no todo el workbook) — en los
+  // archivos hermanos de este mismo portal (salarios, establecimientos) el
+  // workbook completo hace OOM en xlsx por el resto de hojas sin usar.
+  return XLSX.read(buffer, { type: "buffer", sheets: Object.keys(HOJA_A_PROVINCIA) })
 }
 
 /** Última columna con una etiqueta de trimestre real (las de más a la derecha vienen vacías por formato). */
@@ -109,9 +112,27 @@ export function filaTotal(rows) {
   return -1
 }
 
+// Algunas hojas de este portal declaran un rango roto que llega a la última
+// fila posible de Excel (probablemente por un formato de celda aplicado a la
+// columna entera) — sheet_to_json con defval:null materializa cada celda de
+// ese rango, lo que vuelve una hoja de ~90 filas reales en cientos de
+// millones de celdas y cuelga el proceso por OOM (visto en vivo en el
+// archivo hermano de salarios — ver update-salarios-provincias.mjs). Se
+// acota la lectura a las primeras MAX_FILAS, bien por encima de donde
+// aparecen el header y la fila TOTAL en cualquier hoja real.
+const MAX_FILAS = 400
+
+function filasAcotadas(sheet) {
+  const ref = sheet["!ref"]
+  if (!ref) return XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: null })
+  const rango = XLSX.utils.decode_range(ref)
+  const acotado = { s: rango.s, e: { r: Math.min(rango.e.r, MAX_FILAS), c: rango.e.c } }
+  return XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: null, range: acotado })
+}
+
 /** Serie [{periodo: "1996-Q1", valor}] de la fila TOTAL de una hoja de provincia. */
 export function parsearHoja(sheet) {
-  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: null })
+  const rows = filasAcotadas(sheet)
   const headerRow = rows[HEADER_ROW] ?? []
   const totalRow = filaTotal(rows)
   if (totalRow === -1) throw new Error("No se encontró la fila TOTAL")
@@ -206,7 +227,7 @@ async function main() {
 
 // Sólo corre al ejecutar el script directamente — al importarlo desde los
 // tests (para probar las funciones puras) no debe disparar una descarga real.
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((err) => {
     console.error("ERROR:", err.message)
     process.exit(1)

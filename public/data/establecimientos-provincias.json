@@ -1,442 +1,2987 @@
 {
-  "generado_en": "2026-09-18T16:29:56.847Z",
-  "fuente": "OEDE — Ministerio de Trabajo / CEP XXI (Secretaría de Industria)",
-  "licencia": "Datos abiertos — datos.gob.ar",
+  "generado_en": "2026-10-14T19:17:26.643Z",
+  "fuente": "OEDE — Ministerio de Trabajo, Empleo y Seguridad Social / SIPA-AFIP",
+  "licencia": "Datos abiertos — argentina.gob.ar/trabajo",
+  "unidad": "empresas del sector privado activas al cierre de cada año",
   "cobertura": {
-    "desde": 2021,
-    "hasta": 2022
+    "desde": 1996,
+    "hasta": 2024
   },
   "total_provincias": 24,
   "provincias": [
     {
       "id": "06",
       "nombre": "Buenos Aires",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 179977,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 193912,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 134902
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 136148
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 137023
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 139089
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 131686
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 125679
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 119376
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 128959
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 152313
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 166083
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 179302
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 188763
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 196058
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 197295
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 200301
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 203643
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 204094
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 203746
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 202344
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 203439
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 203299
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 203860
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 199277
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 193709
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 185043
+        },
+        {
           "anio": 2021,
-          "establecimientos": 171181,
-          "sucursales": 216284
+          "establecimientos": 185620
         },
         {
           "anio": 2022,
-          "establecimientos": 179977,
-          "sucursales": 225650
+          "establecimientos": 198246
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 197857
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 193912
         }
       ]
     },
     {
       "id": "02",
       "nombre": "CABA",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 132679,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 135236,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 115152
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 119538
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 119894
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 118301
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 109961
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 106455
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 101330
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 106533
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 121217
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 127423
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 132900
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 137278
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 139624
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 139629
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 141357
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 142598
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 142540
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 142765
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 142323
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 143253
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 142948
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 143321
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 141717
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 138366
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 132560
+        },
+        {
           "anio": 2021,
-          "establecimientos": 128955,
-          "sucursales": 152695
+          "establecimientos": 131244
         },
         {
           "anio": 2022,
-          "establecimientos": 132679,
-          "sucursales": 156211
+          "establecimientos": 137664
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 136335
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 135236
         }
       ]
     },
     {
       "id": "14",
       "nombre": "Córdoba",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 53332,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 55365,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 38623
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 39230
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 39505
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 38978
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 39044
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 38481
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 37024
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 41077
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 46810
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 50762
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 54631
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 57882
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 60587
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 60992
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 61367
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 62237
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 62164
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 61531
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 60731
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 60184
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 60113
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 60018
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 59226
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 57532
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 54402
+        },
+        {
           "anio": 2021,
-          "establecimientos": 51910,
-          "sucursales": 64934
+          "establecimientos": 54504
         },
         {
           "anio": 2022,
-          "establecimientos": 53332,
-          "sucursales": 66394
+          "establecimientos": 57121
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 58274
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 55365
         }
       ]
     },
     {
       "id": "82",
       "nombre": "Santa Fe",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 53010,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 52602,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 39555
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 40156
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 40242
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 40871
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 40602
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 39475
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 37552
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 40927
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 45550
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 49338
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 52362
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 54725
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 56489
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 56433
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 57296
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 58869
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 58825
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 58787
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 58198
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 57949
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 57368
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 57387
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 56391
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 54843
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 53036
+        },
+        {
           "anio": 2021,
-          "establecimientos": 51746,
-          "sucursales": 62944
+          "establecimientos": 53359
         },
         {
           "anio": 2022,
-          "establecimientos": 53010,
-          "sucursales": 64083
+          "establecimientos": 54542
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 54032
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 52602
         }
       ]
     },
     {
       "id": "50",
       "nombre": "Mendoza",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 23554,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 23944,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 18090
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 18305
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 18152
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 18208
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 17954
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 17238
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 16322
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 17603
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 19553
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 21249
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 22639
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 23908
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 24683
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 24819
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 25212
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 26120
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 26746
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 27391
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 27537
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 27941
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 28484
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 29812
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 29954
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 26845
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 25290
+        },
+        {
           "anio": 2021,
-          "establecimientos": 22827,
-          "sucursales": 28827
+          "establecimientos": 26531
         },
         {
           "anio": 2022,
-          "establecimientos": 23554,
-          "sucursales": 29683
+          "establecimientos": 27933
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 24793
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 23944
         }
       ]
     },
     {
       "id": "30",
       "nombre": "Entre Ríos",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 17141,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 18033,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 12895
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 13189
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 13076
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 12898
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 12698
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 12342
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 11668
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 12729
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 14284
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 15657
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 16879
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 17882
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 18756
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 18665
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 19053
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 19583
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 19501
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 19376
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 19074
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 19028
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 18801
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 18792
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 18289
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 17764
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 17317
+        },
+        {
           "anio": 2021,
-          "establecimientos": 16556,
-          "sucursales": 20031
+          "establecimientos": 17426
         },
         {
           "anio": 2022,
-          "establecimientos": 17141,
-          "sucursales": 20602
+          "establecimientos": 18354
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 18785
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 18033
         }
       ]
     },
     {
       "id": "90",
       "nombre": "Tucumán",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 11751,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 12230,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 7443
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 7657
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 7734
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 7839
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 8023
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 7810
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 7496
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 8020
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 8956
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 9496
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 10499
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 12336
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 13776
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 13918
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 13753
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 13940
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 13883
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 13854
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 13732
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 13661
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 13628
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 13668
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 13298
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 12908
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 12251
+        },
+        {
           "anio": 2021,
-          "establecimientos": 11643,
-          "sucursales": 14791
+          "establecimientos": 12098
         },
         {
           "anio": 2022,
-          "establecimientos": 11751,
-          "sucursales": 14811
+          "establecimientos": 12356
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 12212
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 12230
         }
       ]
     },
     {
       "id": "62",
       "nombre": "Río Negro",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 10704,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 11098,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 7578
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 7536
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 7439
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 7513
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 7323
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 7030
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 6749
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 7433
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 8746
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 9498
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 10106
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 10635
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 11141
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 11167
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 11162
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 11358
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 11409
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 11562
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 11618
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 11830
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 11906
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 11763
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 11473
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 11108
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 10636
+        },
+        {
           "anio": 2021,
-          "establecimientos": 10110,
-          "sucursales": 12694
+          "establecimientos": 10770
         },
         {
           "anio": 2022,
-          "establecimientos": 10704,
-          "sucursales": 13293
+          "establecimientos": 11413
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 11359
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 11098
         }
       ]
     },
     {
       "id": "66",
       "nombre": "Salta",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 9982,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 10383,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 5790
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 6153
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 6001
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 6391
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 6821
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 6515
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 6014
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 6347
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 6941
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 7508
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 8144
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 8818
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 9336
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 9827
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 10273
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 10750
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 10709
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 10978
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 10925
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 11098
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 11136
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 11251
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 10980
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 10529
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 9989
+        },
+        {
           "anio": 2021,
-          "establecimientos": 9642,
-          "sucursales": 12161
+          "establecimientos": 10072
         },
         {
           "anio": 2022,
-          "establecimientos": 9982,
-          "sucursales": 12552
-        }
-      ]
-    },
-    {
-      "id": "54",
-      "nombre": "Misiones",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 9950,
-      "series": [
-        {
-          "anio": 2021,
-          "establecimientos": 9574,
-          "sucursales": 11864
+          "establecimientos": 10431
         },
         {
-          "anio": 2022,
-          "establecimientos": 9950,
-          "sucursales": 12221
+          "anio": 2023,
+          "establecimientos": 10554
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 10383
         }
       ]
     },
     {
       "id": "58",
       "nombre": "Neuquén",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 9563,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 10364,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 5298
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 5356
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 6028
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 5903
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 5361
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 5213
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 4960
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 5437
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 6658
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 7361
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 7998
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 8496
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 8989
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 9059
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 9056
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 9189
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 9254
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 9567
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 9660
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 9964
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 10010
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 10013
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 9948
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 9931
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 9571
+        },
+        {
           "anio": 2021,
-          "establecimientos": 9084,
-          "sucursales": 11646
+          "establecimientos": 9696
         },
         {
           "anio": 2022,
-          "establecimientos": 9563,
-          "sucursales": 12074
+          "establecimientos": 10165
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 10302
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 10364
+        }
+      ]
+    },
+    {
+      "id": "54",
+      "nombre": "Misiones",
+      "ultimo_anio": 2024,
+      "ultimo_valor": 10303,
+      "series": [
+        {
+          "anio": 1996,
+          "establecimientos": 6485
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 6606
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 6432
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 6577
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 6437
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 6132
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 5712
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 6301
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 7112
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 7770
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 8422
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 8818
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 9187
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 9242
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 9441
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 9652
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 9728
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 10054
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 10157
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 10317
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 10254
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 10504
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 10391
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 10045
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 9785
+        },
+        {
+          "anio": 2021,
+          "establecimientos": 9983
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 10631
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 10981
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 10303
         }
       ]
     },
     {
       "id": "18",
       "nombre": "Corrientes",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 8940,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 9602,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 6595
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 6496
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 6643
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 6569
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 6124
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 5963
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 5559
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 5891
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 6449
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 7313
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 7680
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 8033
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 8530
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 8673
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 8859
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 9325
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 9443
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 9558
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 9615
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 9730
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 9808
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 9880
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 9768
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 9470
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 9095
+        },
+        {
           "anio": 2021,
-          "establecimientos": 8599,
-          "sucursales": 10501
+          "establecimientos": 9182
         },
         {
           "anio": 2022,
-          "establecimientos": 8940,
-          "sucursales": 10824
+          "establecimientos": 10136
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 10509
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 9602
         }
       ]
     },
     {
       "id": "22",
       "nombre": "Chaco",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 8929,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 9574,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 8548
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 8358
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 8194
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 8128
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 8437
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 7592
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 6725
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 6853
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 7211
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 7495
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 7965
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 8303
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 8887
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 9101
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 8749
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 9358
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 9534
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 9728
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 9651
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 9701
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 9852
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 9840
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 9763
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 9365
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 9017
+        },
+        {
           "anio": 2021,
-          "establecimientos": 8567,
-          "sucursales": 10488
+          "establecimientos": 9028
         },
         {
           "anio": 2022,
-          "establecimientos": 8929,
-          "sucursales": 10831
+          "establecimientos": 9717
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 10311
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 9574
         }
       ]
     },
     {
       "id": "26",
       "nombre": "Chubut",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 8630,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 8686,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 4432
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 4559
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 5469
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 6023
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 6648
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 6328
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 6010
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 6557
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 7366
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 7945
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 8428
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 8758
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 9087
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 9158
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 9367
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 9470
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 9487
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 9474
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 9553
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 9656
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 9634
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 9501
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 9253
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 9016
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 8687
+        },
+        {
           "anio": 2021,
-          "establecimientos": 8289,
-          "sucursales": 10021
+          "establecimientos": 8757
         },
         {
           "anio": 2022,
-          "establecimientos": 8630,
-          "sucursales": 10338
+          "establecimientos": 9164
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 8956
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 8686
         }
       ]
     },
     {
       "id": "70",
       "nombre": "San Juan",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 7213,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 7466,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 4927
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 5158
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 5477
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 5650
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 5569
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 5394
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 5018
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 5294
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 5745
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 6136
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 6593
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 6954
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 7281
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 7538
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 7817
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 7932
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 8049
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 8113
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 8070
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 8055
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 8017
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 8022
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 7900
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 7651
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 7194
+        },
+        {
           "anio": 2021,
-          "establecimientos": 6972,
-          "sucursales": 8772
+          "establecimientos": 7229
         },
         {
           "anio": 2022,
-          "establecimientos": 7213,
-          "sucursales": 9079
+          "establecimientos": 7653
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 7577
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 7466
         }
       ]
     },
     {
       "id": "42",
       "nombre": "La Pampa",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 6719,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 6912,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 6059
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 6046
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 5924
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 5738
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 5523
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 5402
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 5249
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 5598
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 6212
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 6736
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 7053
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 7333
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 7435
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 7191
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 7150
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 7312
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 7310
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 7299
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 7116
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 7079
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 7158
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 7160
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 7065
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 6941
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 6703
+        },
+        {
           "anio": 2021,
-          "establecimientos": 6451,
-          "sucursales": 7627
+          "establecimientos": 6779
         },
         {
           "anio": 2022,
-          "establecimientos": 6719,
-          "sucursales": 7903
+          "establecimientos": 7176
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 7182
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 6912
         }
       ]
     },
     {
       "id": "86",
       "nombre": "Santiago del Estero",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 5916,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 6377,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 3862
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 3847
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 3700
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 3809
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 3738
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 3612
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 3337
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 3573
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 3890
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 4303
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 4618
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 5033
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 5278
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 5526
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 5731
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 5954
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 6067
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 6094
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 6138
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 6233
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 6321
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 6507
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 6519
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 6126
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 5808
+        },
+        {
           "anio": 2021,
-          "establecimientos": 5386,
-          "sucursales": 6647
+          "establecimientos": 5901
         },
         {
           "anio": 2022,
-          "establecimientos": 5916,
-          "sucursales": 7196
+          "establecimientos": 6678
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 6490
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 6377
         }
       ]
     },
     {
       "id": "74",
       "nombre": "San Luis",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 5394,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 5496,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 3498
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 3530
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 4125
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 4219
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 3623
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 3544
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 3473
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 3769
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 4021
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 4279
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 4563
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 4863
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 5024
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 5264
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 5421
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 5655
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 5743
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 5840
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 5787
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 5951
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 5876
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 5919
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 5888
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 5685
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 5314
+        },
+        {
           "anio": 2021,
-          "establecimientos": 5081,
-          "sucursales": 6167
+          "establecimientos": 5339
         },
         {
           "anio": 2022,
-          "establecimientos": 5394,
-          "sucursales": 6482
+          "establecimientos": 5702
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 5643
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 5496
         }
       ]
     },
     {
       "id": "38",
       "nombre": "Jujuy",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 5104,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 5337,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 3063
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 3068
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 3142
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 3188
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 3300
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 3142
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 2980
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 3122
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 3394
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 3658
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 4031
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 4283
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 4603
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 4912
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 5136
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 5177
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 5223
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 5282
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 5335
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 5437
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 5500
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 5580
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 5569
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 5336
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 5131
+        },
+        {
           "anio": 2021,
-          "establecimientos": 4913,
-          "sucursales": 6131
+          "establecimientos": 5175
         },
         {
           "anio": 2022,
-          "establecimientos": 5104,
-          "sucursales": 6322
+          "establecimientos": 5420
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 5491
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 5337
         }
       ]
     },
     {
       "id": "78",
       "nombre": "Santa Cruz",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 4070,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 4536,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 2507
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 2548
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 2781
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 2756
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 2686
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 2553
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 2448
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 2656
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 3156
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 3520
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 3789
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 4009
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 4252
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 4231
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 4432
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 4673
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 4733
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 4780
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 4875
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 4941
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 4804
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 4749
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 4561
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 4402
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 4050
+        },
+        {
           "anio": 2021,
-          "establecimientos": 3787,
-          "sucursales": 4801
+          "establecimientos": 4232
         },
         {
           "anio": 2022,
-          "establecimientos": 4070,
-          "sucursales": 5073
+          "establecimientos": 4546
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 4576
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 4536
         }
       ]
     },
     {
       "id": "10",
       "nombre": "Catamarca",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 3201,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 3590,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 2134
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 2204
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 2202
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 2208
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 2160
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 2156
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 1998
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 2185
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 2363
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 2595
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 2841
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 3030
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 3202
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 3155
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 3269
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 3332
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 3387
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 3457
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 3438
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 3517
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 3496
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 3724
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 3534
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 3293
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 3123
+        },
+        {
           "anio": 2021,
-          "establecimientos": 2947,
-          "sucursales": 3549
+          "establecimientos": 3165
         },
         {
           "anio": 2022,
-          "establecimientos": 3201,
-          "sucursales": 3823
-        }
-      ]
-    },
-    {
-      "id": "34",
-      "nombre": "Formosa",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 2790,
-      "series": [
-        {
-          "anio": 2021,
-          "establecimientos": 2678,
-          "sucursales": 3322
+          "establecimientos": 3564
         },
         {
-          "anio": 2022,
-          "establecimientos": 2790,
-          "sucursales": 3428
-        }
-      ]
-    },
-    {
-      "id": "94",
-      "nombre": "Tierra del Fuego",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 2638,
-      "series": [
-        {
-          "anio": 2021,
-          "establecimientos": 2506,
-          "sucursales": 3155
+          "anio": 2023,
+          "establecimientos": 3906
         },
         {
-          "anio": 2022,
-          "establecimientos": 2638,
-          "sucursales": 3295
+          "anio": 2024,
+          "establecimientos": 3590
         }
       ]
     },
     {
       "id": "46",
       "nombre": "La Rioja",
-      "ultimo_anio": 2022,
-      "ultimo_valor": 2611,
+      "ultimo_anio": 2024,
+      "ultimo_valor": 3082,
       "series": [
         {
+          "anio": 1996,
+          "establecimientos": 1783
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 1892
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 1976
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 2026
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 2007
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 2026
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 1863
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 1930
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 2094
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 2244
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 2346
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 2522
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 2574
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 2626
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 2739
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 2795
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 2754
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 2797
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 2796
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 2816
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 2861
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 2858
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 2823
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 2683
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 2561
+        },
+        {
           "anio": 2021,
-          "establecimientos": 2457,
-          "sucursales": 3041
+          "establecimientos": 2604
         },
         {
           "anio": 2022,
-          "establecimientos": 2611,
-          "sucursales": 3209
+          "establecimientos": 3017
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 3388
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 3082
+        }
+      ]
+    },
+    {
+      "id": "34",
+      "nombre": "Formosa",
+      "ultimo_anio": 2024,
+      "ultimo_valor": 2807,
+      "series": [
+        {
+          "anio": 1996,
+          "establecimientos": 1976
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 1947
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 1951
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 2023
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 2203
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 2011
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 1883
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 1964
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 2058
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 2264
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 2451
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 2592
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 2769
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 2804
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 2918
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 3004
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 3008
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 3040
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 3048
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 3073
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 3097
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 3086
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 2990
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 2886
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 2793
+        },
+        {
+          "anio": 2021,
+          "establecimientos": 2799
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 2961
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 2926
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 2807
+        }
+      ]
+    },
+    {
+      "id": "94",
+      "nombre": "Tierra del Fuego",
+      "ultimo_anio": 2024,
+      "ultimo_valor": 2719,
+      "series": [
+        {
+          "anio": 1996,
+          "establecimientos": 1292
+        },
+        {
+          "anio": 1997,
+          "establecimientos": 1315
+        },
+        {
+          "anio": 1998,
+          "establecimientos": 1421
+        },
+        {
+          "anio": 1999,
+          "establecimientos": 1593
+        },
+        {
+          "anio": 2000,
+          "establecimientos": 1774
+        },
+        {
+          "anio": 2001,
+          "establecimientos": 1750
+        },
+        {
+          "anio": 2002,
+          "establecimientos": 1576
+        },
+        {
+          "anio": 2003,
+          "establecimientos": 1726
+        },
+        {
+          "anio": 2004,
+          "establecimientos": 1864
+        },
+        {
+          "anio": 2005,
+          "establecimientos": 2036
+        },
+        {
+          "anio": 2006,
+          "establecimientos": 2221
+        },
+        {
+          "anio": 2007,
+          "establecimientos": 2329
+        },
+        {
+          "anio": 2008,
+          "establecimientos": 2455
+        },
+        {
+          "anio": 2009,
+          "establecimientos": 2452
+        },
+        {
+          "anio": 2010,
+          "establecimientos": 2645
+        },
+        {
+          "anio": 2011,
+          "establecimientos": 2754
+        },
+        {
+          "anio": 2012,
+          "establecimientos": 2922
+        },
+        {
+          "anio": 2013,
+          "establecimientos": 2980
+        },
+        {
+          "anio": 2014,
+          "establecimientos": 3012
+        },
+        {
+          "anio": 2015,
+          "establecimientos": 3076
+        },
+        {
+          "anio": 2016,
+          "establecimientos": 3028
+        },
+        {
+          "anio": 2017,
+          "establecimientos": 3023
+        },
+        {
+          "anio": 2018,
+          "establecimientos": 2910
+        },
+        {
+          "anio": 2019,
+          "establecimientos": 2785
+        },
+        {
+          "anio": 2020,
+          "establecimientos": 2596
+        },
+        {
+          "anio": 2021,
+          "establecimientos": 2703
+        },
+        {
+          "anio": 2022,
+          "establecimientos": 2851
+        },
+        {
+          "anio": 2023,
+          "establecimientos": 2855
+        },
+        {
+          "anio": 2024,
+          "establecimientos": 2719
         }
       ]
     }
