@@ -728,13 +728,27 @@ export function REMView() {
     usd12: r.dolar_12m,
   })) as Record<string, unknown>[]
 
-  const fechaLabel = kpis?.fecha ? `Relevamiento ${kpis.fecha}` : ""
+  // kpis.fecha es el mes en que se HIZO la encuesta, no el mes proyectado —
+  // "Relevamiento 2026-09" significa "encuesta de analistas realizada en
+  // sept-2026", y esa encuesta proyecta 12 meses hacia adelante (hasta
+  // ~sept-2027). Se muestra el horizonte calculado para no confundir la
+  // fecha de la encuesta con la fecha a la que proyecta.
+  const horizonte12m = (() => {
+    if (!kpis?.fecha) return null
+    const [anio, mes] = kpis.fecha.split("-").map(Number)
+    if (!anio || !mes) return null
+    const d = new Date(Date.UTC(anio, mes - 1 + 12, 1))
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`
+  })()
+  const fechaLabel = kpis?.fecha
+    ? `Encuesta de ${kpis.fecha} · proyecta a ${horizonte12m ?? "+12m"}`
+    : ""
 
   return (
     <div>
       <SectionMeta
         title="REM — Expectativas de Mercado"
-        help="El REM (Relevamiento de Expectativas de Mercado) consolida mensualmente las proyecciones de analistas privados sobre inflación, tipo de cambio, tasas e indicadores reales. Publicado por el BCRA. Los valores son medianas del consenso."
+        help="El REM (Relevamiento de Expectativas de Mercado) consolida mensualmente las proyecciones de analistas privados sobre inflación, tipo de cambio, tasas e indicadores reales. Publicado por el BCRA. Los valores son medianas del consenso. La fecha mostrada es la del MES EN QUE SE HIZO la encuesta, no el mes proyectado — esa encuesta pronostica 12 meses hacia adelante."
         source="BCRA — Relevamiento de Expectativas de Mercado"
       />
 
