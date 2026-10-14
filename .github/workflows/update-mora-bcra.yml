@@ -1,0 +1,60 @@
+name: Actualizar mora BCRA
+
+on:
+  schedule:
+    # Dia 5 de cada mes a las 8am UTC (el BCRA publica con rezago)
+    - cron: '0 8 5 * *'
+  workflow_dispatch:
+
+concurrency:
+  group: update-mora-bcra-${{ github.repository }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  mora-bcra:
+    name: Irregularidad del credito (BCRA)
+    if: github.repository == 'manuelfsm03/EconData_argy'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: npm ci
+        run: npm ci --include=dev --no-audit --no-fund
+
+      # URL configurable via variable de repositorio MORA_BCRA_URL (opcional).
+      - name: Descargar y parsear irregularidad del credito
+        env:
+          MORA_BCRA_URL: ${{ vars.MORA_BCRA_URL }}
+        run: npx tsx scripts/update-mora-bcra.ts
+
+      - name: Verificar JSON generado
+        run: |
+          python3 -c "
+          import json
+          d = json.load(open('public/data/mora-bcra.json'))
+          assert d['estado'] == 'ok', d['estado']
+          assert 'familias' in d['series'] and 'empresas' in d['series'], list(d['series'])
+          print('OK mora:', list(d['series']), d['cobertura'])
+          "
+
+      - name: Commitear si hay cambios
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/mora-bcra.json
+          if git diff --cached --quiet; then
+            echo "Sin cambios — nada que commitear"
+          else
+            git commit -m "data: mora BCRA actualizada ($(date +%Y-%m))"
+            git push origin HEAD:main
+          fi
