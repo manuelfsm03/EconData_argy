@@ -3,6 +3,7 @@ import test from "node:test"
 
 import {
   excelSerialToDate,
+  lastDateInRow,
   parseBankingDateRange,
   parseBankingRows,
   parseCarteraRows,
@@ -181,6 +182,30 @@ test("calidad de cartera respeta el rango de fechas igual que el balance", () =>
   )
   const empresas = porDeudor.find(s => s.segmento === "empresas")
   assert.deepEqual(empresas?.serie.map(p => p.valor), [2.92])
+})
+
+// ── Elegir el anexo más fresco entre español e inglés ───────────────────────
+// El BCRA publica el mismo anexo en los dos idiomas pero no los actualiza al
+// mismo ritmo (verificado en vivo 14/10/2026: español se quedó en mayo,
+// inglés tenía julio) — por eso se bajan los dos y se usa el que tenga la
+// fecha más reciente. `lastDateInRow` es la pieza que hace esa comparación
+// posible: tiene que ignorar las columnas vacías al final de la fila de
+// fechas (formato de Excel) en vez de asumir que la última columna es la
+// más nueva.
+
+test("lastDateInRow encuentra la fecha real aunque haya columnas vacías al final", () => {
+  const row: BankingSheetRow = ["En porcentaje", 44_927, 44_958, null, null, null]
+  assert.equal(lastDateInRow(row), "2023-02-01")
+})
+
+test("lastDateInRow no se engaña con basura no numérica al final", () => {
+  const row: BankingSheetRow = ["En porcentaje", 44_927, "nota al pie", null]
+  assert.equal(lastDateInRow(row), "2023-01-01")
+})
+
+test("lastDateInRow devuelve null ante una fila vacía o indefinida", () => {
+  assert.equal(lastDateInRow(undefined), null)
+  assert.equal(lastDateInRow(["En porcentaje"]), null)
 })
 
 test("calidad de cartera conserva null sin inventar un valor cuando falta el dato", () => {
