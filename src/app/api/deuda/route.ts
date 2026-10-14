@@ -34,7 +34,12 @@ async function fetchDebtWorkbook(): Promise<DebtSheets> {
     `${BASE_GOB}/economia/finanzas/datos-mensuales-de-la-deuda/datos`,
     {
       headers: { "User-Agent": "PanelDeControl/2.0" },
-      signal: AbortSignal.timeout(10000),
+      // 10s se quedaba corto: argentina.gob.ar es lento y verificado en vivo
+      // (14/10/2026) tardó más de eso en un pedido y respondió bien al
+      // siguiente — sin más margen, el primer pedido después de un reinicio
+      // (sin cache stale previo al que caer) devolvía 502 por una demora que
+      // no era una fuente caída.
+      signal: AbortSignal.timeout(25_000),
       next: { revalidate: 86_400 },
     },
   )
