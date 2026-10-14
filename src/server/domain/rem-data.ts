@@ -1,7 +1,12 @@
 import * as XLSX from "xlsx"
 import { fetchRegistered } from "@/server/http/fetch-source"
 
-export const REM_XLSX_URL = "https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/informes/historico-relevamiento-expectativas-mercado.xlsx"
+// BCRA renombró el archivo (orden de palabras) en algún momento entre
+// ago-2026 y oct-2026: la URL vieja ("historico-relevamiento...") sigue
+// devolviendo 200 con un XLSX válido, pero es un espejo que dejó de
+// actualizarse en agosto-2026 mientras la nueva ("relevamiento...-historico")
+// ya tenía septiembre — verificado en vivo comparando ambas (14/10/2026).
+export const REM_XLSX_URL = "https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/informes/relevamiento-expectativas-mercado-historico.xlsx"
 
 export async function fetchRemExcel(): Promise<Buffer> {
   const response = await fetchRegistered(REM_XLSX_URL, {
