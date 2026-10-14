@@ -45,14 +45,23 @@ async function getPlazoFijo() {
     fetchVar(44, from),  // TAMAR bancos privados (TNA) — referencia vigente
     fetchVar(7, from),   // BADLAR bancos privados (TNA) — serie histórica
     fetchVar(8, from),   // TM20 bancos privados (TNA)
-    fetchVar(6, from),   // Tasa de política monetaria
+    // Var 6 ("Tasa de política monetaria") fue discontinuada por el BCRA —
+    // devuelve 404 "IdVariable invalida" (verificado en vivo 14/10/2026), y
+    // al estar en un try/catch que traga errores el campo quedaba vacío en
+    // silencio. Desde que el BCRA eliminó las LELIQ, el techo de tasas lo
+    // fija el pase pasivo a 1 día referenciado al mercado secundario de
+    // LECAPs ("Objetivos y Planes 2026" del BCRA) — la serie BCRA-contraparte
+    // de ese pase (var 162) también está muerta desde jul-2025, así que se
+    // usa la var 150 (pases ENTRE TERCEROS a 1 día), que sigue viva y es el
+    // proxy de mercado más cercano a esa tasa de referencia.
+    fetchVar(150, from), // Tasa de pases a 1 día (mercado) — proxy vigente de la TPM
     fetchVar(12, from),  // Tasa depósitos 30d sector privado
   ])
 
   const result = {
     data: { tamar, badlar, tm20, tpm, pf30 },
     updated_at: new Date().toISOString(),
-    source: "BCRA API v4.0 · Variables 44 (TAMAR), 7 (BADLAR histórica), 8, 6 y 12",
+    source: "BCRA API v4.0 · Variables 44 (TAMAR), 7 (BADLAR histórica), 8, 150 (pases 1d, proxy TPM) y 12",
   }
   setCache(cacheKey, result, 3600)
   return result
