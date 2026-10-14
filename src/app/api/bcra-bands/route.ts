@@ -78,21 +78,34 @@ function ymKey(year: number, month: number): string {
 
 // ── IPC mensual desde datos.gob.ar ───────────────────────────────────────────
 // Serie: 145.3_INGNACUAL_DICI_M_38 → variación mensual en decimal (0.0288 = 2.88%)
+//
+// La API de series de datos.gob.ar es flaky de un modo verificado en vivo
+// (14/10/2026): para esta serie, un valor de `limit` que ahora mismo
+// devuelve todo vacío puede ser el único que funciona cinco minutos después
+// (y viceversa) — no es un umbral fijo, cambia en el tiempo (probablemente
+// caché/réplicas del lado de ellos). Reintentar con el mismo `limit` no
+// sirve si ESE valor está "pegado" en mal estado; lo que funciona en vivo es
+// probar un valor DISTINTO en cada reintento.
+const LIMITES_CANDIDATOS = [5000, 1000, 2000, 90, 50, 10]
 
 async function fetchIPCMensual(): Promise<Record<string, number>> {
   try {
-    const url =
-      "https://apis.datos.gob.ar/series/api/series/" +
-      "?ids=145.3_INGNACUAL_DICI_M_38" +
-      "&limit=36&sort=desc&format=json"
-    const res = await fetchRegistered(url, {
-      headers: { "User-Agent": "PanelDeControl/2.0" },
-      signal: AbortSignal.timeout(10000),
-      next: { revalidate: 43200 }, // 12 h
-    })
-    if (!res.ok) return {}
-    const json = await res.json()
-    const rows: [string, number][] = json.data ?? []
+    let rows: [string, number][] = []
+    for (const limit of LIMITES_CANDIDATOS) {
+      const url =
+        "https://apis.datos.gob.ar/series/api/series/" +
+        "?ids=145.3_INGNACUAL_DICI_M_38" +
+        `&limit=${limit}&sort=desc&format=json`
+      const res = await fetchRegistered(url, {
+        headers: { "User-Agent": "PanelDeControl/2.0" },
+        signal: AbortSignal.timeout(10000),
+        cache: "no-store", // nunca servir desde el cache de fetch de Next un intento fallido
+      })
+      if (!res.ok) return {}
+      const json = await res.json()
+      rows = json.data ?? []
+      if (rows.length > 0) break
+    }
     const result: Record<string, number> = {}
     for (const [fecha, valor] of rows) {
       if (valor != null) result[fecha.slice(0, 7)] = valor // ya en decimal

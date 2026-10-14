@@ -7,11 +7,17 @@ import { fetchRegistered } from "@/server/http/fetch-source"
  * Si LECAP_TEA > CER_real, el mercado "precia" esa diferencia como inflación implícita.
  *
  * Fuentes:
- *  - BCRA API v4.0: TAMAR (referencia vigente), pases 1d (proxy TPM)
- *  - BCRA datos.gob.ar: BADLAR histórica
- *  - datos.gob.ar: CER diario (coeficiente de estabilización de referencia)
+ *  - BCRA API v4.0: TAMAR (referencia vigente), BADLAR (var 7), pases 1d
+ *    (proxy TPM, var 150), CER (var 30)
  *  - /api/bonos?tipo=lecap: TEM/TIR de LECAPs/BONCAPs (desde DB local)
  *  - /api/rem: mediana REM analistas (benchmark)
+ *
+ * BADLAR y CER se migraron de datos.gob.ar a la API oficial del BCRA
+ * (verificado en vivo 14/10/2026): la serie datos.gob.ar de BADLAR
+ * ("89.2_TS_INTELAR_0_D_20") está congelada desde el 18/06/2026 sin importar
+ * el limit pedido (no es el bug de paginación, la propia API la tiene
+ * frenada ahí), y la de CER ("98.1_CER_0_D_36") fue dada de baja directamente
+ * ("Serie inexistente"). La API oficial del BCRA tiene ambas al día.
  */
 import { NextResponse } from "next/server"
 import { parseRemExcel, REM_XLSX_URL } from "@/server/domain/rem-data"
@@ -22,57 +28,56 @@ const cache = new Map<string, { data: unknown; expiry: number }>()
 function getCache(k: string) { const e = cache.get(k); return e && Date.now() < e.expiry ? e.data : null }
 function setCache(k: string, d: unknown, ttl: number) { cache.set(k, { data: d, expiry: Date.now() + ttl * 1000 }) }
 
-// IDs de series datos.gob.ar
-const SERIES = {
-  badlar:      "89.2_TS_INTELAR_0_D_20",   // BADLAR privados TNA
-  cer_diario:  "98.1_CER_0_D_36",           // CER diario (coeficiente)
-}
-
-async function fetchSerie(id: string, limit = 60): Promise<{ fecha: string; valor: number }[]> {
-  try {
-    const url = `https://apis.datos.gob.ar/series/api/series/?ids=${id}&limit=${limit}&sort=desc&format=json`
-    const res = await fetchRegistered(url, { signal: AbortSignal.timeout(8000), next: { revalidate: 300 } })
-    if (!res.ok) return []
-    const json = await res.json()
-    return ((json.data ?? []) as [string, number | null][])
-      .filter(r => r[1] != null)
-      .map(r => ({ fecha: r[0], valor: r[1] as number }))
-      .sort((a, b) => a.fecha.localeCompare(b.fecha))
-  } catch { return [] }
+function rangoDesde(limit: number): { from: string; today: string } {
+  const today = new Date()
+  const from = new Date(today)
+  from.setDate(from.getDate() - Math.max(limit * 2, 120))
+  return { from: from.toISOString().slice(0, 10), today: today.toISOString().slice(0, 10) }
 }
 
 async function fetchTamar(limit = 60): Promise<{ fecha: string; valor: number }[]> {
   try {
-    const today = new Date()
-    const from = new Date(today)
-    from.setDate(from.getDate() - Math.max(limit * 2, 120))
-    const data = await bcraOfficialApi.getSeriesData(
-      44,
-      from.toISOString().slice(0, 10),
-      today.toISOString().slice(0, 10),
-      limit,
-    )
+    const { from, today } = rangoDesde(limit)
+    const data = await bcraOfficialApi.getSeriesData(44, from, today, limit)
     return data
       .map((row) => ({ fecha: row.fecha, valor: row.valor }))
       .sort((a, b) => a.fecha.localeCompare(b.fecha))
   } catch { return [] }
 }
 
-// Serie datos.gob.ar de la TPM ("168.1_T_CAMBIA_0_0_22") fue dada de baja
-// ("Serie inexistente", verificado en vivo 14/10/2026) — igual que la var 6
-// de la API BCRA (ver src/app/api/bcra/route.ts), que también está muerta.
-// Se usa la var 150 (pases entre terceros a 1 día) como proxy vigente.
+// BADLAR migró de datos.gob.ar ("89.2_TS_INTELAR_0_D_20", congelada desde el
+// 18/06/2026 sin importar el limit pedido — no es el bug de paginación, la
+// propia serie está frenada ahí) a la API oficial del BCRA, que la tiene al día.
+async function fetchBadlarVigente(limit = 60): Promise<{ fecha: string; valor: number }[]> {
+  try {
+    const { from, today } = rangoDesde(limit)
+    const data = await bcraOfficialApi.getSeriesData(7, from, today, limit)
+    return data
+      .map((row) => ({ fecha: row.fecha, valor: row.valor }))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+  } catch { return [] }
+}
+
+// CER migró de datos.gob.ar ("98.1_CER_0_D_36", dada de baja — "Serie
+// inexistente", verificado en vivo 14/10/2026) a la API oficial del BCRA
+// (var 30), que la tiene al día.
+async function fetchCerReferencia(limit = 60): Promise<{ fecha: string; valor: number }[]> {
+  try {
+    const { from, today } = rangoDesde(limit)
+    const data = await bcraOfficialApi.getSeriesData(30, from, today, limit)
+    return data
+      .map((row) => ({ fecha: row.fecha, valor: row.valor }))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+  } catch { return [] }
+}
+
+// Var 6 ("Tasa de política monetaria") y la serie datos.gob.ar equivalente
+// ("168.1_T_CAMBIA_0_0_22") fueron dadas de baja (ver src/app/api/bcra/route.ts)
+// — se usa la var 150 (pases entre terceros a 1 día) como proxy vigente.
 async function fetchPasesReferencia(limit = 60): Promise<{ fecha: string; valor: number }[]> {
   try {
-    const today = new Date()
-    const from = new Date(today)
-    from.setDate(from.getDate() - Math.max(limit * 2, 120))
-    const data = await bcraOfficialApi.getSeriesData(
-      150,
-      from.toISOString().slice(0, 10),
-      today.toISOString().slice(0, 10),
-      limit,
-    )
+    const { from, today } = rangoDesde(limit)
+    const data = await bcraOfficialApi.getSeriesData(150, from, today, limit)
     return data
       .map((row) => ({ fecha: row.fecha, valor: row.valor }))
       .sort((a, b) => a.fecha.localeCompare(b.fecha))
@@ -120,9 +125,9 @@ export async function GET() {
   try {
     const [tamarSerie, badlarSerie, tpmSerie, cerSerie, lecaps, rem] = await Promise.all([
       fetchTamar(30),
-      fetchSerie(SERIES.badlar, 30),
+      fetchBadlarVigente(30),
       fetchPasesReferencia(30),
-      fetchSerie(SERIES.cer_diario, 30),
+      fetchCerReferencia(30),
       fetchLecaps(),
       fetchRem(),
     ])

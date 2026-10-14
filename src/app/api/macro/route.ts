@@ -124,31 +124,60 @@ function setCache(key: string, data: unknown, ttlSec: number) {
   _cache[key] = { data, expiry: Date.now() + ttlSec * 1000 }
 }
 
-/** Fetches multiple series in a single HTTP call */
+// La API de series de datos.gob.ar es flaky de un modo verificado en vivo
+// (14/10/2026): para una MISMA combinación de series, un valor de `limit`
+// que ahora mismo devuelve todo vacío puede ser el único que funciona cinco
+// minutos después (y viceversa) — no es un umbral fijo por serie, cambia en
+// el tiempo (probablemente caché/réplicas del lado de ellos). Reintentar con
+// el mismo `limit` no sirve si ESE valor está "pegado" en mal estado; lo que
+// funciona en vivo es probar un valor DISTINTO en cada reintento.
+const LIMITES_CANDIDATOS = [5000, 1000, 2000, 90, 50, 10]
+
+/**
+ * Una serie sola, con reintento por la flakiness de la API (ver comentario
+ * arriba de LIMITES_CANDIDATOS).
+ */
+async function getSerieConReintento(id: string, limit: number): Promise<[string, number][]> {
+  let serie: [string, number][] = []
+  for (const candidato of LIMITES_CANDIDATOS) {
+    const url = `${BASE_URL}?ids=${encodeURIComponent(id)}&limit=${candidato}&sort=desc`
+    const res = await fetchRegistered(url, {
+      headers: { "User-Agent": "PanelDeControl/2.0" },
+      cache: "no-store", // nunca servir desde el cache de fetch de Next un intento fallido
+    })
+    if (!res.ok) throw new Error(`datos.gob.ar ${res.status}`)
+
+    const raw = await res.json()
+    const rows: (string | number | null)[][] = raw.data || []
+    serie = rows
+      .filter((r) => r[1] != null)
+      .slice(0, limit)
+      .map((r) => [r[0] as string, r[1] as number])
+
+    if (serie.length > 0) break
+  }
+  return serie
+}
+
+/**
+ * Trae varias series. Se pide cada una POR SEPARADO (no combinadas en una
+ * sola llamada) porque la combinación en una misma consulta puede devolver
+ * columnas individuales truncadas/viejas aunque el resto salga bien — y un
+ * chequeo de "¿salió todo vacío?" sobre el conjunto no detecta esa
+ * corrupción parcial (visto en vivo: 3 de 4 series de mercado laboral con el
+ * trimestre correcto y la cuarta pegada un año atrás, en la MISMA respuesta).
+ * Pedir cada serie aparte deja validar y reintentar cada una por su cuenta.
+ */
 async function getMultiserie(keys: string[], limit = 36): Promise<Record<string, [string, number][]>> {
   const cacheKey = `multi_${keys.join("_")}_${limit}`
   const cached = getCache<Record<string, [string, number][]>>(cacheKey)
   if (cached) return structuredClone(cached)
 
   const validKeys = keys.filter((k) => k in SERIES_IDS)
-  const ids = validKeys.map((k) => SERIES_IDS[k]).join(",")
-  const url = `${BASE_URL}?ids=${encodeURIComponent(ids)}&limit=${limit}&sort=desc`
-
-  const res = await fetchRegistered(url, {
-    headers: { "User-Agent": "PanelDeControl/2.0" },
-    next: { revalidate: 3600 },
-  })
-  if (!res.ok) throw new Error(`datos.gob.ar ${res.status}`)
-
-  const raw = await res.json()
-  const rows: (string | number | null)[][] = raw.data || []
+  const series = await Promise.all(validKeys.map((k) => getSerieConReintento(SERIES_IDS[k], limit)))
 
   const result: Record<string, [string, number][]> = {}
-  for (let i = 0; i < validKeys.length; i++) {
-    result[validKeys[i]] = rows
-      .filter((r) => r.length > i + 1 && r[i + 1] != null)
-      .map((r) => [r[0] as string, r[i + 1] as number])
-  }
+  for (let i = 0; i < validKeys.length; i += 1) result[validKeys[i]] = series[i]
 
   setCache(cacheKey, result, 3600)
   return structuredClone(result)
@@ -305,7 +334,20 @@ export async function GET(request: NextRequest) {
     }
 
     if (endpoint === "balanza") {
-      const data = await getMultiserie(["exportaciones", "importaciones", "saldo_comercial"], 120)
+      // Pedir "saldo_comercial" junto con exportaciones/importaciones en la
+      // misma llamada combinada rompe en la API de datos.gob.ar: a ciertos
+      // valores de `limit` (30, 70, 100, 120 — probado en vivo, no es con
+      // todos) la respuesta trae exportaciones e importaciones en null para
+      // TODAS las filas, aunque la serie en sí está viva y al pedirla sola
+      // (o junto con sólo una de las otras dos) funciona bien. Como
+      // saldo_comercial = exportaciones - importaciones exactamente (cierra
+      // a centavos contra la serie oficial), se calcula localmente en vez de
+      // pedirla — evita el bug del lado del servidor y es un fetch menos.
+      const data = await getMultiserie(["exportaciones", "importaciones"], 120)
+      const importByDate = new Map(data.importaciones.map(([fecha, valor]) => [fecha, valor]))
+      data.saldo_comercial = data.exportaciones
+        .filter(([fecha]) => importByDate.has(fecha))
+        .map(([fecha, exp]) => [fecha, exp - importByDate.get(fecha)!])
       return NextResponse.json({ data, updated_at: new Date().toISOString(), source: "apis.datos.gob.ar" })
     }
 
