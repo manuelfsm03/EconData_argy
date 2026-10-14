@@ -24,8 +24,28 @@ export type BankingPeriod = {
   activo_mm: number
 }
 
-const BANKING_WORKBOOK_URL =
-  "https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/informes/InfBanc_Anexo.xlsx"
+// El BCRA publica el mismo anexo en español y en inglés, pero NO los
+// actualiza al mismo ritmo — verificado en vivo (14/10/2026): el español
+// llevaba desde el 24/7 sin tocarse (dato hasta mayo), mientras el inglés ya
+// tenía dato hasta julio. En vez de hardcodear "el inglés es mejor" (puede
+// invertirse el día de mañana), se bajan los dos en cada request y se usa el
+// que tenga el dato más reciente — así queda al día solo, sin que haga falta
+// venir a cambiar una URL a mano cuando el BCRA se atrase con uno de los dos.
+const BANKING_WORKBOOK_URLS = {
+  es: "https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/informes/InfBanc_Anexo.xlsx",
+  en: "https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/informes/report-banks-annex.xlsx",
+} as const
+
+type WorkbookLang = keyof typeof BANKING_WORKBOOK_URLS
+
+// Mismos offsets de fila en los dos idiomas (verificado hoja por hoja contra
+// el archivo real) — sólo cambia el nombre de la hoja.
+const SHEET_NAMES: Record<"balance" | "carteraEntidad" | "carteraDeudor", Record<WorkbookLang, string>> = {
+  balance: { es: "Estado de Sit. Financiera", en: "Balance sheet" },
+  carteraEntidad: { es: "Calidad de Cartera", en: "Portfolio quality" },
+  carteraDeudor: { es: "Calidad de Cartera (por líneas)", en: "Portfolio quality (by line)" },
+}
+
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 function finiteNumber(value: unknown): number | null {
@@ -56,6 +76,74 @@ export function excelSerialToDate(serial: number): string | null {
   if (!Number.isFinite(serial)) return null
   const date = new Date(Date.UTC(1899, 11, 30) + serial * 86_400_000)
   return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10)
+}
+
+// La fila de fechas trae columnas vacías al final (formato de Excel, no es
+// que falte el dato) — hay que recorrer desde el final buscando la última
+// celda que sea realmente una fecha, no asumir que es la última columna.
+export function lastDateInRow(row: BankingSheetRow | undefined): string | null {
+  if (!row) return null
+  for (let column = row.length - 1; column >= 1; column -= 1) {
+    const serial = finiteNumber(row[column])
+    if (serial === null) continue
+    const fecha = excelSerialToDate(serial)
+    if (fecha !== null) return fecha
+  }
+  return null
+}
+
+async function fetchWorkbook(url: string): Promise<XLSX.WorkBook> {
+  const response = await fetchRegistered(url, {
+    headers: { "User-Agent": "Mozilla/5.0" },
+    cache: "no-store",
+    signal: AbortSignal.timeout(45_000),
+  })
+  if (!response.ok) throw new Error(`BCRA banking workbook failed: ${response.status}`)
+  return XLSX.read(Buffer.from(await response.arrayBuffer()), { type: "buffer" })
+}
+
+function sheetToRows(sheet: XLSX.WorkSheet): BankingSheetRow[] {
+  return XLSX.utils.sheet_to_json<BankingSheetRow>(sheet, { header: 1, defval: null, raw: true }) as BankingSheetRow[]
+}
+
+type FreshestWorkbook = { workbook: XLSX.WorkBook; lang: WorkbookLang; ultimaFecha: string | null }
+
+/**
+ * Baja el anexo en los dos idiomas y devuelve el que tenga el dato más
+ * reciente (según la hoja de balance, que se publica con la misma cadencia
+ * que las de cartera). Si uno de los dos falla la descarga, sigue con el
+ * que sí respondió en vez de fallar entero — y si los dos responden pero
+ * ninguno trae fecha reconocible, igual devuelve el primero que respondió
+ * para que el error real salga más abajo, al parsear.
+ */
+async function fetchFreshestBankingWorkbook(): Promise<FreshestWorkbook> {
+  const entries = Object.entries(BANKING_WORKBOOK_URLS) as [WorkbookLang, string][]
+  const results = await Promise.allSettled(
+    entries.map(async ([lang, url]): Promise<FreshestWorkbook> => {
+      const workbook = await fetchWorkbook(url)
+      const sheet = workbook.Sheets[SHEET_NAMES.balance[lang]]
+      const ultimaFecha = sheet ? lastDateInRow(sheetToRows(sheet)[3]) : null
+      return { workbook, lang, ultimaFecha }
+    }),
+  )
+
+  const fulfilled = results
+    .filter((result): result is PromiseFulfilledResult<FreshestWorkbook> => result.status === "fulfilled")
+    .map((result) => result.value)
+
+  if (fulfilled.length === 0) {
+    const reasons = results
+      .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+      .map((result) => String(result.reason))
+      .join(" · ")
+    throw new Error(`BCRA banking workbook failed: ni la versión en español ni la en inglés respondieron (${reasons})`)
+  }
+
+  return fulfilled.reduce((best, current) => {
+    if (best.ultimaFecha === null) return current
+    if (current.ultimaFecha === null) return best
+    return current.ultimaFecha > best.ultimaFecha ? current : best
+  })
 }
 
 function assertISODate(value: string): void {
@@ -231,24 +319,14 @@ export function parseCarteraRows(
 
 export async function fetchCarteraQuality(desde: string, hasta: string) {
   parseBankingDateRange(desde, hasta)
-  const response = await fetchRegistered(BANKING_WORKBOOK_URL, {
-    headers: { "User-Agent": "Mozilla/5.0" },
-    cache: "no-store",
-    signal: AbortSignal.timeout(45_000),
-  })
-  if (!response.ok) throw new Error(`BCRA banking workbook failed: ${response.status}`)
-
-  const workbook = XLSX.read(Buffer.from(await response.arrayBuffer()), { type: "buffer" })
-  const sheetEntidad = workbook.Sheets["Calidad de Cartera"]
-  const sheetDeudor = workbook.Sheets["Calidad de Cartera (por líneas)"]
+  const { workbook, lang } = await fetchFreshestBankingWorkbook()
+  const sheetEntidad = workbook.Sheets[SHEET_NAMES.carteraEntidad[lang]]
+  const sheetDeudor = workbook.Sheets[SHEET_NAMES.carteraDeudor[lang]]
   if (!sheetEntidad || !sheetDeudor) {
     throw new Error("BCRA banking workbook is missing the Calidad de Cartera sheets")
   }
 
-  const toRows = (sheet: XLSX.WorkSheet) =>
-    XLSX.utils.sheet_to_json<BankingSheetRow>(sheet, { header: 1, defval: null, raw: true }) as BankingSheetRow[]
-
-  const { porEntidad, porDeudor } = parseCarteraRows(toRows(sheetEntidad), toRows(sheetDeudor), desde, hasta)
+  const { porEntidad, porDeudor } = parseCarteraRows(sheetToRows(sheetEntidad), sheetToRows(sheetDeudor), desde, hasta)
 
   return {
     data: {
@@ -257,29 +335,17 @@ export async function fetchCarteraQuality(desde: string, hasta: string) {
       ultima_fecha: porEntidad[0]?.serie.at(-1)?.fecha ?? null,
     },
     updated_at: new Date().toISOString(),
-    source: "BCRA — InfBanc_Anexo.xlsx · Calidad de Cartera",
+    source: `BCRA — ${BANKING_WORKBOOK_URLS[lang].split("/").at(-1)} (${lang}) · ${SHEET_NAMES.carteraEntidad[lang]}`,
   }
 }
 
 export async function fetchBankingBalance(desde: string, hasta: string) {
   parseBankingDateRange(desde, hasta)
-  const response = await fetchRegistered(BANKING_WORKBOOK_URL, {
-    headers: { "User-Agent": "Mozilla/5.0" },
-    cache: "no-store",
-    signal: AbortSignal.timeout(45_000),
-  })
-  if (!response.ok) throw new Error(`BCRA banking workbook failed: ${response.status}`)
+  const { workbook, lang } = await fetchFreshestBankingWorkbook()
+  const sheet = workbook.Sheets[SHEET_NAMES.balance[lang]]
+  if (!sheet) throw new Error("BCRA banking workbook is missing the balance sheet")
 
-  const workbook = XLSX.read(Buffer.from(await response.arrayBuffer()), { type: "buffer" })
-  const sheet = workbook.Sheets["Estado de Sit. Financiera"]
-  if (!sheet) throw new Error("BCRA banking workbook is missing Estado de Sit. Financiera")
-
-  const rows = XLSX.utils.sheet_to_json<BankingSheetRow>(sheet, {
-    header: 1,
-    defval: null,
-    raw: true,
-  }) as BankingSheetRow[]
-  const serie = parseBankingRows(rows, desde, hasta)
+  const serie = parseBankingRows(sheetToRows(sheet), desde, hasta)
 
   return {
     data: {
@@ -288,6 +354,6 @@ export async function fetchBankingBalance(desde: string, hasta: string) {
       n_periodos: serie.length,
     },
     updated_at: new Date().toISOString(),
-    source: "BCRA — InfBanc_Anexo.xlsx · Estado de Sit. Financiera",
+    source: `BCRA — ${BANKING_WORKBOOK_URLS[lang].split("/").at(-1)} (${lang}) · ${SHEET_NAMES.balance[lang]}`,
   }
 }
