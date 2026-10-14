@@ -1,0 +1,77 @@
+name: Actualizar licitaciones del Tesoro
+
+on:
+  schedule:
+    # Jueves 13:00 UTC (10:00 Argentina): las licitaciones se liquidan/publican
+    # en la semana (calendario las estima 2do y 4to miercoles). Semanal para no
+    # depender de la fecha exacta; el script es idempotente.
+    - cron: '0 13 * * 4'
+  workflow_dispatch:
+    inputs:
+      index_url:
+        description: 'URL indice de licitaciones (override opcional)'
+        required: false
+      urls:
+        description: 'Comunicados puntuales separados por coma (override opcional)'
+        required: false
+
+concurrency:
+  group: update-licitaciones-tesoro-${{ github.repository }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  licitaciones:
+    name: Licitaciones del Tesoro (Mecon)
+    if: github.repository == 'manuelfsm03/EconData_argy'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: npm ci
+        run: npm ci --include=dev --no-audit --no-fund
+
+      - name: Tests del parser
+        run: npx tsx --test tests/licitaciones-tesoro.test.ts
+
+      # Si el sitio cambio de formato o bloquea, el script sale 1 y NO escribe JSON:
+      # el job queda en rojo y se conserva el dato anterior (degradacion honesta).
+      - name: Descargar y parsear licitaciones
+        env:
+          LICITACIONES_INDEX_URL: ${{ github.event.inputs.index_url }}
+          LICITACIONES_URLS: ${{ github.event.inputs.urls }}
+        run: |
+          # Un input vacio no debe pisar el default del script
+          [ -z "$LICITACIONES_INDEX_URL" ] && unset LICITACIONES_INDEX_URL
+          npx tsx scripts/update-licitaciones-tesoro.ts
+
+      - name: Verificar JSON generado
+        run: |
+          python3 -c "
+          import json
+          d = json.load(open('public/data/licitaciones-tesoro.json'))
+          assert d['total_licitaciones'] >= 1, 'Sin licitaciones'
+          inc = sum(1 for l in d['licitaciones'] if l['incompleta'])
+          print(f'OK: {d[\"total_licitaciones\"]} licitaciones ({inc} incompletas) | {d[\"cobertura\"][\"desde\"]} -> {d[\"cobertura\"][\"hasta\"]}')
+          "
+
+      - name: Commitear si hay cambios
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/licitaciones-tesoro.json
+          if git diff --cached --quiet; then
+            echo "Sin cambios - nada que commitear"
+          else
+            git commit -m "data: licitaciones del Tesoro actualizadas ($(date +%Y-%m-%d))"
+            git push origin HEAD:main
+          fi
