@@ -197,6 +197,7 @@ BCRA_TOKEN=...    # Token BCRA para estadisticasbcra.com (no requerido en dev)
 | Pirámide poblacional | `populationpyramid.net` | No |
 | Mercados globales | Yahoo Finance chart API (httpx directo) | No |
 | Riesgo País | `estadisticasbcra.com/rp` | BCRA_TOKEN |
+| Balance cambiario por sector (mensual) | BCRA, XLS "Evolución del Mercado de Cambios y Balance Cambiario" vía `scripts/update-balance-cambiario.mjs` (GitHub Actions mensual; NO VERIFICADO contra la fuente en vivo hasta la primera corrida) | No |
 
 ---
 
