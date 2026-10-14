@@ -1,0 +1,69 @@
+name: Actualizar balance cambiario (BCRA)
+
+on:
+  schedule:
+    # Día 5 de cada mes a las 8am UTC (el BCRA publica con rezago mensual)
+    - cron: '0 8 5 * *'
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL del XLS del BCRA (opcional, pisa el default supuesto)'
+        required: false
+
+concurrency:
+  group: update-balance-cambiario-${{ github.repository }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  balance-cambiario:
+    name: Balance cambiario por sector (BCRA)
+    if: github.repository == 'manuelfsm03/EconData_argy'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: npm ci
+        run: npm ci --include=dev --no-audit --no-fund
+
+      - name: Tests del parser
+        run: npm run test:balance-cambiario
+
+      # Si la fuente falla o cambia de layout el script sale con error y NO pisa el JSON.
+      - name: Descargar XLS y generar balance-cambiario.json
+        env:
+          BALANCE_CAMBIARIO_URL: ${{ github.event.inputs.url }}
+        run: |
+          if [ -z "$BALANCE_CAMBIARIO_URL" ]; then unset BALANCE_CAMBIARIO_URL; fi
+          node scripts/update-balance-cambiario.mjs
+
+      - name: Verificar JSON generado
+        run: |
+          python3 -c "
+          import json
+          d = json.load(open('public/data/balance-cambiario.json'))
+          assert d['total_conceptos'] >= 10, f'Pocos conceptos: {d[\"total_conceptos\"]}'
+          print(f'OK: {d[\"total_conceptos\"]} conceptos | {d[\"cobertura\"][\"desde\"]} -> {d[\"cobertura\"][\"hasta\"]}')
+          "
+
+      - name: Commitear si hay cambios
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/balance-cambiario.json
+          if git diff --cached --quiet; then
+            echo "Sin cambios — nada que commitear"
+          else
+            git commit -m "data: balance cambiario actualizado ($(date +%Y-%m))"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
