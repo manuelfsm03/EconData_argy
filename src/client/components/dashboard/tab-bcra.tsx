@@ -67,6 +67,7 @@ const BCRA_TABS = [
   { key: "compras",   label: "Compras BCRA",   icon: "⇄" },
   { key: "rem",       label: "REM",            icon: "◎" },
   { key: "bancos",    label: "Bal. Bancos",    icon: "▦" },
+  { key: "morosidad", label: "Morosidad",      icon: "⚠" },
 ]
 
 interface SubTabsProps {
@@ -1277,6 +1278,132 @@ function BankingCompositionChart({
   )
 }
 
+// ── Morosidad / Calidad de Cartera ───────────────────────────────────────────
+// Dos hojas más del mismo workbook que ya se descarga para BancosView
+// (InfBanc_Anexo.xlsx) — nadie las leía. Es el dato que 1816 cita 4+ veces
+// como "irregularidad del crédito" y que no existe en la API de Monetarias.
+
+type CarteraPeriod = { fecha: string; valor: number | null }
+type CarteraSerie = { segmento: string; label: string; serie: CarteraPeriod[] }
+type MorosidadData = { por_entidad: CarteraSerie[]; por_deudor: CarteraSerie[]; ultima_fecha: string | null }
+
+const CARTERA_DEUDOR_LINES = [
+  { key: "familias", name: "Familias", color: "var(--negative)" },
+  { key: "empresas", name: "Empresas", color: "var(--sky)" },
+  { key: "sector_privado_total", name: "Sector privado total", color: "var(--amber)", dashed: true },
+] as const
+
+function mergeCarteraSeries(series: CarteraSerie[]): { date: string; [key: string]: string | number | null }[] {
+  const porFecha = new Map<string, { date: string; [key: string]: string | number | null }>()
+  for (const { segmento, serie } of series) {
+    for (const { fecha, valor } of serie) {
+      const row = porFecha.get(fecha) ?? { date: fecha }
+      row[segmento] = valor
+      porFecha.set(fecha, row)
+    }
+  }
+  return [...porFecha.values()].sort((a, b) => a.date.localeCompare(b.date))
+}
+
+export function MorosidadView() {
+  const [data, setData] = useState<MorosidadData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const hastaDate = new Date()
+    const desdeDate = new Date(hastaDate)
+    desdeDate.setUTCFullYear(desdeDate.getUTCFullYear() - 6)
+    const desde = desdeDate.toISOString().slice(0, 10)
+    const hasta = hastaDate.toISOString().slice(0, 10)
+
+    fetch(`/api/bcra-data?endpoint=morosidad&desde=${desde}&hasta=${hasta}`, { cache: "no-store" })
+      .then(async response => {
+        const json = await response.json()
+        if (!response.ok) throw new Error(json.error ?? "No se pudo cargar la calidad de cartera")
+        setData(json.data)
+      })
+      .catch(fetchError => setError(fetchError instanceof Error ? fetchError.message : "No se pudo cargar la calidad de cartera"))
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>Cargando calidad de cartera...</div>
+
+  if (error || !data) return (
+    <div>
+      <SectionMeta title="Morosidad — Calidad de Cartera" help="Cartera irregular como % de las financiaciones totales, por tipo de deudor y de entidad." source="BCRA · InfBanc_Anexo.xlsx" />
+      <div style={{ margin: 12, color: "var(--negative)", fontSize: 10, fontFamily: "var(--font-data)" }}>
+        {error ?? "Sin datos disponibles"}
+      </div>
+    </div>
+  )
+
+  const porDeudor = data.por_deudor
+  const porEntidad = data.por_entidad.filter(s => s.segmento === "bancos_privados" || s.segmento === "bancos_publicos")
+  const chartDeudor = mergeCarteraSeries(porDeudor)
+  const chartEntidad = mergeCarteraSeries(porEntidad)
+
+  const ultimoDe = (segmento: string) => porDeudor.find(s => s.segmento === segmento)?.serie.at(-1)
+  const familias = ultimoDe("familias")
+  const empresas = ultimoDe("empresas")
+  const privadoTotal = ultimoDe("sector_privado_total")
+
+  return (
+    <div>
+      <SectionMeta
+        title="Morosidad — Calidad de Cartera"
+        help="Cartera irregular (mora) como % de las financiaciones totales. No está en la API de Monetarias del BCRA — sale de dos hojas del mismo anexo que ya se descarga para Balance de Bancos (Calidad de Cartera y Calidad de Cartera por líneas)."
+        source="BCRA · InfBanc_Anexo.xlsx"
+      />
+      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
+        <KPI label="Familias" value={familias?.valor != null ? `${fmtNum(familias.valor, 1)}%` : null} unit={`Cartera irregular · ${familias?.fecha ?? ""}`} valueColor="var(--negative)" />
+        <KPI label="Empresas" value={empresas?.valor != null ? `${fmtNum(empresas.valor, 1)}%` : null} unit={`Cartera irregular · ${empresas?.fecha ?? ""}`} valueColor="var(--sky)" />
+        <KPI label="Sector privado total" value={privadoTotal?.valor != null ? `${fmtNum(privadoTotal.valor, 1)}%` : null} unit={`Cartera irregular · ${privadoTotal?.fecha ?? ""}`} valueColor="var(--amber)" />
+      </div>
+
+      {chartDeudor.length > 0 && (
+        <div style={{ padding: "8px 12px 4px" }}>
+          <BBGLineChart
+            title="CARTERA IRREGULAR POR TIPO DE DEUDOR — % DE LAS FINANCIACIONES"
+            data={chartDeudor}
+            lines={[...CARTERA_DEUDOR_LINES]}
+            height={220}
+            yAxisLabel="%"
+            showZeroLine={false}
+            defaultRange="all"
+            enableDateRange={true}
+            enableLineToggle={true}
+            formatValue={(v) => `${v.toFixed(1)}%`}
+          />
+        </div>
+      )}
+
+      {chartEntidad.length > 0 && (
+        <div style={{ padding: "4px 12px 8px" }}>
+          <BBGLineChart
+            title="CARTERA IRREGULAR POR TIPO DE ENTIDAD — % DE LAS FINANCIACIONES"
+            data={chartEntidad}
+            lines={[
+              { key: "bancos_privados", name: "Bancos privados", color: "var(--sky)" },
+              { key: "bancos_publicos", name: "Bancos públicos", color: "var(--amber)" },
+            ]}
+            height={180}
+            yAxisLabel="%"
+            showZeroLine={false}
+            defaultRange="all"
+            enableDateRange={true}
+            formatValue={(v) => `${v.toFixed(1)}%`}
+          />
+        </div>
+      )}
+
+      <div style={{ padding: "6px 12px 10px", color: "var(--text-mute)", fontSize: 8, fontFamily: "var(--font-data)" }}>
+        BCRA · Informe sobre Bancos · Calidad de Cartera Crediticia · {porDeudor[0]?.serie.length ?? 0} períodos consultados con cache no-store.
+      </div>
+    </div>
+  )
+}
+
 export function BancosView() {
   const [serie, setSerie] = useState<BankingPeriod[]>([])
   const [loading, setLoading] = useState(true)
@@ -1370,6 +1497,7 @@ export function TabBCRA({ initialSubtab }: { initialSubtab?: string | null }) {
       {activeTab === "compras"   && <ComprasView   />}
       {activeTab === "rem"       && <REMView       />}
       {activeTab === "bancos"    && <BancosView    />}
+      {activeTab === "morosidad" && <MorosidadView />}
     </div>
   )
 }

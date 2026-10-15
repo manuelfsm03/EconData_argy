@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server"
 import { fetchMultipleSeries, mergeSeriesByDate, getPeriodDates } from "@/server/sources/bcra-api"
-import { fetchBankingBalance, parseBankingDateRange } from "@/server/sources/bcra-banking"
+import { fetchBankingBalance, fetchCarteraQuality, parseBankingDateRange } from "@/server/sources/bcra-banking"
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const endpoint = searchParams.get("endpoint")
-  if (endpoint !== "bancos") {
+  if (endpoint !== "bancos" && endpoint !== "morosidad") {
     return NextResponse.json({ error: `Unknown endpoint: ${endpoint ?? ""}` }, { status: 400 })
   }
 
@@ -17,7 +17,9 @@ export async function GET(req: Request) {
 
   try {
     parseBankingDateRange(desde, hasta)
-    const data = await fetchBankingBalance(desde, hasta)
+    const data = endpoint === "morosidad"
+      ? await fetchCarteraQuality(desde, hasta)
+      : await fetchBankingBalance(desde, hasta)
     return NextResponse.json(data, { headers: { "Cache-Control": "no-store" } })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to fetch banking data"
