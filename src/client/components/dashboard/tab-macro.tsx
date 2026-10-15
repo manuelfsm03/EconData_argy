@@ -16,6 +16,7 @@ import { useState, useEffect, useRef } from "react"
 import { ProvinciasRanking } from "./provincias-ranking"
 import { AgroProduccion } from "./agro-produccion"
 import { FiscalSankeyView } from "./fiscal-sankey"
+import { REMView } from "./tab-bcra"
 import { BBGAreaChart } from "../charts/bbg-area-chart"
 import { BBGLineChart } from "../charts/bbg-line-chart"
 import { DownloadCSV } from "../ui/download-csv"
@@ -1394,6 +1395,128 @@ export function EmaeView() {
         </>
       )}
       </>)}
+    </div>
+  )
+}
+
+// ── Mercado Laboral (EPH) — extraído de EmaeView para el pilar Empleo y Sociedad ──
+
+export function MercadoLaboralView() {
+  const [laboralData, setLaboralData] = useState<LaboralData | null>(null)
+  const [laboralLoading, setLaboralLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/macro?endpoint=laboral")
+      .then((r) => r.json())
+      .then((j) => { setLaboralData(j.data); setLaboralLoading(false) })
+      .catch(() => setLaboralLoading(false))
+  }, [])
+
+  const desempleo    = laboralData?.tasa_desempleo?.[0]
+  const actividad    = laboralData?.tasa_actividad?.[0]
+  const empleo       = laboralData?.tasa_empleo?.[0]
+  const subocupacion = laboralData?.tasa_subocupacion?.[0]
+  const periodoLaboral = desempleo?.[0] ?? null
+
+  return (
+    <div>
+      <SectionHeader
+        title="Mercado Laboral — EPH"
+        source={`INDEC · EPH Continua${periodoLaboral ? ` · ${periodoLaboral}` : ""}`}
+      />
+      {laboralLoading ? (
+        <div style={{ padding: 12, color: "var(--text-dim)", fontSize: 11 }}>Cargando datos EPH...</div>
+      ) : (
+        <>
+          <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
+            <KPI
+              label="Tasa de Desocupación"
+              value={desempleo ? fmtNum(desempleo[1]) : null}
+              unit="% de la PEA · 31 aglomerados"
+              valueColor={desempleo ? (desempleo[1] > 10 ? "var(--negative)" : desempleo[1] > 7 ? "var(--amber)" : "var(--positive)") : "var(--text-mute)"}
+            />
+            <KPI
+              label="Tasa de Actividad (PEA)"
+              value={actividad ? fmtNum(actividad[1]) : null}
+              unit="% de la pob. total · 14 años y más"
+              valueColor="var(--sky)"
+            />
+            <KPI
+              label="Tasa de Empleo"
+              value={empleo ? fmtNum(empleo[1]) : null}
+              unit="% de la pob. total · ocupados"
+              valueColor="var(--positive)"
+            />
+            <KPI
+              label="Tasa de Subocupación"
+              value={subocupacion ? fmtNum(subocupacion[1]) : null}
+              unit="% de la PEA · menos de 35hs/sem"
+              valueColor="var(--yellow)"
+            />
+          </div>
+          {(laboralData?.tasa_desempleo?.length ?? 0) > 0 && (
+            <MiniTable
+              title="Desempleo — Últimos 12 trimestres"
+              rows={(laboralData?.tasa_desempleo ?? []).slice(0, 12).map(([d, v]) => ({
+                label: d,
+                value: `${fmtNum(v)}%`,
+                color: v > 10 ? "var(--negative)" : v > 7 ? "var(--amber)" : "var(--positive)",
+              }))}
+            />
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+// ── IPC por división — 12 divisiones oficiales INDEC ──────────────────────────
+
+type IpcDivisionRow = {
+  key: string
+  nombre: string
+  data_date: string | null
+  nivel: number | null
+  var_mensual: number | null
+  var_interanual: number | null
+}
+
+export function IpcDivisionesView() {
+  const [divisiones, setDivisiones] = useState<IpcDivisionRow[] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [dataDate, setDataDate] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch("/api/macro?endpoint=ipc_divisiones")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.status !== "ok") { setError(true); setLoading(false); return }
+        setDivisiones(j.divisiones ?? [])
+        setDataDate(j.data_date ?? null)
+        setLoading(false)
+      })
+      .catch(() => { setError(true); setLoading(false) })
+  }, [])
+
+  if (loading) return <div style={{ padding: 12, color: "var(--text-dim)", fontSize: 11 }}>Cargando divisiones IPC...</div>
+  if (error || !divisiones) {
+    return <div style={{ padding: 12, color: "var(--text-mute)", fontSize: 11 }}>Fuente de divisiones IPC no disponible por el momento.</div>
+  }
+
+  const ordenadas = [...divisiones].sort((a, b) => (b.var_mensual ?? -Infinity) - (a.var_mensual ?? -Infinity))
+
+  return (
+    <div>
+      <SectionHeader title="IPC por división (12 divisiones INDEC)" source={`apis.datos.gob.ar${dataDate ? ` · ${dataDate}` : ""}`} />
+      <MiniTable
+        title="Variación mensual por división, de mayor a menor"
+        rows={ordenadas.map((d) => ({
+          label: d.nombre,
+          value: d.var_mensual !== null ? `${fmtNum(d.var_mensual)}%` : "s/d",
+          color: d.var_mensual === null ? "var(--text-mute)" : d.var_mensual > 3 ? "var(--negative)" : d.var_mensual > 1.5 ? "var(--amber)" : "var(--positive)",
+        }))}
+      />
     </div>
   )
 }
@@ -4482,47 +4605,204 @@ function AgroView() {
   )
 }
 
+// ── Pilares ────────────────────────────────────────────────────────────────────
+//
+// Reorganización del tab Macro: en vez de 11 sub-tabs sueltos, 5 pilares
+// económicos (Actividad, Precios, Sector externo, Sector público, Empleo y
+// sociedad). Adentro de cada pilar, una fila de bullets por tema — se elige
+// uno y se ve sólo ese, nada de scroll largo con todo apilado. El contenido
+// es el mismo que ya existía (EMAE, IPC, Balanza, Deuda, FX, Desigualdad,
+// Pirámides, Riesgo País, REM) — esto es reorganización de navegación, no
+// datos nuevos. Las dos excepciones reales son IpcDivisionesView (el backend
+// ya tenía el endpoint `ipc_divisiones`, pero ningún componente lo consumía)
+// y MercadoLaboralView (extraído de EmaeView para que Empleo y Sociedad
+// tenga su propio bullet de mercado laboral en vez de vivir escondido
+// adentro de EMAE).
+
+function BulletNav({ items, active, onChange }: { items: { key: string; label: string }[]; active: string; onChange: (k: string) => void }) {
+  return (
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: 14 }}>
+      {items.map((it) => (
+        <button
+          key={it.key}
+          onClick={() => onChange(it.key)}
+          style={{
+            fontSize: 11, fontWeight: active === it.key ? 700 : 500,
+            padding: "7px 16px", borderRadius: 18, cursor: "pointer",
+            border: active === it.key ? "1px solid var(--amber)" : "1px solid var(--bg-elev-3)",
+            background: active === it.key ? "var(--amber)" : "var(--bg-elev-1)",
+            color: active === it.key ? "var(--bg)" : "var(--text)",
+          }}
+        >{it.label}</button>
+      ))}
+    </div>
+  )
+}
+
+function ConectaConFooter({ hacia, onNavegar }: { hacia: { key: string; label: string }[]; onNavegar: (key: string) => void }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", padding: 14, marginTop: 10, borderTop: "1px solid var(--bg-elev-2)" }}>
+      <span style={{ fontSize: 10, color: "var(--text-dim)" }}>Se conecta con:</span>
+      {hacia.map((p) => (
+        <button
+          key={p.key}
+          onClick={() => onNavegar(p.key)}
+          style={{
+            fontSize: 10, padding: "2px 8px", borderRadius: 10, cursor: "pointer",
+            border: "1px solid var(--bg-elev-3)", background: "var(--bg-elev-1)", color: "var(--sky)",
+          }}
+        >{p.label}</button>
+      ))}
+    </div>
+  )
+}
+
+function ActividadPillarView({ onNavegar }: { onNavegar: (key: string) => void }) {
+  const [sub, setSub] = useState("emae")
+  const items = [
+    { key: "emae",        label: "EMAE" },
+    { key: "agro",        label: "Agro" },
+    { key: "provincias",  label: "Provincias" },
+  ]
+  return (
+    <div>
+      <BulletNav items={items} active={sub} onChange={setSub} />
+      {sub === "emae" && <EmaeView />}
+      {sub === "agro" && <AgroView />}
+      {sub === "provincias" && (
+        <div style={{ padding: "4px 14px 16px" }}>
+          <ProvinciasRanking />
+        </div>
+      )}
+      <ConectaConFooter
+        hacia={[{ key: "empleo", label: "Empleo y sociedad" }, { key: "publico", label: "Sector público" }]}
+        onNavegar={onNavegar}
+      />
+    </div>
+  )
+}
+
+function PreciosPillarView({ onNavegar }: { onNavegar: (key: string) => void }) {
+  const [sub, setSub] = useState("ipc")
+  const items = [
+    { key: "ipc",        label: "Inflación (IPC)" },
+    { key: "divisiones", label: "División sectorial" },
+    { key: "rem",        label: "Proyecciones (REM)" },
+  ]
+  return (
+    <div>
+      <BulletNav items={items} active={sub} onChange={setSub} />
+      {sub === "ipc" && <IpcView />}
+      {sub === "divisiones" && <IpcDivisionesView />}
+      {sub === "rem" && <REMView />}
+      <ConectaConFooter
+        hacia={[{ key: "externo", label: "Tipo de cambio" }]}
+        onNavegar={onNavegar}
+      />
+    </div>
+  )
+}
+
+function SectorExternoPillarView({ onNavegar }: { onNavegar: (key: string) => void }) {
+  const [sub, setSub] = useState("balanza")
+  const items = [
+    { key: "balanza", label: "Balanza comercial" },
+    { key: "tc",      label: "Tipo de cambio" },
+  ]
+  return (
+    <div>
+      <BulletNav items={items} active={sub} onChange={setSub} />
+      {sub === "balanza" && <BalanzaView />}
+      {sub === "tc" && <FXView />}
+      <ConectaConFooter
+        hacia={[{ key: "precios", label: "Precios" }, { key: "actividad", label: "Agro" }]}
+        onNavegar={onNavegar}
+      />
+    </div>
+  )
+}
+
+function SectorPublicoPillarView({ onNavegar }: { onNavegar: (key: string) => void }) {
+  const [sub, setSub] = useState("fiscal")
+  const items = [
+    { key: "fiscal", label: "Resultado fiscal" },
+    { key: "riesgo", label: "Riesgo país" },
+    { key: "deuda",  label: "Deuda pública" },
+  ]
+  return (
+    <div>
+      <BulletNav items={items} active={sub} onChange={setSub} />
+      {sub === "fiscal" && <FiscalSankeyView />}
+      {sub === "riesgo" && <RiesgoPaisView />}
+      {sub === "deuda" && <DeudaView />}
+      <ConectaConFooter
+        hacia={[{ key: "actividad", label: "Actividad" }]}
+        onNavegar={onNavegar}
+      />
+    </div>
+  )
+}
+
+function EmpleoSociedadPillarView({ onNavegar }: { onNavegar: (key: string) => void }) {
+  const [sub, setSub] = useState("laboral")
+  const items = [
+    { key: "laboral",      label: "Mercado laboral" },
+    { key: "desigualdad",  label: "Desigualdad" },
+    { key: "demografia",   label: "Demografía" },
+  ]
+  return (
+    <div>
+      <BulletNav items={items} active={sub} onChange={setSub} />
+      {sub === "laboral" && <MercadoLaboralView />}
+      {sub === "desigualdad" && <DesigualdadView />}
+      {sub === "demografia" && <PiramidesView />}
+      <ConectaConFooter
+        hacia={[{ key: "actividad", label: "Actividad" }, { key: "precios", label: "Precios" }]}
+        onNavegar={onNavegar}
+      />
+    </div>
+  )
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 const MACRO_TABS = [
-  { key: "emae",        label: "EMAE"             },
-  { key: "ipc",         label: "IPC"              },
-  { key: "balanza",     label: "Balanza Comercial" },
-  { key: "agro",        label: "Agro"             },
-  { key: "provincias",  label: "Provincias"       },
-  { key: "desigualdad", label: "Desigualdad"      },
-  { key: "piramides",   label: "Pirámides"        },
-  { key: "fx",          label: "FX"               },
-  { key: "riesgo",      label: "Riesgo País"      },
-  { key: "deuda",       label: "Deuda Pública"    },
-  { key: "fiscal",      label: "Fiscal"           },
+  { key: "actividad", label: "Actividad"          },
+  { key: "precios",   label: "Precios"            },
+  { key: "externo",   label: "Sector externo"     },
+  { key: "publico",   label: "Sector público"     },
+  { key: "empleo",    label: "Empleo y sociedad"  },
 ]
 
+// Alias de las claves viejas (de cuando había 11 sub-tabs sueltos) a los 5
+// pilares nuevos, para que los links guardados en card-catalog.ts y cualquier
+// bookmark viejo sigan aterrizando en algún lado en vez de romperse en blanco.
+const SUBTAB_ALIAS: Record<string, string> = {
+  emae: "actividad", agro: "actividad", provincias: "actividad",
+  ipc: "precios",
+  balanza: "externo", fx: "externo",
+  riesgo: "publico", deuda: "publico", fiscal: "publico",
+  desigualdad: "empleo", piramides: "empleo",
+}
+
 export function TabMacro({ initialSubtab }: { initialSubtab?: string | null }) {
-  const [activeTab, setActiveTab] = useState(initialSubtab ?? "emae")
+  const [activeTab, setActiveTab] = useState(() => {
+    const inicial = initialSubtab ?? "actividad"
+    return SUBTAB_ALIAS[inicial] ?? inicial
+  })
 
   useEffect(() => {
-    if (initialSubtab) setActiveTab(initialSubtab)
+    if (initialSubtab) setActiveTab(SUBTAB_ALIAS[initialSubtab] ?? initialSubtab)
   }, [initialSubtab])
 
   return (
     <div>
       <SubTabs tabs={MACRO_TABS} active={activeTab} onChange={setActiveTab} />
-      {activeTab === "emae"        && <EmaeView />}
-      {activeTab === "ipc"         && <IpcView />}
-      {activeTab === "balanza"     && <BalanzaView />}
-      {activeTab === "agro"        && <AgroView />}
-      {activeTab === "provincias"  && (
-        <div style={{ padding: "16px 14px" }}>
-          <ProvinciasRanking />
-        </div>
-      )}
-      {activeTab === "desigualdad" && <DesigualdadView />}
-      {activeTab === "piramides"   && <PiramidesView />}
-      {activeTab === "fx"          && <FXView />}
-      {activeTab === "riesgo"      && <RiesgoPaisView />}
-      {activeTab === "deuda"       && <DeudaView />}
-      {activeTab === "fiscal"      && <FiscalSankeyView />}
+      {activeTab === "actividad" && <ActividadPillarView onNavegar={setActiveTab} />}
+      {activeTab === "precios"   && <PreciosPillarView onNavegar={setActiveTab} />}
+      {activeTab === "externo"   && <SectorExternoPillarView onNavegar={setActiveTab} />}
+      {activeTab === "publico"   && <SectorPublicoPillarView onNavegar={setActiveTab} />}
+      {activeTab === "empleo"    && <EmpleoSociedadPillarView onNavegar={setActiveTab} />}
     </div>
   )
 }
