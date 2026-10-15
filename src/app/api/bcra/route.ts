@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { buildBcraPurchaseSeries, summarizeBcraPurchases } from "@/server/domain/bcra-fx-purchases"
-import { bcraOfficialApi } from "@/server/sources/bcra-official-api"
+import { BCRA_VARIABLE_MAPPING, bcraOfficialApi } from "@/server/sources/bcra-official-api"
+import { alignStockAndRate, fetchPasesStock, PASES_STOCK_CONFIG } from "@/server/sources/bcra-pases-stock"
 import { fetchReserveSeries, latestMeasuredNetReserves } from "@/server/sources/bcra-reserves"
 
 // ── Cache en memoria ──────────────────────────────────────────────────────────
@@ -199,6 +200,58 @@ async function getTasas() {
   return result
 }
 
+// ── Stock en REPO (pases) vs tasa REPO ────────────────────────────────────────
+// Tasa: API oficial BCRA variables 9 (pases activos) / 10 (pases pasivos), 1 dia.
+// Stock: Informe Monetario Diario (XLS) -- NO VERIFICADO, ver bcra-pases-stock.ts.
+// Si el stock no esta disponible responde 503 "degraded" con la tasa igualmente
+// devuelta: nunca se rellena el stock con numeros inventados.
+async function getRepo(lado: "pasivos" | "activos") {
+  const cacheKey = `bcra_repo_${lado}`
+  const cached = getCache(cacheKey)
+  if (cached) return cached
+
+  const idTasa = lado === "pasivos"
+    ? BCRA_VARIABLE_MAPPING.PASES_PASIVOS_BCRA.idVariable
+    : BCRA_VARIABLE_MAPPING.PASES_ACTIVOS_BCRA.idVariable
+  const from = dateYearsAgo(2)
+
+  const [tasa, stock] = await Promise.all([
+    fetchVar(idTasa, from),
+    fetchPasesStock(lado).catch(() => []),
+  ])
+  const stockDesde = stock.filter(p => p.fecha >= from)
+
+  const base = {
+    metadata: {
+      lado,
+      id_variable_tasa: idTasa,
+      unidad_stock: "millones de ARS (supuesto, NO VERIFICADO)",
+      unidad_tasa: "% TNA, 1 dia",
+      stock_configurado: Boolean(PASES_STOCK_CONFIG.url()),
+      atribucion: "Banco Central de la República Argentina: API estadísticas v4 (tasa) e Informe Monetario Diario (stock)",
+    },
+    updated_at: new Date().toISOString(),
+    source: "BCRA API v4.0 (tasa) + Informe Monetario Diario XLS (stock)",
+  }
+
+  if (stockDesde.length === 0) {
+    const unavailable = {
+      ...base,
+      status: "degraded" as const,
+      error: PASES_STOCK_CONFIG.url()
+        ? "No se pudo leer el saldo de pases del Informe Monetario Diario (revisar hoja y encabezado configurados)."
+        : "Falta configurar BCRA_IMD_XLS_URL: el saldo de pases se lee del Informe Monetario Diario del BCRA.",
+      data: { serie: alignStockAndRate([], tasa) },
+    }
+    setCache(cacheKey, unavailable, 300)
+    return unavailable
+  }
+
+  const result = { ...base, status: "ok" as const, data: { serie: alignStockAndRate(stockDesde, tasa) } }
+  setCache(cacheKey, result, 3600)
+  return result
+}
+
 // ── Handler principal ─────────────────────────────────────────────────────────
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
@@ -218,6 +271,10 @@ export async function GET(req: Request) {
         if ((data as { status?: string }).status === "degraded") status = 503
         break
       case "tasas":     data = await getTasas();     break
+      case "repo":
+        data = await getRepo(searchParams.get("lado") === "activos" ? "activos" : "pasivos")
+        if ((data as { status?: string }).status === "degraded") status = 503
+        break
       default:
         return NextResponse.json({ error: `Unknown endpoint: ${endpoint}` }, { status: 400 })
     }
