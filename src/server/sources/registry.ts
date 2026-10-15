@@ -77,7 +77,11 @@ export const SOURCE_REGISTRY = {
   dolar_api: source("dolar_api", { displayName: "DolarAPI", publisher: "DolarAPI", host: "dolarapi.com", dataClass: "intraday_market", healthcheckPath: "/v1/dolares", fallbackSourceIds: ["argentina_datos"] }),
   bluelytics: source("bluelytics", { displayName: "Bluelytics", publisher: "Bluelytics", host: "api.bluelytics.com.ar", dataClass: "intraday_market", healthcheckPath: "/v2/latest" }),
   bcra_official: source("bcra_official", { displayName: "BCRA API", publisher: "Banco Central de la República Argentina", host: "api.bcra.gob.ar", dataClass: "official_daily", healthcheckPath: "/estadisticas/v4.0/Monetarias" }),
-  bcra_files: source("bcra_files", { displayName: "BCRA archivos", publisher: "Banco Central de la República Argentina", host: "www.bcra.gob.ar", kind: "xlsx", dataClass: "official_monthly" }),
+  // bcra_files: archivos XLS del BCRA. Hoy lo usa el saldo de pases/REPO (Informe Monetario Diario,
+  // src/server/sources/bcra-pases-stock.ts), publicacion DIARIA -> clase official_daily (antes official_monthly,
+  // sin consumidores). Un host admite una sola fuente (validateSourceRegistry). URL real NO VERIFICADA (env BCRA_IMD_XLS_URL).
+  // Atribucion: "Banco Central de la Republica Argentina - Informe Monetario Diario".
+  bcra_files: source("bcra_files", { displayName: "BCRA archivos (Informe Monetario Diario)", publisher: "Banco Central de la República Argentina", host: "www.bcra.gob.ar", kind: "xlsx", dataClass: "official_daily" }),
   ny_fed_rates: source("ny_fed_rates", { displayName: "NY Fed EFFR API", publisher: "Federal Reserve Bank of New York", host: "markets.newyorkfed.org", timeoutMs: 10_000 }),
   fred: source("fred", { displayName: "FRED DFEDTARU observations", publisher: "Federal Reserve Bank of St. Louis", host: "api.stlouisfed.org", credentialEnv: "FRED_API_KEY", timeoutMs: 10_000 }),
   oecd_sdmx: source("oecd_sdmx", { displayName: "OECD SDMX DF_FINMARK IR3TIB01", publisher: "Organisation for Economic Co-operation and Development", host: "sdmx.oecd.org", dataClass: "official_monthly", timeoutMs: 12_000 }),

@@ -65,6 +65,7 @@ const BCRA_TABS = [
   { key: "agregados", label: "Agregados",      icon: "Σ" },
   { key: "reservas",  label: "Reservas",       icon: "⬡" },
   { key: "compras",   label: "Compras BCRA",   icon: "⇄" },
+  { key: "repo",      label: "Stock REPO",     icon: "⇆" },
   { key: "rem",       label: "REM",            icon: "◎" },
   { key: "bancos",    label: "Bal. Bancos",    icon: "▦" },
   { key: "morosidad", label: "Morosidad",      icon: "⚠" },
@@ -668,6 +669,71 @@ export function ComprasView() {
           </table>
           <div style={{ fontSize: 8, color: "var(--text-mute)", marginTop: 4 }}>
             Fuente: argentinadatos.com · MULC — Mercado Único y Libre de Cambios · Positivo = BCRA comprador
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Stock en REPO (pases) vs tasa REPO ─────────────────────────────────────────
+// Doble eje: stock (izq, millones de ARS) y tasa de pases a 1 dia (der, % TNA).
+// El saldo viene del Informe Monetario Diario del BCRA (NO VERIFICADO: requiere
+// BCRA_IMD_XLS_URL); si no esta configurado se muestra el aviso, sin inventar.
+
+type RepoRow = { fecha: string; stock: number | null; tasa: number | null }
+
+export function RepoView() {
+  const [serie, setSerie] = useState<RepoRow[]>([])
+  const [aviso, setAviso] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/bcra?endpoint=repo")
+      .then(async r => {
+        const j = await r.json()
+        setSerie(j?.data?.serie ?? [])
+        if (!r.ok || j.status === "degraded") setAviso(j.error ?? "La fuente del saldo de pases no está disponible.")
+        setLoading(false)
+      })
+      .catch(() => {
+        setAviso("No se pudo consultar el saldo de pases.")
+        setLoading(false)
+      })
+  }, [])
+
+  if (loading) return <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>Cargando stock REPO...</div>
+
+  const hayStock = serie.some(r => r.stock != null)
+
+  return (
+    <div>
+      <SectionMeta title="Stock en REPO vs tasa REPO" help="Saldo de pases pasivos del BCRA (millones de ARS, eje izquierdo) contra la tasa de pases a 1 día (% TNA, eje derecho). Saldo: Informe Monetario Diario del BCRA. Tasa: API estadísticas del BCRA, variable 10." source="BCRA · Informe Monetario Diario + API estadísticas" />
+      {aviso && (
+        <div style={{ margin: 12, padding: "12px 14px", border: "1px solid var(--warning)", color: "var(--warning)", background: "color-mix(in srgb, var(--warning) 8%, transparent)", fontFamily: "var(--font-data)", fontSize: 10, lineHeight: 1.5 }}>
+          {aviso}
+        </div>
+      )}
+      {hayStock && (
+        <div style={{ padding: "8px 12px 4px" }}>
+          <BBGLineChart
+            title="STOCK EN REPO (PASES) VS TASA REPO"
+            data={serie}
+            lines={[
+              { key: "stock", name: "Stock pases (MM ARS)", color: "var(--sky)", yAxisId: "left" },
+              { key: "tasa", name: "Tasa pases 1d (% TNA)", color: "var(--amber)", yAxisId: "right", dashed: true },
+            ]}
+            height={260}
+            yAxisLabel="MM ARS"
+            yAxisRight={{ label: "% TNA", format: v => `${v.toFixed(1)}%` }}
+            showZeroLine={false}
+            defaultRange="1y"
+            enableDateRange={true}
+            enableLineToggle={true}
+            formatValue={v => v.toLocaleString("es-AR", { maximumFractionDigits: 2 })}
+          />
+          <div style={{ fontSize: 8, color: "var(--text-mute)", padding: "2px 4px" }}>
+            Fuente: BCRA · Informe Monetario Diario (saldo) y API estadísticas v4 (tasa). Unidad del saldo no verificada.
           </div>
         </div>
       )}
@@ -1650,6 +1716,7 @@ export function TabBCRA({ initialSubtab }: { initialSubtab?: string | null }) {
       {activeTab === "agregados" && <AgregadosView />}
       {activeTab === "reservas"  && <ReservasView  />}
       {activeTab === "compras"   && <ComprasView   />}
+      {activeTab === "repo"      && <RepoView      />}
       {activeTab === "rem"       && <REMView       />}
       {activeTab === "bancos"    && <BancosView    />}
       {activeTab === "morosidad" && <MorosidadView />}

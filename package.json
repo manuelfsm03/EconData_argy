@@ -57,7 +57,7 @@
     "test:curve-fit": "tsx --test tests/curve-fit.test.ts",
     "test:release-prs": "tsx --test tests/release-prs-48-51.test.ts",
     "test:polymarket": "tsx --test tests/polymarket-parser.test.ts",
-    "test:bcra": "tsx --test tests/bcra-banking.test.ts tests/bcra-reserves.test.ts",
+    "test:bcra": "tsx --test tests/bcra-banking.test.ts tests/bcra-reserves.test.ts tests/bcra-pases-stock.test.ts",
     "scrape": "tsx -e \"import { runAllScrapers } from './src/server/scrapers'; runAllScrapers().then(console.log)\"",
     "test:lluvia-historica": "tsx --test tests/lluvia-historica.test.ts",
     "test:clima-regional": "tsx --test tests/clima-regional.test.ts",
