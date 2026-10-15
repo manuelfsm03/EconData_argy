@@ -92,6 +92,44 @@ export function ForumHub({ initialFocus = null }: { initialFocus?: TickerFocus |
   }, [reloadKey])
   useEffect(() => { if (initialFocus) { const assetType = initialFocus.kind === "accion_usa" ? "accion" : initialFocus.kind as ForumAssetType; setActiveTag(initialFocus.ticker); setThread({ assetType, tag: initialFocus.ticker }) } }, [initialFocus])
   useEffect(() => { const pause = () => { if (document.hidden && currentVideo.current) { currentVideo.current.pause(); currentVideo.current.currentTime = 0 } }; document.addEventListener("visibilitychange", pause); return () => document.removeEventListener("visibilitychange", pause) }, [])
+  useEffect(() => {
+    const host = document.querySelector<HTMLElement>(".forum-principle")
+    const video = host?.querySelector<HTMLVideoElement>(".forum-principle-video")
+    if (!host || !video) return
+    const canPlay = () => {
+      const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData
+      return !window.matchMedia("(prefers-reduced-motion: reduce), (hover: none), (pointer: coarse)").matches && !saveData
+    }
+    const stop = () => {
+      host.classList.remove("is-media-active")
+      video.pause()
+      video.currentTime = 0
+      if (currentVideo.current === video) currentVideo.current = null
+    }
+    const start = () => {
+      if (!canPlay()) return
+      if (currentVideo.current && currentVideo.current !== video) {
+        currentVideo.current.pause()
+        currentVideo.current.currentTime = 0
+      }
+      currentVideo.current = video
+      video.currentTime = 0
+      host.classList.add("is-media-active")
+      void video.play().catch(stop)
+    }
+    const focusOut = (event: FocusEvent) => { if (!host.contains(event.relatedTarget as Node | null)) stop() }
+    host.addEventListener("pointerenter", start)
+    host.addEventListener("pointerleave", stop)
+    host.addEventListener("focusin", start)
+    host.addEventListener("focusout", focusOut)
+    return () => {
+      host.removeEventListener("pointerenter", start)
+      host.removeEventListener("pointerleave", stop)
+      host.removeEventListener("focusin", start)
+      host.removeEventListener("focusout", focusOut)
+      stop()
+    }
+  }, [])
 
   const beginVideo = (video: HTMLVideoElement) => { if (currentVideo.current && currentVideo.current !== video) { currentVideo.current.pause(); currentVideo.current.currentTime = 0 } currentVideo.current = video }
   const endVideo = (video: HTMLVideoElement) => { video.pause(); video.currentTime = 0; if (currentVideo.current === video) currentVideo.current = null }
