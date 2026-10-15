@@ -13,9 +13,6 @@ concurrency:
 permissions:
   contents: write
 
-env:
-  PLAYWRIGHT_BROWSERS_PATH: /tmp/ms-playwright
-
 jobs:
   empleo-provincias:
     name: Empleo por provincia (OEDE/SIPA)
@@ -34,12 +31,7 @@ jobs:
       - name: npm ci
         run: npm ci --include=dev --no-audit --no-fund
 
-      # Playwright se instala por si el CDN bloquea las requests directas.
-      # El script lo usa como última estrategia (browser real = no hay hotlinking).
-      - name: Instalar Chromium (fallback Playwright)
-        run: npx playwright install --with-deps chromium
-
-      - name: Descargar y parsear CSV de empleo
+      - name: Descargar y parsear XLSX de empleo (OEDE)
         run: node scripts/update-empleo-provincias.mjs
 
       - name: Verificar JSON generado
@@ -75,7 +67,7 @@ jobs:
           print(f'OK bancario: {d[\"total_provincias\"]} provincias | {d[\"cobertura\"][\"desde\"]} -> {d[\"cobertura\"][\"hasta\"]}')
           "
 
-      - name: Descargar CSV de salarios por provincia y generar salarios-provincias.json
+      - name: Descargar XLSX de salarios por provincia (OEDE) y generar salarios-provincias.json
         run: node scripts/update-salarios-provincias.mjs
 
       - name: Verificar JSON salarios
@@ -87,7 +79,7 @@ jobs:
           print(f'OK salarios: {d[\"total_provincias\"]} provincias | {d[\"cobertura\"][\"desde\"]} -> {d[\"cobertura\"][\"hasta\"]}')
           "
 
-      - name: Descargar CSV de establecimientos y generar establecimientos-provincias.json
+      - name: Descargar XLSX de empresas por provincia (OEDE) y generar establecimientos-provincias.json
         run: node scripts/update-establecimientos-provincias.mjs
 
       - name: Verificar JSON establecimientos

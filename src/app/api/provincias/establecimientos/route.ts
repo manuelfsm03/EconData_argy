@@ -5,8 +5,8 @@
  * scripts/update-establecimientos-provincias.mjs (GitHub Actions, 1ro de cada mes).
  * Cero llamadas externas en runtime.
  *
- * Fuente: CEP XXI / Secretaría de Industria — distribución geográfica de establecimientos
- * Cobertura: 24 jurisdicciones, 2021-2022, establecimientos únicos por CUIT
+ * Fuente: OEDE / Ministerio de Trabajo — SIPA-AFIP
+ * Cobertura: 24 jurisdicciones, empresas activas por año (ver meta.cobertura)
  */
 
 import { NextResponse } from "next/server"
@@ -43,10 +43,10 @@ export async function GET(req: Request) {
 
     if (anio) {
       const snapshot = data.provincias.map((p: {
-        id: string; nombre: string; series: { anio: number; establecimientos: number; sucursales: number }[]
+        id: string; nombre: string; series: { anio: number; establecimientos: number }[]
       }) => {
         const entry = p.series?.find(s => s.anio === anio)
-        return { id: p.id, nombre: p.nombre, establecimientos: entry?.establecimientos ?? null, sucursales: entry?.sucursales ?? null }
+        return { id: p.id, nombre: p.nombre, establecimientos: entry?.establecimientos ?? null }
       })
       return NextResponse.json({ data: snapshot, meta: { ...meta, anio } })
     }

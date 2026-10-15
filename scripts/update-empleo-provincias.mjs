@@ -1,13 +1,16 @@
 /**
  * update-empleo-provincias.mjs
  *
- * Descarga el CSV de puestos de trabajo registrados por provincia del OEDE
- * (Ministerio de Trabajo / SIPA-AFIP) y genera public/data/empleo-provincias.json.
+ * Descarga el Excel de empleo asalariado registrado por provincia del OEDE
+ * (Ministerio de Trabajo) y genera public/data/empleo-provincias.json.
  *
- * Estrategia de descarga (en orden, falla al siguiente si no funciona):
- *   1. CKAN API de datos.produccion.gob.ar → URL real del recurso → fetch directo
- *   2. URLs candidatas con Referer correcto (fetch directo)
- *   3. Playwright headless (browser real — bypasea hotlinking, garantiza éxito)
+ * Reemplaza la fuente anterior (datos.produccion.gob.ar / CEP XXI): ese
+ * portal quedó abandonado desde la reestructuración ministerial de fines de
+ * 2023 — el CSV que servía seguía respondiendo 200 pero con contenido
+ * congelado en 2023-11 para siempre (verificado en vivo 14/10/2026: ningún
+ * dataset de ese portal tiene metadata_modified posterior a 2023). La fuente
+ * real (OEDE/SIPA-AFIP) sigue viva, sólo que ahora se publica directamente
+ * en argentina.gob.ar/trabajo — con datos hasta el trimestre en curso.
  *
  * Corre mensualmente vía GitHub Actions (.github/workflows/update-datos-provinciales.yml).
  * También manual: node scripts/update-empleo-provincias.mjs
@@ -17,27 +20,23 @@
 
 import { writeFileSync, mkdirSync } from "node:fs"
 import { join, dirname } from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
+import * as XLSX from "xlsx"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = join(__dirname, "..")
 const OUT_PATH = join(REPO_ROOT, "public", "data", "empleo-provincias.json")
 
-// CKAN resource ID del dataset de puestos privados por provincia
-const CKAN_BASE = "https://datos.produccion.gob.ar"
-const CKAN_RESOURCE_ID = "8bb3b5ef-f6f1-476e-b28f-f02e0f65e33e"
-
-// URLs candidatas directas (fallback si CKAN falla)
-const URLS_DIRECTAS = [
-  "https://cdn.produccion.gob.ar/cdn-cep/datos-por-provincia/por-provincia/puestos/puestos_priv.csv",
-  "https://datos.produccion.gob.ar/dataset/4a2e72bf-7376-43c8-bead-31bb1f7b6703/resource/8bb3b5ef-f6f1-476e-b28f-f02e0f65e33e/download/puestos_priv.csv",
-]
+// Página del OEDE con todas las series provinciales — si el BCRA/Ministerio
+// cambia el nombre del archivo, hay que volver a buscar el link ahí
+// (https://www.argentina.gob.ar/trabajo/estadisticas/oede-estadisticas-provinciales).
+const XLS_URL =
+  process.env.EMPLEO_PROVINCIAS_URL ??
+  "https://www.argentina.gob.ar/sites/default/files/provinciales_serie_empleo_trimestral_2dig_7.xlsx"
 
 const BROWSER_HEADERS = {
   "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-  "Referer": "https://datos.produccion.gob.ar/",
-  "Accept": "text/csv,text/plain,*/*",
-  "Accept-Language": "es-AR,es;q=0.9",
+  Referer: "https://www.argentina.gob.ar/trabajo/estadisticas/oede-estadisticas-provinciales",
 }
 
 // IDs oficiales de provincias argentinas (INDEC)
@@ -50,262 +49,170 @@ const PROVINCIAS_INDEC = {
   "82": "Santa Fe", "86": "Santiago del Estero", "90": "Tucumán", "94": "Tierra del Fuego",
 }
 
-// ── Estrategia 1: CKAN API ────────────────────────────────────────────────────
-
-async function intentarCKAN() {
-  console.log("[1] Intentando CKAN API...")
-  const url = `${CKAN_BASE}/api/3/action/resource_show?id=${CKAN_RESOURCE_ID}`
-  const res = await fetch(url, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(15_000) })
-  if (!res.ok) throw new Error(`CKAN resource_show: HTTP ${res.status}`)
-
-  const json = await res.json()
-  if (!json.success || !json.result?.url) throw new Error("CKAN: sin URL en la respuesta")
-
-  const csvUrl = json.result.url
-  console.log(`  → URL obtenida: ${csvUrl}`)
-
-  const csvRes = await fetch(csvUrl, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(60_000), redirect: "follow" })
-  if (!csvRes.ok) throw new Error(`CSV desde CKAN: HTTP ${csvRes.status}`)
-
-  const texto = await csvRes.text()
-  if (texto.length < 1000 || !texto.includes(",")) throw new Error(`CSV inválido (${texto.length} bytes)`)
-
-  console.log(`  → OK (${(texto.length / 1024).toFixed(0)} KB)`)
-  return texto
+// Nombre de la hoja → ID de provincia. "Partidos de GBA" + "Resto de Buenos
+// Aires" son las dos mitades de la provincia de Buenos Aires en este
+// workbook — se suman para reconstruir el total provincial, igual que
+// reportaba la fuente anterior.
+export const HOJA_A_PROVINCIA = {
+  "CABA": "02",
+  "Partidos de GBA": "06",
+  "Resto de Buenos Aires": "06",
+  "Catamarca": "10",
+  "Cordoba": "14",
+  "Corrientes": "18",
+  "Chaco": "22",
+  "Chubut": "26",
+  "Entre Rios": "30",
+  "Formosa": "34",
+  "Jujuy": "38",
+  "La Pampa": "42",
+  "La Rioja": "46",
+  "Mendoza": "50",
+  "Misiones": "54",
+  "Neuquen": "58",
+  "Rio Negro": "62",
+  "Salta": "66",
+  "San Juan": "70",
+  "San Luis": "74",
+  "Santa Cruz": "78",
+  "Santa Fe": "82",
+  "Santiago del Estero": "86",
+  "Tucuman": "90",
+  "Tierra del Fuego": "94",
 }
 
-// ── Estrategia 2: URLs directas con headers de browser ───────────────────────
+export const HEADER_ROW = 3 // fila con las etiquetas de trimestre ("1° Trim 1996", ...)
+export const QUARTER_RE = /^\s*([1-4])\s*°?\s*Trim\s*(\d{4})\s*$/i
 
-async function intentarDirecto() {
-  console.log("[2] Intentando URLs directas...")
-  for (const url of URLS_DIRECTAS) {
-    console.log(`  → ${url}`)
-    try {
-      const res = await fetch(url, { headers: BROWSER_HEADERS, redirect: "follow", signal: AbortSignal.timeout(60_000) })
-      if (!res.ok) { console.warn(`     ${res.status} ${res.statusText}`); continue }
-      const texto = await res.text()
-      if (texto.length < 1000 || !texto.includes(",")) { console.warn(`     Respuesta inválida (${texto.length} bytes)`); continue }
-      console.log(`     OK (${(texto.length / 1024).toFixed(0)} KB)`)
-      return texto
-    } catch (err) {
-      console.warn(`     Error: ${err.message}`)
-    }
+async function descargarWorkbook() {
+  console.log(`Descargando ${XLS_URL}`)
+  const res = await fetch(XLS_URL, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(60_000), redirect: "follow" })
+  if (!res.ok) throw new Error(`Descarga del Excel: HTTP ${res.status}`)
+  const buffer = Buffer.from(await res.arrayBuffer())
+  if (buffer.length < 10_000) throw new Error(`Respuesta demasiado chica (${buffer.length} bytes) — ¿cambió la URL?`)
+  // Parsear sólo las hojas de provincia (no todo el workbook) — en los
+  // archivos hermanos de este mismo portal (salarios, establecimientos) el
+  // workbook completo hace OOM en xlsx por el resto de hojas sin usar.
+  return XLSX.read(buffer, { type: "buffer", sheets: Object.keys(HOJA_A_PROVINCIA) })
+}
+
+/** Última columna con una etiqueta de trimestre real (las de más a la derecha vienen vacías por formato). */
+export function ultimaColumnaConDato(headerRow) {
+  let last = -1
+  for (let col = 0; col < headerRow.length; col += 1) {
+    if (typeof headerRow[col] === "string" && QUARTER_RE.test(headerRow[col])) last = col
   }
-  throw new Error("Todas las URLs directas fallaron")
+  return last
 }
 
-// ── Estrategia 3: Playwright headless (browser real) ─────────────────────────
-
-async function intentarPlaywright() {
-  console.log("[3] Usando Playwright headless (browser real)...")
-  const { chromium } = await import("playwright")
-
-  const browser = await chromium.launch({ headless: true })
-  const context = await browser.newContext({
-    userAgent: BROWSER_HEADERS["User-Agent"],
-    locale: "es-AR",
-    acceptDownloads: true,
-  })
-  const page = await context.newPage()
-
-  let csvTexto = null
-
-  // Interceptar la respuesta del CSV
-  page.on("response", async (response) => {
-    const url = response.url()
-    if (url.includes("puestos_priv") || url.includes(".csv")) {
-      try {
-        const body = await response.body()
-        const texto = body.toString("utf8")
-        if (texto.length > 1000 && texto.includes(",")) {
-          csvTexto = texto
-          console.log(`  → CSV interceptado desde: ${url} (${(texto.length / 1024).toFixed(0)} KB)`)
-        }
-      } catch { /* puede fallar en responses binarias — ignorar */ }
-    }
-  })
-
-  try {
-    // Navegar al portal del dataset
-    await page.goto(`${CKAN_BASE}/dataset/4a2e72bf-7376-43c8-bead-31bb1f7b6703`, { waitUntil: "networkidle", timeout: 30_000 })
-
-    // Buscar y clickear el botón de descarga del CSV de puestos privados
-    const descargaPromise = page.waitForEvent("download", { timeout: 30_000 }).catch(() => null)
-    const linkCSV = page.locator("a[href*='puestos_priv']").first()
-    const count = await linkCSV.count()
-
-    if (count > 0) {
-      await linkCSV.click()
-      const download = await descargaPromise
-      if (download) {
-        const path = await download.path()
-        const { readFileSync } = await import("node:fs")
-        const texto = readFileSync(path, "utf8")
-        if (texto.length > 1000) csvTexto = texto
-      }
-    }
-
-    // Si no encontró el link, intentar navegar directo a la URL del CSV
-    if (!csvTexto) {
-      await page.goto(URLS_DIRECTAS[0], { waitUntil: "networkidle", timeout: 30_000 })
-      // La respuesta fue interceptada por el listener de arriba
-      await page.waitForTimeout(2000)
-    }
-  } finally {
-    await browser.close()
+export function filaTotal(rows) {
+  for (let i = 0; i < rows.length; i += 1) {
+    if (String(rows[i]?.[1] ?? "").trim().toUpperCase() === "TOTAL") return i
   }
-
-  if (!csvTexto) throw new Error("Playwright: no se pudo obtener el CSV")
-  console.log("  → OK vía Playwright")
-  return csvTexto
+  return -1
 }
 
-// ── Mapeo nombre → ID INDEC (el CSV usa nombres en mayúsculas, sin tildes) ───
+// Algunas hojas de este portal declaran un rango roto que llega a la última
+// fila posible de Excel (probablemente por un formato de celda aplicado a la
+// columna entera) — sheet_to_json con defval:null materializa cada celda de
+// ese rango, lo que vuelve una hoja de ~90 filas reales en cientos de
+// millones de celdas y cuelga el proceso por OOM (visto en vivo en el
+// archivo hermano de salarios — ver update-salarios-provincias.mjs). Se
+// acota la lectura a las primeras MAX_FILAS, bien por encima de donde
+// aparecen el header y la fila TOTAL en cualquier hoja real.
+const MAX_FILAS = 400
 
-const NOMBRE_A_ID = {
-  "BUENOS AIRES": "06", "CAPITAL FEDERAL": "02", "CABA": "02",
-  "CATAMARCA": "10", "CORDOBA": "14", "CÓRDOBA": "14",
-  "CORRIENTES": "18", "CHACO": "22", "CHUBUT": "26",
-  "ENTRE RIOS": "30", "ENTRE RÍOS": "30", "FORMOSA": "34",
-  "JUJUY": "38", "LA PAMPA": "42", "LA RIOJA": "46",
-  "MENDOZA": "50", "MISIONES": "54", "NEUQUEN": "58", "NEUQUÉN": "58",
-  "RIO NEGRO": "62", "RÍO NEGRO": "62", "SALTA": "66",
-  "SAN JUAN": "70", "SAN LUIS": "74", "SANTA CRUZ": "78",
-  "SANTA FE": "82", "SANTIAGO DEL ESTERO": "86",
-  "TUCUMAN": "90", "TUCUMÁN": "90", "TIERRA DEL FUEGO": "94",
+function filasAcotadas(sheet) {
+  const ref = sheet["!ref"]
+  if (!ref) return XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: null })
+  const rango = XLSX.utils.decode_range(ref)
+  const acotado = { s: rango.s, e: { r: Math.min(rango.e.r, MAX_FILAS), c: rango.e.c } }
+  return XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: null, range: acotado })
 }
 
-// ── Parseo del CSV ────────────────────────────────────────────────────────────
+/** Serie [{periodo: "1996-Q1", valor}] de la fila TOTAL de una hoja de provincia. */
+export function parsearHoja(sheet) {
+  const rows = filasAcotadas(sheet)
+  const headerRow = rows[HEADER_ROW] ?? []
+  const totalRow = filaTotal(rows)
+  if (totalRow === -1) throw new Error("No se encontró la fila TOTAL")
 
-function parsearCSV(texto) {
-  const lineas = texto.trim().split(/\r?\n/)
-  const encabezado = lineas[0].split(",").map((h) => h.trim().toLowerCase().replace(/"/g, ""))
-
-  const col = (...nombres) => {
-    for (const n of nombres) {
-      const idx = encabezado.indexOf(n)
-      if (idx !== -1) return idx
-    }
-    return -1
+  const lastCol = ultimaColumnaConDato(headerRow)
+  const serie = []
+  for (let col = 2; col <= lastCol; col += 1) {
+    const match = QUARTER_RE.exec(String(headerRow[col] ?? ""))
+    if (!match) continue
+    const [, trimestre, anio] = match
+    const valor = rows[totalRow][col]
+    if (typeof valor !== "number" || !Number.isFinite(valor) || valor <= 0) continue
+    serie.push({ periodo: `${anio}-Q${trimestre}`, valor })
   }
+  return serie
+}
 
-  // Soporte para dos formatos del OEDE:
-  //   Formato A (actual): fecha (YYYY-MM-DD), zona_prov, puestos
-  //   Formato B (alternativo): anio/año, mes, codigo_provincia/zona_prov, puestos
-  const iFecha   = col("fecha", "date")
-  const iProvNom = col("zona_prov", "provincia", "nombre_provincia", "provincia_nombre")
-  const iProvId  = col("codigo_provincia", "provincia_id", "cod_prov")
-  const iAnio    = col("anio", "año", "year")
-  const iMes     = col("mes", "month")
-  const iPuestos = col("puestos", "puestos_de_trabajo", "cantidad_puestos", "total_puestos")
+export function construirProvincias(workbook) {
+  // provId -> Map<periodo, suma de valores de las hojas que le corresponden>
+  const acumulado = new Map()
 
-  if (iPuestos === -1) throw new Error(`Columna puestos no encontrada. Encabezado: ${encabezado.join(", ")}`)
-  if (iFecha === -1 && (iAnio === -1 || iMes === -1)) throw new Error(`Sin columnas de fecha. Encabezado: ${encabezado.join(", ")}`)
-
-  const mapa = new Map()
-
-  for (let i = 1; i < lineas.length; i++) {
-    const cols = lineas[i].split(",").map((c) => c.trim().replace(/"/g, ""))
-    if (cols.length < 2) continue
-
-    let periodo
-    if (iFecha !== -1) {
-      // Formato A: "2007-01-01" → "2007-01"
-      const fecha = cols[iFecha]
-      const [anio, mes] = fecha.split("-")
-      if (!anio || !mes) continue
-      periodo = `${anio}-${mes}`
-    } else {
-      const anio = parseInt(cols[iAnio], 10)
-      const mes  = parseInt(cols[iMes], 10)
-      if (isNaN(anio) || isNaN(mes)) continue
-      periodo = `${anio}-${String(mes).padStart(2, "0")}`
-    }
-
-    const [anioNum] = periodo.split("-").map(Number)
-    if (anioNum < 2007 || anioNum > 2030) continue
-
-    const puestos = parseInt(cols[iPuestos], 10)
-    if (isNaN(puestos) || puestos <= 0) continue
-
-    // Resolver ID de provincia
-    let provId, provNombre
-    if (iProvId !== -1 && cols[iProvId]) {
-      provId = cols[iProvId].padStart(2, "0")
-      provNombre = PROVINCIAS_INDEC[provId] ?? cols[iProvId]
-    } else if (iProvNom !== -1) {
-      const key = cols[iProvNom].trim().toUpperCase()
-      provId = NOMBRE_A_ID[key] ?? "00"
-      provNombre = PROVINCIAS_INDEC[provId] ?? cols[iProvNom]
-    } else {
+  for (const [hoja, provId] of Object.entries(HOJA_A_PROVINCIA)) {
+    const sheet = workbook.Sheets[hoja]
+    if (!sheet) {
+      console.warn(`  Aviso: no se encontró la hoja "${hoja}" (¿cambió el nombre?), se omite`)
       continue
     }
-
-    const clave = `${provId}|${periodo}`
-    mapa.set(clave, { puestos: (mapa.get(clave)?.puestos ?? 0) + puestos, nombre: provNombre })
-  }
-
-  const porProvincia = new Map()
-  for (const [clave, { puestos, nombre }] of mapa) {
-    const [provId, periodo] = clave.split("|")
-    if (provId === "00") continue
-    if (!porProvincia.has(provId)) porProvincia.set(provId, { id: provId, nombre, series: [] })
-    porProvincia.get(provId).series.push({ periodo, puestos })
+    const serie = parsearHoja(sheet)
+    if (!acumulado.has(provId)) acumulado.set(provId, new Map())
+    const porPeriodo = acumulado.get(provId)
+    for (const { periodo, valor } of serie) {
+      porPeriodo.set(periodo, (porPeriodo.get(periodo) ?? 0) + valor)
+    }
   }
 
   const provincias = []
-  for (const prov of porProvincia.values()) {
-    prov.series.sort((a, b) => a.periodo.localeCompare(b.periodo))
-    const ultimo = prov.series.at(-1)
+  for (const [provId, porPeriodo] of acumulado) {
+    const series = [...porPeriodo.entries()]
+      .map(([periodo, puestos]) => ({ periodo, puestos }))
+      .sort((a, b) => a.periodo.localeCompare(b.periodo))
+    const ultimo = series.at(-1)
     if (!ultimo) continue
 
-    const [anioUlt, mesUlt] = ultimo.periodo.split("-")
-    const periodoAnterior = `${Number(anioUlt) - 1}-${mesUlt}`
-    const anterior = prov.series.find((s) => s.periodo === periodoAnterior)
+    // Interanual = mismo trimestre, un año antes.
+    const [anioUlt, trimUlt] = ultimo.periodo.split("-")
+    const periodoAnterior = `${Number(anioUlt) - 1}-${trimUlt}`
+    const anterior = series.find((s) => s.periodo === periodoAnterior)
 
     provincias.push({
-      id: prov.id,
-      nombre: prov.nombre,
+      id: provId,
+      nombre: PROVINCIAS_INDEC[provId] ?? provId,
       ultimo_periodo: ultimo.periodo,
       ultimo_valor: ultimo.puestos,
       variacion_interanual: anterior ? (ultimo.puestos - anterior.puestos) / anterior.puestos : null,
-      series: prov.series,
+      series,
     })
   }
 
   return provincias.sort((a, b) => b.ultimo_valor - a.ultimo_valor)
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
-
 async function main() {
   console.log("=== update-empleo-provincias ===")
 
-  let texto
-  const estrategias = [intentarCKAN, intentarDirecto, intentarPlaywright]
+  const workbook = await descargarWorkbook()
+  const provincias = construirProvincias(workbook)
+  if (provincias.length === 0) throw new Error("No se pudo extraer ninguna provincia del workbook")
 
-  for (const estrategia of estrategias) {
-    try {
-      texto = await estrategia()
-      break
-    } catch (err) {
-      console.warn(`  Falló: ${err.message}`)
-    }
-  }
-
-  if (!texto) {
-    console.error("ERROR: Todas las estrategias de descarga fallaron")
-    process.exit(1)
-  }
-
-  const provincias = parsearCSV(texto)
-  const primerPeriodo = provincias[0]?.series[0]?.periodo ?? "?"
-  const ultimoPeriodo = provincias[0]?.ultimo_periodo ?? "?"
+  const primerPeriodo = provincias
+    .flatMap((p) => p.series[0]?.periodo ?? [])
+    .sort()[0] ?? "?"
+  const ultimoPeriodo = provincias
+    .map((p) => p.ultimo_periodo)
+    .sort()
+    .at(-1) ?? "?"
 
   const output = {
     generado_en: new Date().toISOString(),
     fuente: "OEDE — Ministerio de Trabajo, Empleo y Seguridad Social / SIPA-AFIP",
-    licencia: "Datos abiertos — datos.gob.ar",
+    licencia: "Datos abiertos — argentina.gob.ar/trabajo",
     cobertura: { desde: primerPeriodo, hasta: ultimoPeriodo },
     total_provincias: provincias.length,
     provincias,
@@ -318,7 +225,11 @@ async function main() {
   console.log(`✓ Guardado en public/data/empleo-provincias.json`)
 }
 
-main().catch((err) => {
-  console.error("ERROR:", err.message)
-  process.exit(1)
-})
+// Sólo corre al ejecutar el script directamente — al importarlo desde los
+// tests (para probar las funciones puras) no debe disparar una descarga real.
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    console.error("ERROR:", err.message)
+    process.exit(1)
+  })
+}

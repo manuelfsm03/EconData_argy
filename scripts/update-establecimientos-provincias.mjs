@@ -1,275 +1,226 @@
 /**
  * update-establecimientos-provincias.mjs
  *
- * Descarga el CSV de distribución de establecimientos productivos por provincia
- * del CEP XXI (Secretaría de Industria / Ministerio de Economía) y genera
- * public/data/establecimientos-provincias.json.
+ * Descarga el Excel de empresas activas del sector privado por provincia del
+ * OEDE (Ministerio de Trabajo) y genera public/data/establecimientos-provincias.json.
  *
- * Estrategia de descarga:
- *   - Fetch directo con headers de browser (Referer requerido para evitar 403)
- *   - El CSV pesa ~96MB y tiene ~1.4M filas — se procesa vía stream/readline
+ * Reemplaza la fuente anterior (cdn.produccion.gob.ar/cdn-cep — CEP XXI): ese
+ * portal quedó abandonado desde la reestructuración ministerial de fines de
+ * 2023, igual que las fuentes viejas de empleo y salarios (ver
+ * update-empleo-provincias.mjs). La fuente vieja medía CUITs únicos a partir
+ * de microdatos geocodificados (con conteo de sucursales); la nueva (OEDE)
+ * sólo publica el stock de empresas activas por provincia y rama — se pierde
+ * la distinción entre "empresas" y "sucursales" porque esta fuente no la
+ * mide, pero se gana 2 años de actualidad (2022 → 2024) desde una fuente que
+ * sigue viva.
  *
- * Agrega por provincia_id + anio:
- *   - establecimientos: CUITs únicos (una empresa = un CUIT, aunque tenga varias sucursales)
- *   - sucursales: total de filas (cada row es una sucursal/establecimiento físico)
+ * Corre mensualmente vía GitHub Actions (.github/workflows/update-datos-provinciales.yml).
+ * También manual: node scripts/update-establecimientos-provincias.mjs
  *
- * Corre vía GitHub Actions. También manual:
- *   node scripts/update-establecimientos-provincias.mjs
- *
- * Fuente: OEDE — Ministerio de Trabajo / CEP XXI (Secretaría de Industria)
- * URL: cdn.produccion.gob.ar/cdn-cep/establecimientos-productivos/
+ * Fuente: OEDE / Ministerio de Trabajo — SIPA (AFIP). Datos abiertos, uso libre.
  */
 
 import { writeFileSync, mkdirSync } from "node:fs"
 import { join, dirname } from "node:path"
-import { fileURLToPath } from "node:url"
-import { createInterface } from "node:readline"
-import { Readable } from "node:stream"
+import { fileURLToPath, pathToFileURL } from "node:url"
+import * as XLSX from "xlsx"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = join(__dirname, "..")
 const OUT_PATH = join(REPO_ROOT, "public", "data", "establecimientos-provincias.json")
 
-// URL directa del CSV (el CDN requiere Referer para no devolver 403)
-const CSV_URL =
-  "https://cdn.produccion.gob.ar/cdn-cep/establecimientos-productivos/distribucion_establecimientos_productivos_sexo.csv"
+// Página del OEDE con todas las series provinciales — si cambia el nombre del
+// archivo, hay que volver a buscar el link ahí
+// (https://www.argentina.gob.ar/trabajo/estadisticas/oede-estadisticas-provinciales).
+const XLS_URL =
+  process.env.ESTABLECIMIENTOS_PROVINCIAS_URL ??
+  "https://www.argentina.gob.ar/sites/default/files/provinciales_serie_empresas1_2.xlsx"
 
 const BROWSER_HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-  Referer: "https://datos.produccion.gob.ar/",
-  Accept: "text/csv,text/plain,*/*",
-  "Accept-Language": "es-AR,es;q=0.9",
+  "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  Referer: "https://www.argentina.gob.ar/trabajo/estadisticas/oede-estadisticas-provinciales",
 }
 
-// IDs oficiales de provincias argentinas (INDEC, con padding a 2 dígitos)
 const PROVINCIAS_INDEC = {
-  "02": "CABA",
-  "06": "Buenos Aires",
-  "10": "Catamarca",
-  "14": "Córdoba",
-  "18": "Corrientes",
-  "22": "Chaco",
-  "26": "Chubut",
-  "30": "Entre Ríos",
-  "34": "Formosa",
-  "38": "Jujuy",
-  "42": "La Pampa",
-  "46": "La Rioja",
-  "50": "Mendoza",
-  "54": "Misiones",
-  "58": "Neuquén",
-  "62": "Río Negro",
-  "66": "Salta",
-  "70": "San Juan",
-  "74": "San Luis",
-  "78": "Santa Cruz",
-  "82": "Santa Fe",
-  "86": "Santiago del Estero",
-  "90": "Tucumán",
-  "94": "Tierra del Fuego",
+  "02": "CABA", "06": "Buenos Aires", "10": "Catamarca", "14": "Córdoba",
+  "18": "Corrientes", "22": "Chaco", "26": "Chubut", "30": "Entre Ríos",
+  "34": "Formosa", "38": "Jujuy", "42": "La Pampa", "46": "La Rioja",
+  "50": "Mendoza", "54": "Misiones", "58": "Neuquén", "62": "Río Negro",
+  "66": "Salta", "70": "San Juan", "74": "San Luis", "78": "Santa Cruz",
+  "82": "Santa Fe", "86": "Santiago del Estero", "90": "Tucumán", "94": "Tierra del Fuego",
 }
 
-// ── Descarga streaming del CSV ────────────────────────────────────────────────
-
-async function descargarCSV() {
-  console.log(`[1] Descargando CSV desde:\n    ${CSV_URL}`)
-  const res = await fetch(CSV_URL, {
-    headers: BROWSER_HEADERS,
-    redirect: "follow",
-    signal: AbortSignal.timeout(300_000), // 5 min — son 96MB
-  })
-
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status} ${res.statusText} al descargar el CSV`)
-  }
-
-  const contentLength = res.headers.get("content-length")
-  if (contentLength) {
-    console.log(`  → Content-Length: ${(parseInt(contentLength, 10) / 1024 / 1024).toFixed(1)} MB`)
-  }
-
-  return res
+// Nombre de hoja (sin acentos, tal como viene en este workbook) → ID de
+// provincia. "Partidos de GBA" + "Resto de Buenos Aires" son las dos mitades
+// de la provincia de Buenos Aires en este archivo — se suman para reconstruir
+// el total provincial, igual que en update-empleo-provincias.mjs.
+export const HOJA_A_PROVINCIA = {
+  "Capital Federal": "02",
+  "Partidos de GBA": "06",
+  "Resto de Buenos Aires": "06",
+  "Catamarca": "10",
+  "Cordoba": "14",
+  "Corrientes": "18",
+  "Chaco": "22",
+  "Chubut": "26",
+  "Entre Rios": "30",
+  "Formosa": "34",
+  "Jujuy": "38",
+  "La Pampa": "42",
+  "La Rioja": "46",
+  "Mendoza": "50",
+  "Misiones": "54",
+  "Neuquen": "58",
+  "Rio Negro": "62",
+  "Salta": "66",
+  "San Juan": "70",
+  "San Luis": "74",
+  "Santa Cruz": "78",
+  "Santa Fe": "82",
+  "Santiago del Estero": "86",
+  "Tucuman": "90",
+  "Tierra del Fuego": "94",
 }
 
-// ── Parseo del CSV en modo streaming ─────────────────────────────────────────
-//
-// El CSV tiene ~1.4M filas — se procesa línea por línea para no acumular todo
-// en memoria de una vez.
-//
-// Header esperado:
-//   cuit,sucursal,anio,lat,lon,clae6,in_departamentos,provincia_id,quintil,empleo,proporcion_mujeres
-//
-// Agrega por clave (provincia_id padded, anio):
-//   - cuits: Set de CUITs únicos = establecimientos (empresas)
-//   - sucursales: contador de filas = establecimientos físicos
+export const HEADER_ROW = 3 // fila con "Ramas de actividad" y los años
 
-async function parsearCSVStream(response) {
-  // Convierte el ReadableStream web (fetch) al Readable de Node.js
-  const nodeStream = Readable.fromWeb(response.body)
-  const rl = createInterface({ input: nodeStream, crlfDelay: Infinity })
+async function descargarWorkbook() {
+  console.log(`Descargando ${XLS_URL}`)
+  const res = await fetch(XLS_URL, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(60_000), redirect: "follow" })
+  if (!res.ok) throw new Error(`Descarga del Excel: HTTP ${res.status}`)
+  const buffer = Buffer.from(await res.arrayBuffer())
+  if (buffer.length < 10_000) throw new Error(`Respuesta demasiado chica (${buffer.length} bytes) — ¿cambió la URL?`)
+  // Igual que en update-salarios-provincias.mjs: parsear sólo las hojas de
+  // provincia evita el OOM que da este archivo si xlsx procesa las ~29 hojas
+  // completas (incluye "Hoja1", "Metodología", etc. que no se usan).
+  return XLSX.read(buffer, { type: "buffer", sheets: Object.keys(HOJA_A_PROVINCIA) })
+}
 
-  // mapa: "provId|anio" → { cuits: Set<string>, sucursales: number }
-  const mapa = new Map()
+/** Última columna del header con un año real (las de más a la derecha vienen vacías por formato). */
+export function ultimaColumnaConAnio(headerRow) {
+  let last = -1
+  for (let col = 0; col < headerRow.length; col += 1) {
+    const anio = headerRow[col]
+    if (typeof anio === "number" && Number.isInteger(anio) && anio >= 1990 && anio <= 2100) last = col
+  }
+  return last
+}
 
-  let lineaActual = 0
-  let encabezado = null
-  let iCuit = -1
-  let iAnio = -1
-  let iProvId = -1
-  let filasSaltadas = 0
+export function filaTotal(rows) {
+  for (let i = 0; i < rows.length; i += 1) {
+    if (String(rows[i]?.[1] ?? "").trim().toUpperCase() === "TOTAL") return i
+  }
+  return -1
+}
 
-  for await (const linea of rl) {
-    lineaActual++
+// Algunas hojas de este portal declaran un rango roto que llega a la última
+// fila posible de Excel (probablemente por un formato de celda aplicado a la
+// columna entera) — sheet_to_json con defval:null materializa cada celda de
+// ese rango, lo que vuelve una hoja de ~90 filas reales en cientos de
+// millones de celdas y cuelga el proceso por OOM (visto en vivo en el
+// archivo hermano de salarios — ver update-salarios-provincias.mjs). Se
+// acota la lectura a las primeras MAX_FILAS, bien por encima de donde
+// aparecen el header y la fila TOTAL en cualquier hoja real.
+const MAX_FILAS = 400
 
-    // ── Encabezado ────────────────────────────────────────────────────────────
-    if (lineaActual === 1) {
-      encabezado = linea.split(",").map((h) => h.trim().toLowerCase().replace(/"/g, ""))
-      iCuit   = encabezado.indexOf("cuit")
-      iAnio   = encabezado.indexOf("anio")
-      iProvId = encabezado.indexOf("provincia_id")
+function filasAcotadas(sheet) {
+  const ref = sheet["!ref"]
+  if (!ref) return XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: null })
+  const rango = XLSX.utils.decode_range(ref)
+  const acotado = { s: rango.s, e: { r: Math.min(rango.e.r, MAX_FILAS), c: rango.e.c } }
+  return XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: null, range: acotado })
+}
 
-      if (iCuit === -1 || iAnio === -1 || iProvId === -1) {
-        throw new Error(
-          `Columnas requeridas no encontradas. Encabezado: ${encabezado.join(", ")}`
-        )
-      }
-      console.log(`  → Encabezado OK: ${encabezado.join(", ")}`)
+/** Serie [{anio, valor}] de la fila TOTAL de una hoja de provincia. */
+export function parsearHoja(sheet) {
+  const rows = filasAcotadas(sheet)
+  const headerRow = rows[HEADER_ROW] ?? []
+  const totalRow = filaTotal(rows)
+  if (totalRow === -1) throw new Error("No se encontró la fila TOTAL")
+
+  const lastCol = ultimaColumnaConAnio(headerRow)
+  const serie = []
+  for (let col = 2; col <= lastCol; col += 1) {
+    const anio = headerRow[col]
+    if (typeof anio !== "number" || !Number.isInteger(anio)) continue
+    const valor = rows[totalRow][col]
+    if (typeof valor !== "number" || !Number.isFinite(valor) || valor <= 0) continue
+    serie.push({ anio, valor })
+  }
+  return serie
+}
+
+export function construirProvincias(workbook) {
+  // provId -> Map<anio, suma de valores de las hojas que le corresponden>
+  const acumulado = new Map()
+
+  for (const [hoja, provId] of Object.entries(HOJA_A_PROVINCIA)) {
+    const sheet = workbook.Sheets[hoja]
+    if (!sheet) {
+      console.warn(`  Aviso: no se encontró la hoja "${hoja}" (¿cambió el nombre?), se omite`)
       continue
     }
-
-    // ── Filas de datos ────────────────────────────────────────────────────────
-    const cols = linea.split(",")
-    if (cols.length < Math.max(iCuit, iAnio, iProvId) + 1) {
-      filasSaltadas++
-      continue
-    }
-
-    const cuit    = cols[iCuit].trim().replace(/"/g, "")
-    const anioRaw = cols[iAnio].trim().replace(/"/g, "")
-    const provRaw = cols[iProvId].trim().replace(/"/g, "")
-
-    if (!cuit || !anioRaw || !provRaw) { filasSaltadas++; continue }
-
-    const anio  = parseInt(anioRaw, 10)
-    if (isNaN(anio) || anio < 2000 || anio > 2030) { filasSaltadas++; continue }
-
-    // El CSV usa IDs sin padding ('2' → '02', '6' → '06')
-    const provId = provRaw.padStart(2, "0")
-    if (!PROVINCIAS_INDEC[provId]) { filasSaltadas++; continue }
-
-    // Acumular en el mapa
-    const clave = `${provId}|${anio}`
-    if (!mapa.has(clave)) {
-      mapa.set(clave, { cuits: new Set(), sucursales: 0 })
-    }
-    const entrada = mapa.get(clave)
-    entrada.cuits.add(cuit)
-    entrada.sucursales++
-
-    // Log de progreso cada 100k filas
-    if (lineaActual % 100_000 === 0) {
-      console.log(`  → Procesadas ${(lineaActual / 1_000).toFixed(0)}k filas...`)
+    const serie = parsearHoja(sheet)
+    if (!acumulado.has(provId)) acumulado.set(provId, new Map())
+    const porAnio = acumulado.get(provId)
+    for (const { anio, valor } of serie) {
+      porAnio.set(anio, (porAnio.get(anio) ?? 0) + valor)
     }
   }
 
-  console.log(`  → Total filas leídas: ${lineaActual.toLocaleString("es-AR")} (saltadas: ${filasSaltadas})`)
-
-  return mapa
-}
-
-// ── Construir estructura de salida ────────────────────────────────────────────
-
-function construirOutput(mapa) {
-  // Agrupar por provincia
-  const porProvincia = new Map()
-
-  for (const [clave, { cuits, sucursales }] of mapa) {
-    const [provId, anioStr] = clave.split("|")
-    const anio = parseInt(anioStr, 10)
-    const establecimientos = cuits.size // CUITs únicos = empresas
-
-    if (!porProvincia.has(provId)) {
-      porProvincia.set(provId, {
-        id: provId,
-        nombre: PROVINCIAS_INDEC[provId],
-        series: [],
-      })
-    }
-    porProvincia.get(provId).series.push({ anio, establecimientos, sucursales })
-  }
-
-  // Ordenar series por año y calcular último valor
   const provincias = []
-  for (const prov of porProvincia.values()) {
-    prov.series.sort((a, b) => a.anio - b.anio)
-    const ultimo = prov.series.at(-1)
+  for (const [provId, porAnio] of acumulado) {
+    const series = [...porAnio.entries()]
+      .map(([anio, establecimientos]) => ({ anio, establecimientos }))
+      .sort((a, b) => a.anio - b.anio)
+    const ultimo = series.at(-1)
+    if (!ultimo) continue
 
     provincias.push({
-      id: prov.id,
-      nombre: prov.nombre,
+      id: provId,
+      nombre: PROVINCIAS_INDEC[provId] ?? provId,
       ultimo_anio: ultimo.anio,
       ultimo_valor: ultimo.establecimientos,
-      series: prov.series,
+      series,
     })
   }
 
-  // Ordenar por último valor descendente (más establecimientos primero)
-  provincias.sort((a, b) => b.ultimo_valor - a.ultimo_valor)
-
-  return provincias
+  return provincias.sort((a, b) => b.ultimo_valor - a.ultimo_valor)
 }
-
-// ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
   console.log("=== update-establecimientos-provincias ===")
 
-  // 1. Descargar
-  const response = await descargarCSV()
+  const workbook = await descargarWorkbook()
+  const provincias = construirProvincias(workbook)
+  if (provincias.length === 0) throw new Error("No se pudo extraer ninguna provincia del workbook")
 
-  // 2. Parsear en modo streaming (evita cargar los 96MB como string en RAM)
-  console.log("[2] Procesando CSV en streaming...")
-  const mapa = await parsearCSVStream(response)
-
-  // 3. Construir salida
-  console.log("[3] Construyendo JSON de salida...")
-  const provincias = construirOutput(mapa)
-
-  if (provincias.length === 0) {
-    console.error("ERROR: No se encontraron provincias en el CSV")
-    process.exit(1)
-  }
-
-  // Calcular cobertura temporal global
   const todosAnios = provincias.flatMap((p) => p.series.map((s) => s.anio))
-  const desdeAnio  = Math.min(...todosAnios)
-  const hastaAnio  = Math.max(...todosAnios)
+  const desdeAnio = Math.min(...todosAnios)
+  const hastaAnio = Math.max(...todosAnios)
 
   const output = {
     generado_en: new Date().toISOString(),
-    fuente: "OEDE — Ministerio de Trabajo / CEP XXI (Secretaría de Industria)",
-    licencia: "Datos abiertos — datos.gob.ar",
+    fuente: "OEDE — Ministerio de Trabajo, Empleo y Seguridad Social / SIPA-AFIP",
+    licencia: "Datos abiertos — argentina.gob.ar/trabajo",
+    unidad: "empresas del sector privado activas al cierre de cada año",
     cobertura: { desde: desdeAnio, hasta: hastaAnio },
     total_provincias: provincias.length,
     provincias,
   }
 
-  // 4. Guardar
   mkdirSync(join(REPO_ROOT, "public", "data"), { recursive: true })
   writeFileSync(OUT_PATH, JSON.stringify(output, null, 2), "utf8")
 
-  console.log(`\n✓ ${provincias.length} provincias | ${desdeAnio} → ${hastaAnio}`)
+  console.log(`✓ ${provincias.length} provincias | ${desdeAnio} → ${hastaAnio}`)
   console.log(`✓ Guardado en public/data/establecimientos-provincias.json`)
-
-  // Resumen por provincia (top 5)
-  console.log("\nTop 5 por establecimientos únicos (último año):")
-  for (const p of provincias.slice(0, 5)) {
-    console.log(`  ${p.nombre.padEnd(20)} ${p.ultimo_valor.toLocaleString("es-AR").padStart(8)} establecimientos (${p.ultimo_anio})`)
-  }
 }
 
-main().catch((err) => {
-  console.error("ERROR:", err.message)
-  process.exit(1)
-})
+// Sólo corre al ejecutar el script directamente — al importarlo desde los
+// tests (para probar las funciones puras) no debe disparar una descarga real.
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    console.error("ERROR:", err.message)
+    process.exit(1)
+  })
+}
