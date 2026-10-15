@@ -1,4 +1,8 @@
-export type CardCategory = "resumen" | "finanzas" | "macro" | "bcra" | "noticias"
+import type { SourceId } from "@/server/sources/registry"
+import type { DataClass } from "@/server/sources/types"
+import { CARD_FICHA_META } from "./card-ficha-meta"
+
+export type CardCategory ="resumen" | "finanzas" | "macro" | "bcra" | "noticias"
 
 export interface CardEndpoint {
   path: string
@@ -7,7 +11,59 @@ export interface CardEndpoint {
   body?: Record<string, unknown>
 }
 
-export interface DataCardDefinition {
+/**
+ * Una línea del gráfico de la ficha. `path` apunta (con puntos) al arreglo
+ * dentro del JSON del endpoint. `shape` dice cómo viene cada punto:
+ *  - "tuples":  [fecha, valor]            (p. ej. /api/macro)
+ *  - "objects": { <dateKey>, <valueKey> } (p. ej. /api/bcra, /api/tc-historico)
+ * `scale` multiplica el valor (p. ej. 100 si la fuente lo da en proporción).
+ */
+export interface CardSeriesLine {
+  path: string
+  name: string
+  shape: "tuples" | "objects"
+  dateKey?: string
+  valueKey?: string
+  scale?: number
+  color?: string
+}
+
+/** Endpoint (existente) del que la ficha saca la serie larga de la tarjeta. */
+export interface CardSerieEndpoint {
+  path: string
+  method?: "GET" | "POST"
+  body?: Record<string, unknown>
+  lines: CardSeriesLine[]
+  /** Unidad para mostrar al lado del título (solo si la fuente la declara). */
+  unit?: string
+  /** Aclaración honesta de la ventana (p. ej. "últimos 36 meses"). */
+  ventana?: string
+  /**
+   * Frecuencia real de la serie. Se usa para juzgar la frescura: una serie
+   * mensual no puede medirse con la ventana de una fuente diaria.
+   */
+  claseDato?: DataClass
+}
+
+/**
+ * Metadata opcional de "profundidad" (ficha de tarjeta). Todo es opcional y
+ * solo se completa cuando el dato es derivable del código; si no se sabe, se
+ * deja vacío y la ficha lo dice en lugar de inventarlo.
+ */
+export interface CardFichaMeta {
+  /** Fuente de la serie que muestra la ficha (clave de SOURCE_REGISTRY). */
+  fuenteId?: SourceId
+  /** Cómo se calcula, en criollo; solo lo verificado en el código del endpoint. */
+  calculo?: string
+  /** Ids de otras tarjetas con relación conceptual (además de las que comparten endpoint). */
+  relacionadas?: string[]
+  /** Ids de término del glosario (src/lib/glossary.ts) para explicar en la ficha. */
+  glosario?: string[]
+  /** Endpoint existente con la serie larga. */
+  serieEndpoint?: CardSerieEndpoint
+}
+
+export interface DataCardDefinition extends CardFichaMeta {
   id: string
   title: string
   description: string
@@ -51,7 +107,7 @@ const AGRO_CARD = card({ id: "agro", title: "Agro", category: "macro", tab: "mac
  * Inventario único de módulos visibles en La Pizarra.
  * Alimenta la Biblioteca, el buscador, el Canvas y el monitor de endpoints.
  */
-export const DATA_CARD_CATALOG: DataCardDefinition[] = [
+const BASE_CATALOG: DataCardDefinition[] = [
   card({ id: "resumen-tipo-cambio", title: "Tipos de cambio", category: "resumen", tab: "resumen", subtab: null, description: "Blue, CCL, MEP, mayorista, oficial y brechas.", keywords: ["dólar", "blue", "mep", "ccl", "brecha"], endpoints: [{ path: "/api/dolares", label: "Cotización intradiaria" }, { path: "/api/tc-historico?period=1m", label: "Histórico" }], defaultW: 12, defaultH: 5, minW: 6, minH: 4 }),
   card({ id: "resumen-ipc", title: "IPC actual", category: "resumen", tab: "resumen", subtab: null, description: "Inflación mensual e interanual del último período.", keywords: ["inflación", "ipc", "precios"], endpoints: [{ path: "/api/macro?endpoint=ipc", label: "IPC" }], defaultW: 4, defaultH: 4, minH: 3 }),
   card({ id: "resumen-riesgo", title: "Riesgo país actual", category: "resumen", tab: "resumen", subtab: null, description: "EMBI+ actual y variaciones semanal y mensual.", keywords: ["riesgo", "embi", "spread"], endpoints: [{ path: "/api/riesgo-pais", label: "Riesgo país" }], defaultW: 4, defaultH: 4, minH: 3 }),
@@ -93,7 +149,27 @@ export const DATA_CARD_CATALOG: DataCardDefinition[] = [
   ...(AGRO_CARD_ENABLED ? [AGRO_CARD] : []),
 ]
 
-export const DATA_CARD_BY_ID = new Map(DATA_CARD_CATALOG.map((item) => [item.id, item]))
+/**
+ * Catálogo final = definiciones base + metadata de la ficha. La metadata vive en
+ * `card-ficha-meta.ts` (un solo archivo, claves por id) para no pisar las líneas
+ * del catálogo que otros PRs tocan todo el tiempo.
+ */
+export const DATA_CARD_CATALOG: DataCardDefinition[] = BASE_CATALOG.map((item) => ({ ...item, ...CARD_FICHA_META[item.id] }))
+
+/**
+ * Tarjetas que comparten exactamente el mismo endpoint (método + path + query +
+ * body) con la dada: "usan el mismo dato". Se deriva, no se declara, así no se
+ * desactualiza.
+ */
+export function cardsSharingEndpoint(cardId: string): DataCardDefinition[] {
+  const base = DATA_CARD_CATALOG.find((item) => item.id === cardId)
+  if (!base) return []
+  const key = (endpoint: CardEndpoint) => `${endpoint.method ?? "GET"}:${endpoint.path}:${JSON.stringify(endpoint.body ?? null)}`
+  const keys = new Set(base.endpoints.map(key))
+  return DATA_CARD_CATALOG.filter((item) => item.id !== cardId && item.endpoints.some((endpoint) => keys.has(key(endpoint))))
+}
+
+export const DATA_CARD_BY_ID =new Map(DATA_CARD_CATALOG.map((item) => [item.id, item]))
 
 function normalizeSearchText(value: string): string {
   return value
