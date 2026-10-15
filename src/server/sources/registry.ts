@@ -21,6 +21,21 @@ type SourceSeed = {
   freshness?: SourceDefinition["freshness"]
 }
 
+/**
+ * Ventanas de frescura por clase de dato (segundos). Se exportan para que la
+ * ficha de tarjeta pueda juzgar la frescura de una serie con el mismo criterio
+ * que el registro, incluso cuando la frecuencia de la serie (p. ej. mensual) no
+ * coincide con la clase por defecto de su fuente.
+ */
+export const DATA_CLASS_FRESHNESS = {
+  intraday_market: { warnAfterSeconds: 600, rejectAfterSeconds: 1_800 },
+  daily_market: { warnAfterSeconds: 129_600, rejectAfterSeconds: 432_000 },
+  official_daily: { warnAfterSeconds: 129_600, rejectAfterSeconds: 432_000 },
+  official_monthly: { warnAfterSeconds: 3_888_000, rejectAfterSeconds: 6_480_000 },
+  annual: { warnAfterSeconds: 34_560_000, rejectAfterSeconds: 69_120_000 },
+  news: { warnAfterSeconds: 7_200, rejectAfterSeconds: 43_200 },
+} as const satisfies Record<DataClass, { warnAfterSeconds: number; rejectAfterSeconds: number }>
+
 function source<Id extends string>(id: Id, seed: SourceSeed): SourceDefinition<Id> {
   const dataClass = seed.dataClass ?? "official_daily"
   const cacheByClass = {
@@ -31,14 +46,7 @@ function source<Id extends string>(id: Id, seed: SourceSeed): SourceDefinition<I
     annual: { freshSeconds: 86_400, staleWhileRevalidateSeconds: 604_800, staleIfErrorSeconds: 2_592_000 },
     news: { freshSeconds: 900, staleWhileRevalidateSeconds: 900, staleIfErrorSeconds: 21_600 },
   } as const
-  const freshnessByClass = {
-    intraday_market: { warnAfterSeconds: 600, rejectAfterSeconds: 1_800 },
-    daily_market: { warnAfterSeconds: 129_600, rejectAfterSeconds: 432_000 },
-    official_daily: { warnAfterSeconds: 129_600, rejectAfterSeconds: 432_000 },
-    official_monthly: { warnAfterSeconds: 3_888_000, rejectAfterSeconds: 6_480_000 },
-    annual: { warnAfterSeconds: 34_560_000, rejectAfterSeconds: 69_120_000 },
-    news: { warnAfterSeconds: 7_200, rejectAfterSeconds: 43_200 },
-  } as const
+  const freshnessByClass = DATA_CLASS_FRESHNESS
 
   return {
     id,

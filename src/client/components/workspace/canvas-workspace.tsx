@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react"
 import GridLayout, { type Layout, useContainerWidth } from "react-grid-layout"
-import { Copy, GripHorizontal, LayoutGrid, MessageCircle, Minimize2, Plus, Search, Trash2, X } from "lucide-react"
+import { Copy, GripHorizontal, Info, LayoutGrid, MessageCircle, Minimize2, Plus, Search, Trash2, X } from "lucide-react"
 import { Button } from "@/client/components/ui/button"
 import { CardDiscussionProvider } from "@/client/components/ui/card-discussion-context"
 import { Input } from "@/client/components/ui/input"
 import { ForoActivo } from "@/client/components/dashboard/foro-activo"
+import { CardFicha } from "./card-ficha"
 import { CardHealthBadge } from "./card-health-badge"
 import { DataCardRenderer } from "./data-card-renderer"
 import { CARD_CATEGORIES, DATA_CARD_BY_ID, searchDataCards, type CardCategory } from "@/lib/card-catalog"
@@ -75,6 +76,7 @@ export function CanvasWorkspace() {
   const [category, setCategory] = useState<CardCategory | "all">("all")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [chatWidgetId, setChatWidgetId] = useState<string | null>(null)
+  const [fichaCardId, setFichaCardId] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
   const { width, containerRef, mounted } = useContainerWidth()
 
@@ -222,6 +224,14 @@ export function CanvasWorkspace() {
                       <CardHealthBadge cardId={definition.id} />
                       <Button
                         variant="ghost" size="icon"
+                        className="canvas-card-interactive h-7 w-7 text-[var(--text-dim)] hover:text-[var(--amber)]"
+                        onClick={() => setFichaCardId(definition.id)}
+                        title={`Ficha de ${definition.title}: serie, fuente, cálculo y relaciones`}
+                        aria-label={`Abrir ficha de ${definition.title}`}
+                        aria-haspopup="dialog"
+                      ><Info size={13} /></Button>
+                      <Button
+                        variant="ghost" size="icon"
                         className={cn("canvas-card-interactive h-7 w-7", widget.autoFit !== false ? "text-[var(--amber)]" : "text-[var(--text-dim)] hover:text-[var(--amber)]")}
                         onClick={() => updateActiveWidgets((widgets) => widgets.map((item) => item.instanceId === widget.instanceId ? { ...item, autoFit: true } : item))}
                         title="Ajustar altura al contenido"
@@ -290,6 +300,7 @@ export function CanvasWorkspace() {
                       <div className="mt-0.5 line-clamp-2 text-[10px] leading-4 text-[var(--text-dim)]">{definition.description}</div>
                       <div className="mt-2 flex items-center gap-2"><CardHealthBadge cardId={definition.id} compact auto={false} /><span className="font-mono text-[9px] text-[var(--text-mute)]">{definition.endpoints.length} endpoint{definition.endpoints.length === 1 ? "" : "s"}</span></div>
                     </div>
+                    <Button variant="ghost" size="icon" onClick={() => setFichaCardId(definition.id)} className="h-8 w-8 shrink-0 text-[var(--text-dim)] hover:text-[var(--amber)]" title={`Ficha de ${definition.title}`} aria-label={`Abrir ficha de ${definition.title}`} aria-haspopup="dialog"><Info size={14} /></Button>
                     <Button variant="outline" size="icon" onClick={() => addWidget(definition.id)} className="h-8 w-8 shrink-0 border-[var(--border)] bg-[var(--bg-elev)] text-[var(--amber)]" title={`Agregar ${definition.title}`}><Plus size={14} /></Button>
                   </div>
                 </div>
@@ -299,6 +310,7 @@ export function CanvasWorkspace() {
           </aside>
         )}
       </div>
+      <CardFicha cardId={fichaCardId} onClose={() => setFichaCardId(null)} />
     </div>
   )
 }
