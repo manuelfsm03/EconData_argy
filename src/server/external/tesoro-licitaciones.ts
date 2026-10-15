@@ -30,6 +30,8 @@ export interface LicitacionResultado {
   adjudicado: number | null
   unidad: string       // "billones $" | "millones USD"
   coberturaPct: number | null   // ofertado / adjudicado * 100 (demanda vs adjudicado)
+  vencimientos: number | null   // vencimientos a cubrir, MISMA moneda y unidad que adjudicado (null si la nota no lo trae)
+  rollover: number | null       // adjudicado / vencimientos * 100 (%, 1 decimal); null si falta alguno
   instrumentos: InstrumentoLicitado[]
   url: string
   pdfUrl: string | null
@@ -55,6 +57,31 @@ function parseNum(s: string): number | null {
   const limpio = s.trim().replace(/\./g, "").replace(",", ".")
   const n = parseFloat(limpio)
   return Number.isFinite(n) ? n : null
+}
+
+/**
+ * Monto de "vencimientos a cubrir" del texto de la nota, o null si no aparece.
+ * Solo devuelve el valor si moneda y unidad (billones/millones) coinciden con las
+ * del adjudicado: si no, comparar ambos montos daría un rollover sin sentido.
+ */
+export function extraerVencimientos(
+  texto: string,
+  moneda: "ARS" | "USD",
+  unidadPalabra: string,
+): number | null {
+  const m = texto.match(
+    /vencimientos?[^$\d]{0,80}?(\$|USD)\s*([\d.,]+)\s*(billones|millones)/i,
+  )
+  if (!m) return null
+  const monedaV = m[1].toUpperCase() === "USD" ? "USD" : "ARS"
+  if (monedaV !== moneda || m[3].toLowerCase() !== unidadPalabra.toLowerCase()) return null
+  return parseNum(m[2])
+}
+
+/** Rollover % = adjudicado / vencimientos * 100. Null si falta algún insumo o vencimientos <= 0. */
+export function calcularRollover(adjudicado: number | null, vencimientos: number | null): number | null {
+  if (adjudicado == null || vencimientos == null || vencimientos <= 0) return null
+  return Number(((adjudicado / vencimientos) * 100).toFixed(1))
 }
 
 /** Junta el feed de noticias y devuelve los links de resultados de licitación. */
@@ -123,6 +150,11 @@ export async function parsearResultado(url: string): Promise<LicitacionResultado
       ? Number(((ofertado / adjudicado) * 100).toFixed(0))
       : null
 
+  // Vencimientos a cubrir (solo si la nota los informa en la misma unidad que el adjudicado).
+  const unidadPalabra = unidad.split(" ")[0]
+  const vencimientos = unidadPalabra ? extraerVencimientos(texto, moneda, unidadPalabra) : null
+  const rollover = calcularRollover(adjudicado, vencimientos)
+
   // Instrumentos: "(TICKER - reapertura|nueva) ... TIREA%"
   const instrumentos: InstrumentoLicitado[] = []
   const instRe = /\(([A-Z]{1,4}\d{1,2}[A-Z]?\d?)\s*[-–]\s*(?:reapertura|nueva)\)([^()]*?)(\d{1,3},\d{1,2})\s*%/gi
@@ -138,7 +170,7 @@ export async function parsearResultado(url: string): Promise<LicitacionResultado
   // Si no se pudo sacar nada útil, descartar (no es una nota de resultado válida).
   if (!fecha && adjudicado == null && instrumentos.length === 0) return null
 
-  return { fecha, fechaLabel, moneda, ofertado, adjudicado, unidad, coberturaPct, instrumentos, url, pdfUrl }
+  return { fecha, fechaLabel, moneda, ofertado, adjudicado, unidad, coberturaPct, vencimientos, rollover, instrumentos, url, pdfUrl }
 }
 
 /** Últimas N licitaciones con resultado, ordenadas de más nueva a más vieja. */

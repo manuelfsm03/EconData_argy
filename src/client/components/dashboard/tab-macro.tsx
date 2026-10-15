@@ -3953,6 +3953,7 @@ export function DeudaView() {
   const [licitaciones, setLicitaciones] = useState<{
     fecha: string; fechaLabel: string; moneda: "ARS" | "USD"
     ofertado: number | null; adjudicado: number | null; unidad: string; coberturaPct: number | null
+    vencimientos: number | null; rollover: number | null
     instrumentos: { ticker: string; tirea: number | null }[]; url: string; pdfUrl: string | null
   }[] | null>(null)
   const [stock, setStock] = useState<DeudaData | null>(null)
@@ -4012,7 +4013,7 @@ export function DeudaView() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-data)", fontSize: 9 }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                    {[["Fecha", "left"], ["Adjudicado", "right"], ["Ofertado", "right"], ["Demanda", "right"], ["Instrumentos (ticker · TIREA)", "left"], ["", "right"]].map(([h, al]) => (
+                    {[["Fecha", "left"], ["Adjudicado", "right"], ["Ofertado", "right"], ["Demanda", "right"], ["Vencim.", "right"], ["Rollover", "right"], ["Instrumentos (ticker · TIREA)", "left"], ["", "right"]].map(([h, al]) => (
                       <th key={h} style={{ padding: "4px 8px", color: "var(--text-dim)", textAlign: al as "left" | "right", fontWeight: 400, letterSpacing: 1 }}>{h}</th>
                     ))}
                   </tr>
@@ -4031,6 +4032,13 @@ export function DeudaView() {
                         color: r.coberturaPct != null ? (r.coberturaPct >= 100 ? "var(--positive)" : "var(--amber)") : "var(--text-mute)" }}>
                         {r.coberturaPct != null ? `${r.coberturaPct}%` : "—"}
                       </td>
+                      <td style={{ padding: "3px 8px", color: "var(--text-dim)", textAlign: "right", whiteSpace: "nowrap" }}>
+                        {r.vencimientos != null ? `${fmtNum(r.vencimientos, 2)} ${r.unidad}` : "—"}
+                      </td>
+                      <td style={{ padding: "3px 8px", textAlign: "right", fontWeight: 700,
+                        color: r.rollover != null ? (r.rollover >= 100 ? "var(--positive)" : "var(--amber)") : "var(--text-mute)" }}>
+                        {r.rollover != null ? `${fmtNum(r.rollover, 1)}%` : "—"}
+                      </td>
                       <td style={{ padding: "3px 8px", color: "var(--text)" }}>
                         {r.instrumentos.length > 0
                           ? r.instrumentos.map(x => `${x.ticker}${x.tirea != null ? ` ${fmtNum(x.tirea, 1)}%` : ""}`).join("  ·  ")
@@ -4044,7 +4052,7 @@ export function DeudaView() {
                 </tbody>
               </table>
               <div style={{ fontSize: 8, color: "var(--text-mute)", marginTop: 4 }}>
-                Fuente: argentina.gob.ar — Secretaría de Finanzas (notas de resultado) · Demanda = ofertado / adjudicado · TIREA = tasa interna de retorno efectiva anual
+                Fuente: argentina.gob.ar — Secretaría de Finanzas (notas de resultado) · Demanda = ofertado / adjudicado · Rollover = adjudicado / vencimientos a cubrir (solo si la nota los informa) · TIREA = tasa interna de retorno efectiva anual
               </div>
             </div>
           )
