@@ -673,14 +673,14 @@ export function EmaeView() {
 
   return (
     <div>
-      <SectionMeta title="EMAE — Actividad Económica" help="El EMAE (Estimador Mensual de Actividad Económica) mide la evolución mensual de la actividad productiva argentina. Elaborado por INDEC. Valor base 2004 = 100. Variaciones positivas indican expansión económica." source="INDEC · datos.gob.ar" />
+      <SectionMeta title="EMAE — Actividad Económica" help="El EMAE (Estimador Mensual de Actividad Económica) mide la evolución mensual de la actividad productiva argentina. Elaborado por INDEC. Valor base 2004 = 100. Variaciones positivas indican expansión económica. INDEC lo publica con ~55 días de rezago: el dato más reciente disponible siempre corresponde a hace 1-2 meses, no es un error ni una fuente caída." source="INDEC · datos.gob.ar" />
       {/* KPIs EMAE */}
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
         <KPI
           label="EMAE"
           termId="EMAE"
           value={ultimoEmae ? fmtNum(ultimoEmae[1]) : null}
-          unit={`Índice base 2004=100 · ${ultimoEmae?.[0] ?? ""}`}
+          unit={`Índice base 2004=100 · ${ultimoEmae?.[0] ?? ""} (rezago ~55d, normal)`}
           var1={varMensual} var1Label="mensual"
           var2={varInteranual} var2Label="interanual"
         />
