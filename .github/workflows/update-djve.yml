@@ -1,0 +1,65 @@
+name: Actualizar DJVE (Ministerio de Agricultura)
+
+on:
+  schedule:
+    # Lunes 09:00 UTC (6am Argentina), semanal.
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      csv_url:
+        description: 'URL directa del CSV de DJVE (opcional, salta CKAN)'
+        required: false
+        default: ''
+      package_id:
+        description: 'Slug/id del dataset CKAN (opcional)'
+        required: false
+        default: ''
+
+concurrency:
+  group: update-djve-${{ github.repository }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  actualizar:
+    name: DJVE por cultivo y mes
+    if: github.repository == 'manuelfsm03/EconData_argy'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: npm ci
+        run: npm ci --include=dev --no-audit --no-fund
+
+      # Si la fuente falla, el script NO toca el JSON y emite un warning
+      # (conserva el ultimo dato bueno). Mirar las anotaciones del run.
+      - name: Resolver CSV vigente en CKAN y generar djve-mensual.json
+        env:
+          DJVE_CSV_URL: ${{ github.event.inputs.csv_url }}
+          DJVE_CKAN_PACKAGE_ID: ${{ github.event.inputs.package_id }}
+        run: |
+          # Inputs vacios (cron) no deben pisar los defaults del script.
+          [ -z "$DJVE_CSV_URL" ] && unset DJVE_CSV_URL
+          [ -z "$DJVE_CKAN_PACKAGE_ID" ] && unset DJVE_CKAN_PACKAGE_ID
+          npx tsx scripts/update-djve.ts
+
+      - name: Commitear si hay cambios
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -f public/data/djve-mensual.json ]; then git add public/data/djve-mensual.json; fi
+          if git diff --cached --quiet; then
+            echo "Sin cambios - nada que commitear"
+          else
+            git commit -m "data: DJVE actualizado ($(date +%Y-%m-%d))"
+            git push origin HEAD:main
+          fi

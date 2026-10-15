@@ -134,6 +134,20 @@ export const SOURCE_REGISTRY = {
     timeoutMs: 30_000,
     healthcheckPath: "/api/3/action/package_show?id=estimaciones-agricolas",
   }),
+  // CIARA-CEC: comunicado mensual de liquidación de divisas del agro (USD).
+  // Se consume vía scripts/update-agro-liquidacion.ts (GitHub Actions), no en
+  // runtime de Next, pero se registra para tener atribución y frescura.
+  // NO VERIFICADO EN VIVO. La DJVE (MAGyP) comparte host con magyp_siia
+  // (datos.magyp.gob.ar), por eso no tiene entrada propia: el registro no
+  // admite hosts duplicados. Cadencia mensual -> official_monthly.
+  ciara_cec: source("ciara_cec", {
+    displayName: "CIARA-CEC — Liquidación de divisas",
+    publisher: "CIARA-CEC (Cámara de la Industria Aceitera / Centro de Exportadores de Cereales)",
+    host: "ciaracec.com.ar",
+    allowedHosts: ["ciaracec.com.ar", "www.ciaracec.com.ar"],
+    kind: "html",
+    dataClass: "official_monthly",
+  }),
   // NASA POWER: precipitación diaria global por reanálisis satelital, sin
   // credencial. A diferencia de ERA5/Open-Meteo (~5 días de demora), POWER
   // tiene un delay de reporte de 2 a 3 SEMANAS — verificado en vivo: pedidos
