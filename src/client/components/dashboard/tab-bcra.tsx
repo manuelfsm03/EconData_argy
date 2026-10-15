@@ -68,6 +68,7 @@ const BCRA_TABS = [
   { key: "rem",       label: "REM",            icon: "◎" },
   { key: "bancos",    label: "Bal. Bancos",    icon: "▦" },
   { key: "morosidad", label: "Morosidad",      icon: "⚠" },
+  { key: "catalogo",  label: "Catálogo",       icon: "⌕" },
 ]
 
 interface SubTabsProps {
@@ -1464,6 +1465,160 @@ export function BancosView() {
   )
 }
 
+// ── Catálogo BCRA — todas las variables monetarias publicadas ────────────────
+// Consume /api/bcra-balance (ya existía, nadie lo mostraba en ningún lado):
+// descubre dinámicamente TODAS las variables de la API v4.0 del BCRA —hoy
+// 1.600+— y las agrupa por familia. Sirve para encontrar series puntuales
+// (ej. pases, LEFI, LEBAC) sin tener que adivinar el ID de memoria.
+
+interface CatalogoVariable {
+  id: number
+  descripcion: string
+  categoria: string
+  periodicidad: string
+  valor: number
+  fecha: string
+  unidad: string
+  moneda: string
+  familia: string
+}
+interface CatalogoFamilia { familia: string; label: string; count: number; variables: CatalogoVariable[] }
+interface CatalogoPayload {
+  status: "ok" | "error"
+  source: string
+  data_date: string | null
+  count: number
+  familias: CatalogoFamilia[]
+}
+
+const MAX_FILAS_TABLA = 200
+
+export function CatalogoView() {
+  const [payload, setPayload] = useState<CatalogoPayload | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [familiaActiva, setFamiliaActiva] = useState<string | null>(null)
+  const [busqueda, setBusqueda] = useState("")
+
+  useEffect(() => {
+    fetch("/api/bcra-balance", { cache: "no-store" })
+      .then(async r => {
+        const j = await r.json() as CatalogoPayload
+        if (!r.ok || j.status !== "ok") {
+          setError("El catálogo del BCRA no está disponible en este momento.")
+          setLoading(false)
+          return
+        }
+        setPayload(j)
+        setLoading(false)
+      })
+      .catch(() => {
+        setError("No se pudo consultar el catálogo del BCRA.")
+        setLoading(false)
+      })
+  }, [])
+
+  if (loading) return <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>Descubriendo catálogo del BCRA...</div>
+
+  if (error || !payload) return (
+    <div>
+      <SectionMeta title="Catálogo BCRA" help="Todas las variables monetarias publicadas por el BCRA, agrupadas por familia." source="BCRA API v4.0" />
+      <div style={{ margin: 12, color: "var(--negative)", fontSize: 10, fontFamily: "var(--font-data)" }}>
+        {error ?? "Sin datos"}
+      </div>
+    </div>
+  )
+
+  const termino = busqueda.trim().toLowerCase()
+  const todasLasVariables = payload.familias.flatMap(f => f.variables)
+  const filtradas = todasLasVariables.filter(v => {
+    if (familiaActiva && v.familia !== familiaActiva) return false
+    if (termino && !v.descripcion.toLowerCase().includes(termino)) return false
+    return true
+  })
+  const mostrar = filtradas.slice(0, MAX_FILAS_TABLA)
+
+  return (
+    <div>
+      <SectionMeta
+        title="Catálogo BCRA — todas las variables"
+        help="Descubrimiento dinámico contra la API v4.0 del BCRA: cero IDs hardcodeados. Las familias son una agrupación derivada por palabras clave sobre la descripción oficial, no una clasificación del BCRA. Útil para encontrar una serie puntual sin tener que adivinar el ID de memoria."
+        source={payload.source}
+      />
+      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
+        <KPI label="Variables publicadas" value={fmtNum(payload.count, 0)} unit={`Último dato: ${payload.data_date ?? "—"}`} valueColor="var(--sky)" />
+        <KPI label="Familias" value={fmtNum(payload.familias.length, 0)} unit="Agrupación derivada por palabras clave" valueColor="var(--amber)" />
+        <KPI label="Coincidencias" value={fmtNum(filtradas.length, 0)} unit={familiaActiva || termino ? "Con el filtro aplicado" : "Sin filtrar"} valueColor="var(--positive)" />
+      </div>
+
+      <div style={{ padding: "10px 14px", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", borderBottom: "1px solid var(--bg-elev-2)" }}>
+        <input
+          type="text"
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
+          placeholder="Buscar por descripción (ej. pases, LEFI, LEBAC, morosidad)..."
+          style={{
+            flex: "1 1 260px", fontSize: 11, padding: "6px 10px", fontFamily: "var(--font-data)",
+            background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 4,
+          }}
+        />
+        <button
+          onClick={() => setFamiliaActiva(null)}
+          style={{
+            fontSize: 10, padding: "5px 12px", borderRadius: 14, cursor: "pointer",
+            border: familiaActiva === null ? "1px solid var(--amber)" : "1px solid var(--border)",
+            background: familiaActiva === null ? "var(--amber)" : "var(--bg-elev)",
+            color: familiaActiva === null ? "var(--bg)" : "var(--text-dim)",
+          }}
+        >Todas</button>
+        {payload.familias.map(f => (
+          <button
+            key={f.familia}
+            onClick={() => setFamiliaActiva(f.familia === familiaActiva ? null : f.familia)}
+            style={{
+              fontSize: 10, padding: "5px 12px", borderRadius: 14, cursor: "pointer",
+              border: familiaActiva === f.familia ? "1px solid var(--amber)" : "1px solid var(--border)",
+              background: familiaActiva === f.familia ? "var(--amber)" : "var(--bg-elev)",
+              color: familiaActiva === f.familia ? "var(--bg)" : "var(--text-dim)",
+            }}
+          >{f.label} ({f.count})</button>
+        ))}
+      </div>
+
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10, fontFamily: "var(--font-data)" }}>
+          <thead>
+            <tr style={{ background: "var(--bg-elev-2)", color: "var(--text-dim)", textAlign: "left" }}>
+              <th style={{ padding: "6px 10px" }}>ID</th>
+              <th style={{ padding: "6px 10px" }}>Descripción</th>
+              <th style={{ padding: "6px 10px" }}>Último valor</th>
+              <th style={{ padding: "6px 10px" }}>Unidad</th>
+              <th style={{ padding: "6px 10px" }}>Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            {mostrar.map((v, i) => (
+              <tr key={v.id} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--bg-row-alt)" }}>
+                <td style={{ padding: "5px 10px", color: "var(--text-mute)" }}>{v.id}</td>
+                <td style={{ padding: "5px 10px", color: "var(--text)" }}>{v.descripcion}</td>
+                <td style={{ padding: "5px 10px", color: "var(--text)", textAlign: "right" }}>{fmtNum(v.valor, 2)}</td>
+                <td style={{ padding: "5px 10px", color: "var(--text-dim)" }}>{v.unidad}</td>
+                <td style={{ padding: "5px 10px", color: "var(--text-dim)" }}>{fmtDate(v.fecha)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {filtradas.length > MAX_FILAS_TABLA && (
+        <div style={{ padding: "8px 14px", color: "var(--text-mute)", fontSize: 9, fontFamily: "var(--font-data)" }}>
+          Mostrando {MAX_FILAS_TABLA} de {filtradas.length} coincidencias — afiná la búsqueda o elegí una familia para ver el resto.
+        </div>
+      )}
+    </div>
+  )
+}
+
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export function TabBCRA({ initialSubtab }: { initialSubtab?: string | null }) {
@@ -1498,6 +1653,7 @@ export function TabBCRA({ initialSubtab }: { initialSubtab?: string | null }) {
       {activeTab === "rem"       && <REMView       />}
       {activeTab === "bancos"    && <BancosView    />}
       {activeTab === "morosidad" && <MorosidadView />}
+      {activeTab === "catalogo"  && <CatalogoView  />}
     </div>
   )
 }
