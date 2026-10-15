@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { Activity, ArrowLeft, CircleAlert, Database, RefreshCw } from "lucide-react"
+import { Activity, ArrowLeft, CircleAlert, CircleHelp, Database, RefreshCw } from "lucide-react"
 import {
   probeCardEndpoint,
   selectSafeHealthProbes,
@@ -10,6 +10,7 @@ import {
   type CardHealthProbeResult,
 } from "@/client/lib/card-health"
 import { CARD_CATEGORIES, DATA_CARD_CATALOG } from "@/lib/card-catalog"
+import { VeracityPanel } from "./veracity-panel"
 
 type SourceStatus = {
   name: string
@@ -50,14 +51,14 @@ function formatTimestamp(value: string | null | undefined): string {
   return Number.isFinite(parsed) ? new Date(parsed).toLocaleString("es-AR") : value
 }
 
-function statusStyle(status: "ok" | "error" | "checking" | "unknown") {
+export function statusStyle(status: "ok" | "error" | "checking" | "unknown") {
   if (status === "ok") return "border-emerald-500/25 bg-emerald-500/10 text-emerald-400"
   if (status === "error") return "border-red-500/25 bg-red-500/10 text-red-400"
   if (status === "checking") return "border-amber-500/25 bg-amber-500/10 text-[var(--amber)]"
   return "border-[var(--border)] bg-[var(--bg-elev-2)] text-[var(--text-dim)]"
 }
 
-function StatusPill({ status, children }: { status: "ok" | "error" | "checking" | "unknown"; children: React.ReactNode }) {
+export function StatusPill({ status, children }: { status: "ok" | "error" | "checking" | "unknown"; children: React.ReactNode }) {
   return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-[9px] ${statusStyle(status)}`}>{children}</span>
 }
 
@@ -130,11 +131,18 @@ export function HealthDashboard() {
   const cardsError = cardStates.filter((row) => row.status === "error").length
   const sourcesOk = sources.filter((row) => row.status === "success").length
   const sourcesError = sources.filter((row) => row.status === "error").length
+  // "unprobed" (sin healthcheck configurado en SOURCE_REGISTRY) no es ni OK
+  // ni caída: hoy no cuenta en ninguna de las dos tiles de arriba y eso hace
+  // que una fuente sin sonda se vea indistinguible de "no existe" en el
+  // resumen — con esta tile aparte queda explícito cuánto del registro ni
+  // siquiera se está chequeando.
+  const sourcesUnprobed = sources.filter((row) => row.status === "unprobed").length
   const summaries = [
     { label: "Tarjetas OK", value: cardsOk, Icon: Activity, color: "text-emerald-400" },
     { label: "Tarjetas con error", value: cardsError, Icon: CircleAlert, color: "text-red-400" },
     { label: "Fuentes accesibles", value: sourcesOk, Icon: Database, color: "text-emerald-400" },
     { label: "Fuentes caídas", value: sourcesError, Icon: CircleAlert, color: "text-red-400" },
+    { label: "Fuentes sin sonda", value: sourcesUnprobed, Icon: CircleHelp, color: "text-[var(--amber)]" },
   ]
 
   return (
@@ -153,12 +161,14 @@ export function HealthDashboard() {
           </button>
         </div>
 
-        <section className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {summaries.map(({ label, value, Icon, color }) => <div key={label} className="rounded-lg border border-[var(--border)] bg-[var(--bg-elev)] p-4">
             <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-[var(--text-mute)]"><Icon size={13} className={color} /> {label}</div>
             <div className="mt-2 font-mono text-2xl font-semibold">{value}</div>
           </div>)}
         </section>
+
+        <VeracityPanel />
 
         <section className="mb-10">
           <div className="mb-3 flex items-end justify-between"><div><h2 className="text-lg font-semibold">Fuentes de datos</h2><p className="text-[11px] text-[var(--text-mute)]">Registro completo; “sin sonda” no se interpreta como saludable.</p></div><span className="font-mono text-[10px] text-[var(--text-mute)]">{sources.length} fuentes</span></div>

@@ -9,6 +9,9 @@ const SOURCE_KEYS = new Set(["source", "source_id", "source_name", "fuente", "pr
 const PRIMARY_TIMESTAMP_KEYS = new Set([
   "as_of", "asof", "data_as_of", "dataasof", "last_updated", "lastupdated", "last_update", "lastupdate",
   "fechaactualizacion", "fecha_actualizacion", "effective_at", "effectiveat",
+  // Campo estándar de portales CKAN (ej. datos.magyp.gob.ar): cuándo se
+  // modificó el dataset por última vez, no cuándo se creó.
+  "metadata_modified", "metadatamodified",
 ])
 const SECONDARY_TIMESTAMP_KEYS = new Set(["date", "fecha", "periodo", "pubdate"])
 const RESPONSE_TIMESTAMP_KEYS = new Set(["updated_at", "updatedat", "timestamp", "retrieved_at", "retrievedat", "checked_at", "checkedat"])
