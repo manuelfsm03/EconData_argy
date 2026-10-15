@@ -1,0 +1,57 @@
+name: Actualizar liquidacion agro (CIARA-CEC)
+
+on:
+  schedule:
+    # Dia 12 de cada mes, 12:00 UTC (9am Argentina). CIARA-CEC publica el
+    # comunicado de liquidacion mensual a comienzos de mes. [cadencia NO VERIFICADA]
+    - cron: '0 12 12 * *'
+  workflow_dispatch:
+    inputs:
+      ciara_urls:
+        description: 'URLs de comunicados separadas por coma (opcional, salta el listado)'
+        required: false
+        default: ''
+
+concurrency:
+  group: update-agro-liquidacion-${{ github.repository }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  actualizar:
+    name: Liquidacion agro CIARA-CEC
+    if: github.repository == 'manuelfsm03/EconData_argy'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: npm ci
+        run: npm ci --include=dev --no-audit --no-fund
+
+      # Si la fuente falla, el script NO toca el JSON y emite un warning
+      # (conserva el ultimo dato bueno). Mirar las anotaciones del run.
+      - name: Descargar comunicados y generar agro-liquidacion-ciara.json
+        env:
+          CIARA_URLS: ${{ github.event.inputs.ciara_urls }}
+        run: npx tsx scripts/update-agro-liquidacion.ts
+
+      - name: Commitear si hay cambios
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -f public/data/agro-liquidacion-ciara.json ]; then git add public/data/agro-liquidacion-ciara.json; fi
+          if git diff --cached --quiet; then
+            echo "Sin cambios - nada que commitear"
+          else
+            git commit -m "data: liquidacion agro CIARA-CEC actualizada ($(date +%Y-%m-%d))"
+            git push origin HEAD:main
+          fi
