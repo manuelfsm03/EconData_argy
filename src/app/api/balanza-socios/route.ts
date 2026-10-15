@@ -25,28 +25,48 @@ import {
 const cache = new Map<string, { data: unknown; expiry: number }>()
 
 
+// La API de series de datos.gob.ar es flaky de un modo verificado en vivo
+// (14/10/2026): para una MISMA combinación de series, un valor de `limit`
+// que ahora mismo devuelve todo vacío/null puede ser el único que funciona
+// cinco minutos después (y viceversa) — no es un umbral fijo, cambia en el
+// tiempo (probablemente caché/réplicas del lado de ellos). Reintentar con el
+// mismo `limit` no sirve si ESE valor está "pegado" en mal estado; lo que
+// funciona en vivo es probar un valor DISTINTO en cada reintento.
+const LIMITES_CANDIDATOS = [5000, 1000, 2000, 90, 50, 10]
+
+// Una serie sola, con reintento. Pedir cada país POR SEPARADO (no los 10
+// combinados en una sola consulta) porque la combinación puede devolver
+// algunos países en null aunque sí tengan dato reciente (comprobado
+// pidiéndolos solos) — y un conjunto combinado no deja detectar/reintentar
+// esa corrupción parcial de forma confiable.
+async function fetchSerieUnica(id: string): Promise<[string, number] | null> {
+  for (const limit of LIMITES_CANDIDATOS) {
+    const url = `https://apis.datos.gob.ar/series/api/series/?ids=${encodeURIComponent(id)}&sort=desc&limit=${limit}`
+    const response = await fetchRegistered(url, {
+      headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
+      signal: AbortSignal.timeout(15_000),
+      cache: "no-store", // nunca servir desde el cache de fetch de Next un intento fallido
+    })
+    if (!response.ok) throw new Error(`datos.gob.ar ${response.status}`)
+    const json = await response.json() as { data?: [string, number | null][] }
+    const row = json.data?.[0]
+    if (row && row[1] != null) return [row[0], row[1]]
+  }
+  return null
+}
+
 async function fetchPartnerExports() {
-  const ids = PARTNER_EXPORT_SERIES.map((partner) => partner.id).join(",")
-  const url = `https://apis.datos.gob.ar/series/api/series/?ids=${encodeURIComponent(ids)}&sort=desc&limit=1`
-  const response = await fetchRegistered(url, {
-    headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
-    signal: AbortSignal.timeout(15_000),
-    next: { revalidate: 21_600 },
-  })
-  if (!response.ok) throw new Error(`datos.gob.ar ${response.status}`)
-  return parsePartnerExportPayload(await response.json())
+  const valores = await Promise.all(PARTNER_EXPORT_SERIES.map((p) => fetchSerieUnica(p.id)))
+  const fecha = valores.find((v) => v != null)?.[0] ?? null
+  const row: [string, ...(number | null)[]] = [fecha ?? "", ...valores.map((v) => v?.[1] ?? null)]
+  return parsePartnerExportPayload({ data: [row] })
 }
 
 async function fetchPartnerImports() {
-  const ids = PARTNER_IMPORT_SERIES.map((partner) => partner.id).join(",")
-  const url = `https://apis.datos.gob.ar/series/api/series/?ids=${encodeURIComponent(ids)}&sort=desc&limit=1`
-  const response = await fetchRegistered(url, {
-    headers: { "User-Agent": "PanelDeControl/2.0", Accept: "application/json" },
-    signal: AbortSignal.timeout(15_000),
-    next: { revalidate: 21_600 },
-  })
-  if (!response.ok) throw new Error(`datos.gob.ar ${response.status}`)
-  return parsePartnerImportPayload(await response.json())
+  const valores = await Promise.all(PARTNER_IMPORT_SERIES.map((p) => fetchSerieUnica(p.id)))
+  const fecha = valores.find((v) => v != null)?.[0] ?? null
+  const row: [string, ...(number | null)[]] = [fecha ?? "", ...valores.map((v) => v?.[1] ?? null)]
+  return parsePartnerImportPayload({ data: [row] })
 }
 
 
