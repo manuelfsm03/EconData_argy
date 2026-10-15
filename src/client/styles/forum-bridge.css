@@ -20,65 +20,19 @@
   overflow: clip;
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-tight), Inter, "Segoe UI", system-ui, sans-serif;
+  font-family: "Inter Tight", Inter, "Segoe UI", system-ui, sans-serif;
 }
 
 .forum-page *, .forum-page *::before, .forum-page *::after { box-sizing: border-box; }
 .forum-page button, .forum-page input, .forum-page select { font: inherit; color: inherit; }
 .forum-page button { cursor: pointer; }
 .forum-page [style*="Newsreader"],
-.forum-page .featured-thread h3 { font-family: var(--font-editorial), Georgia, serif; }
+.forum-page .featured-thread h3 { font-family: "Newsreader", Georgia, serif; }
 .forum-page .forum-hero h1,
 .forum-page .forum-topics-heading h2,
 .forum-page .forum-section-head--featured h2,
 .forum-page .forum-section-head--archive h2,
-.forum-page .forum-closing-head h2 { font-family: var(--font-tight), Inter, "Segoe UI", sans-serif; }
-
-/* Bridge the prototype's public font names to the scoped families from next/font. */
-.forum-page .forum-hero-main p,
-.forum-page .forum-hero-principle b,
-.forum-page .forum-hero-principle small,
-.forum-page .forum-topics .forum-section-head p,
-.forum-page .forum-topics .topic-block strong,
-.forum-page .forum-topics .topic-block small,
-.forum-page .forum-search input,
-.forum-page .forum-new,
-.forum-page .forum-filter,
-.forum-page .forum-sort-label,
-.forum-page .forum-sort,
-.forum-page .forum-principle-action,
-.forum-page .forum-principle-action-label,
-.forum-page .unanswered-module > header h3,
-.forum-page .weekly-module header h3,
-.forum-page .forum-closing-grid .lower-thread-copy strong {
-  font-family: var(--font-tight), Inter, "Segoe UI", sans-serif;
-}
-
-.forum-page .forum-kicker,
-.forum-page .forum-section-signal,
-.forum-page .forum-closing-kicker,
-.forum-page .forum-messages .forum-thread p,
-.forum-page .forum-activity-item small,
-.forum-page .featured-grid--editorial h3,
-.forum-page .featured-grid--editorial .featured-thread--lead h3,
-.forum-page .featured-order,
-.forum-page .lower-thread-number,
-.forum-page .forum-closing-grid .weekly-module li b,
-.forum-page .forum-closing-grid .forum-principle blockquote,
-.forum-page .forum-closing-card-head > span,
-.forum-page .forum-closing-status strong {
-  font-family: var(--font-editorial), Georgia, serif;
-}
-
-.forum-page .forum-index,
-.forum-page .forum-tag,
-.forum-page .forum-messages .forum-tag,
-.forum-page .forum-activity-item em,
-.forum-page .forum-thread-state b,
-.forum-page .lower-thread b,
-.forum-page .weekly-module li small {
-  font-family: var(--font-mono), Consolas, monospace;
-}
+.forum-page .forum-closing-head h2 { font-family: "Inter Tight", Inter, "Segoe UI", sans-serif; }
 
 .forum-feed-state {
   min-height: 220px;
