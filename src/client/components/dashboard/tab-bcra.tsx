@@ -132,7 +132,7 @@ function SubTabs({ active, onChange }: SubTabsProps) {
 }
 
 // ── Plazo Fijo ─────────────────────────────────────────────────────────────────
-// Vars BCRA: 44=TAMAR vigente, 7=BADLAR histórica, 8=TM20, 6=TPM, 12=Tasa depósitos 30d
+// Vars BCRA: 44=TAMAR vigente, 7=BADLAR histórica, 8=TM20, 150=pases 1d (proxy TPM, la var 6 fue discontinuada), 12=Tasa depósitos 30d
 
 interface BCRAVar { fecha: string; valor: number }
 
@@ -178,7 +178,7 @@ export function PlazoFijoView() {
 
   return (
     <div>
-      <SectionMeta title="Tasas — Plazo Fijo" help="TAMAR es la referencia mayorista vigente de bancos privados. BADLAR se conserva como serie histórica secundaria. TM20 = tasa por depósitos mayores a $20 millones. TPM = Tasa de Política Monetaria del BCRA." source="BCRA API" />
+      <SectionMeta title="Tasas — Plazo Fijo" help="TAMAR es la referencia mayorista vigente de bancos privados. BADLAR se conserva como serie histórica secundaria. TM20 = tasa por depósitos mayores a $20 millones. TPM = tasa de pases a 1 día (mercado): el BCRA discontinuó la serie oficial de la Tasa de Política Monetaria propiamente dicha, así que se usa la tasa de pases como proxy de referencia vigente." source="BCRA API" />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
         <KPI label="TAMAR Bancos Privados" termId="TAMAR" value={tamarUlt != null ? `${fmtNum(tamarUlt, 2)}%` : null}
           unit="Referencia vigente · TNA · Var 44" valueColor="var(--amber)" />
@@ -187,7 +187,7 @@ export function PlazoFijoView() {
         <KPI label="TM20 Bancos Privados" termId="TM20"  value={tm20Ult   != null ? `${fmtNum(tm20Ult, 2)}%` : null}
           unit="TNA · Var 8 BCRA API" valueColor="var(--positive)" />
         <KPI label="Tasa de Política Mon." termId="TPM" value={tpmUlt    != null ? `${fmtNum(tpmUlt, 2)}%` : null}
-          unit="TPM · Var 6 BCRA API" valueColor="var(--sky)" />
+          unit="TPM (proxy: pases 1d) · Var 150 BCRA API" valueColor="var(--sky)" />
         <KPI label="Depósitos 30d" termId="TASA PLAZO FIJO"          value={pf30Ult   != null ? `${fmtNum(pf30Ult, 2)}%` : null}
           unit="TNA · Var 12 BCRA API" valueColor="#CE93D8" />
       </div>
@@ -242,7 +242,7 @@ export function PlazoFijoView() {
             </tbody>
           </table>
           <div style={{ fontSize: 8, color: "var(--text-mute)", marginTop: 4 }}>
-            Fuente: BCRA API v4.0 · api.bcra.gob.ar · Variables 44 (TAMAR vigente), 7 (BADLAR histórica), 8 (TM20), 6 (TPM), 12 (Dep. 30d)
+            Fuente: BCRA API v4.0 · api.bcra.gob.ar · Variables 44 (TAMAR vigente), 7 (BADLAR histórica), 8 (TM20), 150 (pases 1d, proxy TPM), 12 (Dep. 30d)
           </div>
         </div>
       )}
@@ -728,13 +728,27 @@ export function REMView() {
     usd12: r.dolar_12m,
   })) as Record<string, unknown>[]
 
-  const fechaLabel = kpis?.fecha ? `Relevamiento ${kpis.fecha}` : ""
+  // kpis.fecha es el mes en que se HIZO la encuesta, no el mes proyectado —
+  // "Relevamiento 2026-09" significa "encuesta de analistas realizada en
+  // sept-2026", y esa encuesta proyecta 12 meses hacia adelante (hasta
+  // ~sept-2027). Se muestra el horizonte calculado para no confundir la
+  // fecha de la encuesta con la fecha a la que proyecta.
+  const horizonte12m = (() => {
+    if (!kpis?.fecha) return null
+    const [anio, mes] = kpis.fecha.split("-").map(Number)
+    if (!anio || !mes) return null
+    const d = new Date(Date.UTC(anio, mes - 1 + 12, 1))
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`
+  })()
+  const fechaLabel = kpis?.fecha
+    ? `Encuesta de ${kpis.fecha} · proyecta a ${horizonte12m ?? "+12m"}`
+    : ""
 
   return (
     <div>
       <SectionMeta
         title="REM — Expectativas de Mercado"
-        help="El REM (Relevamiento de Expectativas de Mercado) consolida mensualmente las proyecciones de analistas privados sobre inflación, tipo de cambio, tasas e indicadores reales. Publicado por el BCRA. Los valores son medianas del consenso."
+        help="El REM (Relevamiento de Expectativas de Mercado) consolida mensualmente las proyecciones de analistas privados sobre inflación, tipo de cambio, tasas e indicadores reales. Publicado por el BCRA. Los valores son medianas del consenso. La fecha mostrada es la del MES EN QUE SE HIZO la encuesta, no el mes proyectado — esa encuesta pronostica 12 meses hacia adelante."
         source="BCRA — Relevamiento de Expectativas de Mercado"
       />
 

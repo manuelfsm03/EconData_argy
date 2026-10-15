@@ -7,14 +7,14 @@ import { fetchRegistered } from "@/server/http/fetch-source"
  * Si LECAP_TEA > CER_real, el mercado "precia" esa diferencia como inflación implícita.
  *
  * Fuentes:
- *  - BCRA API v4.0: TAMAR (referencia vigente)
- *  - BCRA datos.gob.ar: BADLAR histórica, TPM
+ *  - BCRA API v4.0: TAMAR (referencia vigente), pases 1d (proxy TPM)
+ *  - BCRA datos.gob.ar: BADLAR histórica
  *  - datos.gob.ar: CER diario (coeficiente de estabilización de referencia)
  *  - /api/bonos?tipo=lecap: TEM/TIR de LECAPs/BONCAPs (desde DB local)
  *  - /api/rem: mediana REM analistas (benchmark)
  */
 import { NextResponse } from "next/server"
-import { parseRemExcel } from "@/server/domain/rem-data"
+import { parseRemExcel, REM_XLSX_URL } from "@/server/domain/rem-data"
 import { prisma } from "@/server/db/prisma"
 import { bcraOfficialApi } from "@/server/sources/bcra-official-api"
 
@@ -25,7 +25,6 @@ function setCache(k: string, d: unknown, ttl: number) { cache.set(k, { data: d, 
 // IDs de series datos.gob.ar
 const SERIES = {
   badlar:      "89.2_TS_INTELAR_0_D_20",   // BADLAR privados TNA
-  tpm:         "168.1_T_CAMBIA_0_0_22",     // Tasa política monetaria
   cer_diario:  "98.1_CER_0_D_36",           // CER diario (coeficiente)
 }
 
@@ -59,6 +58,27 @@ async function fetchTamar(limit = 60): Promise<{ fecha: string; valor: number }[
   } catch { return [] }
 }
 
+// Serie datos.gob.ar de la TPM ("168.1_T_CAMBIA_0_0_22") fue dada de baja
+// ("Serie inexistente", verificado en vivo 14/10/2026) — igual que la var 6
+// de la API BCRA (ver src/app/api/bcra/route.ts), que también está muerta.
+// Se usa la var 150 (pases entre terceros a 1 día) como proxy vigente.
+async function fetchPasesReferencia(limit = 60): Promise<{ fecha: string; valor: number }[]> {
+  try {
+    const today = new Date()
+    const from = new Date(today)
+    from.setDate(from.getDate() - Math.max(limit * 2, 120))
+    const data = await bcraOfficialApi.getSeriesData(
+      150,
+      from.toISOString().slice(0, 10),
+      today.toISOString().slice(0, 10),
+      limit,
+    )
+    return data
+      .map((row) => ({ fecha: row.fecha, valor: row.valor }))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+  } catch { return [] }
+}
+
 async function fetchLecaps(): Promise<{ ticker: string; vencimiento: string; tem: number | null; tir: number | null; diasVto: number }[]> {
   try {
     const instruments = await prisma.capInstrument.findMany({
@@ -77,7 +97,7 @@ async function fetchLecaps(): Promise<{ ticker: string; vencimiento: string; tem
 
 async function fetchRem(): Promise<{ inflacion_12m: number | null; dolar_12m: number | null; tasa_12m: number | null; fecha: string | null }> {
   try {
-    const res = await fetchRegistered("https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/informes/historico-relevamiento-expectativas-mercado.xlsx", {
+    const res = await fetchRegistered(REM_XLSX_URL, {
       cache: "no-store",
     })
     if (!res.ok) throw new Error(`BCRA REM ${res.status}`)
@@ -101,7 +121,7 @@ export async function GET() {
     const [tamarSerie, badlarSerie, tpmSerie, cerSerie, lecaps, rem] = await Promise.all([
       fetchTamar(30),
       fetchSerie(SERIES.badlar, 30),
-      fetchSerie(SERIES.tpm, 30),
+      fetchPasesReferencia(30),
       fetchSerie(SERIES.cer_diario, 30),
       fetchLecaps(),
       fetchRem(),
@@ -217,7 +237,7 @@ export async function GET() {
         },
       },
       updated_at: new Date().toISOString(),
-      source: "BCRA API v4.0 (TAMAR var. 44) · datos.gob.ar (BADLAR histórica, TPM, CER) · DB local (LECAP) · REM BCRA",
+      source: "BCRA API v4.0 (TAMAR var. 44, pases 1d var. 150 proxy TPM) · datos.gob.ar (BADLAR histórica, CER) · DB local (LECAP) · REM BCRA",
     }
 
     setCache(cacheKey, result, 1800)  // 30 min
