@@ -1471,66 +1471,6 @@ export function MorosidadView() {
   )
 }
 
-export function BancosView() {
-  const [serie, setSerie] = useState<BankingPeriod[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const hastaDate = new Date()
-    const desdeDate = new Date(hastaDate)
-    desdeDate.setUTCFullYear(desdeDate.getUTCFullYear() - 5)
-    const desde = desdeDate.toISOString().slice(0, 10)
-    const hasta = hastaDate.toISOString().slice(0, 10)
-
-    fetch(buildBankingApiUrl(desde, hasta), { cache: "no-store" })
-      .then(async response => {
-        const json = await response.json()
-        if (!response.ok) throw new Error(json.error ?? "No se pudo cargar el balance bancario")
-        setSerie(json.data?.serie ?? [])
-      })
-      .catch(fetchError => setError(fetchError instanceof Error ? fetchError.message : "No se pudo cargar el balance bancario"))
-      .finally(() => setLoading(false))
-  }, [])
-
-  if (loading) return <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>Cargando balance del sistema financiero...</div>
-
-  if (error || serie.length === 0) return (
-    <div>
-      <SectionMeta title="Balance del Sistema Financiero" help="Composición mensual del activo y del fondeo bancario." source="BCRA" />
-      <div style={{ margin: 12, color: "var(--negative)", fontSize: 10, fontFamily: "var(--font-data)" }}>
-        {error ?? "Sin períodos disponibles para el rango solicitado"}
-      </div>
-    </div>
-  )
-
-  const last = serie.at(-1)!
-  const pct = (value: number | null) => value == null ? null : `${fmtNum(value, 2)}%`
-
-  return (
-    <div>
-      <SectionMeta
-        title="Balance del Sistema Financiero"
-        help="Composición del activo y del fondeo como porcentaje del activo total. Los faltantes del anexo permanecen nulos y no se reemplazan por cero."
-        source="BCRA · InfBanc_Anexo.xlsx"
-      />
-      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
-        <KPI label="Crédito privado" value={pct(last.cred_priv)} unit={`% del activo · ${last.fecha}`} valueColor="var(--sky)" />
-        <KPI label="Títulos públicos" value={pct(last.titulos_pub)} unit={`% del activo · ${last.fecha}`} valueColor="var(--amber)" />
-        <KPI label="Depósitos vista privados" value={pct(last.dep_priv_vista)} unit={`% del activo · ${last.fecha}`} valueColor="var(--positive)" />
-        <KPI label="Depósitos a plazo privados" value={pct(last.dep_priv_plazo)} unit={`% del activo · ${last.fecha}`} valueColor="#81C784" />
-        <KPI label="Patrimonio neto" value={pct(last.pn)} unit={`% del activo · ${last.fecha}`} valueColor="var(--yellow)" />
-        <KPI label="Activo total" value={`$${fmtNum(last.activo_mm / 1_000_000, 2)} B`} unit={`Billones ARS corrientes · ${last.fecha}`} valueColor="var(--text)" />
-      </div>
-      <BankingCompositionChart title="COMPOSICIÓN DEL ACTIVO — % DEL ACTIVO TOTAL" data={serie} series={BANK_ASSET_SERIES} />
-      <BankingCompositionChart title="COMPOSICIÓN DEL FONDEO — % DEL ACTIVO TOTAL" data={serie} series={BANK_FUNDING_SERIES} />
-      <div style={{ padding: "6px 12px 10px", color: "var(--text-mute)", fontSize: 8, fontFamily: "var(--font-data)" }}>
-        BCRA · Informe sobre Bancos · Estado de Situación Financiera · {serie.length} períodos consultados con cache no-store.
-      </div>
-    </div>
-  )
-}
-
 // ── Catálogo BCRA — todas las variables monetarias publicadas ────────────────
 // Consume /api/bcra-balance (ya existía, nadie lo mostraba en ningún lado):
 // descubre dinámicamente TODAS las variables de la API v4.0 del BCRA —hoy
@@ -1684,6 +1624,65 @@ export function CatalogoView() {
   )
 }
 
+export function BancosView() {
+  const [serie, setSerie] = useState<BankingPeriod[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const hastaDate = new Date()
+    const desdeDate = new Date(hastaDate)
+    desdeDate.setUTCFullYear(desdeDate.getUTCFullYear() - 5)
+    const desde = desdeDate.toISOString().slice(0, 10)
+    const hasta = hastaDate.toISOString().slice(0, 10)
+
+    fetch(buildBankingApiUrl(desde, hasta), { cache: "no-store" })
+      .then(async response => {
+        const json = await response.json()
+        if (!response.ok) throw new Error(json.error ?? "No se pudo cargar el balance bancario")
+        setSerie(json.data?.serie ?? [])
+      })
+      .catch(fetchError => setError(fetchError instanceof Error ? fetchError.message : "No se pudo cargar el balance bancario"))
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div style={{ padding: 24, color: "var(--text-dim)", textAlign: "center", fontSize: 11, fontFamily: "var(--font-data)" }}>Cargando balance del sistema financiero...</div>
+
+  if (error || serie.length === 0) return (
+    <div>
+      <SectionMeta title="Balance del Sistema Financiero" help="Composición mensual del activo y del fondeo bancario." source="BCRA" />
+      <div style={{ margin: 12, color: "var(--negative)", fontSize: 10, fontFamily: "var(--font-data)" }}>
+        {error ?? "Sin períodos disponibles para el rango solicitado"}
+      </div>
+    </div>
+  )
+
+  const last = serie.at(-1)!
+  const pct = (value: number | null) => value == null ? null : `${fmtNum(value, 2)}%`
+
+  return (
+    <div>
+      <SectionMeta
+        title="Balance del Sistema Financiero"
+        help="Composición del activo y del fondeo como porcentaje del activo total. Los faltantes del anexo permanecen nulos y no se reemplazan por cero."
+        source="BCRA · InfBanc_Anexo.xlsx"
+      />
+      <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
+        <KPI label="Crédito privado" value={pct(last.cred_priv)} unit={`% del activo · ${last.fecha}`} valueColor="var(--sky)" />
+        <KPI label="Títulos públicos" value={pct(last.titulos_pub)} unit={`% del activo · ${last.fecha}`} valueColor="var(--amber)" />
+        <KPI label="Depósitos vista privados" value={pct(last.dep_priv_vista)} unit={`% del activo · ${last.fecha}`} valueColor="var(--positive)" />
+        <KPI label="Depósitos a plazo privados" value={pct(last.dep_priv_plazo)} unit={`% del activo · ${last.fecha}`} valueColor="#81C784" />
+        <KPI label="Patrimonio neto" value={pct(last.pn)} unit={`% del activo · ${last.fecha}`} valueColor="var(--yellow)" />
+        <KPI label="Activo total" value={`$${fmtNum(last.activo_mm / 1_000_000, 2)} B`} unit={`Billones ARS corrientes · ${last.fecha}`} valueColor="var(--text)" />
+      </div>
+      <BankingCompositionChart title="COMPOSICIÓN DEL ACTIVO — % DEL ACTIVO TOTAL" data={serie} series={BANK_ASSET_SERIES} />
+      <BankingCompositionChart title="COMPOSICIÓN DEL FONDEO — % DEL ACTIVO TOTAL" data={serie} series={BANK_FUNDING_SERIES} />
+      <div style={{ padding: "6px 12px 10px", color: "var(--text-mute)", fontSize: 8, fontFamily: "var(--font-data)" }}>
+        BCRA · Informe sobre Bancos · Estado de Situación Financiera · {serie.length} períodos consultados con cache no-store.
+      </div>
+    </div>
+  )
+}
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
