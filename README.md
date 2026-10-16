@@ -207,3 +207,46 @@ BCRA_TOKEN=...    # Token BCRA para estadisticasbcra.com (no requerido en dev)
 - **Otros Aduana**: `DGA total − Der. Exportación − Der. Importación` → incluye IVA sobre importaciones, tasas estadísticas y otros derechos aduaneros.
 - **Variación interanual EMAE sectorial**: calculada desde índice base 2004 como `(val_t / val_{t-12} − 1) × 100`, no desde serie pre-computada.
 - **Yahoo Finance en Vercel**: usar `httpx` directo a `query1.finance.yahoo.com/v8/finance/chart/{ticker}` — la librería `yfinance` está bloqueada en Vercel.
+
+---
+
+## News Summarizer (agente diario de coyuntura)
+
+Primer quick win "abrilo cada mañana" de La Pizarra. Un agente automatizado que
+2 veces por día (07:00 y 12:00 hora AR) lee los RSS de las principales fuentes
+económicas AR (Cronista, Ámbito, BAE, Infobae) y arma un "morning brief" de
+3-5 bullets por sección temática:
+
+- Dólar / cambiario
+- Tasas / monetario
+- Deuda / fiscal
+- Actividad / inflación
+
+**Arquitectura:**
+
+1. `scripts/fetch-news-raw.mjs` — descarga los RSS, deduplica y filtra a las
+   últimas 24hs. Output: `public/data/news-raw-YYYY-MM-DD-{morning|noon}.json`.
+2. `scripts/generate-news-brief.mjs` — llama a **Claude Haiku 4.5**
+   (`claude-haiku-4-5-20251001`) con las noticias como contexto y pide 4
+   secciones estructuradas. Output: `public/data/news-brief-YYYY-MM-DD-{morning|noon}.json`.
+3. `.github/workflows/news-brief.yml` — cron `0 10,15 * * *` (10 y 15 UTC =
+   7am y 12pm AR). También `workflow_dispatch` para correr a demanda.
+4. `GET /api/news-brief` — sirve el último brief. Query params opcionales:
+   `?fecha=YYYY-MM-DD&corte=morning|noon`.
+5. UI: componente `NewsBrief` en `src/client/components/dashboard/news-brief.tsx`,
+   embebido al inicio de la tab "Resumen" y en la página standalone `/coyuntura`.
+
+**Envs necesarios:**
+
+- `ANTHROPIC_API_KEY` — solo hace falta en GitHub Actions (Secrets del repo).
+  En Vercel NO es necesario: el frontend consume los JSONs ya generados.
+
+**Costos:** el modelo Haiku 4.5 procesa ~5-15k tokens por corrida (bajísimo,
+menos de USD 0.02/día).
+
+**Correr manualmente en local:**
+
+```bash
+node scripts/fetch-news-raw.mjs morning
+ANTHROPIC_API_KEY=sk-ant-... node scripts/generate-news-brief.mjs morning
+```
