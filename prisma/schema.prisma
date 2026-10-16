@@ -371,6 +371,7 @@ model Profile {
   // Relaciones
   predictions Prediction[]
   reports     Report[]
+  alertas     Alerta[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -416,4 +417,25 @@ model Report {
 
   @@index([createdAt])
   @@map("reports")
+}
+
+// ─── ALERTAS (MVP freemium) ───────────────────────────────────────────────────
+// MVP: 3 tipos soportados (dolar | tasa_bcra | publicacion_ipc), canal único email
+// vía Resend, límite free = 3 alertas activas por Profile (userId = UUID Supabase).
+model Alerta {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  tipo          String                     // "dolar" | "tasa_bcra" | "publicacion_ipc"
+  config        Json                       // p.ej. { variedad: "blue", operador: ">", umbral: 1500 }
+  canal         String    @default("email") // por ahora único
+  emailDestino  String    @map("email_destino") // destino fijo del envío
+  estado        String    @default("activa") // "activa" | "pausada" | "disparada"
+  ultimoDisparo DateTime? @map("ultimo_disparo")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  user          Profile   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, estado])
+  @@map("alertas")
 }
