@@ -1,0 +1,39 @@
+{
+  "_comment": "Parámetros Impuesto a las Ganancias — Personas Físicas (4ta categoría). TODOS los valores marcados [a verificar con ARCA]. Actualizar con RG ARCA vigente.",
+  "_fuente": "[a verificar con ARCA] — Estos valores son ORIENTATIVOS y pueden no reflejar la normativa actual",
+  "_aviso": "Estimación orientativa. No reemplaza asesoramiento profesional ni consulta a organismos oficiales.",
+  "_actualizacion": "Verificar en arca.gob.ar — los valores se actualizan periódicamente por inflación",
+  "mni": {
+    "valor_mensual_ars": 404062,
+    "descripcion": "Mínimo No Imponible mensual [a verificar con ARCA]",
+    "nota": "Valor orientativo — verificar RG ARCA vigente"
+  },
+  "deduccion_especial": {
+    "multiplicador": 4.8,
+    "descripcion": "Deducción especial = MNI × multiplicador (empleados en relación de dependencia) [a verificar con ARCA]"
+  },
+  "cargas_de_familia_mensual": {
+    "conyuge": {
+      "valor_ars": 188452,
+      "descripcion": "Cónyuge o conviviente [a verificar con ARCA]"
+    },
+    "hijo_menor_18": {
+      "valor_ars": 94928,
+      "descripcion": "Hijo/a menor de 18 años o incapacitado [a verificar con ARCA]"
+    }
+  },
+  "escala_mensual": {
+    "_nota": "Escala mensual aproximada. Verificar con tabla ARCA vigente [a verificar con ARCA]",
+    "tramos": [
+      { "desde": 0,      "hasta": 167678,  "alicuota": 0.05, "fijo": 0 },
+      { "desde": 167678, "hasta": 335357,  "alicuota": 0.09, "fijo": 8384 },
+      { "desde": 335357, "hasta": 503036,  "alicuota": 0.12, "fijo": 23506 },
+      { "desde": 503036, "hasta": 670714,  "alicuota": 0.15, "fijo": 43628 },
+      { "desde": 670714, "hasta": 1006071, "alicuota": 0.19, "fijo": 68778 },
+      { "desde": 1006071,"hasta": 1341428, "alicuota": 0.23, "fijo": 132527 },
+      { "desde": 1341428,"hasta": 2012142, "alicuota": 0.27, "fijo": 209825 },
+      { "desde": 2012142,"hasta": 2682856, "alicuota": 0.31, "fijo": 391230 },
+      { "desde": 2682856,"hasta": null,    "alicuota": 0.35, "fijo": 599003 }
+    ]
+  }
+}
