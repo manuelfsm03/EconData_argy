@@ -1,0 +1,3 @@
+# Placeholder — este directorio lo popula el workflow news-brief.yml (2x/día).
+# Los archivos generados: news-raw-YYYY-MM-DD-{morning|noon}.json y
+# news-brief-YYYY-MM-DD-{morning|noon}.json.

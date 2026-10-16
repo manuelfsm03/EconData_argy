@@ -11,6 +11,7 @@ import { useBCRAData } from "@/client/hooks/use-bcra-data"
 import { recentObservedValues } from "@/client/lib/series-values"
 import { InfoTooltip } from "@/client/components/ui/info-tooltip"
 import { GLOSSARY } from "@/lib/glossary"
+import { NewsBrief } from "./news-brief"
 import { ProximosEventos } from "@/client/components/dashboard/proximos-eventos"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -570,6 +571,11 @@ export function HeadlinesBlock({ onNavigate }: { onNavigate: NavigateFn }) {
 export function TabResumen({ onNavigate }: { onNavigate: NavigateFn }) {
   return (
     <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 12, maxWidth: 1400 }}>
+
+      {/* Fila 0: Morning brief del agente (Claude Haiku 4.5, 2x/día) */}
+      <section>
+        <NewsBrief />
+      </section>
 
       {/* Fila 1: Tipos de cambio + Brecha */}
       <section>
