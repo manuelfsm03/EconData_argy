@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
-import { Cable, CalendarDays, Database, Landmark, LayoutDashboard, MessageSquareText, Sprout, Users } from "lucide-react"
+import { Cable, CalendarDays, Database, Landmark, LayoutDashboard, MessageSquareText, Sprout, Tv2, Users } from "lucide-react"
+import Link from "next/link"
 import { ThemeToggle } from "@/client/components/ui/theme-toggle"
 import {
   Sidebar,
@@ -144,6 +145,15 @@ export function AppShell() {
           <active.Icon size={15} className="text-[var(--amber)]" />
           <span className="text-xs font-semibold text-[var(--text)]">{active.label}</span>
           <div className="flex-1" />
+          <Link
+            href="/tv"
+            title="Modo TV — vista fullscreen de datos en vivo"
+            className="flex items-center gap-1.5 rounded-md border border-[var(--border)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-mute)] transition-colors hover:border-[var(--amber)] hover:text-[var(--amber)]"
+            style={{ fontFamily: "var(--font-data)" }}
+          >
+            <Tv2 size={13} strokeWidth={1.8} />
+            TV
+          </Link>
           <ThemeToggle />
         </header>
         {section === "canvas" && <CanvasWorkspace />}
