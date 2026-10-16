@@ -50,7 +50,25 @@ Esas partes sirven por ahora para mostrar hacia dónde puede continuar el recorr
 
 También se incluyen algunas propuestas de logo desarrolladas a partir del concepto que se acordó en la reunión por Meet.
 
-Se tomó esa referencia como punto de partida y se realizaron distintas variaciones, conservando la idea de la pizarra, la relación con los datos económicos y la gama de color del producto. Las propuestas todavía están en proceso de edición y se van a incorporar a esta rama cuando estén listas para revisar.
+Se tomó esa referencia como punto de partida y se realizaron distintas variaciones, conservando la idea de la pizarra, la relación con los datos económicos y la gama de color del producto.
+
+Las propuestas no se trataron como resultados automáticos ni cerrados: también hubo trabajo manual para dibujar encima, corregir proporciones, probar materiales y retocar detalles como el marco, las patas, las tizas y el borrador. La cuarta imagen muestra justamente una de esas intervenciones manuales usada para orientar y refinar las versiones siguientes.
+
+### Opción 1
+
+![Propuesta de icono 1](assets/logo-proposals/opcion-01.png)
+
+### Opción 2
+
+![Propuesta de icono 2](assets/logo-proposals/opcion-02.png)
+
+### Opción 3
+
+![Propuesta de icono 3](assets/logo-proposals/opcion-03.png)
+
+### Exploración e intervención manual
+
+![Intervención manual sobre la propuesta de icono](assets/logo-proposals/opcion-04-intervencion-manual.png)
 
 Si alguna de las propuestas funciona como dirección, se puede elegir y continuar refinándola para empezar a incorporarla en el propio landing y en el resto de la identidad visual.
 
