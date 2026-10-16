@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Caveat, IBM_Plex_Mono, Inter } from "next/font/google";
+import { Caveat, IBM_Plex_Mono, Inter, Inter_Tight, Newsreader } from "next/font/google";
 import "./globals.css";
 
 const ibmPlexMono = IBM_Plex_Mono({
@@ -12,6 +12,19 @@ const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+});
+
+const interTight = Inter_Tight({
+  variable: "--font-landing-sans",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+const newsreader = Newsreader({
+  variable: "--font-editorial",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
+  style: ["normal", "italic"],
 });
 
 // Tipografía tiza, solo para el título del hero (HeroLanding) — el resto de
@@ -46,7 +59,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className={`${ibmPlexMono.variable} ${inter.variable} ${caveat.variable}`}>
+      <body className={`${ibmPlexMono.variable} ${inter.variable} ${interTight.variable} ${newsreader.variable} ${caveat.variable}`}>
         {children}
       </body>
     </html>

@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect, useRef, useState } from "react"
+
 /**
  * InstituteCarousel — cinta con logos institucionales en loop infinito (marquee).
  *
@@ -46,12 +48,22 @@ export function InstituteCarousel() {
   // idéntico al primero y el corte del loop no se note.
   const tanda = [...INSTITUCIONES, ...INSTITUCIONES]
   const duracion = INSTITUCIONES.length * SEGUNDOS_POR_LOGO
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.05 })
+    observer.observe(root)
+    return () => observer.disconnect()
+  }, [])
 
   return (
-    <div className="marquee-viewport group overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">
+    <div ref={rootRef} className="marquee-viewport group overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">
       <div
         className="motion-safe-anim flex w-max gap-4 group-hover:[animation-play-state:paused]"
-        style={{ animation: `marquee ${duracion}s linear infinite` }}
+        style={{ animation: `marquee ${duracion}s linear infinite`, animationPlayState: visible ? "running" : "paused" }}
       >
         {tanda.map((inst, i) => (
           <div key={`${inst.nombre}-${i}`} className="flex w-28 shrink-0 flex-col items-center gap-1.5">
