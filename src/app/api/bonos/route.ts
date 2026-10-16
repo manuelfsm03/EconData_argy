@@ -18,6 +18,7 @@ import { fechaUTC, siguienteDiaHabil } from "@/lib/market-calendar"
 import { fetchRavaBondPrices } from "@/server/external/rava-prices"
 import { pesoBondsVigentes } from "@/server/domain/peso-bonds"
 import { fetchBymaCapInstruments, fetchBymaQuotes, marketMetaForRows } from "@/server/external/byma-data"
+import { fetchDollarLinkedFamily } from "@/server/external/byma-dollar-linked"
 import { chooseFreshPrice, gateMarketPrice, type SelectedMarketPrice } from "@/server/domain/market-freshness"
 
 type Cashflow = { fechaPago: Date; cupon: number; amortizacion: number; flujoTotal: number }
@@ -275,6 +276,20 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const tickerParam = searchParams.get("ticker")
   const tipoParam = searchParams.get("tipo")
+
+  // Familia dollar-linked: universo descubierto en BYMA Open Data (ver
+  // src/server/external/byma-dollar-linked.ts). Sin datos => data vacío, nunca ceros.
+  if (searchParams.get("familia") === "dollarlinked") {
+    const family = await fetchDollarLinkedFamily()
+    return NextResponse.json({
+      data: family.instrumentos,
+      volumen_agregado: family.volumenAgregado,
+      volumen_unidad: family.volumenUnidad,
+      universo: family.universo,
+      updated_at: new Date().toISOString(),
+      ...marketMetaForRows(family.instrumentos),
+    })
+  }
 
   if (tipoParam === "pesos") {
     const cacheKey = "bonos_pesos_screener"

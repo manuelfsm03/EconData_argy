@@ -18,6 +18,7 @@
     "test:news-ui": "tsx --test tests/news-ui-policy.test.ts",
     "test:rava-sources": "tsx --test tests/rava-sources.test.ts",
     "test:byma-data": "tsx --test tests/byma-data.test.ts",
+    "test:dollar-linked": "tsx --test tests/dollar-linked.test.ts",
     "test:sovereign-curve": "tsx --test tests/sovereign-curve.test.ts",
     "test:peso-bonds": "tsx --test tests/peso-bonds.test.ts",
     "test:ust-bills": "tsx --test tests/ust-bills.test.ts",

@@ -9,6 +9,7 @@ import {
 import { ForoActivo } from "./foro-activo"
 import { AssetScreener } from "./screener-activos"
 import { TabBonos } from "./tab-bonos"
+import { DollarLinkedPanel } from "./dollar-linked-panel"
 import { ajustarPolinomio, gradoSugerido, muestrearCurva, residuos } from "@/lib/curve-fit"
 import { StockHeatmap } from "./stock-heatmap"
 import { InfoTooltip } from "@/client/components/ui/info-tooltip"
@@ -814,9 +815,13 @@ export function BonosView({ initialTicker = null }: { initialTicker?: string | n
       })()}
 
       {tab === "dollarlinked" && (
-        <FamiliaSinFuente
-          label="Dollar-linked"
-          detalle="Bonos en pesos que siguen al dólar oficial (TV, TZV y la curva corporativa dollar-linked). El universo existe y se opera, pero todavía no hay un listado de tickers cargado ni una fuente de precios conectada para esta familia."
+        <DollarLinkedPanel
+          sinDatos={
+            <FamiliaSinFuente
+              label="Dollar-linked"
+              detalle="Bonos en pesos que siguen al dólar oficial (TV, TZV y la curva corporativa dollar-linked). El universo se descubre desde BYMA Open Data (env BYMA_DL_UNIVERSE_URL) y hoy no devolvió instrumentos: sin listado no mostramos precios ni volumen."
+            />
+          }
         />
       )}
 
