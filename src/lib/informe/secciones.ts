@@ -159,7 +159,7 @@ export const SECCIONES: SeccionDef[] = [
         titulo: "Volumen operado en dollar-linked",
         estado: "pendiente",
         fuenteId: "byma_data_open",
-        rama: "sin rama identificada al 16/10 (no está en main)",
+        rama: "feat/bonos-dollar-linked",
       },
     ],
   },
