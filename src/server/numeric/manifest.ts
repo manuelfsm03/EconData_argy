@@ -74,6 +74,7 @@ export const NUMERIC_SURFACE_MANIFEST: readonly NumericSurfaceManifestEntry[] = 
   unavailable("emae", "emae", "/api/macro?endpoint=emae", "data[*].valor", "EMAE"),
   unavailable("ipc", "ipc", "/api/macro?endpoint=ipc", "data[*].valor", "IPC"),
   unavailable("balanza", "balanza", "/api/macro?endpoint=balanza", "data[*].saldo", "Balanza"),
+  unavailable("fiscal", "fiscal", "/api/macro?endpoint=fiscal_imig", "data.periodo.resultadoFinanciero", "Resultado financiero"),
   unavailable("desigualdad", "desigualdad", "/api/macro?endpoint=argendata_desigualdad", "data.gini_arg[*][1]", "Desigualdad"),
   unavailable("piramides", "piramides", "/api/macro?endpoint=piramide&year=2025&country=32", "data.total", "Demografía"),
   unavailable("fx", "fx", "/api/tc-historico?period=max", "data.series[*].value", "Dólares"),

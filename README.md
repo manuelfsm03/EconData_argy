@@ -7,9 +7,9 @@ Dashboard de datos económicos de Argentina en tiempo real, con estética Bloomb
 ## Repositorio canónico y espejo
 
 - `manuelfsm03/EconData_argy` es la fuente canónica de producto.
-- `000gon/paneldecontrol` es un espejo operativo exacto de `EconData_argy/main` y alimenta el deploy de `lapizarra.ar`.
-- Las features se integran primero en el repositorio canónico. El workflow `sync-upstream.yml` replica después el mismo commit a `paneldecontrol/main`.
-- Una release no está completa hasta verificar igualdad de árbol entre ambos `main` y hacer smoke test de producción.
+- `000gon/paneldecontrol` sigue a `EconData_argy/main` y alimenta el deploy de `lapizarra.ar`; también conserva los cambios propios del despliegue.
+- Las features se integran primero en el repositorio canónico. El workflow `sync-upstream.yml` incorpora después `upstream/main` mediante merge y publica con un push normal; si hay conflictos, el workflow falla sin descartar commits.
+- Una release no está completa hasta verificar que `upstream/main` sea ancestro de `paneldecontrol/main` y hacer smoke test de producción.
 
 ---
 
@@ -121,6 +121,14 @@ Props principales:
 - Fuente: CSV INDEC (`infra.datos.gob.ar/catalog/sspm/dataset/11/...`)
 - Retorna últimas 25 observaciones mensuales con 16 sectores
 - Sectores: agro, pesca, minería, industria, energía, construcción, comercio, turismo, transporte, finanzas, inmobiliarias, adm. pública, enseñanza, salud, serv. comunitarios, imp. netos subsidios
+
+### `/api/macro?endpoint=fiscal_imig` — flujo fiscal completo
+- Fuente: **IMIG** (Informe Mensual de Ingresos y Gastos del SPN No Financiero), Secretaría de Hacienda, dataset `452.3` vía `infra.datos.gob.ar`. Base caja, millones de $ corrientes, mensual desde 2016-01
+- Params: `modo=mes|ytd|anio` · `periodo=YYYY-MM|YYYY` (default: último mes publicado)
+- Devuelve las **16 líneas de ingreso** (por impuesto) y las **31 líneas de gasto primario** agrupadas en 6 bloques (prestaciones sociales, subsidios económicos, funcionamiento, transferencias a provincias, otros corrientes, capital), más `resultado_primario`, `intereses_netos` y `resultado_financiero`
+- **Nada se estima ni se prorratea.** El cierre `ingresos − gasto = resultado primario` se verifica por período y se expone en `desvioCierre` (0 en toda la serie); la UI avisa si la fuente deja de cuadrar. Lógica pura en `src/server/domain/fiscal-imig.ts`, cubierta por `tests/fiscal-imig.test.ts`
+- Límite conocido: el IMIG es **clasificación económica** (por tipo de erogación). No publica gasto mensual por finalidad (educación/salud/defensa) ni por jurisdicción — eso vive en el dataset 451 (anual, con rezago) y en Presupuesto Abierto (requiere token)
+- UI: tab Macro → Fiscal (`fiscal-sankey.tsx`), Sankey en SVG sin dependencias externas
 
 ### `/api/macro?endpoint=fiscal_sankey`
 - Series INDEC vía `apis.datos.gob.ar/series/api/series/`

@@ -10,6 +10,7 @@ import { BBGLineChart } from "../charts/bbg-line-chart"
 import { DownloadCSV } from "../ui/download-csv"
 import { ChartDownload } from "../ui/chart-download"
 import { SectionMeta } from "../ui/help-tooltip"
+import { InfoTooltip } from "../ui/info-tooltip"
 import { buildBankingApiUrl } from "@/client/lib/bcra-banking"
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -33,15 +34,18 @@ interface KPIProps {
   value: string | null
   unit?: string
   valueColor?: string
+  /** ID de término del GLOSSARY para mostrar tooltip educativo. Opcional. */
+  termId?: string
 }
-function KPI({ label, value, unit, valueColor = "var(--text)" }: KPIProps) {
+function KPI({ label, value, unit, valueColor = "var(--text)", termId }: KPIProps) {
   return (
     <div style={{
       flex: "1 1 160px", padding: "10px 14px", background: "var(--bg-row-alt)",
       border: "1px solid var(--bg-elev-2)", display: "flex", flexDirection: "column", gap: 4,
     }}>
-      <div style={{ fontSize: 8, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "var(--font-data)" }}>
+      <div style={{ fontSize: 8, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "var(--font-data)", display: "flex", alignItems: "center", gap: 2 }}>
         {label}
+        {termId && <InfoTooltip termId={termId} position="bottom" />}
       </div>
       <div style={{ fontSize: 22, fontWeight: 700, color: valueColor, fontFamily: "var(--font-data)", lineHeight: 1 }}>
         {value ?? "—"}
@@ -176,15 +180,15 @@ export function PlazoFijoView() {
     <div>
       <SectionMeta title="Tasas — Plazo Fijo" help="TAMAR es la referencia mayorista vigente de bancos privados. BADLAR se conserva como serie histórica secundaria. TM20 = tasa por depósitos mayores a $20 millones. TPM = Tasa de Política Monetaria del BCRA." source="BCRA API" />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
-        <KPI label="TAMAR Bancos Privados" value={tamarUlt != null ? `${fmtNum(tamarUlt, 2)}%` : null}
+        <KPI label="TAMAR Bancos Privados" termId="TAMAR" value={tamarUlt != null ? `${fmtNum(tamarUlt, 2)}%` : null}
           unit="Referencia vigente · TNA · Var 44" valueColor="var(--amber)" />
-        <KPI label="BADLAR histórica" value={badlarUlt != null ? `${fmtNum(badlarUlt, 2)}%` : null}
+        <KPI label="BADLAR histórica" termId="BADLAR" value={badlarUlt != null ? `${fmtNum(badlarUlt, 2)}%` : null}
           unit="Serie secundaria · TNA · Var 7" valueColor="var(--text-dim)" />
-        <KPI label="TM20 Bancos Privados"   value={tm20Ult   != null ? `${fmtNum(tm20Ult, 2)}%` : null}
+        <KPI label="TM20 Bancos Privados" termId="TM20"  value={tm20Ult   != null ? `${fmtNum(tm20Ult, 2)}%` : null}
           unit="TNA · Var 8 BCRA API" valueColor="var(--positive)" />
-        <KPI label="Tasa de Política Mon."  value={tpmUlt    != null ? `${fmtNum(tpmUlt, 2)}%` : null}
+        <KPI label="Tasa de Política Mon." termId="TPM" value={tpmUlt    != null ? `${fmtNum(tpmUlt, 2)}%` : null}
           unit="TPM · Var 6 BCRA API" valueColor="var(--sky)" />
-        <KPI label="Depósitos 30d"          value={pf30Ult   != null ? `${fmtNum(pf30Ult, 2)}%` : null}
+        <KPI label="Depósitos 30d" termId="TASA PLAZO FIJO"          value={pf30Ult   != null ? `${fmtNum(pf30Ult, 2)}%` : null}
           unit="TNA · Var 12 BCRA API" valueColor="#CE93D8" />
       </div>
       <div style={{ padding: "8px 12px 0" }}>
@@ -335,23 +339,23 @@ export function AgregadosView() {
     <div>
       <SectionMeta title="Agregados Monetarios" help="M1 = dinero en circulación + depósitos a la vista. M2 = M1 + cajas de ahorro. M3 = M2 + depósitos a plazo. Base Monetaria = pasivos monetarios del BCRA (billetes + reservas bancarias)." source="BCRA API" />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
-        <KPI label="Base Monetaria"
+        <KPI label="Base Monetaria" termId="BASE MONETARIA"
           value={fmt(baseUlt)}
           unit={iaBase != null ? `i.a.: ${iaBase >= 0 ? "+" : ""}${fmtNum(iaBase, 1)}% · Var 15` : "Var 15 BCRA API"}
           valueColor="var(--amber)" />
-        <KPI label="Circulación Monetaria"
+        <KPI label="Circulación Monetaria" termId="CIRCULACION MONETARIA"
           value={fmt(circUlt)}
           unit="Sin encajes · Var 16 BCRA API"
           valueColor="var(--positive)" />
-        <KPI label="M1  (Billetes + Depósitos Vista)"
+        <KPI label="M1  (Billetes + Depósitos Vista)" termId="DEPOSITOS CC"
           value={fmt(m1Ult)}
           unit="Vars 17 + 21 BCRA API"
           valueColor="var(--sky)" />
-        <KPI label="M2  (M1 + Cajas de Ahorro)"
+        <KPI label="M2  (M1 + Cajas de Ahorro)" termId="M2"
           value={fmt(m2Ult)}
           unit="Vars 17 + 21 + 22 BCRA API"
           valueColor="#CE93D8" />
-        <KPI label="M3  (M2 + Plazos Fijos)"
+        <KPI label="M3  (M2 + Plazos Fijos)" termId="M3"
           value={fmt(m3Ult)}
           unit="Vars 17 + 21 + 22 + 23 BCRA API"
           valueColor="var(--yellow)" />
@@ -475,13 +479,13 @@ export function ReservasView() {
         source="BCRA API v4.0"
       />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
-        <KPI label="Reservas Brutas"
+        <KPI label="Reservas Brutas" termId="RESERVAS"
           value={ult?.brutas != null ? `USD ${fmtNum(ult.brutas / 1e3, 2)}B` : null}
           unit={ult?.var_semanal_brutas != null
             ? `Var. semanal: ${ult.var_semanal_brutas >= 0 ? "+" : ""}${fmtNum(ult.var_semanal_brutas, 0)}M · ${ult.fecha ?? "—"}`
             : `Fecha: ${ult?.fecha ?? "—"} · BCRA Var.1`}
           valueColor="var(--amber)" />
-        <KPI label="Reservas Netas"
+        <KPI label="Reservas Netas" termId="RESERVAS NETAS"
           value={ult?.netas != null ? `USD ${fmtNum(ult.netas / 1e3, 2)}B` : null}
           unit={`Vars 75 − 1200 − 1243 · ${ult?.fecha_netas ?? "sin dato"}`}
           valueColor={ult?.netas != null ? (ult.netas >= 0 ? "var(--positive)" : "var(--negative)") : "var(--text-mute)"} />
@@ -602,7 +606,7 @@ export function ComprasView() {
     <div>
       <SectionMeta title="Compras BCRA — MULC" help="Intervenciones del BCRA en el mercado cambiario (Mercado Único y Libre de Cambios). Compras netas (+) aumentan reservas; ventas netas (-) las reducen. El acumulado anual refleja la posición compradora/vendedora del año." source="BCRA · argentinadatos.com" />
       <div style={{ display: "flex", gap: 1, flexWrap: "wrap", padding: 1, background: "var(--bg-elev-2)" }}>
-        <KPI label="Posición Mes Actual"
+        <KPI label="Posición Mes Actual" termId="MULC"
           value={r?.mes_actual != null ? `USD ${fmtNum(Math.abs(r.mes_actual), 0)}M` : null}
           unit={r?.mes_actual != null ? (r.mes_actual >= 0 ? "Comprador neto" : "Vendedor neto") : ""}
           valueColor={r?.mes_actual != null ? (r.mes_actual >= 0 ? "var(--positive)" : "var(--negative)") : "var(--text-mute)"} />

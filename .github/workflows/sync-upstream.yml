@@ -2,26 +2,37 @@ name: Sync from upstream
 
 on:
   schedule:
-    - cron: '*/15 * * * *'  # cada 15 min
-  workflow_dispatch:  # manual trigger
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: sync-upstream-${{ github.repository }}
+  cancel-in-progress: false
 
 jobs:
   sync:
+    # Keep the scheduled mirror scoped to the production fork.
+    if: github.repository == '000gon/paneldecontrol'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GH_PAT }}
+          ref: main
           fetch-depth: 0
 
-      - name: Sync upstream
+      - name: Merge upstream without discarding fork commits
+        env:
+          UPSTREAM_REPOSITORY: manuelfsm03/EconData_argy
         run: |
-          git remote add upstream https://github.com/manuelfsm03/EconData_argy.git || true
+          git remote add upstream "https://github.com/${UPSTREAM_REPOSITORY}.git"
           git fetch upstream main
-          if [ "$(git rev-parse HEAD)" != "$(git rev-parse upstream/main)" ]; then
-            git reset --hard upstream/main
-            git push origin main --force
-            echo "✅ Synced to $(git rev-parse --short upstream/main)"
-          else
-            echo "⏭️ Already up to date"
+          git config user.name "paneldecontrol sync bot"
+          git config user.email "actions@github.com"
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "Already up to date with upstream"
+            exit 0
           fi
+          git merge --no-edit upstream/main
+          git push origin HEAD:main
+          echo "Merged upstream $(git rev-parse --short upstream/main)"

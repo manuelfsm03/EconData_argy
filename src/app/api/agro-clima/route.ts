@@ -49,7 +49,23 @@ const NOTA_REANALISIS =
 type LluviaCacheada = { serie: PuntoLluvia[]; retrievedAt: string; expiry: number }
 const cachePorZona = new Map<string, LluviaCacheada>()
 
-type RespuestaArchive = { daily?: { time?: string[]; precipitation_sum?: (number | null)[] } }
+type RespuestaArchive = {
+  daily?: { time?: string[]; precipitation_sum?: (number | null)[] }
+  error?: boolean
+  reason?: string
+}
+
+/**
+ * Open-Meteo señala sus errores con HTTP 200 y un `error: true` en el cuerpo
+ * (por ejemplo al exceder el límite de pedidos por minuto). Sin este chequeo,
+ * un rate limit se confunde con SOURCE_BAD_RESPONSE:INCOMPLETE_ZONE — el
+ * mismo síntoma que "faltan datos de un punto de la zona" — y el diagnóstico
+ * manda a revisar la cobertura geográfica en vez de reintentar la fuente.
+ */
+function fallaDeclarada(payload: RespuestaArchive | RespuestaArchive[]): boolean {
+  const partes = Array.isArray(payload) ? payload : [payload]
+  return partes.some((parte) => parte?.error === true)
+}
 
 async function lluviaDeZona(zona: ZonaAgricola): Promise<{ serie: PuntoLluvia[]; retrievedAt: string }> {
   const cacheada = cachePorZona.get(zona.id)
@@ -77,6 +93,7 @@ async function lluviaDeZona(zona: ZonaAgricola): Promise<{ serie: PuntoLluvia[];
 
   // Con una sola coordenada la API devuelve un objeto; con varias, un array.
   const payload = await response.json() as RespuestaArchive | RespuestaArchive[]
+  if (fallaDeclarada(payload)) throw new Error("SOURCE_UNAVAILABLE:UPSTREAM_ERROR")
   const porPunto = Array.isArray(payload) ? payload : [payload]
 
   const series = porPunto.map((punto) => acumularPorCampania(punto.daily?.time ?? [], punto.daily?.precipitation_sum ?? []))

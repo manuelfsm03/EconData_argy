@@ -11,6 +11,7 @@ import { AssetScreener } from "./screener-activos"
 import { TabBonos } from "./tab-bonos"
 import { ajustarPolinomio, gradoSugerido, muestrearCurva, residuos } from "@/lib/curve-fit"
 import { StockHeatmap } from "./stock-heatmap"
+import { InfoTooltip } from "@/client/components/ui/info-tooltip"
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -80,10 +81,13 @@ function SubTabs({ active, onChange }: { active: string; onChange: (k: string) =
 
 // ── KPI card ───────────────────────────────────────────────────────────────────
 
-function KPI({ label, value, unit, valueColor = "var(--text)", sub }: { label: string; value: string | null; unit?: string; valueColor?: string; sub?: string }) {
+function KPI({ label, value, unit, valueColor = "var(--text)", sub, termId }: { label: string; value: string | null; unit?: string; valueColor?: string; sub?: string; termId?: string }) {
   return (
     <div style={{ flex: "1 1 150px", padding: "10px 14px", background: "var(--bg-row-alt)", border: "1px solid var(--bg-elev-2)", display: "flex", flexDirection: "column", gap: 3 }}>
-      <div style={{ fontSize: 8, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "var(--font-data)" }}>{label}</div>
+      <div style={{ fontSize: 8, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "var(--font-data)", display: "flex", alignItems: "center", gap: 2 }}>
+        {label}
+        {termId && <InfoTooltip termId={termId} position="bottom" />}
+      </div>
       <div style={{ fontSize: 20, fontWeight: 700, color: valueColor, fontFamily: "var(--font-data)", lineHeight: 1 }}>{value ?? "—"}</div>
       {unit && <div style={{ fontSize: 8, color: "#bbb", fontFamily: "var(--font-data)" }}>{unit}</div>}
       {sub && <div style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "var(--font-data)" }}>{sub}</div>}
@@ -152,7 +156,7 @@ export function AccionesView({ initialTicker = null }: { initialTicker?: string 
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       {/* KPIs */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
-        <KPI label="Acciones con precio" value={String(mervalTotal)} unit="tickers activos" />
+        <KPI label="Acciones con precio" termId="MERVAL" value={String(mervalTotal)} unit="tickers activos" />
         <KPI label="Mejor del día" value={top5Gain[0] ? top5Gain[0].ticker : null} valueColor="var(--positive)"
           unit={top5Gain[0]?.change1D != null ? `+${fmtPct(top5Gain[0].change1D)}` : undefined} />
         <KPI label="Peor del día" value={top5Loss[0] ? top5Loss[0].ticker : null} valueColor="var(--negative)"
@@ -607,9 +611,9 @@ export function BonosView({ initialTicker = null }: { initialTicker?: string | n
       {/* KPIs */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
         <KPI label="Bonos soberanos" value={String(bonos.length)} unit="hard dollar" />
-        <KPI label="TIR promedio" value={avgTir != null ? fmtPct(avgTir) : null} valueColor="var(--amber)" unit="yield to maturity" />
-        <KPI label="Paridad promedio" value={avgPar != null ? fmtPct(avgPar) : null} valueColor="var(--positive)" unit="% del VN residual" />
-        <KPI label="LECAPs / BONCAPs" value={String(lecaps.length)} unit="instrumentos locales" />
+        <KPI label="TIR promedio" termId="TIR" value={avgTir != null ? fmtPct(avgTir) : null} valueColor="var(--amber)" unit="yield to maturity" />
+        <KPI label="Paridad promedio" termId="PARIDAD" value={avgPar != null ? fmtPct(avgPar) : null} valueColor="var(--positive)" unit="% del VN residual" />
+        <KPI label="LECAPs / BONCAPs" termId="LECAP" value={String(lecaps.length)} unit="instrumentos locales" />
       </div>
 
       {/* Selector por familia de instrumento */}
@@ -897,10 +901,10 @@ function BonoDetailPanel({ assetType, ticker, bono, onClose }: {
           bono ? (
             <div style={{ display: "flex", gap: 1, flexWrap: "wrap", background: "var(--bg-elev-2)", padding: 1 }}>
               <KPI label="Precio" value={fmtNum(bono.precio, 2)} unit="USD" />
-              <KPI label="TIR" value={bono.tir != null ? fmtPct(bono.tir) : null} valueColor="var(--amber)" />
-              <KPI label="Paridad" value={bono.paridad != null ? fmtPct(bono.paridad) : null} />
-              <KPI label="Curr. Yield" value={bono.currentYield != null ? fmtPct(bono.currentYield) : null} />
-              <KPI label="Dur. Mod" value={bono.durationMod != null ? fmtNum(bono.durationMod, 2) : null} unit="años" />
+              <KPI label="TIR" termId="TIR" value={bono.tir != null ? fmtPct(bono.tir) : null} valueColor="var(--amber)" />
+              <KPI label="Paridad" termId="PARIDAD" value={bono.paridad != null ? fmtPct(bono.paridad) : null} />
+              <KPI label="Curr. Yield" termId="YTM" value={bono.currentYield != null ? fmtPct(bono.currentYield) : null} />
+              <KPI label="Dur. Mod" termId="DURATION" value={bono.durationMod != null ? fmtNum(bono.durationMod, 2) : null} unit="años" />
               <KPI label="Cupón" value={fmtPct(bono.cupon)} unit="s.a." />
               <KPI label="Vencimiento" value={bono.vencimiento?.slice(0, 10) ?? null} />
               <KPI label="VN Residual" value={fmtNum(bono.vnResidual, 2)} unit="% orig" />
@@ -987,12 +991,12 @@ export function RofexView() {
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       {/* KPIs */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
-        <KPI label="Posiciones activas" value={String(data.length)} unit="contratos en el mercado" />
+        <KPI label="Posiciones activas" termId="ROFEX" value={String(data.length)} unit="contratos en el mercado" />
         <KPI label="Posición más cercana" value={nearFuture?.maturityLabel ?? null} valueColor="var(--amber)"
           unit={nearFuture ? `$${fmtNum(nearFuture.price, 2)} · Dev: ${fmtPct(nearFuture.devaluation)}` : undefined} />
         <KPI label="Posición más lejana" value={farFuture?.maturityLabel ?? null} valueColor="var(--positive)"
           unit={farFuture ? `$${fmtNum(farFuture.price, 2)} · Dev: ${fmtPct(farFuture.devaluation)}` : undefined} />
-        <KPI label="Devaluación máxima impl." value={fmtPct(maxDev)} valueColor="#FF6B6B" unit="según ROFEX" />
+        <KPI label="Devaluación máxima impl." termId="DEV. IMP." value={fmtPct(maxDev)} valueColor="#FF6B6B" unit="según ROFEX" />
       </div>
 
       {/* Charts */}
@@ -1093,11 +1097,11 @@ export function PlazoFijoOficialView() {
 
   if (loading) return <Loading />
 
-  const series = [
-    { key: "tamar", label: "TAMAR privados", color: "var(--amber)", points: data?.tamar ?? [] },
-    { key: "badlar", label: "BADLAR privados", color: "var(--positive)", points: data?.badlar ?? [] },
-    { key: "tm20", label: "TM20 privados", color: "var(--sky)", points: data?.tm20 ?? [] },
-    { key: "pf30", label: "Depósitos 30 días", color: "#CE93D8", points: data?.pf30 ?? [] },
+  const series: { key: string; label: string; color: string; termId?: string; points: { fecha: string; valor: number }[] }[] = [
+    { key: "tamar", label: "TAMAR privados", color: "var(--amber)", termId: "TAMAR", points: data?.tamar ?? [] },
+    { key: "badlar", label: "BADLAR privados", color: "var(--positive)", termId: "BADLAR", points: data?.badlar ?? [] },
+    { key: "tm20", label: "TM20 privados", color: "var(--sky)", termId: "TM20", points: data?.tm20 ?? [] },
+    { key: "pf30", label: "Depósitos 30 días", color: "#CE93D8", termId: "TASA PLAZO FIJO", points: data?.pf30 ?? [] },
   ].filter(item => item.points.length > 0)
 
   if (series.length === 0) {
@@ -1116,7 +1120,7 @@ export function PlazoFijoOficialView() {
       <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
         {series.map(item => {
           const latest = item.points.at(-1)
-          return <KPI key={item.key} label={item.label} value={latest ? `${fmtNum(latest.valor)}%` : null} valueColor={item.color} unit={latest ? `TNA · ${latest.fecha}` : "TNA"} />
+          return <KPI key={item.key} label={item.label} termId={item.termId} value={latest ? `${fmtNum(latest.valor)}%` : null} valueColor={item.color} unit={latest ? `TNA · ${latest.fecha}` : "TNA"} />
         })}
       </div>
       <div style={{ padding: 16, background: "var(--bg)" }}>
@@ -1182,10 +1186,10 @@ function AgregadosView() {
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       {/* KPIs */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 1, padding: "12px 14px", background: "var(--bg)", borderBottom: "1px solid var(--bg-elev-2)" }}>
-        <KPI label="Base Monetaria" value={lastBM != null ? `$${fmtNum(lastBM / 1000, 0)}B` : null} valueColor="#FF6B6B" unit="millones ARS" />
-        <KPI label="M1" value={lastM1 != null ? `$${fmtNum(lastM1 / 1000, 0)}B` : null} valueColor="var(--amber)" unit="billetes + cuentas corrientes" />
-        <KPI label="M2" value={lastM2 != null ? `$${fmtNum(lastM2 / 1000, 0)}B` : null} valueColor="var(--positive)" unit="M1 + cajas de ahorro" />
-        {lastM1 && lastM2 && <KPI label="Cuasidinero" value={`$${fmtNum((lastM2 - lastM1) / 1000, 0)}B`} valueColor="#CE93D8" unit="M2 - M1" />}
+        <KPI label="Base Monetaria" termId="BASE MONETARIA" value={lastBM != null ? `$${fmtNum(lastBM / 1000, 0)}B` : null} valueColor="#FF6B6B" unit="millones ARS" />
+        <KPI label="M1" termId="DEPOSITOS CC" value={lastM1 != null ? `$${fmtNum(lastM1 / 1000, 0)}B` : null} valueColor="var(--amber)" unit="billetes + cuentas corrientes" />
+        <KPI label="M2" termId="M2" value={lastM2 != null ? `$${fmtNum(lastM2 / 1000, 0)}B` : null} valueColor="var(--positive)" unit="M1 + cajas de ahorro" />
+        {lastM1 && lastM2 && <KPI label="Cuasidinero" termId="M3" value={`$${fmtNum((lastM2 - lastM1) / 1000, 0)}B`} valueColor="#CE93D8" unit="M2 - M1" />}
       </div>
 
       {/* Chart */}
@@ -1500,8 +1504,8 @@ export function CommoditiesView() {
                   </div>
                   <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 1 }}>{g.unidad}</div>
                   {g.fobOficial != null && (
-                    <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 2 }}>
-                      FOB: ${fmtUSD(g.fobOficial, 0)} · Ret: {g.retencion}%
+                    <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 2, display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+                      FOB<InfoTooltip termId="FOB" position="bottom" />: ${fmtUSD(g.fobOficial, 0)} · Ret<InfoTooltip termId="RETENCIONES" position="bottom" />: {g.retencion}%
                     </div>
                   )}
                 </div>

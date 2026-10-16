@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Inter } from "next/font/google";
+import { Caveat, IBM_Plex_Mono, Inter, Inter_Tight, Newsreader } from "next/font/google";
 import "./globals.css";
+import "@/client/styles/forum-approved.css";
+import "@/client/styles/forum-approved-responsive.css";
+import "@/client/styles/forum-bridge.css";
 
 const ibmPlexMono = IBM_Plex_Mono({
   variable: "--font-mono",
@@ -12,6 +15,27 @@ const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+});
+
+const interTight = Inter_Tight({
+  variable: "--font-tight",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const newsreader = Newsreader({
+  variable: "--font-editorial",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
+});
+
+// Tipografía tiza, solo para el título del hero (HeroLanding) — el resto de
+// la app sigue con Inter/IBM Plex Mono, esto no toca el panel funcional.
+const caveat = Caveat({
+  variable: "--font-chalk",
+  subsets: ["latin"],
+  weight: ["600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -38,7 +62,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className={`${ibmPlexMono.variable} ${inter.variable}`}>
+      <body className={`${ibmPlexMono.variable} ${inter.variable} ${interTight.variable} ${newsreader.variable} ${caveat.variable}`}>
         {children}
       </body>
     </html>
