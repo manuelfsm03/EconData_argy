@@ -797,7 +797,7 @@ function LecapsScreener() {
               { label: "Precio" },
               { label: "TEM", termId: "TEM" },
               { label: "TEA", termId: "TEA" },
-              { label: "TIR anual", termId: "TIR" },
+              { label: "TNA", termId: "TNA" },
             ]).map((h, i) => (
               <th key={h.label} style={{ padding: "4px 8px", fontSize: 9, color: "var(--text-dim)", textAlign: i === 0 ? "left" : "right", borderBottom: "1px solid var(--border)" }}>
                 <span style={{ display: "inline-flex", alignItems: "center", justifyContent: i === 0 ? "flex-start" : "flex-end", gap: 2, width: "100%" }}>
@@ -840,7 +840,7 @@ function LecapsScreener() {
       <Section title="LECAPs — Letras del Tesoro Capitalizables" items={lecaps} tipo="LECAP" />
       <Section title="BONCAPs — Bonos del Tesoro Capitalizables" items={boncaps} tipo="BONCAP" />
       <div style={{ padding: "4px 8px", fontSize: 9, color: "var(--text-mute)", borderTop: "1px solid var(--bg-elev-2)" }}>
-        Precios: actualización diaria via ByMA · Ordenados por vencimiento · TIR: compuesto continuo vs VN
+        Precios: actualización diaria vía BYMA · Ordenados por vencimiento · TEM/TEA/TNA: ArgentinaDatos, sobre el mismo precio de cierre
       </div>
     </div>
   )
