@@ -4,6 +4,8 @@ Dashboard de datos económicos de Argentina en tiempo real, con estética Bloomb
 
 **Producción:** [lapizarra.ar](https://lapizarra.ar)
 
+> **Coordinación del equipo (humanos e IAs):** antes de proponer o empezar trabajo, leé la última nota en [`docs/coordinacion/`](docs/coordinacion/) (dueños por área, PRs abiertos, qué se decide cada sábado) y [`docs/CONVENCIONES.md`](docs/CONVENCIONES.md).
+
 ## Repositorio canónico y espejo
 
 - `manuelfsm03/EconData_argy` es la fuente canónica de producto.
