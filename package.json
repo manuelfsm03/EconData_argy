@@ -61,7 +61,8 @@
     "test:lluvia-historica": "tsx --test tests/lluvia-historica.test.ts",
     "test:clima-regional": "tsx --test tests/clima-regional.test.ts",
     "test:mapa-vista": "tsx --test tests/mapa-vista.test.ts",
-    "test:fiscal-imig": "tsx --test tests/fiscal-imig.test.ts"
+    "test:fiscal-imig": "tsx --test tests/fiscal-imig.test.ts",
+    "test:informe": "tsx --test tests/informe-secciones.test.ts tests/informe-markdown.test.ts tests/informe-datos.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

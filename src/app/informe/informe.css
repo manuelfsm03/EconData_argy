@@ -1,0 +1,175 @@
+/*
+ * Estilos de /informe.
+ *
+ * Pantalla: el informe se ve con el tema CLARO del design system
+ * ([data-theme="light"] de globals.css, que ya existe), en una hoja de ancho A4.
+ * Impresión: @page A4, un salto de página por sección, controles ocultos.
+ *
+ * El contenido mide lo mismo en pantalla y en papel (186 mm = A4 menos 12 mm de
+ * margen por lado) para que los gráficos no se re-dimensionen al imprimir.
+ */
+
+.informe-raiz {
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 16px 0 48px;
+}
+
+.informe-herramientas {
+  width: 210mm;
+  max-width: 100%;
+  margin: 0 auto 12px;
+  padding: 0 12mm;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.informe-herramientas code { font-family: var(--font-data); font-size: 11px; color: var(--text); }
+.informe-herramientas .aviso { margin-top: 4px; color: var(--negative); }
+
+.informe-boton {
+  flex: none;
+  border: 1px solid var(--border-hi);
+  background: var(--bg-elev);
+  color: var(--text);
+  font: 600 12px var(--font-ui);
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.informe-boton:hover { background: var(--bg-elev-2); }
+
+.informe-documento {
+  width: 210mm;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 12mm;
+}
+
+.informe-portada { margin-bottom: 4mm; }
+.informe-portada h1 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  margin: 6px 0 4px;
+}
+.informe-lema { font-size: 11px; color: var(--text-dim); margin: 0; }
+
+.informe-pagina {
+  padding: 0 0 8mm;
+  margin-bottom: 8mm;
+  border-bottom: 1px dashed var(--border-hi);
+}
+.informe-portada + .informe-pagina .informe-encabezado { display: none; }
+
+.informe-encabezado {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border-bottom: 2px solid var(--amber);
+  padding-bottom: 4px;
+  margin-bottom: 8px;
+}
+
+.informe-titulo-seccion {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  margin: 0 0 8px;
+}
+.informe-titulo-seccion .num { color: var(--amber); font-family: var(--font-data); margin-right: 6px; }
+
+.informe-texto { font-size: 11.5px; line-height: 1.5; margin: 0 0 10px; }
+.informe-texto p { margin: 0 0 6px; }
+.informe-texto ul { margin: 0 0 6px; padding-left: 18px; }
+
+.informe-grilla {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.informe-grafico { margin: 0; break-inside: avoid; min-width: 0; }
+
+/* Los gráficos del dashboard traen controles de arrastre de eje: no van en el informe. */
+.informe-grafico .bbg-panel-header button { display: none; }
+
+.informe-pie {
+  font-size: 8.5px;
+  line-height: 1.35;
+  color: var(--text-dim);
+  padding: 3px 2px 0;
+}
+.informe-pie .id-fuente { font-family: var(--font-data); color: var(--text-mute); }
+.informe-pie .detalle { color: var(--text-mute); }
+
+.informe-hueco {
+  min-height: 150px;
+  border: 1.5px dashed var(--border-hi);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  background: transparent;
+}
+.informe-hueco.pendiente { border-color: var(--amber); }
+.informe-hueco.sin-datos { border-color: var(--negative); }
+.hueco-titulo { font-size: 12px; font-weight: 600; }
+.hueco-estado { font-size: 11px; font-weight: 600; color: var(--amber); }
+.sin-datos .hueco-estado { color: var(--negative); }
+.hueco-detalle { font-size: 10px; color: var(--text-dim); }
+.hueco-estado code { font-family: var(--font-data); font-size: 10.5px; }
+
+.informe-tabla-wrap { padding: 4px 6px 8px; overflow: hidden; }
+.informe-tabla { width: 100%; border-collapse: collapse; font-size: 9.5px; font-family: var(--font-data); }
+.informe-tabla th {
+  font-weight: 600;
+  font-size: 8.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border-hi);
+  padding: 3px 4px;
+}
+.informe-tabla td { padding: 2px 4px; border-bottom: 1px solid var(--border-light); }
+.informe-tabla .izq { text-align: left; }
+.informe-tabla .der { text-align: right; }
+.informe-tabla-wrap.compacta .informe-tabla { font-size: 8px; }
+.informe-tabla-wrap.compacta .informe-tabla td { padding: 1px 3px; }
+
+@page { size: A4; margin: 12mm; }
+
+@media print {
+  .no-imprimir { display: none !important; }
+
+  html, body { background: #fff !important; }
+  /* Papel blanco: se pisa solo el fondo del tema claro (cálido en pantalla). */
+  .informe-raiz[data-theme="light"] { --bg: #fff; --bg-row-alt: #fff; }
+  .informe-raiz {
+    padding: 0;
+    min-height: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .informe-documento { width: 186mm; max-width: none; padding: 0; margin: 0; }
+
+  /* Una sección por hoja. */
+  .informe-pagina {
+    break-after: page;
+    page-break-after: always;
+    border-bottom: 0;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+  .informe-pagina:last-of-type { break-after: auto; page-break-after: auto; }
+
+  .informe-grafico, .informe-hueco, .informe-tabla tr { break-inside: avoid; page-break-inside: avoid; }
+}
