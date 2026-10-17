@@ -17,16 +17,29 @@ const inter = Inter({
   weight: ["400", "500", "600", "700"],
 });
 
+// Dos cargas de Inter_Tight con nombre de variable distinto: el Foro (PR #119)
+// usa --font-tight, el landing nuevo (feat/landing-hero-logo) usa
+// --font-landing-sans con un peso más (300). No se pisan, cada CSS referencia
+// la suya.
 const interTight = Inter_Tight({
   variable: "--font-tight",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
 
+const interTightLanding = Inter_Tight({
+  variable: "--font-landing-sans",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+// Newsreader sí comparte nombre de variable (--font-editorial) entre el Foro
+// y el landing nuevo: una sola carga, con la unión de los pesos que pide cada
+// rama (300 lo agrega el landing, 400-600 ya lo usaba el Foro).
 const newsreader = Newsreader({
   variable: "--font-editorial",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["300", "400", "500", "600"],
   style: ["normal", "italic"],
 });
 
@@ -62,7 +75,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className={`${ibmPlexMono.variable} ${inter.variable} ${interTight.variable} ${newsreader.variable} ${caveat.variable}`}>
+      <body className={`${ibmPlexMono.variable} ${inter.variable} ${interTight.variable} ${interTightLanding.variable} ${newsreader.variable} ${caveat.variable}`}>
         {children}
       </body>
     </html>
